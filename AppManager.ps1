@@ -206,7 +206,70 @@ function ConvertFrom-WingetSearchOutput {
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="$($L.Title)" Height="680" Width="980" WindowStartupLocation="CenterScreen">
+        Title="$($L.Title)" Height="680" Width="980" WindowStartupLocation="CenterScreen"
+        Background="#F5F7FB">
+  <Window.Resources>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#1E40AF"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#D6D8DE"/>
+
+    <Style TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="12,6"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="6">
+              <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{StaticResource PrimaryPressedBrush}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="#A7B3D6"/>
+                <Setter Property="BorderBrush" Value="#A7B3D6"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="TextBox">
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="8,4"/>
+    </Style>
+
+    <Style TargetType="ComboBox">
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="6,2"/>
+    </Style>
+
+    <Style TargetType="ListView">
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+    </Style>
+  </Window.Resources>
   <Grid Margin="10">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
@@ -239,7 +302,7 @@ $xaml = @"
       <Button Name="BtnEdit"   Content="$($L.Edit)"   Height="32" Margin="0,0,8,0"/>
       <Button Name="BtnRemove" Content="$($L.Remove)" Height="32" Margin="0,0,8,0"/>
       <Button Name="BtnSearch" Content="$($L.Search)" Height="32" Margin="0,0,8,0"/>
-      <Button Name="BtnApply"  Content="$($L.Apply)"  Height="32"/>
+      <Button Name="BtnApply"  Content="$($L.Apply)"  Height="32" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}"/>
     </UniformGrid>
 
     <Grid Grid.Row="2">
@@ -327,7 +390,7 @@ $xaml = @"
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
       <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="Gray" Name="TxtStatus"/>
-      <Button Grid.Column="1" Name="BtnSave" Content="$($L.Save)" Width="160" Height="32"/>
+      <Button Grid.Column="1" Name="BtnSave" Content="$($L.Save)" Width="160" Height="32" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}"/>
     </Grid>
   </Grid>
 </Window>
