@@ -484,6 +484,10 @@ $script:AppsList = $null
 $script:SearchTimer = $null
 $script:ApplyTimer = $null
 $script:UpdateResults = @()
+$script:UpdateTimer = $null
+$script:UpdateSnapshot = @()
+$script:UpdateIndex = 0
+$script:UpdateJob = $null
 
 function Write-UiOutput {
   param([string]$text)
@@ -553,7 +557,7 @@ function ConvertFrom-WingetUpgradeOutput {
     $version = $line.Substring($versionStart, [Math]::Min($versionEnd, $line.Length - $versionStart)).Trim()
     $available = if ($line.Length -gt $availableStart) { $line.Substring($availableStart).Trim().Split()[0] } else { "" }
 
-    if (-not [string]::IsNullOrWhiteSpace($id)) {
+    if (-not [string]::IsNullOrWhiteSpace($id) -and $id -notmatch '\s') {
       $results += [pscustomobject]@{
         Name = $name
         Id = $id
@@ -582,6 +586,67 @@ function Load-AvailableUpdates {
   $lvUpdates.ItemsSource = $script:UpdateResults
   $btnRefreshUpdates.IsEnabled = $true
   $btnApplyUpdates.IsEnabled = $true
+}
+
+function Stop-UpdateTimer {
+  if ($null -ne $script:UpdateTimer) {
+    $script:UpdateTimer.Stop()
+    $script:UpdateTimer = $null
+  }
+}
+
+function Start-UpdatesFlow {
+  $script:UpdateSnapshot = @($script:UpdateResults | Where-Object { $_.Selected })
+  $script:UpdateIndex = 0
+  $script:UpdateJob = $null
+
+  if ($script:UpdateSnapshot.Count -eq 0) { return }
+
+  $btnRefreshUpdates.IsEnabled = $false
+  $btnApplyUpdates.IsEnabled = $false
+  $btnCloseUpdates.IsEnabled = $false
+  $txtStatus.Text = $L.RunningText
+  Write-UiOutput ("=== Avvio aggiornamenti ({0}) ===" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))
+
+  Stop-UpdateTimer
+  $script:UpdateTimer = New-Object System.Windows.Threading.DispatcherTimer
+  $script:UpdateTimer.Interval = [TimeSpan]::FromMilliseconds(200)
+  $script:UpdateTimer.Add_Tick({
+    if ($null -ne $script:UpdateJob) {
+      if ($script:UpdateJob.State -eq "Running") { return }
+      $result = Receive-Job -Job $script:UpdateJob -ErrorAction SilentlyContinue
+      if ($null -ne $result) {
+        Write-UiOutput $result.Output
+        if ($result.ExitCode -ne 0) {
+          Write-UiOutput (Get-WingetErrorMessage $result.ExitCode)
+        }
+      }
+      Remove-Job -Job $script:UpdateJob -Force
+      $script:UpdateJob = $null
+      return
+    }
+
+    if ($script:UpdateIndex -ge $script:UpdateSnapshot.Count) {
+      Write-UiOutput ("=== Fine aggiornamenti ({0}) ===" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))
+      $txtStatus.Text = ""
+      $btnRefreshUpdates.IsEnabled = $true
+      $btnApplyUpdates.IsEnabled = $true
+      $btnCloseUpdates.IsEnabled = $true
+      Stop-UpdateTimer
+      Load-AvailableUpdates
+      return
+    }
+
+    $update = $script:UpdateSnapshot[$script:UpdateIndex]
+    $script:UpdateIndex++
+    Write-UiOutput ("--- {0} [{1}] : upgrade ---" -f $update.Name, $update.Id)
+    $script:UpdateJob = Start-Job -ArgumentList $update.Id -ScriptBlock {
+      param($Id)
+      $output = & winget upgrade --id $Id --exact --accept-package-agreements --accept-source-agreements --disable-interactivity 2>&1 | Out-String
+      [pscustomobject]@{ExitCode=$LASTEXITCODE; Output=$output}
+    }
+  })
+  $script:UpdateTimer.Start()
 }
 
 if (Test-Path $jsonPath) {
@@ -826,23 +891,7 @@ $btnUseSearchId.Add_Click({
 
 $btnApplyUpdates.Add_Click({
   if ($null -eq $script:UpdateResults -or $script:UpdateResults.Count -eq 0) { return }
-  $selectedUpdates = @($script:UpdateResults | Where-Object { $_.Selected })
-  if ($selectedUpdates.Count -eq 0) { return }
-
-  Write-UiOutput ("=== Avvio aggiornamenti ({0}) ===" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))
-  foreach ($update in $selectedUpdates) {
-    Write-UiOutput ("--- {0} [{1}] : upgrade ---" -f $update.Name, $update.Id)
-    $result = Invoke-Winget -Command "upgrade" -Params @{
-      "--id" = $update.Id
-      "--exact" = $null
-      "--accept-package-agreements" = $null
-      "--accept-source-agreements" = $null
-      "--disable-interactivity" = $null
-    }
-    Write-UiOutput $result.Output
-  }
-  Write-UiOutput ("=== Fine aggiornamenti ({0}) ===" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))
-  Load-AvailableUpdates
+  Start-UpdatesFlow
 })
 
 $btnApply.Add_Click({
