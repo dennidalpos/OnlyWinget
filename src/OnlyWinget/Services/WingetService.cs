@@ -76,13 +76,35 @@ public sealed class WingetService
 
     public IReadOnlyList<UpdateEntry> LoadUpdates()
     {
-        var result = Invoke("upgrade", new Dictionary<string, string?>
+        var upgradesResult = Invoke("upgrade", new Dictionary<string, string?>
         {
             ["--source"] = "winget",
             ["--accept-source-agreements"] = null
         });
 
-        return ParseUpgradeOutput(result.Output);
+        var installedResult = Invoke("list", new Dictionary<string, string?>
+        {
+            ["--source"] = "winget",
+            ["--accept-source-agreements"] = null
+        });
+
+        var upgrades = ParseUpgradeOutput(upgradesResult.Output);
+        var installed = ParseInstalledOutput(installedResult.Output);
+
+        var combined = new Dictionary<string, UpdateEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in installed)
+        {
+            combined[entry.Id] = entry;
+        }
+
+        foreach (var entry in upgrades)
+        {
+            combined[entry.Id] = entry;
+        }
+
+        return combined.Values
+            .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
     }
 
     public (int ExitCode, string Output) UpgradeApp(string id)
@@ -349,6 +371,75 @@ public sealed class WingetService
                     Version = version,
                     Available = available,
                     Selected = true
+                });
+            }
+        }
+
+        return results;
+    }
+
+    private static IReadOnlyList<UpdateEntry> ParseInstalledOutput(string output)
+    {
+        var results = new List<UpdateEntry>();
+        var lines = output.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+        var headerFound = false;
+        var nameStart = 0;
+        var idStart = 0;
+        var versionStart = 0;
+
+        foreach (var line in lines)
+        {
+            if (!headerFound)
+            {
+                if (line.StartsWith("Nome", StringComparison.OrdinalIgnoreCase) || line.StartsWith("Name", StringComparison.OrdinalIgnoreCase))
+                {
+                    idStart = line.IndexOf("ID", StringComparison.Ordinal);
+                    if (idStart < 0)
+                    {
+                        idStart = line.IndexOf("Id", StringComparison.Ordinal);
+                    }
+
+                    versionStart = line.IndexOf("Versione", StringComparison.Ordinal);
+                    if (versionStart < 0)
+                    {
+                        versionStart = line.IndexOf("Version", StringComparison.Ordinal);
+                    }
+
+                    if (idStart >= 0 && versionStart >= 0)
+                    {
+                        headerFound = true;
+                    }
+                }
+
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(line) || line.Trim().All(c => c == '-' || c == ' '))
+            {
+                continue;
+            }
+
+            if (line.Length < versionStart || idStart <= nameStart)
+            {
+                continue;
+            }
+
+            var name = line.Substring(nameStart, Math.Min(idStart - nameStart, line.Length)).Trim();
+            var idEnd = versionStart > idStart ? versionStart - idStart : line.Length - idStart;
+            var id = line.Substring(idStart, Math.Min(idEnd, line.Length - idStart)).Trim();
+            var version = line.Length > versionStart
+                ? line.Substring(versionStart).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty
+                : string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(id) && !id.Any(char.IsWhiteSpace))
+            {
+                results.Add(new UpdateEntry
+                {
+                    Name = name,
+                    Id = id,
+                    Version = version,
+                    Available = string.Empty,
+                    Selected = false
                 });
             }
         }
