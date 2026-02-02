@@ -15,6 +15,7 @@ $L = @{
   InvalidIdTitle='Errore ID'; InvalidIdText="ID '{0}' non trovato nello store Winget. Riprova."
   DuplicateIdTitle='ID duplicato'; DuplicateIdText="L'ID '{0}' è già presente in lista."
   SearchTitle='Cerca App'; SearchPrompt='Termine di ricerca:'
+  UpdatesTitle='Aggiornamenti disponibili'; Updates='Aggiornamenti'; RefreshUpdates='Aggiorna elenco'; ApplyUpdates='Applica aggiornamenti'
   SaveSuccessTitle='Salvato'; SaveSuccessText='Lista salvata correttamente.'
   Tab='Scheda'; NewTab='Nuova'; RenameTab='Rinomina'; DeleteTab='Rimuovi'
   TabNameTitle='Nuova scheda'; TabNamePrompt='Nome della nuova scheda:'; TabRenameTitle='Rinomina scheda'; TabRenamePrompt='Nuovo nome per la scheda:'
@@ -297,11 +298,12 @@ $xaml = @"
       </UniformGrid>
     </Grid>
 
-    <UniformGrid Grid.Row="1" Rows="1" Columns="5" Margin="0,0,0,10">
+    <UniformGrid Grid.Row="1" Rows="1" Columns="6" Margin="0,0,0,10">
       <Button Name="BtnAdd"    Content="$($L.Add)"    Height="32" Margin="0,0,8,0"/>
       <Button Name="BtnEdit"   Content="$($L.Edit)"   Height="32" Margin="0,0,8,0"/>
       <Button Name="BtnRemove" Content="$($L.Remove)" Height="32" Margin="0,0,8,0"/>
       <Button Name="BtnSearch" Content="$($L.Search)" Height="32" Margin="0,0,8,0"/>
+      <Button Name="BtnUpdates" Content="$($L.Updates)" Height="32" Margin="0,0,8,0"/>
       <Button Name="BtnApply"  Content="$($L.Apply)"  Height="32" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}"/>
     </UniformGrid>
 
@@ -378,6 +380,55 @@ $xaml = @"
           </Border>
         </Grid>
       </Border>
+
+      <Border Name="UpdatesOverlay" Background="#CC000000" Visibility="Collapsed">
+        <Grid Margin="40">
+          <Border Background="White" CornerRadius="6" Padding="12">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+
+              <TextBlock Grid.Row="0" FontWeight="Bold" FontSize="14" Text="$($L.UpdatesTitle)" Margin="0,0,0,10"/>
+
+              <ListView Grid.Row="1" Name="LvUpdates" SelectionMode="Single">
+                <ListView.View>
+                  <GridView>
+                    <GridViewColumn Header="" Width="40">
+                      <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                          <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"/>
+                        </DataTemplate>
+                      </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="$($L.Name)" DisplayMemberBinding="{Binding Name}" Width="260"/>
+                    <GridViewColumn Header="ID" DisplayMemberBinding="{Binding Id}" Width="260"/>
+                    <GridViewColumn Header="Versione" DisplayMemberBinding="{Binding Version}" Width="110"/>
+                    <GridViewColumn Header="Disponibile" DisplayMemberBinding="{Binding Available}" Width="110"/>
+                  </GridView>
+                </ListView.View>
+              </ListView>
+
+              <Grid Grid.Row="2" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="10"/>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="10"/>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="10"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="2" Name="BtnRefreshUpdates" Content="$($L.RefreshUpdates)" Height="28" MinWidth="140"/>
+                <Button Grid.Column="4" Name="BtnApplyUpdates" Content="$($L.ApplyUpdates)" Height="28" MinWidth="160" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}"/>
+                <Button Grid.Column="6" Name="BtnCloseUpdates" Content="Chiudi" Height="28" MinWidth="120"/>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
     </Grid>
 
     <TextBox Name="TxtOutput" Grid.Row="3" Height="150" Margin="0,10,0,0"
@@ -404,6 +455,7 @@ $btnAdd         = $window.FindName("BtnAdd")
 $btnEdit        = $window.FindName("BtnEdit")
 $btnRemove      = $window.FindName("BtnRemove")
 $btnSearch      = $window.FindName("BtnSearch")
+$btnUpdates     = $window.FindName("BtnUpdates")
 $btnApply       = $window.FindName("BtnApply")
 $btnSave        = $window.FindName("BtnSave")
 $cmbTabs        = $window.FindName("CmbTabs")
@@ -413,12 +465,17 @@ $btnDeleteTab   = $window.FindName("BtnDeleteTab")
 $txtOutput      = $window.FindName("TxtOutput")
 $txtStatus      = $window.FindName("TxtStatus")
 $searchOverlay  = $window.FindName("SearchOverlay")
+$updatesOverlay = $window.FindName("UpdatesOverlay")
 $txtSearchQuery = $window.FindName("TxtSearchQuery")
 $btnRunSearch   = $window.FindName("BtnRunSearch")
 $btnCloseSearch = $window.FindName("BtnCloseSearch")
 $lvSearchResults = $window.FindName("LvSearchResults")
 $txtSearchPickId = $window.FindName("TxtSearchPickId")
 $btnUseSearchId = $window.FindName("BtnUseSearchId")
+$lvUpdates = $window.FindName("LvUpdates")
+$btnRefreshUpdates = $window.FindName("BtnRefreshUpdates")
+$btnApplyUpdates = $window.FindName("BtnApplyUpdates")
+$btnCloseUpdates = $window.FindName("BtnCloseUpdates")
 
 $script:Tabs = @{}
 $script:TabNames = New-Object System.Collections.ArrayList
@@ -426,6 +483,7 @@ $script:CurrentTabName = $null
 $script:AppsList = $null
 $script:SearchTimer = $null
 $script:ApplyTimer = $null
+$script:UpdateResults = @()
 
 function Write-UiOutput {
   param([string]$text)
@@ -457,6 +515,73 @@ function Get-NormalizedAction {
     "Pause" { return "Pause" }
     default { return "Install" }
   }
+}
+
+function ConvertFrom-WingetUpgradeOutput {
+  param([string]$output)
+  $results = @()
+  $lines = $output -split "`r?`n"
+  $headerFound = $false
+  $nameStart = 0
+  $idStart = 0
+  $versionStart = 0
+  $availableStart = 0
+
+  foreach ($line in $lines) {
+    if (-not $headerFound) {
+      if ($line -match '^Nome\s+ID\s+Versione\s+Disponibile' -or $line -match '^Name\s+Id\s+Version\s+Available') {
+        $nameStart = 0
+        $idStart = $line.IndexOf('ID')
+        if ($idStart -lt 0) { $idStart = $line.IndexOf('Id') }
+        $versionStart = $line.IndexOf('Versione')
+        if ($versionStart -lt 0) { $versionStart = $line.IndexOf('Version') }
+        $availableStart = $line.IndexOf('Disponibile')
+        if ($availableStart -lt 0) { $availableStart = $line.IndexOf('Available') }
+        if ($idStart -lt 0 -or $versionStart -lt 0 -or $availableStart -lt 0) { continue }
+        $headerFound = $true
+      }
+      continue
+    }
+    if ($line -match '^-+$' -or [string]::IsNullOrWhiteSpace($line)) { continue }
+    if ($line.Length -lt $availableStart) { continue }
+    if ($idStart -le $nameStart -or $versionStart -le $idStart -or $availableStart -le $versionStart) { continue }
+
+    $name = $line.Substring($nameStart, [Math]::Min($idStart - $nameStart, $line.Length)).Trim()
+    $idEnd = if ($versionStart -gt $idStart) { $versionStart - $idStart } else { $line.Length - $idStart }
+    $id = $line.Substring($idStart, [Math]::Min($idEnd, $line.Length - $idStart)).Trim()
+    $versionEnd = if ($availableStart -gt $versionStart) { $availableStart - $versionStart } else { $line.Length - $versionStart }
+    $version = $line.Substring($versionStart, [Math]::Min($versionEnd, $line.Length - $versionStart)).Trim()
+    $available = if ($line.Length -gt $availableStart) { $line.Substring($availableStart).Trim().Split()[0] } else { "" }
+
+    if (-not [string]::IsNullOrWhiteSpace($id)) {
+      $results += [pscustomobject]@{
+        Name = $name
+        Id = $id
+        Version = $version
+        Available = $available
+        Selected = $true
+      }
+    }
+  }
+  return ,@($results)
+}
+
+function Load-AvailableUpdates {
+  $btnRefreshUpdates.IsEnabled = $false
+  $btnApplyUpdates.IsEnabled = $false
+  $lvUpdates.ItemsSource = $null
+  $script:UpdateResults = @()
+
+  $result = Invoke-Winget -Command "upgrade" -Params @{
+    "--source" = "winget"
+    "--accept-source-agreements" = $null
+  }
+
+  $parsed = ConvertFrom-WingetUpgradeOutput $result.Output
+  $script:UpdateResults = $parsed
+  $lvUpdates.ItemsSource = $script:UpdateResults
+  $btnRefreshUpdates.IsEnabled = $true
+  $btnApplyUpdates.IsEnabled = $true
 }
 
 if (Test-Path $jsonPath) {
@@ -631,6 +756,19 @@ $btnCloseSearch.Add_Click({
   $searchOverlay.Visibility = 'Collapsed'
 })
 
+$btnUpdates.Add_Click({
+  $updatesOverlay.Visibility = 'Visible'
+  Load-AvailableUpdates
+})
+
+$btnRefreshUpdates.Add_Click({
+  Load-AvailableUpdates
+})
+
+$btnCloseUpdates.Add_Click({
+  $updatesOverlay.Visibility = 'Collapsed'
+})
+
 $lvSearchResults.Add_SelectionChanged({
   if ($null -ne $lvSearchResults.SelectedItem) {
     $txtSearchPickId.Text = $lvSearchResults.SelectedItem.Id
@@ -684,6 +822,27 @@ $btnUseSearchId.Add_Click({
   [void]$script:AppsList.Add([pscustomobject]@{Name=$name;Id=$id;Action="Install";Status=""})
   Update-List
   $searchOverlay.Visibility = 'Collapsed'
+})
+
+$btnApplyUpdates.Add_Click({
+  if ($null -eq $script:UpdateResults -or $script:UpdateResults.Count -eq 0) { return }
+  $selectedUpdates = @($script:UpdateResults | Where-Object { $_.Selected })
+  if ($selectedUpdates.Count -eq 0) { return }
+
+  Write-UiOutput ("=== Avvio aggiornamenti ({0}) ===" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))
+  foreach ($update in $selectedUpdates) {
+    Write-UiOutput ("--- {0} [{1}] : upgrade ---" -f $update.Name, $update.Id)
+    $result = Invoke-Winget -Command "upgrade" -Params @{
+      "--id" = $update.Id
+      "--exact" = $null
+      "--accept-package-agreements" = $null
+      "--accept-source-agreements" = $null
+      "--disable-interactivity" = $null
+    }
+    Write-UiOutput $result.Output
+  }
+  Write-UiOutput ("=== Fine aggiornamenti ({0}) ===" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))
+  Load-AvailableUpdates
 })
 
 $btnApply.Add_Click({
