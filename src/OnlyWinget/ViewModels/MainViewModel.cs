@@ -257,7 +257,7 @@ public sealed class MainViewModel : ObservableObject
                 return;
             }
 
-            if (CurrentApps.Any(app => app.Id == id))
+            if (CurrentApps.Any(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase)))
             {
                 MessageBox.Show(string.Format(Strings.DuplicateIdText, id), Strings.DuplicateIdTitle, MessageBoxButton.OK,
                     MessageBoxImage.Warning);
@@ -297,7 +297,8 @@ public sealed class MainViewModel : ObservableObject
                 break;
             }
 
-            if (newId != SelectedApp.Id && CurrentApps.Any(app => app.Id == newId))
+            if (!string.Equals(newId, SelectedApp.Id, StringComparison.OrdinalIgnoreCase)
+                && CurrentApps.Any(app => string.Equals(app.Id, newId, StringComparison.OrdinalIgnoreCase)))
             {
                 MessageBox.Show(string.Format(Strings.DuplicateIdText, newId), Strings.DuplicateIdTitle, MessageBoxButton.OK,
                     MessageBoxImage.Warning);
@@ -369,7 +370,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        if (CurrentApps.Any(app => app.Id == id))
+        if (CurrentApps.Any(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase)))
         {
             MessageBox.Show(string.Format(Strings.DuplicateIdText, id), Strings.DuplicateIdTitle, MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -638,7 +639,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void SetAppStatus(string id, string status)
     {
-        var target = CurrentApps.FirstOrDefault(app => app.Id == id);
+        var target = CurrentApps.FirstOrDefault(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase));
         if (target != null)
         {
             target.Status = status;
