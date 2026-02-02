@@ -31,7 +31,7 @@ L'eseguibile si trova nella cartella `bin/Release/net8.0-windows` del progetto W
 - Ricerca integrata su winget con selezione rapida dell'ID.
 - Gestione schede per organizzare gruppi di app.
 - Salvataggio e caricamento della lista su `AppsList.json`.
-- Sezione aggiornamenti con selezione dei pacchetti da aggiornare.
+- Sezione aggiornamenti con elenco di tutti i pacchetti winget installati e selezione dei pacchetti da aggiornare.
 
 ## Guida rapida all'uso
 
@@ -67,7 +67,7 @@ L'eseguibile si trova nella cartella `bin/Release/net8.0-windows` del progetto W
 
 ### Aggiornamenti disponibili
 
-1. Premi **Aggiornamenti**.
+1. Premi **Aggiornamenti** per visualizzare tutti i pacchetti installati tramite winget.
 2. Seleziona i pacchetti da aggiornare.
 3. Avvia **Applica aggiornamenti**.
 
