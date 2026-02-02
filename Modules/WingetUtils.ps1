@@ -205,12 +205,14 @@ function ConvertFrom-WingetSearchOutput {
                 if ($idStart -lt 0) { $idStart = $line.IndexOf('Id') }
                 $versionStart = $line.IndexOf('Versione')
                 if ($versionStart -lt 0) { $versionStart = $line.IndexOf('Version') }
+                if ($idStart -lt 0 -or $versionStart -lt 0) { continue }
                 $headerFound = $true
             }
             continue
         }
         if ($line -match '^-+$' -or [string]::IsNullOrWhiteSpace($line)) { continue }
         if ($line.Length -lt $versionStart) { continue }
+        if ($idStart -le $nameStart) { continue }
 
         $name = $line.Substring($nameStart, [Math]::Min($idStart - $nameStart, $line.Length)).Trim()
         $idEnd = if ($versionStart -gt $idStart) { $versionStart - $idStart } else { $line.Length - $idStart }

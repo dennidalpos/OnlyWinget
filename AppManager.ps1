@@ -182,12 +182,14 @@ function ConvertFrom-WingetSearchOutput {
         if ($idStart -lt 0) { $idStart = $line.IndexOf('Id') }
         $versionStart = $line.IndexOf('Versione')
         if ($versionStart -lt 0) { $versionStart = $line.IndexOf('Version') }
+        if ($idStart -lt 0 -or $versionStart -lt 0) { continue }
         $headerFound = $true
       }
       continue
     }
     if ($line -match '^-+$' -or [string]::IsNullOrWhiteSpace($line)) { continue }
     if ($line.Length -lt $versionStart) { continue }
+    if ($idStart -le $nameStart) { continue }
     
     $name = $line.Substring($nameStart, [Math]::Min($idStart - $nameStart, $line.Length)).Trim()
     $idEnd = if ($versionStart -gt $idStart) { $versionStart - $idStart } else { $line.Length - $idStart }
@@ -383,6 +385,17 @@ function Set-CurrentTab {
   Update-List
 }
 
+function Get-NormalizedAction {
+  param([string]$action)
+  if ([string]::IsNullOrWhiteSpace($action)) { return "Install" }
+  switch ($action) {
+    "Install" { return "Install" }
+    "Uninstall" { return "Uninstall" }
+    "Pause" { return "Pause" }
+    default { return "Install" }
+  }
+}
+
 if (Test-Path $jsonPath) {
   try {
     $rawText = Get-Content $jsonPath -Raw
@@ -394,7 +407,8 @@ if (Test-Path $jsonPath) {
           foreach ($tab in $raw.Tabs) {
             $list = New-Object System.Collections.ArrayList
             foreach ($app in $tab.Apps) {
-              [void]$list.Add([pscustomobject]@{Name=$app.Name;Id=$app.Id;Action=$app.Action;Status=""})
+              $action = Get-NormalizedAction $app.Action
+              [void]$list.Add([pscustomobject]@{Name=$app.Name;Id=$app.Id;Action=$action;Status=""})
             }
             $script:Tabs[$tab.Name] = $list
             [void]$script:TabNames.Add($tab.Name)
@@ -404,7 +418,8 @@ if (Test-Path $jsonPath) {
         $raw = $rawText | ConvertFrom-Json
         $list = New-Object System.Collections.ArrayList
         foreach ($app in $raw) {
-          [void]$list.Add([pscustomobject]@{Name=$app.Name;Id=$app.Id;Action=$app.Action;Status=""})
+          $action = Get-NormalizedAction $app.Action
+          [void]$list.Add([pscustomobject]@{Name=$app.Name;Id=$app.Id;Action=$action;Status=""})
         }
         $script:Tabs['Default'] = $list
         [void]$script:TabNames.Add('Default')
@@ -601,7 +616,9 @@ $btnUseSearchId.Add_Click({
     [System.Windows.MessageBox]::Show([string]::Format($L.InvalidIdText,$id),$L.InvalidIdTitle,[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning) | Out-Null
     return
   }
-  [void]$script:AppsList.Add([pscustomobject]@{Name=$id;Id=$id;Action="Install";Status=""})
+  $selected = $lvSearchResults.SelectedItem
+  $name = if ($null -ne $selected -and -not [string]::IsNullOrWhiteSpace($selected.Name)) { $selected.Name } else { $id }
+  [void]$script:AppsList.Add([pscustomobject]@{Name=$name;Id=$id;Action="Install";Status=""})
   Update-List
   $searchOverlay.Visibility = 'Collapsed'
 })

@@ -45,10 +45,11 @@ function Import-AppData {
                 foreach ($tab in $raw.Tabs) {
                     $list = New-Object System.Collections.ArrayList
                     foreach ($app in $tab.Apps) {
+                        $action = Get-NormalizedAction $app.Action
                         [void]$list.Add([pscustomobject]@{
                             Name = $app.Name
                             Id = $app.Id
-                            Action = $app.Action
+                            Action = $action
                             Status = ""
                         })
                     }
@@ -61,10 +62,11 @@ function Import-AppData {
             $raw = $rawText | ConvertFrom-Json
             $list = New-Object System.Collections.ArrayList
             foreach ($app in $raw) {
+                $action = Get-NormalizedAction $app.Action
                 [void]$list.Add([pscustomobject]@{
                     Name = $app.Name
                     Id = $app.Id
-                    Action = $app.Action
+                    Action = $action
                     Status = ""
                 })
             }
@@ -162,8 +164,31 @@ function New-AppObject {
     return [pscustomobject]@{
         Name = $Name
         Id = $Id
-        Action = $Action
+        Action = Get-NormalizedAction $Action
         Status = ""
+    }
+}
+
+function Get-NormalizedAction {
+    <#
+    .SYNOPSIS
+        Normalizza l'azione di un'applicazione.
+    .PARAMETER Action
+        Valore dell'azione da normalizzare.
+    .OUTPUTS
+        String. Action valida (Install, Uninstall, Pause).
+    #>
+    param([string]$Action)
+
+    if ([string]::IsNullOrWhiteSpace($Action)) {
+        return "Install"
+    }
+
+    switch ($Action) {
+        "Install" { return "Install" }
+        "Uninstall" { return "Uninstall" }
+        "Pause" { return "Pause" }
+        default { return "Install" }
     }
 }
 
