@@ -496,6 +496,26 @@ function Write-UiOutput {
   $txtOutput.ScrollToEnd()
 }
 
+function Normalize-LogOutput {
+  param([string]$text)
+  if ([string]::IsNullOrWhiteSpace($text)) { return "" }
+  $lines = $text -split "`r?`n"
+  $filtered = foreach ($line in $lines) {
+    $trimmed = $line.Trim()
+    if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
+    if ($trimmed -match '^[\\/\-\|]+$') { continue }
+    $trimmed
+  }
+  return ($filtered -join [Environment]::NewLine)
+}
+
+function Write-UiOutputNormalized {
+  param([string]$text)
+  $normalized = Normalize-LogOutput $text
+  if ([string]::IsNullOrWhiteSpace($normalized)) { return }
+  Write-UiOutput $normalized
+}
+
 function Update-List {
   $lv.SelectedItem = $null
   $lv.ItemsSource = $null
@@ -616,7 +636,7 @@ function Start-UpdatesFlow {
       if ($script:UpdateJob.State -eq "Running") { return }
       $result = Receive-Job -Job $script:UpdateJob -ErrorAction SilentlyContinue
       if ($null -ne $result) {
-        Write-UiOutput $result.Output
+        Write-UiOutputNormalized $result.Output
         if ($result.ExitCode -ne 0) {
           Write-UiOutput (Get-WingetErrorMessage $result.ExitCode)
         }
@@ -960,7 +980,7 @@ $btnApply.Add_Click({
         "--accept-source-agreements" = $null
         "--disable-interactivity" = $null
       }
-      Write-UiOutput $result1.Output
+      Write-UiOutputNormalized $result1.Output
       
       if ($result1.ExitCode -eq 0) {
         foreach ($item in $script:AppsList) {
@@ -997,7 +1017,7 @@ $btnApply.Add_Click({
         "--accept-source-agreements" = $null
         "--disable-interactivity" = $null
       }
-      Write-UiOutput $result2.Output
+      Write-UiOutputNormalized $result2.Output
       
       $alreadyInstalled = @(
         -1978335135,
@@ -1033,7 +1053,7 @@ $btnApply.Add_Click({
         "--accept-source-agreements" = $null
         "--disable-interactivity" = $null
       }
-      Write-UiOutput $result3.Output
+      Write-UiOutputNormalized $result3.Output
       
       if ($result3.ExitCode -eq 0) {
         foreach ($item in $script:AppsList) {
