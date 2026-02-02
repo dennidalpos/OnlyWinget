@@ -1,13 +1,6 @@
-# WingetUtils.ps1
-# Modulo per l'interazione con Windows Package Manager (winget)
 
 function Test-WingetAvailable {
-    <#
-    .SYNOPSIS
-        Verifica se winget e' disponibile nel sistema.
-    .OUTPUTS
-        Boolean. True se winget e' disponibile, False altrimenti.
-    #>
+    
     try {
         $null = & winget --version 2>&1
         return $LASTEXITCODE -eq 0
@@ -17,16 +10,7 @@ function Test-WingetAvailable {
 }
 
 function Invoke-Winget {
-    <#
-    .SYNOPSIS
-        Esegue un comando winget con i parametri specificati.
-    .PARAMETER Command
-        Il comando winget da eseguire (install, uninstall, upgrade, search, show).
-    .PARAMETER Params
-        Hashtable con i parametri da passare al comando.
-    .OUTPUTS
-        Hashtable con ExitCode e Output del comando.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$Command,
@@ -51,14 +35,7 @@ function Invoke-Winget {
 }
 
 function Test-AppExists {
-    <#
-    .SYNOPSIS
-        Verifica se un'applicazione esiste nello store Winget.
-    .PARAMETER Id
-        L'ID Winget dell'applicazione da verificare.
-    .OUTPUTS
-        Boolean. True se l'app esiste, False altrimenti.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$Id
@@ -74,14 +51,7 @@ function Test-AppExists {
 }
 
 function Get-WingetErrorMessage {
-    <#
-    .SYNOPSIS
-        Converte un codice di uscita winget in un messaggio leggibile.
-    .PARAMETER ExitCode
-        Il codice di uscita restituito da winget.
-    .OUTPUTS
-        String. Messaggio di errore localizzato.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [int]$ExitCode
@@ -177,14 +147,7 @@ function Get-WingetErrorMessage {
 }
 
 function ConvertFrom-WingetSearchOutput {
-    <#
-    .SYNOPSIS
-        Converte l'output testuale di winget search in oggetti strutturati.
-    .PARAMETER Output
-        L'output testuale del comando winget search.
-    .OUTPUTS
-        Array di oggetti con proprieta' Name, Id, Version.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$Output
@@ -227,14 +190,7 @@ function ConvertFrom-WingetSearchOutput {
 }
 
 function Search-WingetApp {
-    <#
-    .SYNOPSIS
-        Cerca applicazioni nello store Winget.
-    .PARAMETER Query
-        Il termine di ricerca.
-    .OUTPUTS
-        Array di risultati di ricerca.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$Query
@@ -250,14 +206,7 @@ function Search-WingetApp {
 }
 
 function Install-WingetApp {
-    <#
-    .SYNOPSIS
-        Installa un'applicazione tramite winget.
-    .PARAMETER Id
-        L'ID Winget dell'applicazione.
-    .OUTPUTS
-        Hashtable con ExitCode e Output.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$Id
@@ -273,14 +222,7 @@ function Install-WingetApp {
 }
 
 function Update-WingetApp {
-    <#
-    .SYNOPSIS
-        Aggiorna un'applicazione tramite winget.
-    .PARAMETER Id
-        L'ID Winget dell'applicazione.
-    .OUTPUTS
-        Hashtable con ExitCode e Output.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$Id
@@ -296,14 +238,7 @@ function Update-WingetApp {
 }
 
 function Uninstall-WingetApp {
-    <#
-    .SYNOPSIS
-        Disinstalla un'applicazione tramite winget.
-    .PARAMETER Id
-        L'ID Winget dell'applicazione.
-    .OUTPUTS
-        Hashtable con ExitCode e Output.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$Id
@@ -317,39 +252,30 @@ function Uninstall-WingetApp {
     }
 }
 
-# Codici di uscita che indicano "nessun aggiornamento necessario"
 $script:NoUpgradeNeededCodes = @(
-    -1978335189,  # Nessun aggiornamento
-    -1978335135,  # Gia' installata
-    -1978334963,  # Altra versione installata
-    -1978334962   # Versione superiore presente
+    -1978335189,
+    -1978335135,
+    -1978334963,
+    -1978334962
 )
 
-# Codici di uscita che indicano "gia' installata"
 $script:AlreadyInstalledCodes = @(
-    -1978335135,  # Gia' installata
-    -1978334963   # Altra versione installata
+    -1978335135,
+    -1978334963
 )
 
 function Test-NoUpgradeNeeded {
-    <#
-    .SYNOPSIS
-        Verifica se il codice di uscita indica che non serve aggiornamento.
-    #>
+    
     param([int]$ExitCode)
     return $script:NoUpgradeNeededCodes -contains $ExitCode
 }
 
 function Test-AlreadyInstalled {
-    <#
-    .SYNOPSIS
-        Verifica se il codice di uscita indica che l'app e' gia' installata.
-    #>
+    
     param([int]$ExitCode)
     return $script:AlreadyInstalledCodes -contains $ExitCode
 }
 
-# Esporta le funzioni
 Export-ModuleMember -Function @(
     'Test-WingetAvailable',
     'Invoke-Winget',

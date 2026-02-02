@@ -1,15 +1,6 @@
-# MainWindow.ps1
-# Modulo per la generazione del layout XAML della finestra principale
 
 function Get-MainWindowXaml {
-    <#
-    .SYNOPSIS
-        Genera il codice XAML per la finestra principale.
-    .PARAMETER Strings
-        Hashtable con le stringhe localizzate.
-    .OUTPUTS
-        String. Codice XAML della finestra.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [hashtable]$Strings
@@ -30,7 +21,6 @@ function Get-MainWindowXaml {
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Riga 0: Selezione e gestione schede -->
     <Grid Grid.Row="0" Margin="0,0,0,10">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
@@ -49,7 +39,6 @@ function Get-MainWindowXaml {
       </UniformGrid>
     </Grid>
 
-    <!-- Riga 1: Pulsanti azione principali -->
     <UniformGrid Grid.Row="1" Rows="1" Columns="5" Margin="0,0,0,10">
       <Button Name="BtnAdd"    Content="$($L.Add)"    Height="32" Margin="0,0,8,0"/>
       <Button Name="BtnEdit"   Content="$($L.Edit)"   Height="32" Margin="0,0,8,0"/>
@@ -58,7 +47,6 @@ function Get-MainWindowXaml {
       <Button Name="BtnApply"  Content="$($L.Apply)"  Height="32"/>
     </UniformGrid>
 
-    <!-- Riga 2: Lista applicazioni + overlay ricerca -->
     <Grid Grid.Row="2">
       <ListView Name="LvApps" SelectionMode="Single">
         <ListView.View>
@@ -83,7 +71,6 @@ function Get-MainWindowXaml {
         </ListView.View>
       </ListView>
 
-      <!-- Overlay di ricerca -->
       <Border Name="SearchOverlay" Background="#CC000000" Visibility="Collapsed">
         <Grid Margin="40">
           <Border Background="White" CornerRadius="6" Padding="12">
@@ -135,12 +122,10 @@ function Get-MainWindowXaml {
       </Border>
     </Grid>
 
-    <!-- Riga 3: Output log -->
     <TextBox Name="TxtOutput" Grid.Row="3" Height="150" Margin="0,10,0,0"
              TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
              IsReadOnly="True" FontFamily="Consolas" FontSize="12"/>
 
-    <!-- Riga 4: Status bar e salvataggio -->
     <Grid Grid.Row="4" Margin="0,10,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
@@ -155,14 +140,7 @@ function Get-MainWindowXaml {
 }
 
 function Initialize-MainWindow {
-    <#
-    .SYNOPSIS
-        Inizializza la finestra principale WPF.
-    .PARAMETER XamlContent
-        Il codice XAML della finestra.
-    .OUTPUTS
-        Hashtable con Window e tutti i controlli referenziati.
-    #>
+    
     param(
         [Parameter(Mandatory=$true)]
         [string]$XamlContent
@@ -171,7 +149,6 @@ function Initialize-MainWindow {
     $reader = New-Object System.Xml.XmlNodeReader([xml]$XamlContent)
     $window = [Windows.Markup.XamlReader]::Load($reader)
 
-    # Mappa tutti i controlli con nome
     $controls = @{
         Window = $window
         LvApps = $window.FindName("LvApps")
@@ -199,7 +176,6 @@ function Initialize-MainWindow {
     return $controls
 }
 
-# Esporta le funzioni
 Export-ModuleMember -Function @(
     'Get-MainWindowXaml',
     'Initialize-MainWindow'
