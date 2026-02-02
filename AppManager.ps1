@@ -871,6 +871,12 @@ $btnRunSearch.Add_Click({
   $script:SearchTimer.Start()
 })
 
+$txtSearchQuery.Add_KeyDown({
+  if ($_.Key -eq 'Enter') {
+    $btnRunSearch.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
+  }
+})
+
 $btnUseSearchId.Add_Click({
   $id = $txtSearchPickId.Text
   if ([string]::IsNullOrWhiteSpace($id)) { return }
