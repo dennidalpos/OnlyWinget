@@ -5,7 +5,7 @@ Applicazione WPF per gestire un elenco di applicazioni Windows tramite **winget*
 ## Requisiti
 
 - Windows 10/11 con ambiente grafico
-- .NET 6 Desktop Runtime o successivo
+- .NET 8 Desktop Runtime o successivo
 - `winget` disponibile nel sistema (App Installer)
 
 All'avvio l'app verifica la presenza di `winget` e si chiude con un messaggio di errore se non è disponibile.
