@@ -489,7 +489,7 @@ public sealed class MainViewModel : ObservableObject
         {
             AppendOutput($"--- {update.Name} [{update.Id}] : upgrade ---");
             var result = await Task.Run(() => _wingetService.UpgradeApp(update.Id));
-            AppendOutputNormalized(result.Output);
+            AppendOutput(result.Output);
             if (result.ExitCode != 0)
             {
                 AppendOutput(_wingetService.GetErrorMessage(result.ExitCode));
@@ -539,7 +539,7 @@ public sealed class MainViewModel : ObservableObject
                 SetAppStatus(app.Id, "Upgrade...");
                 AppendOutput($"--- {app.Name} [{app.Id}] : upgrade ---");
                 var upgradeResult = await Task.Run(() => _wingetService.UpgradeApp(app.Id));
-                AppendOutputNormalized(upgradeResult.Output);
+                AppendOutput(upgradeResult.Output);
 
                 if (upgradeResult.ExitCode == 0)
                 {
@@ -556,7 +556,7 @@ public sealed class MainViewModel : ObservableObject
                 SetAppStatus(app.Id, "Install...");
                 AppendOutput($"--- {app.Name} [{app.Id}] : install ---");
                 var installResult = await Task.Run(() => _wingetService.InstallApp(app.Id));
-                AppendOutputNormalized(installResult.Output);
+                AppendOutput(installResult.Output);
 
                 if (installResult.ExitCode == 0)
                 {
@@ -579,7 +579,7 @@ public sealed class MainViewModel : ObservableObject
                 SetAppStatus(app.Id, "Disinstalla...");
                 AppendOutput($"--- {app.Name} [{app.Id}] : uninstall ---");
                 var uninstallResult = await Task.Run(() => _wingetService.UninstallApp(app.Id));
-                AppendOutputNormalized(uninstallResult.Output);
+                AppendOutput(uninstallResult.Output);
 
                 if (uninstallResult.ExitCode == 0)
                 {
@@ -701,106 +701,26 @@ public sealed class MainViewModel : ObservableObject
 
     private void AppendOutput(string text)
     {
-        if (string.IsNullOrWhiteSpace(text))
+        if (text == null)
         {
             return;
         }
 
-        if (!string.IsNullOrEmpty(OutputText))
-        {
-            OutputText += Environment.NewLine;
-        }
-
-        OutputText += text;
-    }
-
-    private void AppendOutputNormalized(string text)
-    {
-        var normalized = NormalizeLogOutput(text);
-        if (string.IsNullOrWhiteSpace(normalized))
+        if (text.Length == 0)
         {
             return;
         }
 
-        AppendOutput(normalized);
-    }
-
-    private static string NormalizeLogOutput(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
+        if (OutputText.Length == 0)
         {
-            return string.Empty;
+            OutputText = text;
+            return;
         }
 
-        var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-        var filtered = lines
-            .Select(line => NormalizeEncoding(line).Trim())
-            .Where(line => !string.IsNullOrWhiteSpace(line))
-            .Where(line => !IsSpinnerLine(line))
-            .Where(line => !IsProgressLine(line))
-            .Where(IsStatusLine);
-
-        return string.Join(Environment.NewLine, filtered);
-    }
-
-    private static bool IsSpinnerLine(string line)
-    {
-        return line.All(ch => ch == '/' || ch == '\\' || ch == '-' || ch == '|');
-    }
-
-    private static bool IsProgressLine(string line)
-    {
-        if (line.Contains("â–", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        var trimmed = line.Trim();
-        if (trimmed.Length == 0)
-        {
-            return true;
-        }
-
-        var hasProgressChars = trimmed.Any(ch => ch == '█' || ch == '▒' || ch == '░' || ch == '▉' || ch == '▊' || ch == '▌');
-        if (hasProgressChars)
-        {
-            return true;
-        }
-
-        return trimmed.Contains("MB /", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsStatusLine(string line)
-    {
-        var lowered = line.ToLowerInvariant();
-        return lowered.StartsWith("===", StringComparison.Ordinal)
-            || lowered.StartsWith("---", StringComparison.Ordinal)
-            || lowered.Contains("avvio", StringComparison.Ordinal)
-            || lowered.Contains("errore", StringComparison.Ordinal)
-            || lowered.Contains("annullata", StringComparison.Ordinal)
-            || lowered.Contains("ok", StringComparison.Ordinal)
-            || lowered.Contains("skip", StringComparison.Ordinal)
-            || lowered.Contains("non sono stati trovati aggiornamenti", StringComparison.Ordinal)
-            || lowered.Contains("non è stato trovato alcun pacchetto", StringComparison.Ordinal)
-            || lowered.Contains("nessun aggiornamento", StringComparison.Ordinal)
-            || lowered.Contains("già installata", StringComparison.Ordinal)
-            || lowered.Contains("già aggiornata", StringComparison.Ordinal);
-    }
-
-    private static string NormalizeEncoding(string line)
-    {
-        return line
-            .Replace("Ã¨", "è", StringComparison.Ordinal)
-            .Replace("Ã©", "é", StringComparison.Ordinal)
-            .Replace("Ã ", "à", StringComparison.Ordinal)
-            .Replace("Ã¬", "ì", StringComparison.Ordinal)
-            .Replace("Ã²", "ò", StringComparison.Ordinal)
-            .Replace("Ã¹", "ù", StringComparison.Ordinal)
-            .Replace("Ã‰", "É", StringComparison.Ordinal)
-            .Replace("Ãˆ", "È", StringComparison.Ordinal)
-            .Replace("Ã€", "À", StringComparison.Ordinal)
-            .Replace("Ã’", "Ò", StringComparison.Ordinal)
-            .Replace("Ã™", "Ù", StringComparison.Ordinal);
+        var lastChar = OutputText[^1];
+        var firstChar = text[0];
+        var needsSeparator = lastChar != '\n' && lastChar != '\r' && firstChar != '\n' && firstChar != '\r';
+        OutputText += needsSeparator ? Environment.NewLine + text : text;
     }
 
     private static string GetJsonPath()

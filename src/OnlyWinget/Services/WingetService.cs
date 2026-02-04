@@ -479,7 +479,11 @@ public sealed class WingetService
         var error = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
-        var combined = string.IsNullOrWhiteSpace(error) ? output : output + Environment.NewLine + error;
-        return (process.ExitCode, combined.Trim());
+        var combined = string.IsNullOrEmpty(error)
+            ? output
+            : string.IsNullOrEmpty(output)
+                ? error
+                : output + Environment.NewLine + error;
+        return (process.ExitCode, combined);
     }
 }
