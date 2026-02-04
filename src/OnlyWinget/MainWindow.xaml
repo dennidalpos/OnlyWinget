@@ -207,16 +207,9 @@
                 <Button Grid.Column="4" Content="{Binding Strings.CloseButton}" Height="28" MinWidth="120" Command="{Binding CloseSearchCommand}" Style="{StaticResource NeutralButtonStyle}"/>
               </Grid>
 
-              <ListView Grid.Row="2" ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SelectedSearchResult}" SelectionMode="Single">
+              <ListView Grid.Row="2" ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SelectedSearchResult}" SelectionMode="Extended" SelectionChanged="OnSearchSelectionChanged">
                 <ListView.View>
                   <GridView>
-                    <GridViewColumn Header="" Width="40">
-                      <GridViewColumn.CellTemplate>
-                        <DataTemplate>
-                          <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"/>
-                        </DataTemplate>
-                      </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
                     <GridViewColumn Header="{Binding DataContext.Strings.Name, RelativeSource={RelativeSource AncestorType=ListView}}" DisplayMemberBinding="{Binding Name}" Width="280"/>
                     <GridViewColumn Header="ID" DisplayMemberBinding="{Binding Id}" Width="300"/>
                     <GridViewColumn Header="{Binding DataContext.Strings.VersionHeader, RelativeSource={RelativeSource AncestorType=ListView}}" DisplayMemberBinding="{Binding Version}" Width="100"/>

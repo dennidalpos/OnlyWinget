@@ -22,6 +22,7 @@ public sealed class MainViewModel : ObservableObject
     private AppEntry? _selectedApp;
     private ObservableCollection<SearchResult> _searchResults = new();
     private SearchResult? _selectedSearchResult;
+    private ObservableCollection<SearchResult> _selectedSearchResults = new();
     private string _searchQuery = string.Empty;
     private string _searchPickId = string.Empty;
     private bool _isSearchVisible;
@@ -112,6 +113,12 @@ public sealed class MainViewModel : ObservableObject
                 SearchPickId = value?.Id ?? string.Empty;
             }
         }
+    }
+
+    public ObservableCollection<SearchResult> SelectedSearchResults
+    {
+        get => _selectedSearchResults;
+        private set => SetProperty(ref _selectedSearchResults, value);
     }
 
     public string SearchQuery
@@ -334,6 +341,7 @@ public sealed class MainViewModel : ObservableObject
         SearchQuery = string.Empty;
         SearchPickId = string.Empty;
         SelectedSearchResult = null;
+        SelectedSearchResults.Clear();
         IsSearchVisible = true;
     }
 
@@ -364,7 +372,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void UseSearchId()
     {
-        var selectedResults = SearchResults.Where(result => result.Selected).ToList();
+        var selectedResults = SelectedSearchResults.ToList();
         if (selectedResults.Count > 0)
         {
             var warnings = new List<string>();
