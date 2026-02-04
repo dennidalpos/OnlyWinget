@@ -380,26 +380,26 @@ public sealed class MainViewModel : ObservableObject
 
             foreach (var result in selectedResults)
             {
-                var id = result.Id.Trim();
-                if (string.IsNullOrWhiteSpace(id))
+                var resultId = result.Id.Trim();
+                if (string.IsNullOrWhiteSpace(resultId))
                 {
                     continue;
                 }
 
-                if (CurrentApps.Any(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase)))
+                if (CurrentApps.Any(app => string.Equals(app.Id, resultId, StringComparison.OrdinalIgnoreCase)))
                 {
-                    warnings.Add(string.Format(Strings.DuplicateIdText, id));
+                    warnings.Add(string.Format(Strings.DuplicateIdText, resultId));
                     continue;
                 }
 
-                if (!_wingetService.TestAppExists(id))
+                if (!_wingetService.TestAppExists(resultId))
                 {
-                    warnings.Add(string.Format(Strings.InvalidIdText, id));
+                    warnings.Add(string.Format(Strings.InvalidIdText, resultId));
                     continue;
                 }
 
-                var name = string.IsNullOrWhiteSpace(result.Name) ? id : result.Name;
-                CurrentApps.Add(new AppEntry { Name = name, Id = id, Action = "Install", Status = string.Empty });
+                var resultName = string.IsNullOrWhiteSpace(result.Name) ? resultId : result.Name;
+                CurrentApps.Add(new AppEntry { Name = resultName, Id = resultId, Action = "Install", Status = string.Empty });
                 addedAny = true;
             }
 
