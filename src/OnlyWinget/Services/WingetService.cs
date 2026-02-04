@@ -233,6 +233,7 @@ public sealed class WingetService
             -1978334956 => "Upgrade non supportato",
             -1978334955 => "Errore installer personalizzato",
             -2145844844 => "Errore installer",
+            -2147023673 => "Operazione annullata dall'utente",
             9999 => "Errore esecuzione",
             _ => $"Errore ({exitCode})"
         };

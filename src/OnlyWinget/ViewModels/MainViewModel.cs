@@ -734,11 +734,54 @@ public sealed class MainViewModel : ObservableObject
 
         var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
         var filtered = lines
-            .Select(line => line.Trim())
+            .Select(line => NormalizeEncoding(line).Trim())
             .Where(line => !string.IsNullOrWhiteSpace(line))
-            .Where(line => !line.All(ch => ch == '/' || ch == '\\' || ch == '-' || ch == '|'));
+            .Where(line => !IsSpinnerLine(line))
+            .Where(line => !IsProgressLine(line));
 
         return string.Join(Environment.NewLine, filtered);
+    }
+
+    private static bool IsSpinnerLine(string line)
+    {
+        return line.All(ch => ch == '/' || ch == '\\' || ch == '-' || ch == '|');
+    }
+
+    private static bool IsProgressLine(string line)
+    {
+        if (line.Contains("â–", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var trimmed = line.Trim();
+        if (trimmed.Length == 0)
+        {
+            return true;
+        }
+
+        var hasProgressChars = trimmed.Any(ch => ch == '█' || ch == '▒' || ch == '░' || ch == '▉' || ch == '▊' || ch == '▌');
+        if (hasProgressChars)
+        {
+            return true;
+        }
+
+        return trimmed.Contains("MB /", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeEncoding(string line)
+    {
+        return line
+            .Replace("Ã¨", "è", StringComparison.Ordinal)
+            .Replace("Ã©", "é", StringComparison.Ordinal)
+            .Replace("Ã ", "à", StringComparison.Ordinal)
+            .Replace("Ã¬", "ì", StringComparison.Ordinal)
+            .Replace("Ã²", "ò", StringComparison.Ordinal)
+            .Replace("Ã¹", "ù", StringComparison.Ordinal)
+            .Replace("Ã‰", "É", StringComparison.Ordinal)
+            .Replace("Ã€", "À", StringComparison.Ordinal)
+            .Replace("Ã’", "Ò", StringComparison.Ordinal)
+            .Replace("Ã™", "Ù", StringComparison.Ordinal);
     }
 
     private static string GetJsonPath()
