@@ -701,17 +701,26 @@ public sealed class MainViewModel : ObservableObject
 
     private void AppendOutput(string text)
     {
-        if (string.IsNullOrEmpty(text))
+        if (text == null)
         {
             return;
         }
 
-        if (!string.IsNullOrEmpty(OutputText))
+        if (text.Length == 0)
         {
-            OutputText += Environment.NewLine;
+            return;
         }
 
-        OutputText += text;
+        if (OutputText.Length == 0)
+        {
+            OutputText = text;
+            return;
+        }
+
+        var lastChar = OutputText[^1];
+        var firstChar = text[0];
+        var needsSeparator = lastChar != '\n' && lastChar != '\r' && firstChar != '\n' && firstChar != '\r';
+        OutputText += needsSeparator ? Environment.NewLine + text : text;
     }
 
     private static string GetJsonPath()
