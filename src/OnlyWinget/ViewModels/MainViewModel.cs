@@ -779,6 +779,7 @@ public sealed class MainViewModel : ObservableObject
             .Replace("Ã²", "ò", StringComparison.Ordinal)
             .Replace("Ã¹", "ù", StringComparison.Ordinal)
             .Replace("Ã‰", "É", StringComparison.Ordinal)
+            .Replace("Ãˆ", "È", StringComparison.Ordinal)
             .Replace("Ã€", "À", StringComparison.Ordinal)
             .Replace("Ã’", "Ò", StringComparison.Ordinal)
             .Replace("Ã™", "Ù", StringComparison.Ordinal);
