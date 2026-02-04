@@ -364,6 +364,51 @@ public sealed class MainViewModel : ObservableObject
 
     private void UseSearchId()
     {
+        var selectedResults = SearchResults.Where(result => result.Selected).ToList();
+        if (selectedResults.Count > 0)
+        {
+            var warnings = new List<string>();
+            var addedAny = false;
+
+            foreach (var result in selectedResults)
+            {
+                var id = result.Id.Trim();
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    continue;
+                }
+
+                if (CurrentApps.Any(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase)))
+                {
+                    warnings.Add(string.Format(Strings.DuplicateIdText, id));
+                    continue;
+                }
+
+                if (!_wingetService.TestAppExists(id))
+                {
+                    warnings.Add(string.Format(Strings.InvalidIdText, id));
+                    continue;
+                }
+
+                var name = string.IsNullOrWhiteSpace(result.Name) ? id : result.Name;
+                CurrentApps.Add(new AppEntry { Name = name, Id = id, Action = "Install", Status = string.Empty });
+                addedAny = true;
+            }
+
+            if (warnings.Count > 0)
+            {
+                MessageBox.Show(string.Join(Environment.NewLine, warnings), Strings.InvalidIdTitle, MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            if (addedAny)
+            {
+                IsSearchVisible = false;
+            }
+
+            return;
+        }
+
         var id = SearchPickId.Trim();
         if (string.IsNullOrWhiteSpace(id))
         {

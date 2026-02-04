@@ -10,13 +10,24 @@
     <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#1D4ED8"/>
     <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#1E40AF"/>
     <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#059669"/>
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#047857"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="WarningHoverBrush" Color="#D97706"/>
+    <SolidColorBrush x:Key="WarningPressedBrush" Color="#B45309"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="#DC2626"/>
+    <SolidColorBrush x:Key="DangerPressedBrush" Color="#B91C1C"/>
+    <SolidColorBrush x:Key="NeutralBrush" Color="#64748B"/>
+    <SolidColorBrush x:Key="NeutralHoverBrush" Color="#475569"/>
+    <SolidColorBrush x:Key="NeutralPressedBrush" Color="#334155"/>
     <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="BorderBrush" Color="#D6D8DE"/>
 
-    <Style TargetType="Button">
-      <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+    <Style x:Key="BaseButtonStyle" TargetType="Button">
+      <Setter Property="Background" Value="{DynamicResource ButtonBrush}"/>
       <Setter Property="Foreground" Value="White"/>
-      <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="Padding" Value="12,6"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
@@ -34,10 +45,10 @@
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="{StaticResource PrimaryPressedBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource ButtonPressedBrush}"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Background" Value="#A7B3D6"/>
@@ -48,6 +59,48 @@
         </Setter.Value>
       </Setter>
     </Style>
+
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Style.Resources>
+        <SolidColorBrush x:Key="ButtonBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#1D4ED8"/>
+        <SolidColorBrush x:Key="ButtonPressedBrush" Color="#1E40AF"/>
+      </Style.Resources>
+    </Style>
+
+    <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Style.Resources>
+        <SolidColorBrush x:Key="ButtonBrush" Color="#10B981"/>
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#059669"/>
+        <SolidColorBrush x:Key="ButtonPressedBrush" Color="#047857"/>
+      </Style.Resources>
+    </Style>
+
+    <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Style.Resources>
+        <SolidColorBrush x:Key="ButtonBrush" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#D97706"/>
+        <SolidColorBrush x:Key="ButtonPressedBrush" Color="#B45309"/>
+      </Style.Resources>
+    </Style>
+
+    <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Style.Resources>
+        <SolidColorBrush x:Key="ButtonBrush" Color="#EF4444"/>
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="ButtonPressedBrush" Color="#B91C1C"/>
+      </Style.Resources>
+    </Style>
+
+    <Style x:Key="NeutralButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Style.Resources>
+        <SolidColorBrush x:Key="ButtonBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#475569"/>
+        <SolidColorBrush x:Key="ButtonPressedBrush" Color="#334155"/>
+      </Style.Resources>
+    </Style>
+
+    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}"/>
 
     <Style TargetType="TextBox">
       <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
@@ -89,19 +142,19 @@
       <ComboBox Grid.Column="1" Height="28" ItemsSource="{Binding TabNames}" SelectedItem="{Binding SelectedTabName}"/>
 
       <UniformGrid Grid.Column="3" Rows="1" Columns="3" HorizontalAlignment="Right">
-        <Button Content="{Binding Strings.NewTab}" MinWidth="120" Height="28" Margin="0,0,8,0" Command="{Binding NewTabCommand}"/>
-        <Button Content="{Binding Strings.RenameTab}" MinWidth="120" Height="28" Margin="0,0,8,0" Command="{Binding RenameTabCommand}"/>
-        <Button Content="{Binding Strings.DeleteTab}" MinWidth="120" Height="28" Command="{Binding DeleteTabCommand}"/>
+        <Button Content="{Binding Strings.NewTab}" MinWidth="120" Height="28" Margin="0,0,8,0" Command="{Binding NewTabCommand}" Style="{StaticResource SuccessButtonStyle}"/>
+        <Button Content="{Binding Strings.RenameTab}" MinWidth="120" Height="28" Margin="0,0,8,0" Command="{Binding RenameTabCommand}" Style="{StaticResource WarningButtonStyle}"/>
+        <Button Content="{Binding Strings.DeleteTab}" MinWidth="120" Height="28" Command="{Binding DeleteTabCommand}" Style="{StaticResource DangerButtonStyle}"/>
       </UniformGrid>
     </Grid>
 
     <UniformGrid Grid.Row="1" Rows="1" Columns="6" Margin="0,0,0,10">
-      <Button Content="{Binding Strings.Add}" Height="32" Margin="0,0,8,0" Command="{Binding AddCommand}"/>
-      <Button Content="{Binding Strings.Edit}" Height="32" Margin="0,0,8,0" Command="{Binding EditCommand}"/>
-      <Button Content="{Binding Strings.Remove}" Height="32" Margin="0,0,8,0" Command="{Binding RemoveCommand}"/>
-      <Button Content="{Binding Strings.Search}" Height="32" Margin="0,0,8,0" Command="{Binding OpenSearchCommand}"/>
-      <Button Content="{Binding Strings.Updates}" Height="32" Margin="0,0,8,0" Command="{Binding OpenUpdatesCommand}"/>
-      <Button Content="{Binding Strings.Apply}" Height="32" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}" Command="{Binding ApplyCommand}" IsEnabled="{Binding IsApplyEnabled}"/>
+      <Button Content="{Binding Strings.Add}" Height="32" Margin="0,0,8,0" Command="{Binding AddCommand}" Style="{StaticResource SuccessButtonStyle}"/>
+      <Button Content="{Binding Strings.Edit}" Height="32" Margin="0,0,8,0" Command="{Binding EditCommand}" Style="{StaticResource WarningButtonStyle}"/>
+      <Button Content="{Binding Strings.Remove}" Height="32" Margin="0,0,8,0" Command="{Binding RemoveCommand}" Style="{StaticResource DangerButtonStyle}"/>
+      <Button Content="{Binding Strings.Search}" Height="32" Margin="0,0,8,0" Command="{Binding OpenSearchCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
+      <Button Content="{Binding Strings.Updates}" Height="32" Margin="0,0,8,0" Command="{Binding OpenUpdatesCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
+      <Button Content="{Binding Strings.Apply}" Height="32" Command="{Binding ApplyCommand}" IsEnabled="{Binding IsApplyEnabled}" Style="{StaticResource SuccessButtonStyle}"/>
     </UniformGrid>
 
     <Grid Grid.Row="2">
@@ -150,13 +203,20 @@
                     <KeyBinding Key="Enter" Command="{Binding RunSearchCommand}"/>
                   </TextBox.InputBindings>
                 </TextBox>
-                <Button Grid.Column="2" Content="{Binding Strings.Search}" Height="28" MinWidth="120" Command="{Binding RunSearchCommand}" IsEnabled="{Binding IsSearchEnabled}"/>
-                <Button Grid.Column="4" Content="{Binding Strings.CloseButton}" Height="28" MinWidth="120" Command="{Binding CloseSearchCommand}"/>
+                <Button Grid.Column="2" Content="{Binding Strings.Search}" Height="28" MinWidth="120" Command="{Binding RunSearchCommand}" IsEnabled="{Binding IsSearchEnabled}" Style="{StaticResource PrimaryButtonStyle}"/>
+                <Button Grid.Column="4" Content="{Binding Strings.CloseButton}" Height="28" MinWidth="120" Command="{Binding CloseSearchCommand}" Style="{StaticResource NeutralButtonStyle}"/>
               </Grid>
 
               <ListView Grid.Row="2" ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SelectedSearchResult}" SelectionMode="Single">
                 <ListView.View>
                   <GridView>
+                    <GridViewColumn Header="" Width="40">
+                      <GridViewColumn.CellTemplate>
+                        <DataTemplate>
+                          <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"/>
+                        </DataTemplate>
+                      </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                     <GridViewColumn Header="{Binding DataContext.Strings.Name, RelativeSource={RelativeSource AncestorType=ListView}}" DisplayMemberBinding="{Binding Name}" Width="280"/>
                     <GridViewColumn Header="ID" DisplayMemberBinding="{Binding Id}" Width="300"/>
                     <GridViewColumn Header="{Binding DataContext.Strings.VersionHeader, RelativeSource={RelativeSource AncestorType=ListView}}" DisplayMemberBinding="{Binding Version}" Width="100"/>
@@ -171,7 +231,7 @@
                   <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0" Height="28" VerticalContentAlignment="Center" Text="{Binding SearchPickId, UpdateSourceTrigger=PropertyChanged}"/>
-                <Button Grid.Column="2" Content="{Binding Strings.UseIdButton}" Height="28" MinWidth="140" Command="{Binding UseSearchIdCommand}"/>
+                <Button Grid.Column="2" Content="{Binding Strings.UseIdButton}" Height="28" MinWidth="140" Command="{Binding UseSearchIdCommand}" Style="{StaticResource SuccessButtonStyle}"/>
               </Grid>
             </Grid>
           </Border>
@@ -218,9 +278,9 @@
                   <ColumnDefinition Width="10"/>
                   <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="2" Content="{Binding Strings.RefreshUpdates}" Height="28" MinWidth="140" Command="{Binding RefreshUpdatesCommand}" IsEnabled="{Binding AreUpdatesActionsEnabled}"/>
-                <Button Grid.Column="4" Content="{Binding Strings.ApplyUpdates}" Height="28" MinWidth="160" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}" Command="{Binding ApplyUpdatesCommand}" IsEnabled="{Binding AreUpdatesActionsEnabled}"/>
-                <Button Grid.Column="6" Content="{Binding Strings.CloseButton}" Height="28" MinWidth="120" Command="{Binding CloseUpdatesCommand}" IsEnabled="{Binding AreUpdatesActionsEnabled}"/>
+                <Button Grid.Column="2" Content="{Binding Strings.RefreshUpdates}" Height="28" MinWidth="140" Command="{Binding RefreshUpdatesCommand}" IsEnabled="{Binding AreUpdatesActionsEnabled}" Style="{StaticResource PrimaryButtonStyle}"/>
+                <Button Grid.Column="4" Content="{Binding Strings.ApplyUpdates}" Height="28" MinWidth="160" Command="{Binding ApplyUpdatesCommand}" IsEnabled="{Binding AreUpdatesActionsEnabled}" Style="{StaticResource SuccessButtonStyle}"/>
+                <Button Grid.Column="6" Content="{Binding Strings.CloseButton}" Height="28" MinWidth="120" Command="{Binding CloseUpdatesCommand}" IsEnabled="{Binding AreUpdatesActionsEnabled}" Style="{StaticResource NeutralButtonStyle}"/>
               </Grid>
             </Grid>
           </Border>
@@ -239,7 +299,7 @@
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
       <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="Gray" Text="{Binding StatusText}"/>
-      <Button Grid.Column="1" Content="{Binding Strings.Save}" Width="160" Height="32" Background="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}" Command="{Binding SaveCommand}"/>
+      <Button Grid.Column="1" Content="{Binding Strings.Save}" Width="160" Height="32" Command="{Binding SaveCommand}" Style="{StaticResource SuccessButtonStyle}"/>
     </Grid>
   </Grid>
 </Window>
