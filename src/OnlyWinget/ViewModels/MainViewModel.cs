@@ -737,7 +737,8 @@ public sealed class MainViewModel : ObservableObject
             .Select(line => NormalizeEncoding(line).Trim())
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .Where(line => !IsSpinnerLine(line))
-            .Where(line => !IsProgressLine(line));
+            .Where(line => !IsProgressLine(line))
+            .Where(IsStatusLine);
 
         return string.Join(Environment.NewLine, filtered);
     }
@@ -767,6 +768,23 @@ public sealed class MainViewModel : ObservableObject
         }
 
         return trimmed.Contains("MB /", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsStatusLine(string line)
+    {
+        var lowered = line.ToLowerInvariant();
+        return lowered.StartsWith("===", StringComparison.Ordinal)
+            || lowered.StartsWith("---", StringComparison.Ordinal)
+            || lowered.Contains("avvio", StringComparison.Ordinal)
+            || lowered.Contains("errore", StringComparison.Ordinal)
+            || lowered.Contains("annullata", StringComparison.Ordinal)
+            || lowered.Contains("ok", StringComparison.Ordinal)
+            || lowered.Contains("skip", StringComparison.Ordinal)
+            || lowered.Contains("non sono stati trovati aggiornamenti", StringComparison.Ordinal)
+            || lowered.Contains("non è stato trovato alcun pacchetto", StringComparison.Ordinal)
+            || lowered.Contains("nessun aggiornamento", StringComparison.Ordinal)
+            || lowered.Contains("già installata", StringComparison.Ordinal)
+            || lowered.Contains("già aggiornata", StringComparison.Ordinal);
     }
 
     private static string NormalizeEncoding(string line)
