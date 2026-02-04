@@ -22,6 +22,7 @@ public sealed class MainViewModel : ObservableObject
     private AppEntry? _selectedApp;
     private ObservableCollection<SearchResult> _searchResults = new();
     private SearchResult? _selectedSearchResult;
+    private ObservableCollection<SearchResult> _selectedSearchResults = new();
     private string _searchQuery = string.Empty;
     private string _searchPickId = string.Empty;
     private bool _isSearchVisible;
@@ -112,6 +113,12 @@ public sealed class MainViewModel : ObservableObject
                 SearchPickId = value?.Id ?? string.Empty;
             }
         }
+    }
+
+    public ObservableCollection<SearchResult> SelectedSearchResults
+    {
+        get => _selectedSearchResults;
+        private set => SetProperty(ref _selectedSearchResults, value);
     }
 
     public string SearchQuery
@@ -334,6 +341,7 @@ public sealed class MainViewModel : ObservableObject
         SearchQuery = string.Empty;
         SearchPickId = string.Empty;
         SelectedSearchResult = null;
+        SelectedSearchResults.Clear();
         IsSearchVisible = true;
     }
 
@@ -364,6 +372,51 @@ public sealed class MainViewModel : ObservableObject
 
     private void UseSearchId()
     {
+        var selectedResults = SelectedSearchResults.ToList();
+        if (selectedResults.Count > 0)
+        {
+            var warnings = new List<string>();
+            var addedAny = false;
+
+            foreach (var result in selectedResults)
+            {
+                var resultId = result.Id.Trim();
+                if (string.IsNullOrWhiteSpace(resultId))
+                {
+                    continue;
+                }
+
+                if (CurrentApps.Any(app => string.Equals(app.Id, resultId, StringComparison.OrdinalIgnoreCase)))
+                {
+                    warnings.Add(string.Format(Strings.DuplicateIdText, resultId));
+                    continue;
+                }
+
+                if (!_wingetService.TestAppExists(resultId))
+                {
+                    warnings.Add(string.Format(Strings.InvalidIdText, resultId));
+                    continue;
+                }
+
+                var resultName = string.IsNullOrWhiteSpace(result.Name) ? resultId : result.Name;
+                CurrentApps.Add(new AppEntry { Name = resultName, Id = resultId, Action = "Install", Status = string.Empty });
+                addedAny = true;
+            }
+
+            if (warnings.Count > 0)
+            {
+                MessageBox.Show(string.Join(Environment.NewLine, warnings), Strings.InvalidIdTitle, MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            if (addedAny)
+            {
+                IsSearchVisible = false;
+            }
+
+            return;
+        }
+
         var id = SearchPickId.Trim();
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -681,11 +734,73 @@ public sealed class MainViewModel : ObservableObject
 
         var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
         var filtered = lines
-            .Select(line => line.Trim())
+            .Select(line => NormalizeEncoding(line).Trim())
             .Where(line => !string.IsNullOrWhiteSpace(line))
-            .Where(line => !line.All(ch => ch == '/' || ch == '\\' || ch == '-' || ch == '|'));
+            .Where(line => !IsSpinnerLine(line))
+            .Where(line => !IsProgressLine(line))
+            .Where(IsStatusLine);
 
         return string.Join(Environment.NewLine, filtered);
+    }
+
+    private static bool IsSpinnerLine(string line)
+    {
+        return line.All(ch => ch == '/' || ch == '\\' || ch == '-' || ch == '|');
+    }
+
+    private static bool IsProgressLine(string line)
+    {
+        if (line.Contains("â–", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var trimmed = line.Trim();
+        if (trimmed.Length == 0)
+        {
+            return true;
+        }
+
+        var hasProgressChars = trimmed.Any(ch => ch == '█' || ch == '▒' || ch == '░' || ch == '▉' || ch == '▊' || ch == '▌');
+        if (hasProgressChars)
+        {
+            return true;
+        }
+
+        return trimmed.Contains("MB /", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsStatusLine(string line)
+    {
+        var lowered = line.ToLowerInvariant();
+        return lowered.StartsWith("===", StringComparison.Ordinal)
+            || lowered.StartsWith("---", StringComparison.Ordinal)
+            || lowered.Contains("avvio", StringComparison.Ordinal)
+            || lowered.Contains("errore", StringComparison.Ordinal)
+            || lowered.Contains("annullata", StringComparison.Ordinal)
+            || lowered.Contains("ok", StringComparison.Ordinal)
+            || lowered.Contains("skip", StringComparison.Ordinal)
+            || lowered.Contains("non sono stati trovati aggiornamenti", StringComparison.Ordinal)
+            || lowered.Contains("non è stato trovato alcun pacchetto", StringComparison.Ordinal)
+            || lowered.Contains("nessun aggiornamento", StringComparison.Ordinal)
+            || lowered.Contains("già installata", StringComparison.Ordinal)
+            || lowered.Contains("già aggiornata", StringComparison.Ordinal);
+    }
+
+    private static string NormalizeEncoding(string line)
+    {
+        return line
+            .Replace("Ã¨", "è", StringComparison.Ordinal)
+            .Replace("Ã©", "é", StringComparison.Ordinal)
+            .Replace("Ã ", "à", StringComparison.Ordinal)
+            .Replace("Ã¬", "ì", StringComparison.Ordinal)
+            .Replace("Ã²", "ò", StringComparison.Ordinal)
+            .Replace("Ã¹", "ù", StringComparison.Ordinal)
+            .Replace("Ã‰", "É", StringComparison.Ordinal)
+            .Replace("Ãˆ", "È", StringComparison.Ordinal)
+            .Replace("Ã€", "À", StringComparison.Ordinal)
+            .Replace("Ã’", "Ò", StringComparison.Ordinal)
+            .Replace("Ã™", "Ù", StringComparison.Ordinal);
     }
 
     private static string GetJsonPath()
