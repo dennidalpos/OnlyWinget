@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  <?define ProductName = "OnlyWinget" ?>
+  <?define Manufacturer = "Danny Perondi" ?>
+  <?if $(var.Platform) = x64 ?>
+    <?define ProgramFilesFolderId = "ProgramFiles64Folder" ?>
+    <?define Win64 = "yes" ?>
+    <?define QtExecProperty = "QtExec64CmdLine" ?>
+    <?define QuietExecEntry = "CAQuietExec64" ?>
+  <?else ?>
+    <?define ProgramFilesFolderId = "ProgramFilesFolder" ?>
+    <?define Win64 = "no" ?>
+    <?define QtExecProperty = "QtExecCmdLine" ?>
+    <?define QuietExecEntry = "CAQuietExec" ?>
+  <?endif ?>
+
+  <Product Id="*"
+           Name="$(var.ProductName)"
+           Language="1033"
+           Version="$(var.ProductVersion)"
+           Manufacturer="$(var.Manufacturer)"
+           UpgradeCode="$(var.UpgradeCode)">
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Platform="$(var.Platform)"
+             Description="$(var.ProductName)"
+             Manufacturer="$(var.Manufacturer)" />
+
+    <MajorUpgrade Schedule="afterInstallValidate"
+                  AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="E' gia' installata una versione piu' recente di OnlyWinget." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="OnlyWingetProductIcon" SourceFile="$(var.AppIconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="OnlyWingetProductIcon" />
+
+    <UIRef Id="WixUI_FeatureTree" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtfPath)" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.InstallerDialogBmpPath)" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.InstallerBannerBmpPath)" />
+
+    <?if $(var.Platform) = x64 ?>
+    <Condition Message="OnlyWinget x64 richiede un sistema operativo Windows a 64 bit.">
+      VersionNT64
+    </Condition>
+    <?else ?>
+    <Condition Message="OnlyWinget x86 e' destinato a Windows a 32 bit. Usa il setup unificato sui sistemi Windows a 64 bit.">
+      NOT VersionNT64
+    </Condition>
+    <?endif ?>
+
+    <Property Id="ONLYWINGET_INSTALLFOLDER">
+      <RegistrySearch Id="RememberInstallFolder"
+                      Root="HKLM"
+                      Key="Software\Danny Perondi\OnlyWinget"
+                      Name="InstallFolder"
+                      Type="raw" />
+    </Property>
+
+    <CustomAction Id="SetCleanupProjectServicesForUninstallCommand"
+                  Property="$(var.QtExecProperty)"
+                  Value="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[#ServiceCleanupScriptFile]&quot; -ProjectName &quot;OnlyWinget&quot; -InstallRoot &quot;[ONLYWINGET_INSTALLFOLDER]&quot; -Confirm:$false"
+                  Execute="immediate" />
+    <CustomAction Id="CleanupProjectServicesForUninstall"
+                  BinaryKey="WixCA"
+                  DllEntry="$(var.QuietExecEntry)"
+                  Execute="immediate"
+                  Return="ignore" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="DesktopFolder" />
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="OnlyWinget" />
+      </Directory>
+      <Directory Id="$(var.ProgramFilesFolderId)">
+        <Directory Id="INSTALLFOLDER" Name="OnlyWinget">
+          <Directory Id="SUPPORTDIR" Name="Support" />
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="MainFeature" Title="$(var.ProductName)" Level="1" Absent="disallow" Display="expand">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="InstallStateComponent" />
+      <ComponentRef Id="ServiceCleanupScriptComponent" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+      <Feature Id="DesktopShortcutFeature"
+               Title="Desktop shortcut"
+               Description="Crea un collegamento sul desktop condiviso per tutti gli utenti."
+               Level="2">
+        <ComponentRef Id="DesktopShortcutComponent" />
+      </Feature>
+    </Feature>
+  </Product>
+
+  <Fragment>
+    <DirectoryRef Id="SUPPORTDIR">
+      <Component Id="ServiceCleanupScriptComponent" Guid="{8D57F5F9-12E9-44C0-BE0C-4A3F0F57C8A1}" Win64="$(var.Win64)">
+        <File Id="ServiceCleanupScriptFile"
+              Name="remove-project-services.ps1"
+              Source="$(var.ServiceCleanupScriptPath)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="InstallStateComponent" Guid="{12322E2C-59A8-4E87-8598-406BE5E917D4}" Win64="$(var.Win64)">
+        <RegistryKey Root="HKLM"
+                     Key="Software\Danny Perondi\OnlyWinget"
+                     ForceDeleteOnUninstall="yes">
+          <RegistryValue Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+          <RegistryValue Name="Version" Type="string" Value="[ProductVersion]" />
+        </RegistryKey>
+
+        <util:RemoveFolderEx Id="RemoveInstalledFilesRecursively"
+                             Property="ONLYWINGET_INSTALLFOLDER"
+                             On="uninstall" />
+        <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcutComponent" Guid="{51A6C307-0A4C-425C-BC01-70D02B6A8F0A}" Win64="$(var.Win64)">
+        <Shortcut Id="OnlyWingetDesktopShortcut"
+                  Name="OnlyWinget"
+                  Description="Avvia OnlyWinget"
+                  Target="[INSTALLFOLDER]OnlyWinget.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="OnlyWingetProductIcon"
+                  IconIndex="0" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\Danny Perondi\OnlyWinget"
+                       Name="DesktopShortcutInstalled"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcutComponent" Guid="{D11F0EB4-19B2-48C4-B08E-6B7D1CFE1D80}" Win64="$(var.Win64)">
+        <Shortcut Id="OnlyWingetStartMenuShortcut"
+                  Name="OnlyWinget"
+                  Description="Avvia OnlyWinget"
+                  Target="[INSTALLFOLDER]OnlyWinget.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="OnlyWingetProductIcon"
+                  IconIndex="0" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\Danny Perondi\OnlyWinget"
+                       Name="StartMenuShortcutInstalled"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <InstallExecuteSequence>
+      <Custom Action="SetCleanupProjectServicesForUninstallCommand" Before="CleanupProjectServicesForUninstall">REMOVE="ALL"</Custom>
+      <Custom Action="CleanupProjectServicesForUninstall" Before="RemoveFiles">REMOVE="ALL"</Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

@@ -1,0 +1,485 @@
+// OnlyWinget
+// Copyright (c) 2026 Danny Perondi. All rights reserved.
+// Proprietary and confidential. Unauthorized copying, modification,
+// distribution, sublicensing, or commercial use is prohibited.
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using OnlyWinget.Models;
+using OnlyWinget.Services;
+using Xunit;
+
+namespace OnlyWinget.Tests;
+
+public sealed class WingetServiceAndOperationRunnerTests : IDisposable
+{
+    private readonly List<string> _temporaryPaths = new();
+
+    [Fact]
+    public async Task CheckForWingetUpdateAsync_UsesWingetUpgradeForAppInstaller()
+    {
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command == "--version")
+                {
+                    return new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" };
+                }
+
+                return new WingetCommandResult
+                {
+                    ExitCode = 0,
+                    Output = """
+Name             Id                      Version   Available Source
+-------------------------------------------------------------------
+App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
+"""
+                };
+            });
+
+        var result = await service.CheckForWingetUpdateAsync();
+
+        Assert.True(result.IsUpdateAvailable);
+        Assert.Equal("1.12.470", result.InstalledVersion);
+        Assert.Equal("1.28.190", result.LatestVersion);
+    }
+
+    [Fact]
+    public async Task CheckForWingetUpdateAsync_DoesNotReportUpdate_WhenWingetSaysNoUpgrade()
+    {
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command == "--version")
+                {
+                    return new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" };
+                }
+
+                return new WingetCommandResult
+                {
+                    ExitCode = -1978335189,
+                    Output = "Nessun aggiornamento disponibile."
+                };
+            });
+
+        var result = await service.CheckForWingetUpdateAsync();
+
+        Assert.False(result.IsUpdateAvailable);
+        Assert.Equal("1.12.470", result.InstalledVersion);
+        Assert.Equal(string.Empty, result.LatestVersion);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_UsesInstallCommand_ForInstallAction()
+    {
+        var invokedCommands = new List<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                invokedCommands.Add(command);
+                return new WingetCommandResult { ExitCode = 0, Output = "installed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+        var strings = LocalizedStrings.English;
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "VS Code", Id = "Microsoft.VisualStudioCode", Action = AppActions.Install }
+            },
+            (_, value) => status = RenderStatus(value, strings),
+            _ => { },
+            (_, _) => { },
+            strings);
+
+        Assert.Single(invokedCommands);
+        Assert.Equal("install", invokedCommands[0]);
+        Assert.Equal("OK", status);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_SkipsWingetInvocation_ForPauseAction()
+    {
+        var invokedCommands = new List<string>();
+        var reportedProgress = new List<int>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invokedCommands.Add(singleArg ?? args[0]);
+                return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+        var strings = LocalizedStrings.English;
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "VS Code", Id = "Microsoft.VisualStudioCode", Action = AppActions.Pause }
+            },
+            (_, value) => status = RenderStatus(value, strings),
+            _ => { },
+            (percentage, _) => reportedProgress.Add(percentage),
+            strings);
+
+        Assert.Empty(invokedCommands);
+        Assert.Equal("Paused", status);
+        Assert.Contains(100, reportedProgress);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_ReportsProgress_FromLiveWingetOutput()
+    {
+        var reportedProgress = new List<int>();
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command == "install")
+                {
+                    onOutputLine?.Invoke("50%");
+                    return new WingetCommandResult { ExitCode = 0, Output = "completed" };
+                }
+
+                return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "VS Code", Id = "Microsoft.VisualStudioCode", Action = AppActions.Install }
+            },
+            (_, _) => { },
+            _ => { },
+            (percentage, _) => reportedProgress.Add(percentage),
+            LocalizedStrings.English);
+
+        Assert.Contains(0, reportedProgress);
+        Assert.Contains(50, reportedProgress);
+        Assert.Contains(100, reportedProgress);
+    }
+
+    [Fact]
+    public void Search_ParsesWingetTableOutput_AfterBanner()
+    {
+        const string output = """
+Found 2 packages.
+Name                         Id                               Version
+----------------------------------------------------------------------
+Visual Studio Code           Microsoft.VisualStudioCode       1.100.0
+Windows Terminal             Microsoft.WindowsTerminal        1.22.10352.0
+""";
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
+
+        var results = service.Search("code");
+
+        Assert.Collection(
+            results,
+            first =>
+            {
+                Assert.Equal("Visual Studio Code", first.Name);
+                Assert.Equal("Microsoft.VisualStudioCode", first.Id);
+                Assert.Equal("1.100.0", first.Version);
+            },
+            second => Assert.Equal("Microsoft.WindowsTerminal", second.Id));
+    }
+
+    [Fact]
+    public void Search_PreservesUnicodePackageNames()
+    {
+        const string output = """
+Found 2 packages.
+Name                         Id                               Version
+----------------------------------------------------------------------
+Café Déjà Vu                 Contoso.CafeDejaVu               1.2.3
+Über Tool                    Contoso.UberTool                 4.5.6
+""";
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
+
+        var results = service.Search("unicode");
+
+        Assert.Collection(
+            results,
+            first =>
+            {
+                Assert.Equal("Café Déjà Vu", first.Name);
+                Assert.Equal("Contoso.CafeDejaVu", first.Id);
+                Assert.DoesNotContain("Ã", first.Name, StringComparison.Ordinal);
+            },
+            second =>
+            {
+                Assert.Equal("Über Tool", second.Name);
+                Assert.Equal("Contoso.UberTool", second.Id);
+                Assert.DoesNotContain("Ã", second.Name, StringComparison.Ordinal);
+            });
+    }
+
+    [Fact]
+    public void Search_DoesNotRestrictResultsToWingetSource()
+    {
+        IReadOnlyList<string> invokedArgs = Array.Empty<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invokedArgs = args;
+                return new WingetCommandResult
+                {
+                    ExitCode = 0,
+                    Output = """
+Name             Id                    Version Source
+-----------------------------------------------------
+Windows Camera   9WZDNCRFJBBG          Unknown msstore
+"""
+                };
+            });
+
+        var results = service.Search("camera");
+
+        Assert.DoesNotContain("--source", invokedArgs);
+        var result = Assert.Single(results);
+        Assert.Equal("9WZDNCRFJBBG", result.Id);
+        Assert.Equal("msstore", result.Source);
+    }
+
+    [Fact]
+    public void AppEntryValidation_UsesRequestedSource_WhenCheckingPackageExists()
+    {
+        IReadOnlyList<string> invokedArgs = Array.Empty<string>();
+        var wingetService = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invokedArgs = args;
+                return new WingetCommandResult { ExitCode = 0, Output = "found" };
+            });
+        var service = new AppEntryService(wingetService);
+
+        var validation = service.ValidateForInsert("9WZDNCRFJBBG", Array.Empty<AppEntry>(), "msstore");
+
+        Assert.Equal(AppEntryValidationError.None, validation);
+        Assert.Contains("--source", invokedArgs);
+        Assert.Contains("msstore", invokedArgs);
+    }
+
+    [Fact]
+    public void LoadUpdates_ParsesLocalizedOutput_WithNoiseAndProgressLines()
+    {
+        const string output = """
+Ricerca aggiornamenti disponibili...
+-
+Nome                 ID                         Versione Disponibile Source
+---------------------------------------------------------------------------
+App Installer        Microsoft.AppInstaller     1.12.470 1.28.190    winget
+Microsoft PowerToys  Microsoft.PowerToys        0.90.0   0.90.1      msstore
+""";
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
+
+        var updates = service.LoadUpdates();
+
+        Assert.Equal(2, updates.Count);
+        Assert.Contains(updates, entry => entry.Id == "Microsoft.AppInstaller" && entry.Available == "1.28.190");
+        Assert.Contains(updates, entry => entry.Id == "Microsoft.PowerToys" && entry.Version == "0.90.0" && entry.Source == "msstore");
+    }
+
+    [Fact]
+    public void LoadUpdates_IgnoresTrailingSummaryLine()
+    {
+        const string output = """
+Nome                      Id                Versione       Disponibile   Origine
+--------------------------------------------------------------------------------
+Adobe Acrobat DC (64-bit) Adobe.Acrobat.Pro 22.001.20085   25.001.21223  winget
+Microsoft Edge            Microsoft.Edge    146.0.3856.109 147.0.3912.60 winget
+CapCut                    ByteDance.CapCut  8.3.0.3497     8.4.0.3562    winget
+3 aggiornamenti disponibili.
+""";
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
+
+        var updates = service.LoadUpdates();
+
+        Assert.Equal(3, updates.Count);
+        Assert.DoesNotContain(updates, entry => string.Equals(entry.Id, "i.", StringComparison.Ordinal));
+        Assert.Contains(updates, entry => entry.Id == "Adobe.Acrobat.Pro");
+        Assert.Contains(updates, entry => entry.Id == "Microsoft.Edge");
+        Assert.Contains(updates, entry => entry.Id == "ByteDance.CapCut");
+    }
+
+    [Fact]
+    public async Task RunUpdatesAsync_UsesUpdateSource_WhenInvokingUpgrade()
+    {
+        IReadOnlyList<string> invokedArgs = Array.Empty<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invokedArgs = args;
+                return new WingetCommandResult { ExitCode = 0, Output = "updated" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "Windows Camera",
+                    Id = "9WZDNCRFJBBG",
+                    Source = "msstore",
+                    Selected = true
+                }
+            },
+            (_, _) => { },
+            _ => { },
+            (_, _) => { },
+            LocalizedStrings.English);
+
+        Assert.Contains("upgrade", invokedArgs);
+        Assert.Contains("--source", invokedArgs);
+        Assert.Contains("msstore", invokedArgs);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_ReportsInstallFailure_WhenInstallCommandFails()
+    {
+        var invokedCommands = new List<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                invokedCommands.Add(command);
+                return new WingetCommandResult { ExitCode = -1978335224, Output = "download failed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+        var strings = LocalizedStrings.English;
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "VS Code", Id = "Microsoft.VisualStudioCode", Action = AppActions.Install }
+            },
+            (_, value) => status = RenderStatus(value, strings),
+            _ => { },
+            (_, _) => { },
+            strings);
+
+        Assert.Single(invokedCommands);
+        Assert.Equal("install", invokedCommands[0]);
+        Assert.Equal("Download failed", status);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_UsesAlreadyInstalledStatus_WhenInstallDetectsExistingExternalApp()
+    {
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "install" => new WingetCommandResult { ExitCode = -1978334963, Output = "Another version of this application is already installed." },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+        var strings = LocalizedStrings.English;
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "7-Zip", Id = "7zip.7zip", Action = AppActions.Install }
+            },
+            (_, value) => status = RenderStatus(value, strings),
+            _ => { },
+            (_, _) => { },
+            strings);
+
+        Assert.Equal("Already installed", status);
+    }
+
+    [Fact]
+    public void UpgradeWinget_DoesNotConvertAlreadyInstalledIntoSuccess()
+    {
+        var invocations = 0;
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                invocations++;
+
+                return command switch
+                {
+                    "upgrade" => new WingetCommandResult
+                    {
+                        ExitCode = -1978335212,
+                        Output = "No installed package found matching input criteria."
+                    },
+                    "install" => new WingetCommandResult
+                    {
+                        ExitCode = -1978334963,
+                        Output = "Another version of this application is already installed."
+                    },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+
+        var result = service.UpgradeWinget();
+
+        Assert.True(invocations >= 2);
+        Assert.Equal(-1978334963, result.ExitCode);
+        Assert.Contains("already installed", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void Dispose()
+    {
+        foreach (var path in _temporaryPaths)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+            }
+            catch
+            {
+                // Non mascherare l'esito del test per errori di cleanup locale.
+            }
+        }
+    }
+
+    private WingetService CreateWingetService(
+        Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult> wingetRunner,
+        Func<DateTime>? utcNow = null)
+    {
+        return new WingetService(
+            wingetRunner: wingetRunner,
+            localRuntimeRoot: CreateTempDirectory(),
+            utcNow: utcNow);
+    }
+
+    private string CreateTempDirectory()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "OnlyWinget.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(path);
+        _temporaryPaths.Add(path);
+        return path;
+    }
+
+    private static string RenderStatus(UiStatusState state, LocalizedStrings strings)
+    {
+        var entry = new AppEntry();
+        entry.ApplyStatus(state, strings);
+        return entry.Status;
+    }
+}

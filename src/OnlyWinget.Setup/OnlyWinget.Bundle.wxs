@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
+  <?define ProductName = "OnlyWinget" ?>
+  <?define Manufacturer = "Danny Perondi" ?>
+
+  <Bundle Name="$(var.ProductName)"
+          Version="$(var.ProductVersion)"
+          Manufacturer="$(var.Manufacturer)"
+          UpgradeCode="$(var.BundleUpgradeCode)"
+          IconSourceFile="$(var.AppIconPath)"
+          Compressed="yes">
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
+      <bal:WixStandardBootstrapperApplication LicenseFile="$(var.LicenseRtfPath)"
+                                              LogoFile="$(var.BundleLogoPath)"
+                                              SuppressOptionsUI="yes" />
+    </BootstrapperApplicationRef>
+
+    <Chain>
+      <MsiPackage Id="OnlyWingetX64"
+                  SourceFile="$(var.X64MsiPath)"
+                  DisplayInternalUI="yes"
+                  Visible="no"
+                  ForcePerMachine="yes"
+                  InstallCondition="VersionNT64" />
+      <MsiPackage Id="OnlyWingetX86"
+                  SourceFile="$(var.X86MsiPath)"
+                  DisplayInternalUI="yes"
+                  Visible="no"
+                  ForcePerMachine="yes"
+                  InstallCondition="NOT VersionNT64" />
+    </Chain>
+  </Bundle>
+</Wix>

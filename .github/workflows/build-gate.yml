@@ -1,0 +1,55 @@
+name: build-gate
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'codex/**'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_winget_smoke:
+        description: Run winget smoke tests
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  verify:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore OnlyWinget.sln --locked-mode
+
+      - name: Build Gate
+        shell: pwsh
+        run: |
+          $buildGateParameters = @{
+            Configuration = 'Release'
+          }
+
+          if ('${{ github.event.inputs.run_winget_smoke }}' -eq 'true') {
+            $buildGateParameters.RunWingetSmoke = $true
+          }
+
+          ./scripts/build-gate.ps1 @buildGateParameters
+
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onlywinget-build-gate
+          path: |
+            artifacts/build-report.txt
+            artifacts/dist/OnlyWinget/Release/*-setup.exe
+            artifacts/dist/OnlyWinget/Release/msi/*.msi
+            artifacts/test-results/**/*.trx
+          if-no-files-found: error

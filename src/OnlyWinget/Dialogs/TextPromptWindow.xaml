@@ -1,0 +1,57 @@
+<Window x:Class="OnlyWinget.Dialogs.TextPromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title=""
+        Width="420"
+        MinWidth="420"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+  <Border Style="{StaticResource CardBorderStyle}" Margin="{StaticResource AppContentMargin}">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <StackPanel>
+        <TextBlock x:Name="PromptTitleTextBlock"
+                   Style="{StaticResource DialogTitleTextStyle}"/>
+        <TextBlock x:Name="PromptMessageTextBlock"
+                   Margin="{StaticResource TopSpacing8}"
+                   Style="{StaticResource SectionBodyTextStyle}"/>
+      </StackPanel>
+
+      <TextBox x:Name="InputTextBox"
+               Grid.Row="1"
+               Margin="{StaticResource TopSpacing20}"
+               MinWidth="320"
+               Height="{StaticResource ControlHeightLg}"
+               VerticalContentAlignment="Center"/>
+
+      <Grid Grid.Row="2" Margin="{StaticResource TopSpacing20}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="12"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="CancelButton"
+                Grid.Column="1"
+                Content=""
+                MinWidth="110"
+                IsCancel="True"
+                Style="{StaticResource NeutralButtonStyle}"/>
+        <Button x:Name="ConfirmButton"
+                Grid.Column="3"
+                Content=""
+                MinWidth="110"
+                IsDefault="True"
+                Style="{StaticResource PrimaryButtonStyle}"
+                Click="OnConfirmClick"/>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>
