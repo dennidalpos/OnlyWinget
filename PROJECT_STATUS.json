@@ -2,7 +2,7 @@
   "tasks": [
     {
       "id": "setup-verify-clean-major-upgrade",
-      "title": "Verificare il major upgrade del setup unificato da una versione precedente supportata",
+      "title": "Verify the unified setup major-upgrade path from a supported previous release",
       "category": "technical_debt",
       "priority": 1,
       "status": "blocked",
@@ -15,20 +15,20 @@
         "scripts/build-msi.ps1"
       ],
       "evidence": [
-        "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs configura MajorUpgrade e UpgradeCode stabile per gli MSI interni.",
-        "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs configura un Bundle UpgradeCode stabile per il setup unificato.",
-        "Il repository non contiene una verifica automatizzata di upgrade reale su host pulito.",
-        "La cronologia Git locale del repository contiene un solo commit e non fornisce una versione precedente supportata da cui costruire un artefatto di upgrade in questo contesto."
+        "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs defines MajorUpgrade and a stable UpgradeCode for the internal MSIs.",
+        "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs defines a stable Bundle UpgradeCode for the unified setup.",
+        "tests/OnlyWinget.Tests/SourceAlignmentTests.cs checks for MajorUpgrade and same-version upgrade support in the MSI source.",
+        "The repository does not include an automated clean-host upgrade verification flow or a versioned previous release artifact to upgrade from in this workspace."
       ],
-      "impact": "L'upgrade reale da una versione precedente supportata al setup corrente resta non dimostrato prima della release.",
-      "recommended_action": "Eseguire upgrade end-user da un artefatto di una versione precedente supportata al setup corrente su host Windows pulito o dedicato, verificando sostituzione corretta, avvio applicazione e uninstall finale.",
+      "impact": "A real end-user upgrade from a supported previous release to the current unified setup remains unproven before release.",
+      "recommended_action": "Run an upgrade from a supported previous installer artifact to the current setup on a clean or dedicated Windows host, then verify replacement, app launch, and final uninstall.",
       "verification_state": "NON_VERIFIABLE",
-      "blocked_reason": "Richiede un artefatto di una versione precedente supportata e un host Windows pulito o dedicato; il repository corrente non contiene una release precedente da cui partire e non automatizza questo scenario.",
+      "blocked_reason": "This requires both a supported previous installer artifact and a clean or dedicated Windows host. The current repository workspace does not provide that end-to-end upgrade input or automate the scenario.",
       "acceptance_criteria": [
-        "La versione precedente supportata si installa senza errori su una macchina Windows supportata.",
-        "Il setup corrente aggiorna correttamente l'installazione esistente.",
-        "L'applicazione si avvia correttamente dopo l'upgrade.",
-        "La disinstallazione finale completa l'operazione senza errori e non lascia la directory installata."
+        "The supported previous version installs without errors on a supported Windows machine.",
+        "The current setup upgrades the existing installation successfully.",
+        "The application starts correctly after the upgrade.",
+        "The final uninstall completes without errors and removes the installed directory."
       ]
     }
   ]

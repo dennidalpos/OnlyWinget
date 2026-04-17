@@ -4,21 +4,19 @@
   <img src="src/OnlyWinget/Assets/OnlyWinget-icon.png" alt="OnlyWinget icon" width="128" />
 </p>
 
-OnlyWinget is a Windows desktop client for managing packages through the local `winget` CLI. It provides a WPF interface for curated package presets, package search, update review, and batch package operations on Windows.
+OnlyWinget is a Windows WPF desktop client for managing packages through the local `winget` CLI. The repository contains the application, xUnit coverage for core behaviors, PowerShell build entrypoints, and WiX-based Windows packaging sources.
 
-## Verified Feature Set
+## Overview
 
-- Manage reusable preset tabs for package lists.
-- Search packages from configured `winget` sources.
-- Review package metadata and installer options before adding a package to a preset.
-- Run batch install, upgrade, and uninstall operations.
-- Pause preset rows so they are skipped during batch execution.
-- Review available upgrades in a dedicated updates workspace.
-- Import and export presets as readable `.onlywinget.json` files.
-- Persist app data and UI preferences under `%LOCALAPPDATA%\OnlyWinget`.
+- Build and manage reusable preset tabs for package lists.
+- Search packages from available `winget` sources and inspect package metadata before adding them.
+- Run install, upgrade, and uninstall operations from the app.
+- Review available updates in a dedicated workspace.
+- Import and export presets as `.onlywinget.json` files.
+- Persist local app data and UI preferences under `%LOCALAPPDATA%\OnlyWinget`.
 - Use the UI in Italian or English.
 
-## Windows-First Local Setup
+## Windows-First Setup
 
 Requirements:
 
@@ -27,16 +25,10 @@ Requirements:
 - .NET SDK compatible with [global.json](global.json)
 - PowerShell 7 (`pwsh`) for repository scripts
 
-Run from source:
-
-```powershell
-dotnet restore .\OnlyWinget.sln --locked-mode
-dotnet run --project .\src\OnlyWinget\OnlyWinget.csproj
-```
-
 Canonical repository verification:
 
 ```powershell
+dotnet restore .\OnlyWinget.sln --locked-mode
 pwsh -ExecutionPolicy Bypass -File .\scripts\build-gate.ps1 -Configuration Release
 ```
 
@@ -45,8 +37,8 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\build-gate.ps1 -Configuration Relea
 - The repository contains the WPF application, xUnit tests, Windows-first PowerShell build scripts, and WiX packaging source.
 - CI is configured through GitHub Actions on `windows-latest`.
 - The current project version is `1.0.2`.
-- Local install, same-version rerun, launch, and uninstall validation of the generated setup have been executed on an elevated x64 Windows host.
-- One packaging validation item remains open in [PROJECT_STATUS.json](PROJECT_STATUS.json): major-upgrade verification from a supported previous version.
+- Current build artifacts in `artifacts/` show that the app build, test run, and setup generation have been executed locally.
+- One repository-evidenced packaging validation item remains open in [PROJECT_STATUS.json](PROJECT_STATUS.json): major-upgrade verification from a supported previous release artifact on a clean or dedicated Windows host.
 
 ## Technical Documentation
 

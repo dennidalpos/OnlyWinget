@@ -111,3 +111,7 @@ Before a searched package is added to a preset, the app runs a package interroga
 The MSIs are built from framework-dependent `dotnet publish` outputs for `win-x86` and `win-x64`; the default packaging flow does not produce self-contained app payloads.
 
 `src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs` defines the primary end-user setup. It is a WiX Burn EXE that embeds both internal MSIs and selects the x64 MSI when `VersionNT64` is true, otherwise selecting the x86 MSI. This avoids presenting separate x86 and x64 installers as the primary distribution workflow while preserving architecture-specific payloads internally.
+
+## Verification boundaries
+
+This document describes repository structure and observable runtime behavior from source, tests, and packaging definitions. It does not assert real install, upgrade, or uninstall execution unless that evidence is tracked separately in repository-owned artifacts or status tracking.

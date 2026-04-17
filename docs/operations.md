@@ -133,18 +133,18 @@ $env:ONLYWINGET_RUN_WINGET_SMOKE='1'
 
 ## Verification boundaries
 
-The repository scripts and sources support MSI generation locally, but packaging verification and installation verification are not the same thing.
+The repository scripts and sources support app build, test execution, and MSI/setup generation locally, but packaging generation and installation verification are not the same thing.
 
-State currently reflected by the repository:
+Repository-evidenced state:
 
 - Unified setup generation is scripted and versioned.
 - Internal x86 and x64 MSI generation is scripted and versioned.
 - The installer is per-machine and therefore requires administrative privileges for real install, upgrade, and uninstall validation.
-- Local install, same-version rerun, launch, and uninstall validation have been executed on an elevated x64 Windows host.
-- `PROJECT_STATUS.json` still tracks one blocked packaging check:
+- The current workspace contains generated build, test, and packaging artifacts under `artifacts/`.
+- `PROJECT_STATUS.json` tracks one remaining packaging validation item:
   - major upgrade validation from a supported previous version
 
-Those checks should be treated as release-blocking packaging verification, not as build verification.
+The repository does not, by itself, prove that a clean-host install, major upgrade, or final uninstall run has been executed successfully. Those checks should be treated as packaging verification work, not as build verification.
 
 ## Tracking
 
