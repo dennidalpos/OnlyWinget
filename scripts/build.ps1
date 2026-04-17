@@ -30,7 +30,10 @@ if (-not $NoRestore) {
     }
 }
 
-$buildArgs = @($projectPath, '-c', $Configuration, '--no-restore')
+$buildArgs = @($projectPath, '-c', $Configuration)
+if ($NoRestore) {
+    $buildArgs += '--no-restore'
+}
 if ($WarnAsError) {
     $buildArgs += '-warnaserror'
 }

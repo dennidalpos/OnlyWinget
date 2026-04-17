@@ -40,7 +40,6 @@
                   Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
               <TextBlock Style="{StaticResource SectionTitleTextStyle}"
-                         FontSize="{StaticResource FontSizeXl}"
                          Text="{Binding WarningsTitle}"/>
               <TextBlock Margin="{StaticResource TopSpacing8}"
                          Style="{StaticResource SectionBodyTextStyle}"
@@ -210,7 +209,6 @@
                   Visibility="{Binding IsContentReady, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
               <TextBlock Style="{StaticResource SectionTitleTextStyle}"
-                         FontSize="{StaticResource FontSizeXl}"
                          Text="{Binding AdvancedTitle}"/>
 
               <TextBlock Margin="{StaticResource TopSpacing10}"

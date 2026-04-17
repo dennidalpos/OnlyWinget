@@ -140,8 +140,8 @@ State currently reflected by the repository:
 - Unified setup generation is scripted and versioned.
 - Internal x86 and x64 MSI generation is scripted and versioned.
 - The installer is per-machine and therefore requires administrative privileges for real install, upgrade, and uninstall validation.
-- `PROJECT_STATUS.json` tracks two still-blocked packaging checks:
-  - clean-machine setup install, reinstall, and uninstall validation
+- Local install, same-version rerun, launch, and uninstall validation have been executed on an elevated x64 Windows host.
+- `PROJECT_STATUS.json` still tracks one blocked packaging check:
   - major upgrade validation from a supported previous version
 
 Those checks should be treated as release-blocking packaging verification, not as build verification.

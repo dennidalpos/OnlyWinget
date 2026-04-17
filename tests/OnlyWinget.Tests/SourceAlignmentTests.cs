@@ -35,6 +35,24 @@ public sealed class SourceAlignmentTests
         Assert.Contains("Property=\"TextTrimming\" Value=\"CharacterEllipsis\"", styleSource, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void GridViewAutoSizeBehavior_CompensatesForListViewBorderWidth()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Helpers", "GridViewAutoSizeBehavior.cs"));
+
+        Assert.Contains("listView.BorderThickness.Left + listView.BorderThickness.Right", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GridViewColumnHeaderStyle_UsesExplicitTemplateWithHeaderGripper()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Styles", "Controls.xaml"));
+
+        Assert.Contains("<Style TargetType=\"GridViewColumnHeader\">", source, StringComparison.Ordinal);
+        Assert.Contains("<Thumb x:Name=\"PART_HeaderGripper\"", source, StringComparison.Ordinal);
+        Assert.Contains("<ContentPresenter Margin=\"{TemplateBinding Padding}\"", source, StringComparison.Ordinal);
+    }
+
     private static string GetRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

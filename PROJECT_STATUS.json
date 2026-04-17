@@ -1,54 +1,8 @@
 {
   "tasks": [
     {
-      "id": "setup-verify-clean-install-uninstall",
-      "title": "Verificare installazione, reinstallazione e disinstallazione setup unificato su macchina Windows pulita",
-      "category": "technical_debt",
-      "priority": 1,
-      "status": "blocked",
-      "scope": "core",
-      "risk": "HIGH",
-      "area": "packaging-setup",
-      "files": [
-        "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs",
-        "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs",
-        "scripts/build-msi.ps1"
-      ],
-      "blocked_reason": "Il packaging locale e' verificato, ma il requisito residuo richiede una macchina Windows pulita per validare il setup end-user per-machine, la reinstallazione della stessa versione e la disinstallazione completa tramite Programmi e funzionalita'.",
-      "summary": "Verificare installazione, reinstallazione e disinstallazione del setup unificato generato dal flusso canonico su host Windows puliti o dedicati, includendo almeno un ambiente Windows a 64 bit e, se supportato dal requisito di release, un ambiente Windows a 32 bit.",
-      "evidence": [
-        "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs imposta InstallScope=\"perMachine\" per gli MSI interni.",
-        "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs abilita AllowSameVersionUpgrades=\"yes\" per evitare duplicati MSI in reinstallazione a parita' di versione.",
-        "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs definisce il setup unificato che contiene MSI x86 e x64.",
-        "scripts/build-msi.ps1 genera correttamente gli artefatti locali, ma non esegue test installativi reali."
-      ],
-      "impact": "Resta non verificato il comportamento reale di setup, reinstallazione e uninstall su host puliti; questo e' rilevante prima di una release.",
-      "recommended_action": "Eseguire smoke installativi reali del setup EXE su host Windows puliti o dedicati e registrare esito di installazione, reinstallazione e disinstallazione.",
-      "verified": [
-        "VERIFICATO: 2026-04-16 `pwsh -ExecutionPolicy Bypass -File .\\scripts\\build-msi.ps1 -Configuration Release -NoRestore` ha generato `artifacts/dist/OnlyWinget/Release/OnlyWinget-1.0.2-setup.exe` e gli MSI interni x86/x64.",
-        "VERIFICATO: 2026-04-16 `pwsh -ExecutionPolicy Bypass -File .\\scripts\\build-gate.ps1 -Configuration Release` ha completato restore, format, lint, unit test, build, packaging e artifact analysis con setup EXE e MSI x86/x64 generati."
-      ],
-      "inspected_only": [
-        "ISPEZIONATO: sorgenti WiX e script di packaging."
-      ],
-      "not_verified": [
-        "NON VERIFICATO: installazione del setup su macchina Windows pulita.",
-        "NON VERIFICATO: reinstallazione della stessa versione tramite setup EXE.",
-        "NON VERIFICATO: disinstallazione completa tramite Add/Remove Programs su host pulito."
-      ],
-      "non_verifiable": [],
-      "acceptance_criteria": [
-        "Il setup prodotto da scripts/build-msi.ps1 si installa senza errori su una macchina Windows pulita supportata.",
-        "La reinstallazione della stessa versione non duplica OnlyWinget in Programmi e funzionalita'.",
-        "Su Windows 64 bit il setup installa il payload x64.",
-        "Su Windows 32 bit il setup installa il payload x86.",
-        "OnlyWinget si avvia correttamente dopo l'installazione sull'host pulito.",
-        "La disinstallazione completa l'operazione senza errori e non lascia la directory installata sull'host pulito."
-      ]
-    },
-    {
       "id": "setup-verify-clean-major-upgrade",
-      "title": "Verificare major upgrade setup unificato su macchina Windows pulita",
+      "title": "Verificare il major upgrade del setup unificato da una versione precedente supportata",
       "category": "technical_debt",
       "priority": 1,
       "status": "blocked",
@@ -60,33 +14,21 @@
         "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs",
         "scripts/build-msi.ps1"
       ],
-      "blocked_reason": "Il packaging locale e' verificato, ma il requisito residuo richiede una macchina Windows pulita o dedicata per validare l'upgrade tramite setup end-user da una versione precedente supportata.",
-      "summary": "Ripetere l'upgrade da una versione precedente supportata al setup unificato corrente su host Windows pulito o dedicato, verificando che la versione precedente venga sostituita correttamente e che l'uninstall finale pulisca l'installazione.",
       "evidence": [
         "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs configura MajorUpgrade e UpgradeCode stabile per gli MSI interni.",
         "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs configura un Bundle UpgradeCode stabile per il setup unificato.",
-        "Il repository non contiene una verifica automatizzata di upgrade reale su host pulito."
+        "Il repository non contiene una verifica automatizzata di upgrade reale su host pulito.",
+        "La cronologia Git locale del repository contiene un solo commit e non fornisce una versione precedente supportata da cui costruire un artefatto di upgrade in questo contesto."
       ],
-      "impact": "L'upgrade reale del setup unificato resta non dimostrato prima della release.",
-      "recommended_action": "Eseguire upgrade end-user da una versione precedente supportata al setup corrente su host pulito e registrare installazione, upgrade e uninstall finale.",
-      "verified": [
-        "VERIFICATO: 2026-04-16 `pwsh -ExecutionPolicy Bypass -File .\\scripts\\build-msi.ps1 -Configuration Release -NoRestore` ha generato il bundle e gli MSI interni necessari per il test.",
-        "VERIFICATO: 2026-04-16 `pwsh -ExecutionPolicy Bypass -File .\\scripts\\build-gate.ps1 -Configuration Release` ha completato restore, format, lint, unit test, build, packaging e artifact analysis con setup EXE e MSI x86/x64 generati."
-      ],
-      "inspected_only": [
-        "ISPEZIONATO: sorgenti WiX relativi a MajorUpgrade e Bundle UpgradeCode."
-      ],
-      "not_verified": [
-        "NON VERIFICATO: upgrade reale da una versione precedente supportata tramite setup EXE.",
-        "NON VERIFICATO: uninstall finale dopo major upgrade su host pulito."
-      ],
-      "non_verifiable": [],
+      "impact": "L'upgrade reale da una versione precedente supportata al setup corrente resta non dimostrato prima della release.",
+      "recommended_action": "Eseguire upgrade end-user da un artefatto di una versione precedente supportata al setup corrente su host Windows pulito o dedicato, verificando sostituzione corretta, avvio applicazione e uninstall finale.",
+      "verification_state": "NON_VERIFIABLE",
+      "blocked_reason": "Richiede un artefatto di una versione precedente supportata e un host Windows pulito o dedicato; il repository corrente non contiene una release precedente da cui partire e non automatizza questo scenario.",
       "acceptance_criteria": [
-        "La versione precedente supportata si installa senza errori su una macchina Windows pulita supportata.",
-        "Il setup corrente prodotto da scripts/build-msi.ps1 aggiorna correttamente l'installazione precedente.",
-        "Il setup sceglie il payload coerente con l'architettura del sistema operativo durante l'upgrade.",
-        "OnlyWinget si avvia correttamente dopo l'upgrade sull'host pulito.",
-        "La disinstallazione finale completa l'operazione senza errori e non lascia la directory installata sull'host pulito."
+        "La versione precedente supportata si installa senza errori su una macchina Windows supportata.",
+        "Il setup corrente aggiorna correttamente l'installazione esistente.",
+        "L'applicazione si avvia correttamente dopo l'upgrade.",
+        "La disinstallazione finale completa l'operazione senza errori e non lascia la directory installata."
       ]
     }
   ]

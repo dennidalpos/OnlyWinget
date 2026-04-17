@@ -3,6 +3,7 @@
 // Proprietary and confidential. Unauthorized copying, modification,
 // distribution, sublicensing, or commercial use is prohibited.
 
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -56,8 +57,26 @@ public static class GridViewAutoSizeBehavior
         }
     }
 
-    private static void OnLoaded(object sender, RoutedEventArgs e) => Resize((ListView)sender);
-    private static void OnSizeChanged(object sender, SizeChangedEventArgs e) => Resize((ListView)sender);
+    private static void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        var listView = (ListView)sender;
+        Resize(listView);
+        AttachColumnResizeHandlers(listView);
+    }
+
+    private static void AttachColumnResizeHandlers(ListView listView)
+    {
+        if (listView.View is not GridView gridView) return;
+        var descriptor = DependencyPropertyDescriptor.FromProperty(GridViewColumn.WidthProperty, typeof(GridViewColumn));
+        foreach (var col in gridView.Columns)
+            descriptor.AddValueChanged(col, (_, _) => listView.InvalidateMeasure());
+    }
+
+    private static void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged)
+            Resize((ListView)sender);
+    }
 
     private static void Resize(ListView listView)
     {
@@ -87,7 +106,8 @@ public static class GridViewAutoSizeBehavior
 
         if (totalStars <= 0) return;
 
-        var available = listView.ActualWidth - fixedWidth - SystemParameters.VerticalScrollBarWidth - 4;
+        var borderWidth = listView.BorderThickness.Left + listView.BorderThickness.Right;
+        var available = listView.ActualWidth - borderWidth - fixedWidth - SystemParameters.VerticalScrollBarWidth - 4;
         if (available <= 0) return;
 
         var distributableWidth = Math.Max(0, available - starMinWidth);

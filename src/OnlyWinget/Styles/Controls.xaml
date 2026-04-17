@@ -267,7 +267,7 @@
                        HorizontalAlignment="Left"
                        VerticalAlignment="Stretch"
                        RadiusX="2" RadiusY="2"
-                       Fill="{DynamicResource BorderEmphasisBrush}"
+                       Fill="{DynamicResource AccentBrush}"
                        Visibility="Collapsed"/>
           </Grid>
           <ControlTemplate.Triggers>
@@ -292,6 +292,36 @@
     <Setter Property="Padding" Value="10,6"/>
     <Setter Property="BorderBrush" Value="{DynamicResource CellBorderBrush}"/>
     <Setter Property="BorderThickness" Value="0,0,1,1"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="GridViewColumnHeader">
+          <Grid SnapsToDevicePixels="True">
+            <Border x:Name="HeaderBorder"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}">
+              <ContentPresenter Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True"/>
+            </Border>
+            <Thumb x:Name="PART_HeaderGripper"
+                   HorizontalAlignment="Right"
+                   Width="8"
+                   Background="{DynamicResource TransparentBrush}"/>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <!-- ProgressBar — slim, rounded, gradient fill + indeterminate pulse -->
@@ -347,8 +377,8 @@
                   <Storyboard RepeatBehavior="Forever">
                     <DoubleAnimation Storyboard.TargetName="IndeterminateTranslate"
                                      Storyboard.TargetProperty="X"
-                                     From="-80" To="500"
-                                     Duration="0:0:1.4"/>
+                                     From="-80" To="1200"
+                                     Duration="0:0:2.2"/>
                   </Storyboard>
                 </BeginStoryboard>
               </Trigger.EnterActions>

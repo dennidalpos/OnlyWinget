@@ -1,0 +1,313 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using OnlyWinget.Models;
+using OnlyWinget.Services;
+using OnlyWinget.ViewModels;
+using Xunit;
+
+namespace OnlyWinget.Tests;
+
+[CollectionDefinition(nameof(WpfUiCollection), DisableParallelization = true)]
+public sealed class WpfUiCollection
+{
+}
+
+[Collection(nameof(WpfUiCollection))]
+public sealed class SearchResultsLayoutTests
+{
+    [Fact]
+    public void SearchResultsLayout_RendersRegressionSamplesWithoutTruncationAtReportedWidth()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-Layout-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1567,
+                    Height = 1050,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+
+                    window.Show();
+                    DoEvents();
+
+                    viewModel.OpenSearchCommand.Execute(null);
+                    SetSearchResults(
+                        viewModel,
+                        new SearchResult
+                        {
+                            Name = "Microsoft .NET Windows Desktop Runtime 10.0",
+                            Id = "Microsoft.DotNet.DesktopRuntime.10",
+                            Version = "10.0.6"
+                        },
+                        new SearchResult
+                        {
+                            Name = "Microsoft ASP.NET Core Runtime 11.0 Preview",
+                            Id = "Microsoft.DotNet.AspNetCore.Preview",
+                            Version = "11.0.0-preview.7"
+                        });
+
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var searchResultsList = Assert.IsType<ListView>(window.FindName("SearchResultsList"));
+                    searchResultsList.ScrollIntoView(viewModel.SearchResults[0]);
+                    searchResultsList.UpdateLayout();
+                    DoEvents();
+
+                    var gridView = Assert.IsType<GridView>(searchResultsList.View);
+                    Assert.True(gridView.Columns[0].Width >= 320d);
+                    Assert.True(gridView.Columns[1].Width >= 360d);
+                    Assert.True(gridView.Columns[2].Width >= 180d);
+
+                    AssertTextFitsSingleLine(searchResultsList, "Microsoft .NET Windows Desktop Runtime 10.0");
+                    AssertTextFitsSingleLine(searchResultsList, "Microsoft.DotNet.DesktopRuntime.10");
+                    AssertTextFitsSingleLine(searchResultsList, "11.0.0-preview.7");
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void AssertTextFitsSingleLine(DependencyObject root, string expectedText)
+    {
+        var textBlock = FindDescendants<TextBlock>(root)
+            .FirstOrDefault(candidate => string.Equals(candidate.Text, expectedText, StringComparison.Ordinal));
+
+        Assert.NotNull(textBlock);
+        Assert.True(textBlock!.ActualWidth > 0d);
+
+        var pixelsPerDip = VisualTreeHelper.GetDpi(textBlock).PixelsPerDip;
+        var formattedText = new FormattedText(
+            textBlock.Text,
+            CultureInfo.CurrentUICulture,
+            textBlock.FlowDirection,
+            new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight, textBlock.FontStretch),
+            textBlock.FontSize,
+            Brushes.Black,
+            pixelsPerDip);
+
+        Assert.True(
+            textBlock.ActualWidth + 4d >= formattedText.WidthIncludingTrailingWhitespace,
+            $"Text '{expectedText}' is still narrower than the rendered content area.");
+    }
+
+    private static IEnumerable<T> FindDescendants<T>(DependencyObject root) where T : DependencyObject
+    {
+        var queue = new Queue<DependencyObject>();
+        queue.Enqueue(root);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var count = VisualTreeHelper.GetChildrenCount(current);
+            for (var index = 0; index < count; index++)
+            {
+                var child = VisualTreeHelper.GetChild(current, index);
+                if (child is T match)
+                {
+                    yield return match;
+                }
+
+                queue.Enqueue(child);
+            }
+        }
+    }
+
+    private static void SetSearchResults(MainViewModel viewModel, params SearchResult[] results)
+    {
+        var property = typeof(MainViewModel).GetProperty(nameof(MainViewModel.SearchResults), BindingFlags.Instance | BindingFlags.Public);
+        var setter = property?.GetSetMethod(nonPublic: true);
+        Assert.NotNull(setter);
+        setter!.Invoke(viewModel, new object[] { new ObservableCollection<SearchResult>(results) });
+    }
+
+    private static void DoEvents()
+    {
+        Application.Current?.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private static void EnsureApplicationResourcesLoaded()
+    {
+        var app = Application.Current ?? new Application
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown
+        };
+
+        if (app.Resources.MergedDictionaries.Count > 0)
+        {
+            return;
+        }
+
+        var themeDictionary = (ResourceDictionary)Application.LoadComponent(
+            new Uri("/OnlyWinget;component/Styles/Theme.xaml", UriKind.Relative));
+        app.Resources.MergedDictionaries.Add(themeDictionary);
+    }
+
+    private static MainViewModel CreateViewModel(string root, WingetService wingetService, IOperationRunner operationRunner)
+    {
+        var dataService = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+        var queryService = new WingetQueryService(wingetService);
+        var localizationService = new LocalizationService(
+            new AppPreferencesService(root),
+            () => CultureInfo.GetCultureInfo("it-IT"));
+
+        return new MainViewModel(
+            queryService,
+            new PresetWorkspaceService(dataService),
+            localizationService,
+            new FakeDialogService(),
+            new AppEntryService(wingetService),
+            new TabService(),
+            operationRunner,
+            new UpdatesWorkspaceService(queryService, operationRunner));
+    }
+
+    private static WingetService CreateWingetService()
+    {
+        return new WingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "--version" => new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+    }
+
+    private static void RunOnStaThread(Action action)
+    {
+        Exception? exception = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                exception = ex;
+            }
+            finally
+            {
+                Application.Current?.Shutdown();
+            }
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (exception != null)
+        {
+            ExceptionDispatchInfo.Capture(exception).Throw();
+        }
+    }
+
+    private sealed class PassiveOperationRunner : IOperationRunner
+    {
+        public Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeDialogService : IDialogService
+    {
+        public string Prompt(string prompt, string title, string defaultValue = "")
+        {
+            return defaultValue;
+        }
+
+        public void ShowInfo(string message, string title)
+        {
+        }
+
+        public void ShowWarning(string message, string title)
+        {
+        }
+
+        public void ShowError(string message, string title)
+        {
+        }
+
+        public bool Confirm(string message, string title)
+        {
+            return false;
+        }
+
+        public string? OpenFile(string title, string filter, string defaultExtension = "json")
+        {
+            return null;
+        }
+
+        public string? SaveFile(string title, string filter, string defaultFileName, string defaultExtension = "json")
+        {
+            return null;
+        }
+
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request)
+        {
+            return Task.FromResult<PackageInterrogationDialogResult?>(null);
+        }
+
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry)
+        {
+            return Task.FromResult<PackageInterrogationDialogResult?>(null);
+        }
+    }
+}

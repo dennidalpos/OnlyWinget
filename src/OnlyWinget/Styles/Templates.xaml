@@ -367,6 +367,7 @@
 
   <Style x:Key="TableCellTextStyle" TargetType="TextBlock" BasedOn="{StaticResource SectionBodyTextStyle}">
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
     <Setter Property="TextWrapping" Value="NoWrap"/>
     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>

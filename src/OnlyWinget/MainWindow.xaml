@@ -63,10 +63,11 @@
                        Foreground="{StaticResource ChromeTextBrush}"
                        VerticalAlignment="Center"
                        Text="{Binding Strings.ProductName}"/>
-            <!-- Permission badge: always shows whether the app is elevated. -->
+            <!-- Permission badge: only shown when the app is running as administrator. -->
             <Border Margin="{StaticResource ChromeBadgeMargin}"
                     VerticalAlignment="Center"
-                    Style="{StaticResource WarningBadgeBorderStyle}">
+                    Style="{StaticResource WarningBadgeBorderStyle}"
+                    Visibility="{Binding IsRunningAsAdministrator, Converter={StaticResource BoolToVisibility}}">
               <TextBlock FontSize="{StaticResource FontSizeXs}"
                          FontWeight="SemiBold"
                          Foreground="{StaticResource WarningTextBrush}"
@@ -233,7 +234,7 @@
               </Grid.RowDefinitions>
 
               <TextBlock Grid.Row="0"
-                         FontSize="{StaticResource FontSizeXl}"
+                         FontSize="{StaticResource FontSizeTitle}"
                          FontWeight="SemiBold"
                          VerticalAlignment="Center"
                          Text="{Binding CurrentWorkspaceTitle}"/>
@@ -427,7 +428,7 @@
                       <TextBlock HorizontalAlignment="Center"
                                  Style="{StaticResource SectionTitleTextStyle}"
                                  Text="{Binding Strings.AppListEmptyTitle}"/>
-                      <TextBlock Margin="0,6,0,0"
+                      <TextBlock Margin="{StaticResource TopSpacing6}"
                                  HorizontalAlignment="Center"
                                  TextAlignment="Center"
                                  Style="{StaticResource SectionBodyTextStyle}"
@@ -455,15 +456,32 @@
                     <ColumnDefinition Width="10"/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
-                  <TextBox x:Name="SearchQueryBox"
-                           Grid.Column="0"
-                           Height="{StaticResource ControlHeightLg}"
-                           Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                           AutomationProperties.Name="{Binding Strings.SearchQueryAutomationName}">
-                    <TextBox.InputBindings>
-                      <KeyBinding Key="Enter" Command="{Binding RunSearchCommand}"/>
-                    </TextBox.InputBindings>
-                  </TextBox>
+                  <Grid Grid.Column="0">
+                    <TextBox x:Name="SearchQueryBox"
+                             Height="{StaticResource ControlHeightLg}"
+                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="{Binding Strings.SearchQueryAutomationName}">
+                      <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding RunSearchCommand}"/>
+                      </TextBox.InputBindings>
+                    </TextBox>
+                    <TextBlock IsHitTestVisible="False"
+                               Text="{Binding Strings.SearchHintText}"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Margin="13,0,0,0"
+                               VerticalAlignment="Center">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Visibility" Value="Collapsed"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding SearchQuery}" Value="">
+                              <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </Grid>
                   <Button Grid.Column="2"
                           Content="{Binding Strings.Search}"
                           MinWidth="100"
@@ -489,8 +507,8 @@
                             AutomationProperties.Name="{Binding Strings.SearchResultsAutomationName}">
                     <ListView.View>
                       <GridView>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.2"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="240"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.35"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="320"
                                         Header="{Binding DataContext.Strings.Name, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -501,8 +519,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.7"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="320"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.55"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="360"
                                         Header="{Binding DataContext.Strings.Id, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -513,8 +531,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="120"
-                                        Width="120"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="0.75"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="180"
                                         Header="{Binding DataContext.Strings.VersionHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -544,7 +562,7 @@
                       <TextBlock HorizontalAlignment="Center"
                                  Style="{StaticResource SectionTitleTextStyle}"
                                  Text="{Binding Strings.SearchLoadingTitle}"/>
-                      <TextBlock Margin="0,6,0,0"
+                      <TextBlock Margin="{StaticResource TopSpacing6}"
                                  HorizontalAlignment="Center"
                                  TextAlignment="Center"
                                  Style="{StaticResource SectionBodyTextStyle}"
@@ -569,7 +587,7 @@
                       <TextBlock HorizontalAlignment="Center"
                                  Style="{StaticResource SectionTitleTextStyle}"
                                  Text="{Binding Strings.SearchEmptyTitle}"/>
-                      <TextBlock Margin="0,6,0,0"
+                      <TextBlock Margin="{StaticResource TopSpacing6}"
                                  HorizontalAlignment="Center"
                                  TextAlignment="Center"
                                  Style="{StaticResource SectionBodyTextStyle}"
@@ -578,21 +596,26 @@
                   </Border>
                 </Grid>
 
-                <Grid Grid.Row="4">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="10"/>
-                    <ColumnDefinition Width="Auto"/>
-                  </Grid.ColumnDefinitions>
-                  <TextBox Grid.Column="0"
-                           Text="{Binding SearchPickId, UpdateSourceTrigger=PropertyChanged}"
-                           AutomationProperties.Name="{Binding Strings.SearchSelectedIdAutomationName}"/>
-                  <Button Grid.Column="2"
-                          Content="{Binding SearchAddButtonText}"
-                          MinWidth="152"
-                          Command="{Binding UseSearchIdCommand}"
-                          Style="{StaticResource PrimaryButtonStyle}"/>
-                </Grid>
+                <StackPanel Grid.Row="4">
+                  <TextBlock Style="{StaticResource CaptionTextStyle}"
+                             Text="{Binding Strings.Id}"
+                             Margin="0,0,0,4"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="10"/>
+                      <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             Text="{Binding SearchPickId, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="{Binding Strings.SearchSelectedIdAutomationName}"/>
+                    <Button Grid.Column="2"
+                            Content="{Binding SearchAddButtonText}"
+                            MinWidth="152"
+                            Command="{Binding UseSearchIdCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"/>
+                  </Grid>
+                </StackPanel>
               </Grid>
 
               <!-- UPDATES WORKSPACE -->
@@ -623,8 +646,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.2"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="240"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.3"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="280"
                                         Header="{Binding DataContext.Strings.Name, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -636,7 +659,7 @@
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
                         <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.7"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="320"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="360"
                                         Header="{Binding DataContext.Strings.Id, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -647,8 +670,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="120"
-                                        Width="120"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="150"
+                                        Width="150"
                                         Header="{Binding DataContext.Strings.VersionHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -659,8 +682,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="120"
-                                        Width="120"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="150"
+                                        Width="150"
                                         Header="{Binding DataContext.Strings.AvailableHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -686,7 +709,7 @@
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
                         <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="200"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="240"
                                         Header="{Binding DataContext.Strings.ErrorHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -699,7 +722,7 @@
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
                         <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="200"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="240"
                                         Header="{Binding DataContext.Strings.ResolutionHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -730,7 +753,7 @@
                       <TextBlock HorizontalAlignment="Center"
                                  Style="{StaticResource SectionTitleTextStyle}"
                                  Text="{Binding Strings.UpdatesLoadingTitle}"/>
-                      <TextBlock Margin="0,6,0,0"
+                      <TextBlock Margin="{StaticResource TopSpacing6}"
                                  HorizontalAlignment="Center"
                                  TextAlignment="Center"
                                  Style="{StaticResource SectionBodyTextStyle}"
@@ -755,7 +778,7 @@
                       <TextBlock HorizontalAlignment="Center"
                                  Style="{StaticResource SectionTitleTextStyle}"
                                  Text="{Binding Strings.UpdatesEmptyTitle}"/>
-                      <TextBlock Margin="0,6,0,0"
+                      <TextBlock Margin="{StaticResource TopSpacing6}"
                                  HorizontalAlignment="Center"
                                  TextAlignment="Center"
                                  Style="{StaticResource SectionBodyTextStyle}"
@@ -828,7 +851,7 @@
                     <StackPanel>
                       <TextBlock Style="{StaticResource SectionBodyTextStyle}"
                                  Text="{Binding Strings.WingetUpdatingText}"/>
-                      <ProgressBar Margin="0,8,0,0"
+                      <ProgressBar Margin="{StaticResource TopSpacing8}"
                                    IsIndeterminate="True"/>
                     </StackPanel>
                   </Border>
