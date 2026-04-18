@@ -30,6 +30,7 @@ public sealed class WingetCommandResult
 public sealed class WingetService
 {
     private const string WingetPackageId = "Microsoft.AppInstaller";
+    private const int WideConsoleWidth = 500;
     private readonly Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult> _wingetRunner;
     private readonly WingetRuntimeEnvironment _runtimeEnvironment;
     private readonly WingetOutputClassifier _outputClassifier;
@@ -157,7 +158,15 @@ public sealed class WingetService
             ["--accept-source-agreements"] = null
         });
 
-        return WingetTableParser.ParseSearchResults(result.Output);
+        var parsedResults = WingetTableParser.ParseSearchResults(result.Output);
+        if (!parsedResults.Any(NeedsSearchResultExpansion))
+        {
+            return parsedResults;
+        }
+
+        return parsedResults
+            .Select(ExpandSearchResult)
+            .ToList();
     }
 
     public IReadOnlyList<UpdateEntry> LoadUpdates()
@@ -296,29 +305,8 @@ public sealed class WingetService
     private WingetCommandResult RunWingetProcess(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine)
     {
         var runtimeDirectory = _runtimeEnvironment.EnsureLocalRuntimeDirectory();
-        var processStartInfo = new ProcessStartInfo
-        {
-            FileName = "winget",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WorkingDirectory = runtimeDirectory
-        };
-        processStartInfo.Environment["TMP"] = runtimeDirectory;
-        processStartInfo.Environment["TEMP"] = runtimeDirectory;
-
-        if (!string.IsNullOrWhiteSpace(singleArg))
-        {
-            processStartInfo.ArgumentList.Add(singleArg);
-        }
-
-        foreach (var arg in args)
-        {
-            processStartInfo.ArgumentList.Add(arg);
-        }
+        var commandArgs = BuildCommandArgs(singleArg, args);
+        var processStartInfo = CreateProcessStartInfo(runtimeDirectory, commandArgs);
 
         using var process = Process.Start(processStartInfo);
         if (process == null)
@@ -342,6 +330,193 @@ public sealed class WingetService
                 ? errorText
                 : outputText + Environment.NewLine + errorText;
         return new WingetCommandResult { ExitCode = process.ExitCode, Output = combined };
+    }
+
+    private static IReadOnlyList<string> BuildCommandArgs(string? singleArg, IReadOnlyList<string> args)
+    {
+        if (string.IsNullOrWhiteSpace(singleArg))
+        {
+            return args;
+        }
+
+        var commandArgs = new List<string>(capacity: args.Count + 1)
+        {
+            singleArg
+        };
+        commandArgs.AddRange(args);
+        return commandArgs;
+    }
+
+    private static ProcessStartInfo CreateProcessStartInfo(string runtimeDirectory, IReadOnlyList<string> commandArgs)
+    {
+        var processStartInfo = ShouldUseWideConsole(commandArgs)
+            ? CreateWideConsoleProcessStartInfo(runtimeDirectory, commandArgs)
+            : CreateDirectWingetProcessStartInfo(runtimeDirectory, commandArgs);
+
+        processStartInfo.Environment["TMP"] = runtimeDirectory;
+        processStartInfo.Environment["TEMP"] = runtimeDirectory;
+        return processStartInfo;
+    }
+
+    private static ProcessStartInfo CreateDirectWingetProcessStartInfo(string runtimeDirectory, IReadOnlyList<string> commandArgs)
+    {
+        var processStartInfo = CreateBaseProcessStartInfo("winget", runtimeDirectory);
+        foreach (var arg in commandArgs)
+        {
+            processStartInfo.ArgumentList.Add(arg);
+        }
+
+        return processStartInfo;
+    }
+
+    private static ProcessStartInfo CreateWideConsoleProcessStartInfo(string runtimeDirectory, IReadOnlyList<string> commandArgs)
+    {
+        var processStartInfo = CreateBaseProcessStartInfo("powershell.exe", runtimeDirectory);
+        processStartInfo.ArgumentList.Add("-NoLogo");
+        processStartInfo.ArgumentList.Add("-NoProfile");
+        processStartInfo.ArgumentList.Add("-NonInteractive");
+        processStartInfo.ArgumentList.Add("-Command");
+        processStartInfo.ArgumentList.Add(BuildWideConsoleWingetCommand(commandArgs));
+        return processStartInfo;
+    }
+
+    private static ProcessStartInfo CreateBaseProcessStartInfo(string fileName, string runtimeDirectory)
+    {
+        return new ProcessStartInfo
+        {
+            FileName = fileName,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = runtimeDirectory
+        };
+    }
+
+    private static bool ShouldUseWideConsole(IReadOnlyList<string> commandArgs)
+    {
+        if (commandArgs.Count == 0)
+        {
+            return false;
+        }
+
+        var command = commandArgs[0];
+        if (string.Equals(command, "search", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(command, "list", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(command, "upgrade", StringComparison.OrdinalIgnoreCase) &&
+            !commandArgs.Any(arg => string.Equals(arg, "--log", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string BuildWideConsoleWingetCommand(IReadOnlyList<string> commandArgs)
+    {
+        var escapedArgs = string.Join(
+            ", ",
+            commandArgs.Select(static arg => $"'{EscapePowerShellLiteral(arg)}'"));
+
+        return string.Join(
+            "; ",
+            "$rawUi = $Host.UI.RawUI",
+            "if ($null -ne $rawUi) { try { $rawUi.BufferSize = New-Object Management.Automation.Host.Size(" + WideConsoleWidth + ", $rawUi.BufferSize.Height) } catch { } }",
+            "& winget @(" + escapedArgs + ")",
+            "exit $LASTEXITCODE");
+    }
+
+    private static string EscapePowerShellLiteral(string value)
+        => value.Replace("'", "''", StringComparison.Ordinal);
+
+    private SearchResult ExpandSearchResult(SearchResult result)
+    {
+        if (!NeedsSearchResultExpansion(result))
+        {
+            return result;
+        }
+
+        var idQuery = GetSearchLookupPrefix(result.Id);
+        if (string.IsNullOrWhiteSpace(idQuery))
+        {
+            return result;
+        }
+
+        var parameters = new Dictionary<string, string?>
+        {
+            ["--id"] = idQuery,
+            ["--accept-source-agreements"] = null,
+            ["--disable-interactivity"] = null
+        };
+
+        if (!string.IsNullOrWhiteSpace(result.Source))
+        {
+            parameters["--source"] = result.Source;
+        }
+
+        var expandedResults = WingetTableParser.ParseSearchResults(Invoke("search", parameters).Output);
+        var expandedResult = expandedResults.FirstOrDefault(candidate => MatchesExpandedSearchResult(result, candidate, idQuery));
+        return expandedResult ?? result;
+    }
+
+    private static bool NeedsSearchResultExpansion(SearchResult result)
+    {
+        return HasTruncationMarker(result.Name) || HasTruncationMarker(result.Id);
+    }
+
+    private static bool HasTruncationMarker(string value)
+    {
+        return value.Contains('…') || value.Contains("...", StringComparison.Ordinal);
+    }
+
+    private static string GetSearchLookupPrefix(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var ellipsisIndex = value.IndexOf('…');
+        if (ellipsisIndex >= 0)
+        {
+            return value[..ellipsisIndex];
+        }
+
+        var dotsIndex = value.IndexOf("...", StringComparison.Ordinal);
+        return dotsIndex >= 0
+            ? value[..dotsIndex]
+            : value;
+    }
+
+    private static bool MatchesExpandedSearchResult(SearchResult original, SearchResult candidate, string idQuery)
+    {
+        if (!candidate.Id.StartsWith(idQuery, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(original.Source) &&
+            !string.Equals(candidate.Source, original.Source, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(original.Version) &&
+            !string.Equals(original.Version, "Unknown", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(candidate.Version, original.Version, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var originalNamePrefix = GetSearchLookupPrefix(original.Name);
+        if (!string.IsNullOrWhiteSpace(originalNamePrefix) &&
+            !candidate.Name.StartsWith(originalNamePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static async Task ReadStreamAsync(StreamReader reader, ICollection<string> target, Action<string>? onOutputLine)

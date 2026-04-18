@@ -252,6 +252,80 @@ Windows Camera   9WZDNCRFJBBG          Unknown msstore
     }
 
     [Fact]
+    public void Search_ExpandsTruncatedRows_WithTargetedIdLookups()
+    {
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command != "search")
+                {
+                    return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+                }
+
+                if (args.Contains("--query"))
+                {
+                    return new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Name                                  Id                                    Version                    Match    Source
+-----------------------------------------------------------------------------------------------------------------------
+Microsoft .NET Windows Desktop Runti… Microsoft.DotNet.DesktopRuntime.10    10.0.6                     Tag: net winget
+Microsoft Windows Desktop Runtime - … Microsoft.DotNet.DesktopRuntime.8.ar… 8.0.25                     Tag: net winget
+"""
+                    };
+                }
+
+                var idIndex = Array.IndexOf(args.ToArray(), "--id");
+                if (idIndex < 0 || idIndex + 1 >= args.Count)
+                {
+                    return new WingetCommandResult { ExitCode = 1, Output = string.Empty };
+                }
+
+                return args[idIndex + 1] switch
+                {
+                    "Microsoft.DotNet.DesktopRuntime.10" => new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Name                                       Id                                   Version Source
+------------------------------------------------------------------------------------------------
+Microsoft .NET Windows Desktop Runtime 10.0 Microsoft.DotNet.DesktopRuntime.10   10.0.6  winget
+"""
+                    },
+                    "Microsoft.DotNet.DesktopRuntime.8.ar" => new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Name                                               Id                                      Version Source
+---------------------------------------------------------------------------------------------------------
+Microsoft Windows Desktop Runtime - 8.0.25 (arm64) Microsoft.DotNet.DesktopRuntime.8.arm64 8.0.25  winget
+"""
+                    },
+                    _ => new WingetCommandResult { ExitCode = 1, Output = string.Empty }
+                };
+            });
+
+        var results = service.Search("net");
+
+        Assert.Collection(
+            results,
+            first =>
+            {
+                Assert.Equal("Microsoft .NET Windows Desktop Runtime 10.0", first.Name);
+                Assert.Equal("Microsoft.DotNet.DesktopRuntime.10", first.Id);
+                Assert.Equal("10.0.6", first.Version);
+            },
+            second =>
+            {
+                Assert.Equal("Microsoft Windows Desktop Runtime - 8.0.25 (arm64)", second.Name);
+                Assert.Equal("Microsoft.DotNet.DesktopRuntime.8.arm64", second.Id);
+                Assert.Equal("8.0.25", second.Version);
+            });
+    }
+
+    [Fact]
     public void AppEntryValidation_UsesRequestedSource_WhenCheckingPackageExists()
     {
         IReadOnlyList<string> invokedArgs = Array.Empty<string>();
