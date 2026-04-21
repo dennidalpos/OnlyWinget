@@ -518,7 +518,11 @@ public sealed class MainViewModel : ObservableObject
                         break;
                     }
 
-                    if (!PresetWorkspace.TryAddEntry(dialogResult.Interrogation, dialogResult.SelectedOptions, out var warning, showDialog: false))
+                    var queueSelections = dialogResult.QueueSelections.Count > 0
+                        ? dialogResult.QueueSelections
+                        : new[] { dialogResult.SelectedOptions };
+
+                    if (!PresetWorkspace.TryAddEntries(dialogResult.Interrogation, queueSelections, out var warning, showDialog: false))
                     {
                         if (!string.IsNullOrWhiteSpace(warning))
                         {
@@ -528,7 +532,11 @@ public sealed class MainViewModel : ObservableObject
                         break;
                     }
 
-                    AppendOutput($"event=queue_item_created id=\"{dialogResult.Interrogation.Id}\" source=\"{dialogResult.Interrogation.Source}\" version=\"{dialogResult.Interrogation.Version}\"");
+                    foreach (var selection in queueSelections)
+                    {
+                        AppendOutput(
+                            $"event=queue_item_created id=\"{dialogResult.Interrogation.Id}\" source=\"{dialogResult.Interrogation.Source}\" version=\"{dialogResult.Interrogation.Version}\" arch=\"{selection.Architecture}\"");
+                    }
                     addedAny = true;
                 }
 
@@ -693,14 +701,14 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private void SetAppStatus(string id, UiStatusState status)
+    private void SetAppStatus(string operationKey, UiStatusState status)
     {
-        RunOnUiThread(() => PresetWorkspace.SetAppStatus(id, status));
+        RunOnUiThread(() => PresetWorkspace.SetAppStatus(operationKey, status));
     }
 
-    private void SetAppError(string id, string errorMessage, string resolution)
+    private void SetAppError(string operationKey, string errorMessage, string resolution)
     {
-        RunOnUiThread(() => PresetWorkspace.SetAppError(id, errorMessage, resolution));
+        RunOnUiThread(() => PresetWorkspace.SetAppError(operationKey, errorMessage, resolution));
     }
 
     private void SetUpdateError(string id, string errorMessage, string resolution)

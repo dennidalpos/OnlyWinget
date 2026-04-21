@@ -10,6 +10,7 @@ public sealed class SelectedInstallOptions
     public string Scope { get; set; } = string.Empty;
     public string InstallMode { get; set; } = InstallModes.SilentWithProgress;
     public string Architecture { get; set; } = string.Empty;
+    public IReadOnlyList<string> SelectedArchitectures { get; set; } = Array.Empty<string>();
     public string Locale { get; set; } = string.Empty;
     public string InstallerType { get; set; } = string.Empty;
     public string InstallLocation { get; set; } = string.Empty;

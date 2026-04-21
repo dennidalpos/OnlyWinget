@@ -9,4 +9,5 @@ public sealed class PackageInterrogationDialogResult
 {
     public PackageInterrogationResult Interrogation { get; init; } = new();
     public SelectedInstallOptions SelectedOptions { get; init; } = new();
+    public IReadOnlyList<SelectedInstallOptions> QueueSelections { get; init; } = Array.Empty<SelectedInstallOptions>();
 }

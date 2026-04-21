@@ -19,7 +19,7 @@ public sealed class AppEntryService : IAppEntryService
         _wingetService = wingetService;
     }
 
-    public AppEntryValidationError ValidateForInsert(string? id, IEnumerable<AppEntry> currentApps, string? source = "winget")
+    public AppEntryValidationError ValidateForInsert(string? id, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null)
     {
         var normalizedId = NormalizeId(id);
         if (string.IsNullOrWhiteSpace(normalizedId))
@@ -27,7 +27,7 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.EmptyId;
         }
 
-        if (ContainsId(currentApps, normalizedId))
+        if (ContainsEntry(currentApps, normalizedId, architecture))
         {
             return AppEntryValidationError.DuplicateId;
         }
@@ -37,7 +37,7 @@ public sealed class AppEntryService : IAppEntryService
             : AppEntryValidationError.InvalidId;
     }
 
-    public AppEntryValidationError ValidateResolvedForInsert(string? id, IEnumerable<AppEntry> currentApps)
+    public AppEntryValidationError ValidateResolvedForInsert(string? id, IEnumerable<AppEntry> currentApps, string? architecture = null)
     {
         var normalizedId = NormalizeId(id);
         if (string.IsNullOrWhiteSpace(normalizedId))
@@ -45,12 +45,12 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.EmptyId;
         }
 
-        return ContainsId(currentApps, normalizedId)
+        return ContainsEntry(currentApps, normalizedId, architecture)
             ? AppEntryValidationError.DuplicateId
             : AppEntryValidationError.None;
     }
 
-    public AppEntryValidationError ValidateForEdit(string? id, string? originalId, IEnumerable<AppEntry> currentApps, string? source = "winget")
+    public AppEntryValidationError ValidateForEdit(string? id, string? originalId, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null, string? originalArchitecture = null)
     {
         var normalizedId = NormalizeId(id);
         if (string.IsNullOrWhiteSpace(normalizedId))
@@ -58,8 +58,13 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.EmptyId;
         }
 
-        if (!string.Equals(normalizedId, NormalizeId(originalId), StringComparison.OrdinalIgnoreCase)
-            && ContainsId(currentApps, normalizedId))
+        var normalizedArchitecture = NormalizeArchitecture(architecture);
+        var normalizedOriginalArchitecture = NormalizeArchitecture(originalArchitecture);
+        var isSameEntry =
+            string.Equals(normalizedId, NormalizeId(originalId), StringComparison.OrdinalIgnoreCase)
+            && string.Equals(normalizedArchitecture, normalizedOriginalArchitecture, StringComparison.OrdinalIgnoreCase);
+
+        if (!isSameEntry && ContainsEntry(currentApps, normalizedId, normalizedArchitecture))
         {
             return AppEntryValidationError.DuplicateId;
         }
@@ -115,14 +120,17 @@ public sealed class AppEntryService : IAppEntryService
 
     private static string NormalizeId(string? id) => (id ?? string.Empty).Trim();
 
+    private static string NormalizeArchitecture(string? architecture) => (architecture ?? string.Empty).Trim();
+
     private static string NormalizeSource(string? source)
     {
         var value = (source ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(value) ? "winget" : value;
     }
 
-    private static bool ContainsId(IEnumerable<AppEntry> currentApps, string id)
+    private static bool ContainsEntry(IEnumerable<AppEntry> currentApps, string id, string? architecture)
     {
-        return currentApps.Any(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase));
+        var operationKey = AppEntry.BuildOperationKey(id, architecture);
+        return currentApps.Any(app => string.Equals(app.OperationKey, operationKey, StringComparison.OrdinalIgnoreCase));
     }
 }

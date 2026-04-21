@@ -79,6 +79,8 @@ public sealed class AppEntry : ObservableObject
         set => SetProperty(ref _architecture, value);
     }
 
+    public string OperationKey => BuildOperationKey(Id, Architecture);
+
     public string Locale
     {
         get => _locale;
@@ -192,5 +194,14 @@ public sealed class AppEntry : ObservableObject
         return _statusProgressPercentage.HasValue && !string.IsNullOrWhiteSpace(baseText)
             ? $"{baseText} {_statusProgressPercentage.Value}%"
             : baseText;
+    }
+
+    public static string BuildOperationKey(string? id, string? architecture)
+    {
+        var normalizedId = (id ?? string.Empty).Trim();
+        var normalizedArchitecture = (architecture ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(normalizedArchitecture)
+            ? normalizedId
+            : $"{normalizedId}|{normalizedArchitecture}";
     }
 }

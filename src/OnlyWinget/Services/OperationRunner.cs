@@ -46,6 +46,7 @@ public sealed class OperationRunner : IOperationRunner
             for (var index = 0; index < apps.Count; index++)
             {
                 var app = apps[index];
+                var operationKey = app.OperationKey;
                 if (string.IsNullOrWhiteSpace(app.Id))
                 {
                     continue;
@@ -54,8 +55,8 @@ public sealed class OperationRunner : IOperationRunner
                 switch (app.Action)
                 {
                     case AppActions.Pause:
-                        setStatusById(app.Id, UiStatusState.FromKey(UiStatusKey.Paused));
-                        setErrorById?.Invoke(app.Id, string.Empty, string.Empty);
+                        setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.Paused));
+                        setErrorById?.Invoke(operationKey, string.Empty, string.Empty);
                         reportProgress(CalculateOverallPercentage(index + 1, apps.Count), $"{app.Name}: 100%");
                         break;
 
@@ -160,8 +161,8 @@ public sealed class OperationRunner : IOperationRunner
 
         appendOutput($"event=install_command_built id=\"{app.Id}\" args=\"{FormatArgumentsForLog(installArgs)}\" elevation_mode={elevationMode} process_elevated={_isCurrentProcessElevated} scope=\"{app.Scope}\"");
 
-        setErrorById?.Invoke(app.Id, string.Empty, string.Empty);
-        setStatusById(app.Id, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
+        setErrorById?.Invoke(app.OperationKey, string.Empty, string.Empty);
+        setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
         appendOutput($"--- {app.Name} [{app.Id}] : {strings.OperationInstallLabel} ---");
 
         WingetCommandResult installResult;
@@ -169,7 +170,7 @@ public sealed class OperationRunner : IOperationRunner
         {
             appendOutput($"event=elevated_launch_starting id=\"{app.Id}\"");
             var logPath = string.IsNullOrWhiteSpace(app.LogPath)
-                ? _wingetService.CreateOperationLogPath("install", app.Id)
+                ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
                 : app.LogPath;
             installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath));
             appendOutput(installResult.Output);
@@ -180,7 +181,7 @@ public sealed class OperationRunner : IOperationRunner
             installResult = await Task.Run(() => _wingetService.Invoke(installArgs, line =>
             {
                 receivedLiveOutput = true;
-                HandleProgressLine(line, app.Id, app.Name, UiStatusKey.InstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
+                HandleProgressLine(line, app.OperationKey, app.Name, UiStatusKey.InstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
                 if (_wingetService.ShouldLogOutputLine(line))
                 {
                     appendOutput(line.Trim());
@@ -195,22 +196,22 @@ public sealed class OperationRunner : IOperationRunner
 
         if (installResult.ExitCode == 0)
         {
-            setStatusById(app.Id, UiStatusState.FromKey(UiStatusKey.Ok));
+            setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
             reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
             return;
         }
 
         if (_wingetService.IsAlreadyInstalled(installResult))
         {
-            setStatusById(app.Id, UiStatusState.FromKey(UiStatusKey.AlreadyInstalled));
+            setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.AlreadyInstalled));
             reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
             return;
         }
 
         var installError = _wingetService.GetErrorMessage(installResult.ExitCode, strings.LocaleCode);
         var installResolution = _wingetService.GetResolutionHint(installResult.ExitCode, strings.LocaleCode);
-        setStatusById(app.Id, UiStatusState.FromRawText(installError));
-        setErrorById?.Invoke(app.Id, installError, installResolution);
+        setStatusById(app.OperationKey, UiStatusState.FromRawText(installError));
+        setErrorById?.Invoke(app.OperationKey, installError, installResolution);
         reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
     }
 
@@ -224,14 +225,14 @@ public sealed class OperationRunner : IOperationRunner
         LocalizedStrings strings,
         Action<string, string, string>? setErrorById = null)
     {
-        setErrorById?.Invoke(app.Id, string.Empty, string.Empty);
-        setStatusById(app.Id, UiStatusState.FromKey(UiStatusKey.UninstallInProgress));
+        setErrorById?.Invoke(app.OperationKey, string.Empty, string.Empty);
+        setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.UninstallInProgress));
         appendOutput($"--- {app.Name} [{app.Id}] : {strings.OperationUninstallLabel} ---");
         var receivedLiveOutput = false;
         var uninstallResult = await Task.Run(() => _wingetService.UninstallApp(app.Id, line =>
         {
             receivedLiveOutput = true;
-            HandleProgressLine(line, app.Id, app.Name, UiStatusKey.UninstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
+            HandleProgressLine(line, app.OperationKey, app.Name, UiStatusKey.UninstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
             if (_wingetService.ShouldLogOutputLine(line))
             {
                 appendOutput(line.Trim());
@@ -245,14 +246,14 @@ public sealed class OperationRunner : IOperationRunner
 
         if (uninstallResult.ExitCode == 0)
         {
-            setStatusById(app.Id, UiStatusState.FromKey(UiStatusKey.Ok));
+            setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
         }
         else
         {
             var uninstallError = _wingetService.GetErrorMessage(uninstallResult.ExitCode, strings.LocaleCode);
             var uninstallResolution = _wingetService.GetResolutionHint(uninstallResult.ExitCode, strings.LocaleCode);
-            setStatusById(app.Id, UiStatusState.FromRawText(uninstallError));
-            setErrorById?.Invoke(app.Id, uninstallError, uninstallResolution);
+            setStatusById(app.OperationKey, UiStatusState.FromRawText(uninstallError));
+            setErrorById?.Invoke(app.OperationKey, uninstallError, uninstallResolution);
         }
 
         reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");

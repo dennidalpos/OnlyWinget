@@ -109,9 +109,23 @@
                   <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding ArchitectureLabel}"/>
-                <ComboBox Grid.Column="1"
-                          ItemsSource="{Binding AvailableArchitectures}"
-                          SelectedItem="{Binding SelectedArchitecture, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <Grid Grid.Column="1">
+                  <ComboBox ItemsSource="{Binding AvailableArchitectures}"
+                            SelectedItem="{Binding SelectedArchitecture, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Visibility="{Binding IsArchitectureSingleSelectVisible, Converter={StaticResource BoolToVisibility}}"/>
+                  <Border Style="{StaticResource SubtleCardBorderStyle}"
+                          Visibility="{Binding IsArchitectureMultiSelectVisible, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl ItemsSource="{Binding AvailableArchitectureOptions}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    Content="{Binding Value}"
+                                    Margin="0,0,0,6"/>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Border>
+                </Grid>
               </Grid>
 
               <Grid Margin="{StaticResource TopSpacing10}" Visibility="{Binding HasLocales, Converter={StaticResource BoolToVisibility}}">

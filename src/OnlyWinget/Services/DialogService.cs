@@ -103,6 +103,7 @@ public sealed class DialogService : IDialogService
     {
         var strings = _localizationService.Strings;
         var viewModel = new PackageInterrogationDialogViewModel(strings);
+        viewModel.ConfigureForEditMode(existingEntry != null);
         var window = new PackageInterrogationDialog
         {
             DataContext = viewModel,
@@ -148,7 +149,8 @@ public sealed class DialogService : IDialogService
         return Task.FromResult<PackageInterrogationDialogResult?>(new PackageInterrogationDialogResult
         {
             Interrogation = interrogation,
-            SelectedOptions = viewModel.BuildSelection()
+            SelectedOptions = viewModel.BuildSelection(),
+            QueueSelections = viewModel.BuildSelections()
         });
     }
 }

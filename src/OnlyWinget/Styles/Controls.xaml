@@ -198,6 +198,103 @@
     <Setter Property="FocusVisualStyle" Value="{DynamicResource AccessibleFocusVisualStyle}"/>
   </Style>
 
+  <Style x:Key="ScrollBarButtonStyle" TargetType="RepeatButton">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource TransparentBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RepeatButton">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"/>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+    <Setter Property="Background" Value="{DynamicResource BorderEmphasisBrush}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Thumb">
+          <Border x:Name="ThumbBorder"
+                  Margin="2"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{DynamicResource RadiusSm}"
+                  Opacity="0.78"/>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource AccentBrush}"/>
+              <Setter TargetName="ThumbBorder" Property="Opacity" Value="0.95"/>
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+              <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource AccentBrush}"/>
+              <Setter TargetName="ThumbBorder" Property="Opacity" Value="1"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="ScrollBar">
+    <Setter Property="Width" Value="12"/>
+    <Setter Property="Height" Value="12"/>
+    <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
+    <Setter Property="Opacity" Value="0.72"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ScrollBar">
+          <Border x:Name="ScrollRoot"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{DynamicResource RadiusSm}">
+            <Grid Margin="1">
+              <Track x:Name="PART_Track"
+                     IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton x:Name="DecreaseButton"
+                                Style="{StaticResource ScrollBarButtonStyle}"
+                                Command="ScrollBar.PageUpCommand"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb Style="{StaticResource ScrollBarThumbStyle}"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton x:Name="IncreaseButton"
+                                Style="{StaticResource ScrollBarButtonStyle}"
+                                Command="ScrollBar.PageDownCommand"/>
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+              <Setter TargetName="DecreaseButton" Property="Command" Value="ScrollBar.PageLeftCommand"/>
+              <Setter TargetName="IncreaseButton" Property="Command" Value="ScrollBar.PageRightCommand"/>
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="ScrollRoot" Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
+              <Setter Property="Opacity" Value="0.95"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.35"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Orientation" Value="Horizontal">
+        <Setter Property="Height" Value="12"/>
+      </Trigger>
+      <Trigger Property="Orientation" Value="Vertical">
+        <Setter Property="Width" Value="12"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
   <Style TargetType="ListBox">
     <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>

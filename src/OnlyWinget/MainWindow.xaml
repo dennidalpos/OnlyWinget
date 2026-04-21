@@ -347,6 +347,18 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="0.7"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="120"
+                                        Header="{Binding DataContext.Strings.PackageDialogArchitectureLabel, RelativeSource={RelativeSource AncestorType=ListView}}">
+                          <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Style="{StaticResource TableCellBorderStyle}">
+                                <TextBlock Style="{StaticResource TableCellTextStyle}"
+                                           Text="{Binding Architecture}"/>
+                              </Border>
+                            </DataTemplate>
+                          </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
                         <GridViewColumn Width="138"
                                         Header="{Binding DataContext.Strings.Action, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>

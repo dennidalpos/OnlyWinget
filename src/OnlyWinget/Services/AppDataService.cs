@@ -382,7 +382,9 @@ public sealed class AppDataService
         }
 
         var id = (app.Id ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(id))
+        var architecture = NormalizeOptionalValue(app.Architecture);
+        var operationKey = AppEntry.BuildOperationKey(id, architecture);
+        if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
         {
             return null;
         }
@@ -402,7 +404,7 @@ public sealed class AppDataService
             Action = NormalizeAction(app.Action),
             Scope = NormalizeOptionalValue(app.Scope),
             InstallMode = NormalizeInstallMode(app.InstallMode),
-            Architecture = NormalizeOptionalValue(app.Architecture),
+            Architecture = architecture,
             Locale = NormalizeOptionalValue(app.Locale),
             InstallerType = NormalizeOptionalValue(app.InstallerType),
             InstallLocation = NormalizeOptionalValue(app.InstallLocation),
@@ -429,7 +431,9 @@ public sealed class AppDataService
         foreach (var app in apps)
         {
             var id = (app.Id ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(id))
+            var architecture = NormalizeOptionalValue(app.Architecture);
+            var operationKey = AppEntry.BuildOperationKey(id, architecture);
+            if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
             {
                 continue;
             }
@@ -449,7 +453,7 @@ public sealed class AppDataService
                 Version = NormalizeOptionalValue(app.Version),
                 Scope = NormalizeOptionalValue(app.Scope),
                 InstallMode = NormalizeInstallMode(app.InstallMode),
-                Architecture = NormalizeOptionalValue(app.Architecture),
+                Architecture = architecture,
                 Locale = NormalizeOptionalValue(app.Locale),
                 InstallerType = NormalizeOptionalValue(app.InstallerType),
                 InstallLocation = NormalizeOptionalValue(app.InstallLocation),

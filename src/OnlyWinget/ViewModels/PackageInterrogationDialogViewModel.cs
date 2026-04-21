@@ -3,9 +3,12 @@
 // Proprietary and confidential. Unauthorized copying, modification,
 // distribution, sublicensing, or commercial use is prohibited.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
+using System.Text;
 using OnlyWinget.Models;
 using OnlyWinget.Services;
 
@@ -23,6 +26,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     private string _warningsText = string.Empty;
     private bool _isLoading = true;
     private bool _isReducedMode;
+    private bool _isEditMode;
     private string _selectedScope = string.Empty;
     private string _selectedArchitecture = string.Empty;
     private string _selectedLocale = string.Empty;
@@ -32,18 +36,19 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     private string _logPath = string.Empty;
     private string _additionalCustomArgs = string.Empty;
     private string _overrideArgs = string.Empty;
-    // Capability state derived from the selected installer node
     private bool _isLocationSupported = true;
     private bool _isLogSupported = true;
     private string _elevationRequirement = string.Empty;
     private string _unsupportedArgumentsText = string.Empty;
     private string _commandPreview = string.Empty;
+    private bool _isUpdatingArchitectureSelections;
 
     public PackageInterrogationDialogViewModel(LocalizedStrings strings)
     {
         _strings = strings;
         AvailableScopes = new ObservableCollection<string>();
         AvailableArchitectures = new ObservableCollection<string>();
+        AvailableArchitectureOptions = new ObservableCollection<SelectableOption>();
         AvailableLocales = new ObservableCollection<string>();
         AvailableInstallerTypes = new ObservableCollection<string>();
         AvailableInstallModes = new ObservableCollection<string>();
@@ -135,7 +140,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         }
     }
 
-    public bool CanConfirm => !IsLoading;
+    public bool CanConfirm => !IsLoading && HasValidArchitectureSelection && HasMatchingInstallerSelection;
 
     public bool IsContentReady => !IsLoading;
 
@@ -152,12 +157,28 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         }
     }
 
+    public bool IsEditMode
+    {
+        get => _isEditMode;
+        private set
+        {
+            if (SetProperty(ref _isEditMode, value))
+            {
+                OnPropertyChanged(nameof(IsArchitectureMultiSelectVisible));
+                OnPropertyChanged(nameof(IsArchitectureSingleSelectVisible));
+                OnPropertyChanged(nameof(CanConfirm));
+                RefreshCommandPreview();
+            }
+        }
+    }
+
     public bool IsFullMode => !IsReducedMode;
 
     public bool IsFullModeContentReady => IsContentReady && IsFullMode;
 
     public ObservableCollection<string> AvailableScopes { get; }
     public ObservableCollection<string> AvailableArchitectures { get; }
+    public ObservableCollection<SelectableOption> AvailableArchitectureOptions { get; }
     public ObservableCollection<string> AvailableLocales { get; }
     public ObservableCollection<string> AvailableInstallerTypes { get; }
     public ObservableCollection<string> AvailableInstallModes { get; }
@@ -167,8 +188,9 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     public bool HasLocales => AvailableLocales.Count > 0;
     public bool HasInstallerTypes => AvailableInstallerTypes.Count > 0;
     public bool HasInstallModes => AvailableInstallModes.Count > 0;
+    public bool IsArchitectureMultiSelectVisible => HasArchitectures && !IsEditMode && AvailableArchitectures.Count > 1;
+    public bool IsArchitectureSingleSelectVisible => HasArchitectures && !IsArchitectureMultiSelectVisible;
 
-    // Capability-driven field state
     public bool IsLocationSupported
     {
         get => _isLocationSupported;
@@ -225,11 +247,6 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
 
     public bool HasUnsupportedArguments => !string.IsNullOrWhiteSpace(UnsupportedArgumentsText);
 
-    /// <summary>
-    /// Shows the override warning when the user has entered override arguments.
-    /// Override replaces all manifest-provided installer switches — potentially
-    /// bypassing scope-specific behaviour (e.g. Inno Setup /ALLUSERS vs /CURRENTUSER).
-    /// </summary>
     public bool ShowOverrideWarning => !string.IsNullOrWhiteSpace(OverrideArgs);
 
     public string CommandPreview
@@ -257,6 +274,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         {
             if (SetProperty(ref _selectedArchitecture, value))
             {
+                SyncArchitectureSelections(value);
                 RefreshInstallModes();
             }
         }
@@ -289,19 +307,37 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     public string SelectedInstallMode
     {
         get => _selectedInstallMode;
-        set => SetProperty(ref _selectedInstallMode, value);
+        set
+        {
+            if (SetProperty(ref _selectedInstallMode, value))
+            {
+                RefreshCommandPreview();
+            }
+        }
     }
 
     public string InstallLocation
     {
         get => _installLocation;
-        set => SetProperty(ref _installLocation, value);
+        set
+        {
+            if (SetProperty(ref _installLocation, value))
+            {
+                RefreshCommandPreview();
+            }
+        }
     }
 
     public string LogPath
     {
         get => _logPath;
-        set => SetProperty(ref _logPath, value);
+        set
+        {
+            if (SetProperty(ref _logPath, value))
+            {
+                RefreshCommandPreview();
+            }
+        }
     }
 
     public string AdditionalCustomArgs
@@ -329,6 +365,13 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         }
     }
 
+    public void ConfigureForEditMode(bool isEditMode)
+    {
+        IsEditMode = isEditMode;
+        RebuildArchitectureOptions(GetActiveArchitectures());
+        RefreshVisibilityFlags();
+    }
+
     public void ApplyInterrogationResult(PackageInterrogationResult result)
     {
         PackageName = result.Name;
@@ -336,7 +379,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         Version = result.Version;
         Source = result.Source;
         InstallerType = result.InstallerType;
-        WarningsText = string.Join(System.Environment.NewLine, result.Warnings);
+        WarningsText = string.Join(Environment.NewLine, result.Warnings);
         IsReducedMode = result.IsReducedMode;
         _installerOptions.Clear();
         _installerOptions.AddRange(result.InstallerOptions);
@@ -346,8 +389,16 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         Replace(AvailableLocales, result.AvailableLocales);
         Replace(AvailableInstallerTypes, result.AvailableInstallerTypes);
 
+        var defaultArchitectures = result.DefaultSelection.SelectedArchitectures.Count > 0
+            ? result.DefaultSelection.SelectedArchitectures
+            : string.IsNullOrWhiteSpace(result.DefaultSelection.Architecture)
+                ? Array.Empty<string>()
+                : new[] { result.DefaultSelection.Architecture };
+
+        RebuildArchitectureOptions(defaultArchitectures);
+
         SelectedScope = result.DefaultSelection.Scope;
-        SelectedArchitecture = result.DefaultSelection.Architecture;
+        SetSelectedArchitectureInternal(defaultArchitectures.FirstOrDefault() ?? result.DefaultSelection.Architecture);
         SelectedLocale = result.DefaultSelection.Locale;
         SelectedInstallerType = result.DefaultSelection.InstallerType;
         InstallLocation = result.DefaultSelection.InstallLocation;
@@ -362,14 +413,10 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         IsLoading = false;
     }
 
-    /// <summary>
-    /// Overwrites the current selections with values from an already-queued entry.
-    /// Called when editing rather than adding a package, after ApplyInterrogationResult.
-    /// Only sets fields that are non-empty in the existing entry, so manifest defaults
-    /// are preserved for any unset fields.
-    /// </summary>
     public void ApplyExistingEntry(AppEntry entry)
     {
+        ConfigureForEditMode(true);
+
         if (!string.IsNullOrWhiteSpace(entry.Scope) && AvailableScopes.Contains(entry.Scope))
         {
             SelectedScope = entry.Scope;
@@ -377,7 +424,8 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
 
         if (!string.IsNullOrWhiteSpace(entry.Architecture) && AvailableArchitectures.Contains(entry.Architecture))
         {
-            SelectedArchitecture = entry.Architecture;
+            SetSelectedArchitectureInternal(entry.Architecture);
+            SyncArchitectureSelections(entry.Architecture);
         }
 
         if (!string.IsNullOrWhiteSpace(entry.Locale) && AvailableLocales.Contains(entry.Locale))
@@ -414,53 +462,60 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         {
             OverrideArgs = entry.OverrideArgs;
         }
+
+        RefreshInstallModes();
     }
 
     public SelectedInstallOptions BuildSelection()
     {
-        return new SelectedInstallOptions
+        return BuildSelections().FirstOrDefault() ?? CreateSelection(string.Empty, Array.Empty<string>());
+    }
+
+    public IReadOnlyList<SelectedInstallOptions> BuildSelections()
+    {
+        var architectures = GetActiveArchitectures();
+        if (architectures.Count == 0)
         {
-            Scope = SelectedScope?.Trim() ?? string.Empty,
-            Architecture = SelectedArchitecture?.Trim() ?? string.Empty,
-            Locale = SelectedLocale?.Trim() ?? string.Empty,
-            InstallerType = SelectedInstallerType?.Trim() ?? string.Empty,
-            InstallMode = string.IsNullOrWhiteSpace(SelectedInstallMode) ? InstallModes.SilentWithProgress : SelectedInstallMode.Trim(),
-            InstallLocation = InstallLocation?.Trim() ?? string.Empty,
-            LogPath = LogPath?.Trim() ?? string.Empty,
-            AdditionalCustomArgs = AdditionalCustomArgs?.Trim() ?? string.Empty,
-            OverrideArgs = OverrideArgs?.Trim() ?? string.Empty,
-            ElevationRequirement = _elevationRequirement?.Trim() ?? string.Empty
-        };
+            architectures = string.IsNullOrWhiteSpace(SelectedArchitecture)
+                ? Array.Empty<string>()
+                : new[] { SelectedArchitecture.Trim() };
+        }
+
+        if (architectures.Count == 0)
+        {
+            return new[] { CreateSelection(string.Empty, Array.Empty<string>()) };
+        }
+
+        return architectures
+            .Select(architecture => CreateSelection(architecture, architectures))
+            .ToList();
     }
 
     private void RefreshInstallModes()
     {
         if (_installerOptions.Count == 0)
         {
+            OnPropertyChanged(nameof(CanConfirm));
             return;
         }
 
-        var matching = _installerOptions.Where(option =>
-            Matches(option.Scope, SelectedScope)
-            && Matches(option.Architecture, SelectedArchitecture)
-            && Matches(option.Locale, SelectedLocale)
-            && Matches(option.InstallerType, SelectedInstallerType))
-            .ToList();
+        var optionSets = GetSelectedOptionSets();
+        var hasCompleteSelection = optionSets.Count > 0 && optionSets.All(set => set.Count > 0);
+        var modes = new List<string>();
 
-        if (matching.Count == 0)
+        if (hasCompleteSelection)
         {
-            matching = _installerOptions;
-        }
+            modes.Add(InstallModes.Interactive);
 
-        var modes = new List<string> { InstallModes.Interactive };
-        if (matching.Any(option => option.SupportsSilent))
-        {
-            modes.Add(InstallModes.Silent);
-        }
+            if (optionSets.All(set => set.Any(option => option.SupportsSilent)))
+            {
+                modes.Add(InstallModes.Silent);
+            }
 
-        if (matching.Any(option => option.SupportsSilentWithProgress))
-        {
-            modes.Add(InstallModes.SilentWithProgress);
+            if (optionSets.All(set => set.Any(option => option.SupportsSilentWithProgress)))
+            {
+                modes.Add(InstallModes.SilentWithProgress);
+            }
         }
 
         Replace(AvailableInstallModes, modes);
@@ -470,7 +525,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
                 ? InstallModes.SilentWithProgress
                 : AvailableInstallModes.Contains(InstallModes.Silent)
                     ? InstallModes.Silent
-                    : AvailableInstallModes.Count > 0 ? AvailableInstallModes[0] : InstallModes.Interactive;
+                    : AvailableInstallModes.Count > 0 ? AvailableInstallModes[0] : string.Empty;
         }
 
         RefreshVisibilityFlags();
@@ -484,11 +539,14 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         OnPropertyChanged(nameof(HasLocales));
         OnPropertyChanged(nameof(HasInstallerTypes));
         OnPropertyChanged(nameof(HasInstallModes));
-        UpdateCapabilitiesFromSelectedNode();
+        OnPropertyChanged(nameof(IsArchitectureMultiSelectVisible));
+        OnPropertyChanged(nameof(IsArchitectureSingleSelectVisible));
+        OnPropertyChanged(nameof(CanConfirm));
+        UpdateCapabilitiesFromSelectedNodes();
         RefreshCommandPreview();
     }
 
-    private void UpdateCapabilitiesFromSelectedNode()
+    private void UpdateCapabilitiesFromSelectedNodes()
     {
         if (_installerOptions.Count == 0)
         {
@@ -499,26 +557,40 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
             return;
         }
 
-        var matching = _installerOptions.Where(option =>
-            Matches(option.Scope, SelectedScope)
-            && Matches(option.Architecture, SelectedArchitecture)
-            && Matches(option.Locale, SelectedLocale)
-            && Matches(option.InstallerType, SelectedInstallerType))
-            .ToList();
-
-        var selected = matching.Count > 0 ? matching[0] : _installerOptions[0];
-        IsLocationSupported = selected.SupportsLocation;
-        IsLogSupported = selected.SupportsLog;
-        ElevationRequirement = selected.ElevationRequirement;
-
-        if (selected.UnsupportedArguments.Count > 0)
+        var optionSets = GetSelectedOptionSets();
+        if (optionSets.Count == 0 || optionSets.Any(set => set.Count == 0))
         {
-            UnsupportedArgumentsText = string.Join(", ", selected.UnsupportedArguments);
-        }
-        else
-        {
+            IsLocationSupported = false;
+            IsLogSupported = false;
+            ElevationRequirement = string.Empty;
             UnsupportedArgumentsText = string.Empty;
+            return;
         }
+
+        IsLocationSupported = optionSets.All(set => set.Any(option => option.SupportsLocation));
+        IsLogSupported = optionSets.All(set => set.Any(option => option.SupportsLog));
+
+        var elevationRequirements = optionSets
+            .SelectMany(set => set.Select(option => option.ElevationRequirement))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        ElevationRequirement = elevationRequirements.Count switch
+        {
+            0 => string.Empty,
+            1 => elevationRequirements[0],
+            _ => string.Join(", ", elevationRequirements)
+        };
+
+        var unsupportedArguments = optionSets
+            .SelectMany(set => set.SelectMany(option => option.UnsupportedArguments))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        UnsupportedArgumentsText = unsupportedArguments.Count == 0
+            ? string.Empty
+            : string.Join(", ", unsupportedArguments);
     }
 
     private void RefreshCommandPreview()
@@ -529,42 +601,60 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
             return;
         }
 
-        var sb = new System.Text.StringBuilder("winget install --id ");
+        var previewLines = BuildSelections()
+            .Select(BuildCommandPreviewLine)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToList();
+
+        CommandPreview = string.Join(Environment.NewLine, previewLines);
+    }
+
+    private string BuildCommandPreviewLine(SelectedInstallOptions selection)
+    {
+        var sb = new StringBuilder("winget install --id ");
         sb.Append(_packageId);
         sb.Append(" -e --source ");
         sb.Append(string.IsNullOrWhiteSpace(_source) ? "winget" : _source);
 
-        if (!string.IsNullOrWhiteSpace(SelectedScope))
+        if (!string.IsNullOrWhiteSpace(selection.Scope))
         {
-            sb.Append(" --scope "); sb.Append(SelectedScope);
+            sb.Append(" --scope ");
+            sb.Append(selection.Scope);
         }
 
-        if (!string.IsNullOrWhiteSpace(SelectedArchitecture))
+        if (!string.IsNullOrWhiteSpace(selection.Architecture))
         {
-            sb.Append(" --architecture "); sb.Append(SelectedArchitecture);
+            sb.Append(" --architecture ");
+            sb.Append(selection.Architecture);
         }
 
-        if (!string.IsNullOrWhiteSpace(SelectedInstallerType))
+        if (!string.IsNullOrWhiteSpace(selection.InstallerType))
         {
-            sb.Append(" --installer-type "); sb.Append(SelectedInstallerType);
+            sb.Append(" --installer-type ");
+            sb.Append(selection.InstallerType);
         }
 
-        if (!string.IsNullOrWhiteSpace(SelectedLocale))
+        if (!string.IsNullOrWhiteSpace(selection.Locale))
         {
-            sb.Append(" --locale "); sb.Append(SelectedLocale);
+            sb.Append(" --locale ");
+            sb.Append(selection.Locale);
         }
 
-        if (IsLocationSupported && !string.IsNullOrWhiteSpace(InstallLocation))
+        if (IsLocationSupported && !string.IsNullOrWhiteSpace(selection.InstallLocation))
         {
-            sb.Append(" --location \""); sb.Append(InstallLocation.Replace("\"", "\\\"")); sb.Append('"');
+            sb.Append(" --location \"");
+            sb.Append(selection.InstallLocation.Replace("\"", "\\\""));
+            sb.Append('"');
         }
 
-        if (IsLogSupported && !string.IsNullOrWhiteSpace(LogPath))
+        if (IsLogSupported && !string.IsNullOrWhiteSpace(selection.LogPath))
         {
-            sb.Append(" --log \""); sb.Append(LogPath.Replace("\"", "\\\"")); sb.Append('"');
+            sb.Append(" --log \"");
+            sb.Append(selection.LogPath.Replace("\"", "\\\""));
+            sb.Append('"');
         }
 
-        switch (SelectedInstallMode)
+        switch (selection.InstallMode)
         {
             case InstallModes.Silent:
                 sb.Append(" --silent");
@@ -574,18 +664,179 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
                 break;
         }
 
-        if (!string.IsNullOrWhiteSpace(OverrideArgs))
+        if (!string.IsNullOrWhiteSpace(selection.OverrideArgs))
         {
-            sb.Append(" --override \""); sb.Append(OverrideArgs.Replace("\"", "\\\"")); sb.Append('"');
+            sb.Append(" --override \"");
+            sb.Append(selection.OverrideArgs.Replace("\"", "\\\""));
+            sb.Append('"');
         }
-        else if (!string.IsNullOrWhiteSpace(AdditionalCustomArgs))
+        else if (!string.IsNullOrWhiteSpace(selection.AdditionalCustomArgs))
         {
-            sb.Append(" --custom \""); sb.Append(AdditionalCustomArgs.Replace("\"", "\\\"")); sb.Append('"');
+            sb.Append(" --custom \"");
+            sb.Append(selection.AdditionalCustomArgs.Replace("\"", "\\\""));
+            sb.Append('"');
         }
 
         sb.Append(" --accept-package-agreements --accept-source-agreements");
+        return sb.ToString();
+    }
 
-        CommandPreview = sb.ToString();
+    private SelectedInstallOptions CreateSelection(string architecture, IReadOnlyList<string> selectedArchitectures)
+    {
+        return new SelectedInstallOptions
+        {
+            Scope = SelectedScope?.Trim() ?? string.Empty,
+            Architecture = architecture?.Trim() ?? string.Empty,
+            SelectedArchitectures = selectedArchitectures
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            Locale = SelectedLocale?.Trim() ?? string.Empty,
+            InstallerType = SelectedInstallerType?.Trim() ?? string.Empty,
+            InstallMode = string.IsNullOrWhiteSpace(SelectedInstallMode) ? InstallModes.SilentWithProgress : SelectedInstallMode.Trim(),
+            InstallLocation = InstallLocation?.Trim() ?? string.Empty,
+            LogPath = LogPath?.Trim() ?? string.Empty,
+            AdditionalCustomArgs = AdditionalCustomArgs?.Trim() ?? string.Empty,
+            OverrideArgs = OverrideArgs?.Trim() ?? string.Empty,
+            ElevationRequirement = _elevationRequirement?.Trim() ?? string.Empty
+        };
+    }
+
+    private IReadOnlyList<List<ResolvedInstallerOption>> GetSelectedOptionSets()
+    {
+        if (_installerOptions.Count == 0)
+        {
+            return Array.Empty<List<ResolvedInstallerOption>>();
+        }
+
+        var architectures = GetActiveArchitectures();
+        if (architectures.Count == 0)
+        {
+            return new[] { GetMatchingOptionsForArchitecture(string.Empty) };
+        }
+
+        return architectures
+            .Select(GetMatchingOptionsForArchitecture)
+            .ToList();
+    }
+
+    private List<ResolvedInstallerOption> GetMatchingOptionsForArchitecture(string architecture)
+    {
+        return _installerOptions.Where(option =>
+            Matches(option.Scope, SelectedScope)
+            && Matches(option.Locale, SelectedLocale)
+            && Matches(option.InstallerType, SelectedInstallerType)
+            && MatchesArchitecture(option.Architecture, architecture))
+            .ToList();
+    }
+
+    private IReadOnlyList<string> GetActiveArchitectures()
+    {
+        if (IsArchitectureMultiSelectVisible)
+        {
+            return AvailableArchitectureOptions
+                .Where(option => option.IsSelected)
+                .Select(option => option.Value.Trim())
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        return string.IsNullOrWhiteSpace(SelectedArchitecture)
+            ? Array.Empty<string>()
+            : new[] { SelectedArchitecture.Trim() };
+    }
+
+    private bool HasValidArchitectureSelection => !HasArchitectures || GetActiveArchitectures().Count > 0;
+
+    private bool HasMatchingInstallerSelection
+    {
+        get
+        {
+            if (_installerOptions.Count == 0)
+            {
+                return true;
+            }
+
+            var optionSets = GetSelectedOptionSets();
+            return optionSets.Count > 0 && optionSets.All(set => set.Count > 0);
+        }
+    }
+
+    private void RebuildArchitectureOptions(IEnumerable<string> selectedArchitectures)
+    {
+        var selected = selectedArchitectures
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var option in AvailableArchitectureOptions)
+        {
+            option.PropertyChanged -= OnArchitectureOptionPropertyChanged;
+        }
+
+        _isUpdatingArchitectureSelections = true;
+        try
+        {
+            AvailableArchitectureOptions.Clear();
+            foreach (var architecture in AvailableArchitectures)
+            {
+                var option = new SelectableOption
+                {
+                    Value = architecture,
+                    IsSelected = selected.Contains(architecture, StringComparer.OrdinalIgnoreCase)
+                };
+                option.PropertyChanged += OnArchitectureOptionPropertyChanged;
+                AvailableArchitectureOptions.Add(option);
+            }
+        }
+        finally
+        {
+            _isUpdatingArchitectureSelections = false;
+        }
+    }
+
+    private void SyncArchitectureSelections(string selectedArchitecture)
+    {
+        if (_isUpdatingArchitectureSelections || !IsArchitectureSingleSelectVisible)
+        {
+            return;
+        }
+
+        _isUpdatingArchitectureSelections = true;
+        try
+        {
+            foreach (var option in AvailableArchitectureOptions)
+            {
+                option.IsSelected = string.Equals(option.Value, selectedArchitecture, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        finally
+        {
+            _isUpdatingArchitectureSelections = false;
+        }
+    }
+
+    private void OnArchitectureOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isUpdatingArchitectureSelections || e.PropertyName != nameof(SelectableOption.IsSelected))
+        {
+            return;
+        }
+
+        var selectedArchitectures = AvailableArchitectureOptions
+            .Where(option => option.IsSelected)
+            .Select(option => option.Value)
+            .ToList();
+
+        SetSelectedArchitectureInternal(selectedArchitectures.FirstOrDefault());
+        OnPropertyChanged(nameof(CanConfirm));
+        RefreshInstallModes();
+    }
+
+    private void SetSelectedArchitectureInternal(string? value)
+    {
+        SetProperty(ref _selectedArchitecture, value?.Trim() ?? string.Empty, nameof(SelectedArchitecture));
     }
 
     private static void Replace(ObservableCollection<string> target, IEnumerable<string> values)
@@ -600,7 +851,13 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     private static bool Matches(string available, string selected)
     {
         return string.IsNullOrWhiteSpace(selected)
-            || string.Equals(available, selected, System.StringComparison.OrdinalIgnoreCase);
+            || string.Equals(available, selected, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool MatchesArchitecture(string available, string selected)
+    {
+        return string.IsNullOrWhiteSpace(selected)
+            || string.IsNullOrWhiteSpace(available)
+            || string.Equals(available, selected, StringComparison.OrdinalIgnoreCase);
+    }
 }

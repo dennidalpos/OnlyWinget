@@ -171,7 +171,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     public void SetAppStatus(string id, UiStatusState status)
     {
-        var target = CurrentApps.FirstOrDefault(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase));
+        var target = CurrentApps.FirstOrDefault(app => string.Equals(app.OperationKey, id, StringComparison.OrdinalIgnoreCase));
         if (target != null)
         {
             target.ApplyStatus(status, Strings);
@@ -180,7 +180,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     public void SetAppError(string id, string errorMessage, string resolution)
     {
-        var target = CurrentApps.FirstOrDefault(app => string.Equals(app.Id, id, StringComparison.OrdinalIgnoreCase));
+        var target = CurrentApps.FirstOrDefault(app => string.Equals(app.OperationKey, id, StringComparison.OrdinalIgnoreCase));
         if (target != null)
         {
             target.ErrorMessage = errorMessage;
@@ -195,20 +195,48 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     public bool TryAddEntry(PackageInterrogationResult interrogation, SelectedInstallOptions selectedOptions, out string warning, bool showDialog)
     {
+        return TryAddEntries(interrogation, new[] { selectedOptions }, out warning, showDialog);
+    }
+
+    public bool TryAddEntries(PackageInterrogationResult interrogation, IReadOnlyList<SelectedInstallOptions> selectedOptions, out string warning, bool showDialog)
+    {
         warning = string.Empty;
-        var validation = _appEntryService.ValidateResolvedForInsert(interrogation.Id, CurrentApps);
-        if (validation != AppEntryValidationError.None)
+        var options = selectedOptions.Count > 0 ? selectedOptions : new[] { new SelectedInstallOptions() };
+        var pendingKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var option in options)
         {
-            warning = GetValidationWarning(validation, interrogation.Id);
-            if (showDialog && !string.IsNullOrWhiteSpace(warning))
+            var architecture = option.Architecture?.Trim() ?? string.Empty;
+            var validation = _appEntryService.ValidateResolvedForInsert(interrogation.Id, CurrentApps, architecture);
+            if (validation != AppEntryValidationError.None)
             {
-                _dialogService.ShowWarning(warning, validation == AppEntryValidationError.DuplicateId ? Strings.DuplicateIdTitle : Strings.InvalidIdTitle);
+                warning = GetValidationWarning(validation, interrogation.Id, architecture);
+                if (showDialog && !string.IsNullOrWhiteSpace(warning))
+                {
+                    _dialogService.ShowWarning(warning, validation == AppEntryValidationError.DuplicateId ? Strings.DuplicateIdTitle : Strings.InvalidIdTitle);
+                }
+
+                return false;
             }
 
-            return false;
+            var pendingKey = AppEntry.BuildOperationKey(interrogation.Id, architecture);
+            if (!pendingKeys.Add(pendingKey))
+            {
+                warning = GetValidationWarning(AppEntryValidationError.DuplicateId, interrogation.Id, architecture);
+                if (showDialog && !string.IsNullOrWhiteSpace(warning))
+                {
+                    _dialogService.ShowWarning(warning, Strings.DuplicateIdTitle);
+                }
+
+                return false;
+            }
         }
 
-        CurrentApps.Add(_appEntryService.Create(interrogation, selectedOptions));
+        foreach (var option in options)
+        {
+            CurrentApps.Add(_appEntryService.Create(interrogation, option));
+        }
+
         return true;
     }
 
@@ -326,10 +354,11 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         var editedSource = string.IsNullOrWhiteSpace(dialogResult.Interrogation.Source)
             ? (string.IsNullOrWhiteSpace(app.Source) ? "winget" : app.Source)
             : dialogResult.Interrogation.Source.Trim();
-        var validation = _appEntryService.ValidateForEdit(editedId, app.Id, CurrentApps, editedSource);
+        var editedArchitecture = dialogResult.SelectedOptions.Architecture?.Trim() ?? string.Empty;
+        var validation = _appEntryService.ValidateForEdit(editedId, app.Id, CurrentApps, editedSource, editedArchitecture, app.Architecture);
         if (validation != AppEntryValidationError.None)
         {
-            var warning = GetValidationWarning(validation, editedId);
+            var warning = GetValidationWarning(validation, editedId, editedArchitecture);
             if (!string.IsNullOrWhiteSpace(warning))
             {
                 _dialogService.ShowWarning(warning, validation == AppEntryValidationError.DuplicateId ? Strings.DuplicateIdTitle : Strings.InvalidIdTitle);
@@ -341,21 +370,23 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         app.Name = editedName;
         app.Id = editedId;
         app.Source = editedSource;
-        app.Version = dialogResult.Interrogation.Version?.Trim() ?? app.Version;
-        app.Scope = dialogResult.SelectedOptions.Scope;
+        app.Version = string.IsNullOrWhiteSpace(dialogResult.Interrogation.Version)
+            ? app.Version
+            : dialogResult.Interrogation.Version.Trim();
+        app.Scope = dialogResult.SelectedOptions.Scope ?? string.Empty;
         app.InstallMode = string.IsNullOrWhiteSpace(dialogResult.SelectedOptions.InstallMode)
             ? InstallModes.SilentWithProgress
             : dialogResult.SelectedOptions.InstallMode;
-        app.Architecture = dialogResult.SelectedOptions.Architecture;
-        app.Locale = dialogResult.SelectedOptions.Locale;
-        app.InstallerType = dialogResult.SelectedOptions.InstallerType;
-        app.InstallLocation = dialogResult.SelectedOptions.InstallLocation;
-        app.LogPath = dialogResult.SelectedOptions.LogPath;
-        app.AdditionalCustomArgs = dialogResult.SelectedOptions.AdditionalCustomArgs;
-        app.OverrideArgs = dialogResult.SelectedOptions.OverrideArgs;
-        app.ManifestFingerprint = dialogResult.Interrogation.ManifestFingerprint;
+        app.Architecture = dialogResult.SelectedOptions.Architecture ?? string.Empty;
+        app.Locale = dialogResult.SelectedOptions.Locale ?? string.Empty;
+        app.InstallerType = dialogResult.SelectedOptions.InstallerType ?? string.Empty;
+        app.InstallLocation = dialogResult.SelectedOptions.InstallLocation ?? string.Empty;
+        app.LogPath = dialogResult.SelectedOptions.LogPath ?? string.Empty;
+        app.AdditionalCustomArgs = dialogResult.SelectedOptions.AdditionalCustomArgs ?? string.Empty;
+        app.OverrideArgs = dialogResult.SelectedOptions.OverrideArgs ?? string.Empty;
+        app.ManifestFingerprint = dialogResult.Interrogation.ManifestFingerprint ?? string.Empty;
         app.InterrogatedAtUtc = dialogResult.Interrogation.InterrogatedAtUtc.ToString("O");
-        app.ElevationRequirement = dialogResult.SelectedOptions.ElevationRequirement;
+        app.ElevationRequirement = dialogResult.SelectedOptions.ElevationRequirement ?? string.Empty;
 
         _appendOutput($"event=queue_item_updated id=\"{app.Id}\" scope=\"{app.Scope}\" mode=\"{app.InstallMode}\" arch=\"{app.Architecture}\"");
     }
@@ -541,14 +572,23 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         _dialogService.ShowError(message, Strings.DataLoadMessageTitle);
     }
 
-    private string GetValidationWarning(AppEntryValidationError validation, string id)
+    private string GetValidationWarning(AppEntryValidationError validation, string id, string? architecture = null)
     {
+        var reference = BuildEntryReference(id, architecture);
         return validation switch
         {
-            AppEntryValidationError.DuplicateId => string.Format(Strings.DuplicateIdText, id),
-            AppEntryValidationError.InvalidId => string.Format(Strings.InvalidIdText, id),
+            AppEntryValidationError.DuplicateId => string.Format(Strings.DuplicateIdText, reference),
+            AppEntryValidationError.InvalidId => string.Format(Strings.InvalidIdText, reference),
             _ => string.Empty
         };
+    }
+
+    private static string BuildEntryReference(string id, string? architecture)
+    {
+        var normalizedArchitecture = (architecture ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(normalizedArchitecture)
+            ? id
+            : $"{id} [{normalizedArchitecture}]";
     }
 
     private void RefreshLocalizedState()

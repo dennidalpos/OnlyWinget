@@ -204,6 +204,40 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
+    public void Save_AndLoad_PreservesMultipleArchitecturesForSamePackageId()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var jsonPath = Path.Combine(root, "AppsList.json");
+
+            var result = service.Save(
+                jsonPath,
+                new[] { "Default" },
+                new()
+                {
+                    ["Default"] =
+                    [
+                        new AppEntry { Name = ".NET Runtime 8", Id = "Microsoft.DotNet.Runtime.8", Action = AppActions.Install, Architecture = "x64" },
+                        new AppEntry { Name = ".NET Runtime 8", Id = "Microsoft.DotNet.Runtime.8", Action = AppActions.Install, Architecture = "x86" }
+                    ]
+                });
+
+            Assert.True(result.Success);
+
+            var loaded = service.Load(jsonPath);
+            Assert.Equal(2, loaded.Tabs["Default"].Count);
+            Assert.Contains(loaded.Tabs["Default"], app => app.Architecture == "x64");
+            Assert.Contains(loaded.Tabs["Default"], app => app.Architecture == "x86");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Load_BackwardCompatible_WhenExtendedInstallFieldsAreMissing()
     {
         var root = CreateTempDirectory();

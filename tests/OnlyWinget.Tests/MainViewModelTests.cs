@@ -815,6 +815,130 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
+    public async Task SearchFlow_QueuesSeparateEntriesForEachSelectedArchitecture()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var dialog = new FakeDialogService();
+            dialog.EnqueueInterrogationResult(new PackageInterrogationDialogResult
+            {
+                Interrogation = new PackageInterrogationResult
+                {
+                    Success = true,
+                    Id = "Microsoft.DotNet.Runtime.8",
+                    Name = ".NET Runtime 8",
+                    Version = "8.0.16",
+                    Source = "winget",
+                    InstallerType = "exe"
+                },
+                SelectedOptions = new SelectedInstallOptions
+                {
+                    Architecture = "x64",
+                    InstallMode = InstallModes.SilentWithProgress
+                },
+                QueueSelections =
+                [
+                    new SelectedInstallOptions { Architecture = "x64", InstallMode = InstallModes.SilentWithProgress },
+                    new SelectedInstallOptions { Architecture = "x86", InstallMode = InstallModes.SilentWithProgress }
+                ]
+            });
+
+            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            viewModel.Initialize();
+            viewModel.OpenSearchCommand.Execute(null);
+            viewModel.SearchPickId = "Microsoft.DotNet.Runtime.8";
+
+            viewModel.UseSearchIdCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.CurrentApps.Count == 2);
+
+            Assert.Equal(2, viewModel.CurrentApps.Count);
+            Assert.Contains(viewModel.CurrentApps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Architecture == "x64");
+            Assert.Contains(viewModel.CurrentApps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Architecture == "x86");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PresetWorkspace_AllowsSameIdWithDifferentArchitectures_AndBlocksExactDuplicate()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            viewModel.Initialize();
+
+            var interrogation = new PackageInterrogationResult
+            {
+                Success = true,
+                Id = "Microsoft.DotNet.Runtime.8",
+                Name = ".NET Runtime 8",
+                Version = "8.0.16",
+                Source = "winget",
+                InstallerType = "exe"
+            };
+
+            var firstAdd = viewModel.PresetWorkspace.TryAddEntries(
+                interrogation,
+                [
+                    new SelectedInstallOptions { Architecture = "x64" },
+                    new SelectedInstallOptions { Architecture = "x86" }
+                ],
+                out var initialWarning,
+                showDialog: false);
+
+            var duplicateAdd = viewModel.PresetWorkspace.TryAddEntries(
+                interrogation,
+                [new SelectedInstallOptions { Architecture = "x64" }],
+                out var duplicateWarning,
+                showDialog: false);
+
+            Assert.True(firstAdd);
+            Assert.True(string.IsNullOrWhiteSpace(initialWarning));
+            Assert.False(duplicateAdd);
+            Assert.Contains("[x64]", duplicateWarning, StringComparison.Ordinal);
+            Assert.Equal(2, viewModel.CurrentApps.Count);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyCommand_TracksStatusByOperationKey_WhenSameIdExistsForMultipleArchitectures()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteMultiArchitectureAppsList(root);
+            var operationRunner = new OperationKeyApplyRunner();
+            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.ApplyCommand.Execute(null);
+            await operationRunner.Started.Task;
+
+            var x64Entry = Assert.Single(viewModel.CurrentApps, app => app.Architecture == "x64");
+            var x86Entry = Assert.Single(viewModel.CurrentApps, app => app.Architecture == "x86");
+            Assert.Equal($"{viewModel.Strings.StatusInstallInProgress} 55%", x64Entry.Status);
+            Assert.Equal(string.Empty, x86Entry.Status);
+
+            operationRunner.Release.TrySetResult();
+            await WaitForConditionAsync(() => viewModel.AreMainActionsEnabled && !viewModel.IsOperationProgressVisible);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task EditCommand_ShowsWarning_AndDoesNotMutate_WhenEditedIdBecomesDuplicate()
     {
         var root = CreateTempDirectory();
@@ -981,6 +1105,51 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             """);
     }
 
+    private static void WriteEmptyAppsList(string root)
+    {
+        File.WriteAllText(
+            Path.Combine(root, "AppsList.json"),
+            """
+            {
+              "Tabs": [
+                {
+                  "Name": "Default",
+                  "Apps": []
+                }
+              ]
+            }
+            """);
+    }
+
+    private static void WriteMultiArchitectureAppsList(string root)
+    {
+        File.WriteAllText(
+            Path.Combine(root, "AppsList.json"),
+            """
+            {
+              "Tabs": [
+                {
+                  "Name": "Default",
+                  "Apps": [
+                    {
+                      "Name": ".NET Runtime 8",
+                      "Id": "Microsoft.DotNet.Runtime.8",
+                      "Action": "Install",
+                      "Architecture": "x64"
+                    },
+                    {
+                      "Name": ".NET Runtime 8",
+                      "Id": "Microsoft.DotNet.Runtime.8",
+                      "Action": "Install",
+                      "Architecture": "x86"
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+    }
+
     private static void WriteTabbedAppsList(string root)
     {
         File.WriteAllText(
@@ -1050,6 +1219,38 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             setStatusById(apps[0].Id, UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55));
             reportProgress(55, "VS Code: 55%");
+            Started.TrySetResult();
+            await Release.Task;
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class OperationKeyApplyRunner : IOperationRunner
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            var x64Entry = apps.Single(app => app.Architecture == "x64");
+            setStatusById(x64Entry.OperationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55));
+            reportProgress(55, $"{x64Entry.Name}: 55%");
             Started.TrySetResult();
             await Release.Task;
         }

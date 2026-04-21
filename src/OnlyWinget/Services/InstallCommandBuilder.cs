@@ -42,7 +42,7 @@ public sealed class InstallCommandBuilder : IInstallCommandBuilder
         AddOption(args, "--location", app.InstallLocation);
 
         var logPath = string.IsNullOrWhiteSpace(app.LogPath)
-            ? _wingetService.CreateOperationLogPath("install", app.Id)
+            ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
             : app.LogPath.Trim();
         AddOption(args, "--log", logPath);
 
