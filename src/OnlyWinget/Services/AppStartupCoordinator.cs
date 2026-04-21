@@ -94,7 +94,7 @@ public sealed class AppStartupCoordinator
             }
             finally
             {
-                _wingetService.CleanupLocalTemp();
+                _wingetService.CleanupOldLogs();
                 viewModel.IsWingetUpdateInProgress = false;
                 viewModel.ClearShellStatus();
             }

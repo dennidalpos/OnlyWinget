@@ -17,7 +17,6 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
 $appIconPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget.ico'
 $bundleLogoPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget-icon.png'
-$serviceCleanupScriptPath = Join-Path $PSScriptRoot 'remove-project-services.ps1'
 $licenseRtfPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/License.rtf'
 $installerDialogBmpPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/Assets/WixUIDialog.bmp'
 $installerBannerBmpPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/Assets/WixUIBanner.bmp'
@@ -29,7 +28,6 @@ $msiOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration/msi"
 $setupOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
 $upgradeCode = '{B6E2D6FC-56ED-4A5C-A766-01F3FE71D7E6}'
 $bundleUpgradeCode = '{A34AF980-F5F1-4E4D-8124-8DC5E889C74D}'
-$installRoot = Join-Path ${env:ProgramFiles} 'OnlyWinget'
 $builtMsiPaths = @{}
 $suppressedValidationIces = @('ICE61')
 
@@ -224,7 +222,6 @@ function Invoke-ArchitectureMsi {
         "-dLicenseRtfPath=$licenseRtfPath" `
         "-dInstallerDialogBmpPath=$installerDialogBmpPath" `
         "-dInstallerBannerBmpPath=$installerBannerBmpPath" `
-        "-dServiceCleanupScriptPath=$serviceCleanupScriptPath" `
         "-dUpgradeCode=$upgradeCode" `
         -out $wixObjDir\ `
         $wixSourcePath `
@@ -297,7 +294,6 @@ Assert-Command -Name 'dotnet'
 Assert-Path -Path $projectPath -Description 'Project file'
 Assert-Path -Path $appIconPath -Description 'Application icon'
 Assert-Path -Path $bundleLogoPath -Description 'Bundle logo'
-Assert-Path -Path $serviceCleanupScriptPath -Description 'Service cleanup script'
 Assert-Path -Path $licenseRtfPath -Description 'License file'
 Assert-Path -Path $installerDialogBmpPath -Description 'Installer dialog bitmap'
 Assert-Path -Path $installerBannerBmpPath -Description 'Installer banner bitmap'
@@ -319,8 +315,6 @@ $balExtension = Resolve-WixExtension -ExtensionName 'WixBalExtension.dll' -Searc
 
 $rawVersion = if ([string]::IsNullOrWhiteSpace($Version)) { Get-ProjectVersion } else { $Version }
 $installerVersion = Convert-ToInstallerVersion -RawVersion $rawVersion
-
-& $serviceCleanupScriptPath -ProjectName 'OnlyWinget' -InstallRoot $installRoot -RepositoryRoot $repoRoot
 
 if ($StopRunningInstance) {
     $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'

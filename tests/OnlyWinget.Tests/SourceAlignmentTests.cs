@@ -21,6 +21,15 @@ public sealed class SourceAlignmentTests
     }
 
     [Fact]
+    public void MsiSource_DoesNotCarryServiceCleanupCustomActions_ForDesktopAppPackaging()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget.Setup", "OnlyWinget.Setup.wxs"));
+
+        Assert.DoesNotContain("ServiceCleanupScriptComponent", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CleanupProjectServicesForUninstall", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TableCellTextStyle_UsesSingleLineEllipsisForCompactRows()
     {
         var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Styles", "Templates.xaml"));

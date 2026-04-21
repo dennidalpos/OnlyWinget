@@ -66,14 +66,8 @@ public sealed class AppPreferencesService
     public void Save(AppPreferences preferences)
     {
         var path = GetSettingsPath();
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
         var json = JsonSerializer.Serialize(preferences ?? new AppPreferences(), JsonOptions());
-        File.WriteAllText(path, json, Encoding.UTF8);
+        WriteFileAtomically(path, json);
     }
 
     private static JsonSerializerOptions JsonOptions() => new()
@@ -81,4 +75,40 @@ public sealed class AppPreferencesService
         PropertyNameCaseInsensitive = true,
         WriteIndented = true
     };
+
+    private static void WriteFileAtomically(string path, string json)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempPath = path + ".tmp";
+        var backupPath = path + ".bak";
+        try
+        {
+            File.WriteAllText(tempPath, json, Encoding.UTF8);
+
+            if (File.Exists(path))
+            {
+                File.Replace(tempPath, path, backupPath, ignoreMetadataErrors: true);
+                if (File.Exists(backupPath))
+                {
+                    File.Delete(backupPath);
+                }
+            }
+            else
+            {
+                File.Move(tempPath, path);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
 }

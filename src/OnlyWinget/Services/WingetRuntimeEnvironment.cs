@@ -66,15 +66,6 @@ public sealed class WingetRuntimeEnvironment
         }
     }
 
-    /// <summary>
-    /// Legacy: kept for compatibility. Delegates to <see cref="CleanupOldLogs"/> with default retention.
-    /// Does NOT delete the entire directory anymore.
-    /// </summary>
-    public void CleanupLocalTemp()
-    {
-        CleanupOldLogs(DefaultLogRetentionDays);
-    }
-
     public string CreateOperationLogPath(string operation, string id)
     {
         var runtimeDirectory = EnsureLocalRuntimeDirectory();

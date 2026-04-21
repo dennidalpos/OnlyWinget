@@ -48,22 +48,17 @@ public sealed class PresetImportResult
 public sealed class AppDataService
 {
     private readonly string _appDataRoot;
-    private readonly string _appBaseDirectory;
 
-    public AppDataService(string? appDataRoot = null, string? appBaseDirectory = null)
+    public AppDataService(string? appDataRoot = null)
     {
         _appDataRoot = appDataRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OnlyWinget");
-        _appBaseDirectory = appBaseDirectory ?? AppContext.BaseDirectory;
     }
 
     public string GetJsonPath()
     {
-        var targetPath = Path.Combine(_appDataRoot, "AppsList.json");
-        var legacyPath = Path.Combine(_appBaseDirectory, "AppsList.json");
-        TryMigrateLegacyFile(targetPath, legacyPath);
-        return targetPath;
+        return Path.Combine(_appDataRoot, "AppsList.json");
     }
 
     public AppDataLoadResult Load(string jsonPath)
@@ -89,14 +84,15 @@ public sealed class AppDataService
             }
 
             var trimmed = rawText.TrimStart();
-            if (trimmed.StartsWith("{", StringComparison.Ordinal))
+            if (!trimmed.StartsWith("{", StringComparison.Ordinal))
             {
-                LoadTabbedFormat(rawText, tabs, tabNames);
+                return CreateFallbackLoadResult(
+                    AppDataLoadStatus.InvalidData,
+                    jsonPath,
+                    "Il formato dati legacy non e' piu' supportato.");
             }
-            else
-            {
-                LoadLegacyFormat(rawText, tabs, tabNames);
-            }
+
+            LoadTabbedFormat(rawText, tabs, tabNames);
         }
         catch (JsonException ex)
         {
@@ -352,28 +348,6 @@ public sealed class AppDataService
         }
     }
 
-    private void LoadLegacyFormat(string rawText, Dictionary<string, List<AppEntry>> tabs, List<string> tabNames)
-    {
-        var listData = JsonSerializer.Deserialize<List<AppDataItem>>(rawText, JsonOptions());
-        var list = new List<AppEntry>();
-
-        if (listData != null)
-        {
-            var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var app in listData)
-            {
-                var normalized = NormalizeApp(app, usedIds);
-                if (normalized != null)
-                {
-                    list.Add(normalized);
-                }
-            }
-        }
-
-        tabs["Default"] = list;
-        tabNames.Add("Default");
-    }
-
     private AppEntry? NormalizeApp(AppDataItem? app, HashSet<string> usedIds)
     {
         if (app == null)
@@ -586,21 +560,4 @@ public sealed class AppDataService
         };
     }
 
-    private static void TryMigrateLegacyFile(string targetPath, string legacyPath)
-    {
-        if (string.Equals(targetPath, legacyPath, StringComparison.OrdinalIgnoreCase)
-            || File.Exists(targetPath)
-            || !File.Exists(legacyPath))
-        {
-            return;
-        }
-
-        var directory = Path.GetDirectoryName(targetPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        File.Copy(legacyPath, targetPath, overwrite: false);
-    }
 }

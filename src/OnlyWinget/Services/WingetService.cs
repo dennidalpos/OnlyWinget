@@ -180,24 +180,7 @@ public sealed class WingetService
         });
 
         var updates = WingetTableParser.ParseUpgradeEntries(updatesResult.Output);
-        if (updates.Count > 0 || updatesResult.ExitCode == 0 || IsNoUpgradeNeeded(updatesResult.ExitCode))
-        {
-            return updates
-                .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
-        }
-
-        return LoadUpdatesLegacy();
-    }
-
-    private IReadOnlyList<UpdateEntry> LoadUpdatesLegacy()
-    {
-        var upgradesResult = Invoke("upgrade", new Dictionary<string, string?>
-        {
-            ["--accept-source-agreements"] = null
-        });
-
-        return WingetTableParser.ParseUpgradeEntries(upgradesResult.Output)
+        return updates
             .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
     }
@@ -284,9 +267,9 @@ public sealed class WingetService
         return ToDisplayResult("uninstall", parameters, result);
     }
 
-    public void CleanupLocalTemp()
+    public void CleanupOldLogs()
     {
-        _runtimeEnvironment.CleanupLocalTemp();
+        _runtimeEnvironment.CleanupOldLogs();
     }
 
     public bool IsNoUpgradeNeeded(int exitCode) => _outputClassifier.IsNoUpgradeNeeded(exitCode);

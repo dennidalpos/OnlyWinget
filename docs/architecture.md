@@ -1,5 +1,15 @@
 # Architecture
 
+## Documentation map
+
+This document covers structure and runtime behavior.
+
+Use the adjacent repository documents for the other concerns:
+
+- [`../README.md`](../README.md): product-facing overview
+- [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
+- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): residual blocked or non-verifiable work that remains open after repository-based validation
+
 ## Purpose
 
 OnlyWinget is a Windows desktop client for managing `winget` packages from a local WPF UI. The application focuses on curated preset lists, package discovery, update workflows, and batch package operations driven by the system `winget` CLI.
@@ -42,7 +52,7 @@ The main preset library is stored at:
 
 - `%LOCALAPPDATA%\OnlyWinget\AppsList.json`
 
-The app supports automatic one-time migration from a legacy `AppsList.json` placed next to the executable.
+The app supports only the tabbed JSON store under `%LOCALAPPDATA%\OnlyWinget`.
 
 Preset rows support install, uninstall, and pause actions. Paused rows are skipped during batch execution and marked as paused in the UI instead of invoking `winget`.
 
@@ -106,7 +116,6 @@ Before a searched package is added to a preset, the app runs a package interroga
 - a Start Menu shortcut using the application icon
 - optional desktop shortcut feature
 - uninstall cleanup for the install directory
-- a bundled PowerShell cleanup script to remove project-related Windows services during uninstall
 
 The MSIs are built from framework-dependent `dotnet publish` outputs for `win-x86` and `win-x64`; the default packaging flow does not produce self-contained app payloads.
 

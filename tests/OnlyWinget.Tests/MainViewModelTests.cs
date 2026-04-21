@@ -1057,20 +1057,18 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
 
     private static MainViewModel CreateViewModel(string root, WingetService wingetService, IOperationRunner operationRunner, FakeDialogService dialogService, string systemCulture = "it-IT")
     {
-        var dataService = new AppDataService(appDataRoot: root, appBaseDirectory: root);
-        var queryService = new WingetQueryService(wingetService);
+        var dataService = new AppDataService(appDataRoot: root);
         var localizationService = new LocalizationService(
             new AppPreferencesService(root),
             () => CultureInfo.GetCultureInfo(systemCulture));
         return new MainViewModel(
-            queryService,
-            new PresetWorkspaceService(dataService),
+            wingetService,
+            dataService,
             localizationService,
             dialogService,
             new AppEntryService(wingetService),
             new TabService(),
-            operationRunner,
-            new UpdatesWorkspaceService(queryService, operationRunner));
+            operationRunner);
     }
 
     private static WingetService CreateWingetService()

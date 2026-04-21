@@ -56,6 +56,27 @@ public sealed class AppPreferencesServiceTests : IDisposable
         Assert.Equal("en", result.PreferredUiLanguage);
     }
 
+    [Fact]
+    public void Save_RewritesSettingsWithoutLeavingTemporaryArtifacts()
+    {
+        var service = new AppPreferencesService(_root);
+        service.Save(new AppPreferences
+        {
+            PreferredUiLanguage = "it"
+        });
+
+        service.Save(new AppPreferences
+        {
+            PreferredUiLanguage = "en"
+        });
+
+        var settingsPath = service.GetSettingsPath();
+        Assert.True(File.Exists(settingsPath));
+        Assert.False(File.Exists(settingsPath + ".tmp"));
+        Assert.False(File.Exists(settingsPath + ".bak"));
+        Assert.Equal("en", service.Load().PreferredUiLanguage);
+    }
+
     public void Dispose()
     {
         try

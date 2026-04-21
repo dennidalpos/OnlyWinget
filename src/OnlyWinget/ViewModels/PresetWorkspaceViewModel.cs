@@ -19,7 +19,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 {
     private readonly bool _isWingetAvailable;
     private readonly LocalizationService _localizationService;
-    private readonly PresetWorkspaceService _presetWorkspaceService;
+    private readonly AppDataService _appDataService;
     private readonly IDialogService _dialogService;
     private readonly IAppEntryService _appEntryService;
     private readonly ITabService _tabService;
@@ -33,7 +33,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     public PresetWorkspaceViewModel(
         bool isWingetAvailable,
         LocalizationService localizationService,
-        PresetWorkspaceService presetWorkspaceService,
+        AppDataService appDataService,
         IDialogService dialogService,
         IAppEntryService appEntryService,
         ITabService tabService,
@@ -41,7 +41,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     {
         _isWingetAvailable = isWingetAvailable;
         _localizationService = localizationService;
-        _presetWorkspaceService = presetWorkspaceService;
+        _appDataService = appDataService;
         _dialogService = dialogService;
         _appEntryService = appEntryService;
         _tabService = tabService;
@@ -150,7 +150,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     public void Initialize()
     {
-        var loadResult = _presetWorkspaceService.Load();
+        var loadResult = _appDataService.Load(_appDataService.GetJsonPath());
         TabNames.Clear();
         _tabs.Clear();
 
@@ -409,7 +409,10 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     private bool PersistPresetLibrary(bool showSuccessFeedback, bool appendSuccessOutput)
     {
-        var result = _presetWorkspaceService.Save(TabNames.ToList(), _tabs);
+        var result = _appDataService.Save(
+            _appDataService.GetJsonPath(),
+            TabNames.ToList(),
+            _tabs.ToDictionary(pair => pair.Key, pair => pair.Value.ToList(), StringComparer.OrdinalIgnoreCase));
         if (result.Success)
         {
             if (appendSuccessOutput)
@@ -495,7 +498,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
             return;
         }
 
-        var result = _presetWorkspaceService.ImportPreset(selectedPath, TabNames);
+        var result = _appDataService.ImportPreset(selectedPath, TabNames);
         if (!result.Success)
         {
             _dialogService.ShowError(
@@ -521,14 +524,14 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
             return;
         }
 
-        var defaultFileName = _presetWorkspaceService.GetDefaultPresetExportFileName(SelectedTabName);
+        var defaultFileName = _appDataService.GetDefaultPresetExportFileName(SelectedTabName);
         var selectedPath = _dialogService.SaveFile(Strings.ExportPresetTitle, Strings.PresetFileDialogFilter, defaultFileName);
         if (string.IsNullOrWhiteSpace(selectedPath))
         {
             return;
         }
 
-        var result = _presetWorkspaceService.ExportPreset(selectedPath, SelectedTabName, CurrentApps);
+        var result = _appDataService.ExportPreset(selectedPath, SelectedTabName, CurrentApps);
         if (!result.Success)
         {
             _dialogService.ShowError(

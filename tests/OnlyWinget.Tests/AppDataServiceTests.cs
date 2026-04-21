@@ -22,7 +22,7 @@ public sealed class AppDataServiceTests
         {
             var jsonPath = Path.Combine(root, "AppsList.json");
             File.WriteAllText(jsonPath, "{ invalid json");
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
 
             var result = service.Load(jsonPath);
 
@@ -38,25 +38,25 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void GetJsonPath_MigratesLegacyFile_WithoutOverwritingExistingTarget()
+    public void Load_ReturnsInvalidData_WhenJsonUsesLegacyArrayFormat()
     {
-        var baseDirectory = CreateTempDirectory();
-        var appDataRoot = CreateTempDirectory();
+        var root = CreateTempDirectory();
         try
         {
-            var legacyPath = Path.Combine(baseDirectory, "AppsList.json");
-            File.WriteAllText(legacyPath, """[{ "Name": "VS Code", "Id": "Microsoft.VisualStudioCode", "Action": "Install" }]""");
+            var jsonPath = Path.Combine(root, "AppsList.json");
+            File.WriteAllText(jsonPath, """[{ "Name": "VS Code", "Id": "Microsoft.VisualStudioCode", "Action": "Install" }]""");
+            var service = new AppDataService(appDataRoot: root);
 
-            var service = new AppDataService(appDataRoot: appDataRoot, appBaseDirectory: baseDirectory);
-            var jsonPath = service.GetJsonPath();
+            var result = service.Load(jsonPath);
 
-            Assert.True(File.Exists(jsonPath));
-            Assert.Contains("VisualStudioCode", File.ReadAllText(jsonPath));
+            Assert.Equal(AppDataLoadStatus.InvalidData, result.Status);
+            Assert.Single(result.TabNames);
+            Assert.Equal("Default", result.TabNames[0]);
+            Assert.Empty(result.Tabs["Default"]);
         }
         finally
         {
-            Directory.Delete(baseDirectory, recursive: true);
-            Directory.Delete(appDataRoot, recursive: true);
+            Directory.Delete(root, recursive: true);
         }
     }
 
@@ -66,7 +66,7 @@ public sealed class AppDataServiceTests
         var root = CreateTempDirectory();
         try
         {
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
             var jsonPath = Path.Combine(root, "AppsList.json");
             var result = service.Save(
                 jsonPath,
@@ -99,7 +99,7 @@ public sealed class AppDataServiceTests
         try
         {
             var jsonPath = Path.Combine(root, "AppsList.json");
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
 
             var result = service.Load(jsonPath);
 
@@ -122,7 +122,7 @@ public sealed class AppDataServiceTests
         {
             var jsonPath = Path.Combine(root, "AppsList.json");
             File.WriteAllText(jsonPath, "{}");
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
 
             using var lockHandle = new FileStream(jsonPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
@@ -146,7 +146,7 @@ public sealed class AppDataServiceTests
         var root = CreateTempDirectory();
         try
         {
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
             var jsonPath = Path.Combine(root, "AppsList.json");
             var result = service.Save(
                 jsonPath,
@@ -209,7 +209,7 @@ public sealed class AppDataServiceTests
         var root = CreateTempDirectory();
         try
         {
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
             var jsonPath = Path.Combine(root, "AppsList.json");
 
             var result = service.Save(
@@ -262,7 +262,7 @@ public sealed class AppDataServiceTests
                   ]
                 }
                 """);
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
 
             var result = service.Load(jsonPath);
 
@@ -284,7 +284,7 @@ public sealed class AppDataServiceTests
         var root = CreateTempDirectory();
         try
         {
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
             var exportPath = Path.Combine(root, "dev-tools.onlywinget.json");
 
             var result = service.ExportPreset(
@@ -313,7 +313,7 @@ public sealed class AppDataServiceTests
         var root = CreateTempDirectory();
         try
         {
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
             var importPath = Path.Combine(root, "preset.onlywinget.json");
             File.WriteAllText(
                 importPath,
@@ -351,7 +351,7 @@ public sealed class AppDataServiceTests
         var root = CreateTempDirectory();
         try
         {
-            var service = new AppDataService(appDataRoot: root, appBaseDirectory: root);
+            var service = new AppDataService(appDataRoot: root);
             var importPath = Path.Combine(root, "broken.onlywinget.json");
             File.WriteAllText(importPath, "{ invalid json");
 

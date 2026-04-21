@@ -193,21 +193,19 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
 
     private static MainViewModel CreateViewModel(string root, WingetService wingetService, RecordingDialogService dialogService)
     {
-        var dataService = new AppDataService(appDataRoot: root, appBaseDirectory: root);
-        var queryService = new WingetQueryService(wingetService);
+        var dataService = new AppDataService(appDataRoot: root);
         var operationRunner = new OperationRunner(wingetService, new InstallCommandBuilder(wingetService));
         var localizationService = new LocalizationService(
             new AppPreferencesService(root),
             () => CultureInfo.GetCultureInfo("en-US"));
         return new MainViewModel(
-            queryService,
-            new PresetWorkspaceService(dataService),
+            wingetService,
+            dataService,
             localizationService,
             dialogService,
             new AppEntryService(wingetService),
             new TabService(),
-            operationRunner,
-            new UpdatesWorkspaceService(queryService, operationRunner));
+            operationRunner);
     }
 
     private static string CreateTempDirectory()

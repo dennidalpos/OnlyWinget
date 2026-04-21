@@ -4,17 +4,16 @@
   <img src="src/OnlyWinget/Assets/OnlyWinget-icon.png" alt="OnlyWinget icon" width="128" />
 </p>
 
-OnlyWinget is a Windows WPF desktop client for managing packages through the local `winget` CLI. The repository contains the application, xUnit coverage for core behaviors, PowerShell build entrypoints, and WiX-based Windows packaging sources.
+OnlyWinget is a Windows WPF desktop app for managing packages with the local `winget` CLI. It is focused on curated preset lists, package discovery, update review, and repeatable local package operations from a desktop UI.
 
-## Overview
+## Verified Features
 
-- Build and manage reusable preset tabs for package lists.
-- Search packages from available `winget` sources and inspect package metadata before adding them.
-- Run install, upgrade, and uninstall operations from the app.
-- Review available updates in a dedicated workspace.
-- Import and export presets as `.onlywinget.json` files.
-- Persist local app data and UI preferences under `%LOCALAPPDATA%\OnlyWinget`.
-- Use the UI in Italian or English.
+- Create, rename, delete, import, and export preset tabs for package lists.
+- Search packages from available `winget` sources and inspect package metadata before adding entries.
+- Run install, uninstall, and pause actions from saved presets.
+- Review available upgrades in a dedicated updates workspace and apply selected updates.
+- Persist local presets, runtime state, and UI language preferences under `%LOCALAPPDATA%\OnlyWinget`.
+- Use the app in English or Italian.
 
 ## Windows-First Setup
 
@@ -32,13 +31,12 @@ dotnet restore .\OnlyWinget.sln --locked-mode
 pwsh -ExecutionPolicy Bypass -File .\scripts\build-gate.ps1 -Configuration Release
 ```
 
-## Project Status
+## Current Project Status
 
-- The repository contains the WPF application, xUnit tests, Windows-first PowerShell build scripts, and WiX packaging source.
-- CI is configured through GitHub Actions on `windows-latest`.
-- The current project version is `1.0.2`.
-- Current build artifacts in `artifacts/` show that the app build, test run, and setup generation have been executed locally.
-- One repository-evidenced packaging validation item remains open in [PROJECT_STATUS.json](PROJECT_STATUS.json): major-upgrade verification from a supported previous release artifact on a clean or dedicated Windows host.
+- The repository contains the desktop app, automated tests, PowerShell build entrypoints, and WiX-based Windows packaging sources.
+- Local CI-equivalent verification is versioned in `scripts/build-gate.ps1` and mirrored by GitHub Actions.
+- Windows setup packaging is versioned and builds a unified setup EXE plus internal x86/x64 MSIs.
+- One blocked packaging validation item remains tracked in [PROJECT_STATUS.json](PROJECT_STATUS.json): verifying a real major upgrade from a supported previous release on a clean or dedicated Windows host.
 
 ## Technical Documentation
 

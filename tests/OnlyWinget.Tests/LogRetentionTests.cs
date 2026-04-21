@@ -105,7 +105,7 @@ public sealed class LogRetentionTests
     }
 
     [Fact]
-    public void CleanupLocalTemp_DelegatesToCleanupOldLogs_WithDefaultRetention()
+    public void CleanupOldLogs_UsesDefaultRetention_WhenNoRetentionOverrideIsProvided()
     {
         var dir = CreateTempDirectory();
         try
@@ -121,11 +121,11 @@ public sealed class LogRetentionTests
             File.WriteAllText(freshLog, "y");
             File.SetLastWriteTimeUtc(freshLog, now.AddDays(-1));
 
-            env.CleanupLocalTemp();
+            env.CleanupOldLogs();
 
-            Assert.False(File.Exists(oldLog), "Log older than retention period must be deleted via CleanupLocalTemp.");
-            Assert.True(File.Exists(freshLog), "Fresh log must survive CleanupLocalTemp.");
-            Assert.True(Directory.Exists(dir), "Runtime directory must survive CleanupLocalTemp.");
+            Assert.False(File.Exists(oldLog), "Log older than retention period must be deleted via CleanupOldLogs.");
+            Assert.True(File.Exists(freshLog), "Fresh log must survive CleanupOldLogs.");
+            Assert.True(Directory.Exists(dir), "Runtime directory must survive CleanupOldLogs.");
         }
         finally
         {

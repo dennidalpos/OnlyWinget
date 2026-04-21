@@ -37,7 +37,7 @@ public sealed class OperationRunner : IOperationRunner
         LocalizedStrings strings,
         Action<string, string, string>? setErrorById = null)
     {
-        _wingetService.CleanupLocalTemp(); // prune logs older than retention window before starting
+        _wingetService.CleanupOldLogs();
         try
         {
             appendOutput($"=== {strings.OperationStartText} ({DateTime.Now:yyyy-MM-dd HH:mm:ss}) ===");
@@ -88,7 +88,7 @@ public sealed class OperationRunner : IOperationRunner
         LocalizedStrings strings,
         Action<string, string, string>? setErrorById = null)
     {
-        _wingetService.CleanupLocalTemp(); // prune logs older than retention window before starting
+        _wingetService.CleanupOldLogs();
         try
         {
             appendOutput($"=== {strings.UpdatesStartText} ({DateTime.Now:yyyy-MM-dd HH:mm:ss}) ===");

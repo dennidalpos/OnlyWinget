@@ -279,21 +279,19 @@ public sealed class SearchResultsLayoutTests
 
     private static MainViewModel CreateViewModel(string root, WingetService wingetService, IOperationRunner operationRunner)
     {
-        var dataService = new AppDataService(appDataRoot: root, appBaseDirectory: root);
-        var queryService = new WingetQueryService(wingetService);
+        var dataService = new AppDataService(appDataRoot: root);
         var localizationService = new LocalizationService(
             new AppPreferencesService(root),
             () => CultureInfo.GetCultureInfo("it-IT"));
 
         return new MainViewModel(
-            queryService,
-            new PresetWorkspaceService(dataService),
+            wingetService,
+            dataService,
             localizationService,
             new FakeDialogService(),
             new AppEntryService(wingetService),
             new TabService(),
-            operationRunner,
-            new UpdatesWorkspaceService(queryService, operationRunner));
+            operationRunner);
     }
 
     private static WingetService CreateWingetService()

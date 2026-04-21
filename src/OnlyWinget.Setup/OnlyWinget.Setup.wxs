@@ -6,13 +6,9 @@
   <?if $(var.Platform) = x64 ?>
     <?define ProgramFilesFolderId = "ProgramFiles64Folder" ?>
     <?define Win64 = "yes" ?>
-    <?define QtExecProperty = "QtExec64CmdLine" ?>
-    <?define QuietExecEntry = "CAQuietExec64" ?>
   <?else ?>
     <?define ProgramFilesFolderId = "ProgramFilesFolder" ?>
     <?define Win64 = "no" ?>
-    <?define QtExecProperty = "QtExecCmdLine" ?>
-    <?define QuietExecEntry = "CAQuietExec" ?>
   <?endif ?>
 
   <Product Id="*"
@@ -61,32 +57,19 @@
                       Type="raw" />
     </Property>
 
-    <CustomAction Id="SetCleanupProjectServicesForUninstallCommand"
-                  Property="$(var.QtExecProperty)"
-                  Value="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[#ServiceCleanupScriptFile]&quot; -ProjectName &quot;OnlyWinget&quot; -InstallRoot &quot;[ONLYWINGET_INSTALLFOLDER]&quot; -Confirm:$false"
-                  Execute="immediate" />
-    <CustomAction Id="CleanupProjectServicesForUninstall"
-                  BinaryKey="WixCA"
-                  DllEntry="$(var.QuietExecEntry)"
-                  Execute="immediate"
-                  Return="ignore" />
-
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="DesktopFolder" />
       <Directory Id="ProgramMenuFolder">
         <Directory Id="ApplicationProgramsFolder" Name="OnlyWinget" />
       </Directory>
       <Directory Id="$(var.ProgramFilesFolderId)">
-        <Directory Id="INSTALLFOLDER" Name="OnlyWinget">
-          <Directory Id="SUPPORTDIR" Name="Support" />
-        </Directory>
+        <Directory Id="INSTALLFOLDER" Name="OnlyWinget" />
       </Directory>
     </Directory>
 
     <Feature Id="MainFeature" Title="$(var.ProductName)" Level="1" Absent="disallow" Display="expand">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentRef Id="InstallStateComponent" />
-      <ComponentRef Id="ServiceCleanupScriptComponent" />
       <ComponentRef Id="StartMenuShortcutComponent" />
       <Feature Id="DesktopShortcutFeature"
                Title="Desktop shortcut"
@@ -96,17 +79,6 @@
       </Feature>
     </Feature>
   </Product>
-
-  <Fragment>
-    <DirectoryRef Id="SUPPORTDIR">
-      <Component Id="ServiceCleanupScriptComponent" Guid="{8D57F5F9-12E9-44C0-BE0C-4A3F0F57C8A1}" Win64="$(var.Win64)">
-        <File Id="ServiceCleanupScriptFile"
-              Name="remove-project-services.ps1"
-              Source="$(var.ServiceCleanupScriptPath)"
-              KeyPath="yes" />
-      </Component>
-    </DirectoryRef>
-  </Fragment>
 
   <Fragment>
     <DirectoryRef Id="INSTALLFOLDER">
@@ -167,10 +139,4 @@
     </DirectoryRef>
   </Fragment>
 
-  <Fragment>
-    <InstallExecuteSequence>
-      <Custom Action="SetCleanupProjectServicesForUninstallCommand" Before="CleanupProjectServicesForUninstall">REMOVE="ALL"</Custom>
-      <Custom Action="CleanupProjectServicesForUninstall" Before="RemoveFiles">REMOVE="ALL"</Custom>
-    </InstallExecuteSequence>
-  </Fragment>
 </Wix>

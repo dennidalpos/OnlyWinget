@@ -26,25 +26,21 @@ public partial class App : Application
         var wingetService = new WingetService();
         var installCommandBuilder = new InstallCommandBuilder(wingetService);
         var interrogationService = new WingetPackageInterrogationService(wingetService, new HttpClient());
-        var wingetQueryService = new WingetQueryService(wingetService);
         var dataService = new AppDataService();
-        var presetWorkspaceService = new PresetWorkspaceService(dataService);
         var dialogService = new DialogService(interrogationService, localizationService);
         var appEntryService = new AppEntryService(wingetService);
         var tabService = new TabService();
         var operationRunner = new OperationRunner(wingetService, installCommandBuilder);
-        var updatesWorkspaceService = new UpdatesWorkspaceService(wingetQueryService, operationRunner);
         var startupCoordinator = new AppStartupCoordinator(wingetService, dialogService);
 
         var viewModel = new MainViewModel(
-            wingetQueryService,
-            presetWorkspaceService,
+            wingetService,
+            dataService,
             localizationService,
             dialogService,
             appEntryService,
             tabService,
-            operationRunner,
-            updatesWorkspaceService);
+            operationRunner);
 
         if (!startupCoordinator.CanContinueStartup(viewModel))
         {

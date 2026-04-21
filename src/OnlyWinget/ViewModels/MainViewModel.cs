@@ -36,11 +36,10 @@ public sealed class MainViewModel : ObservableObject
         Custom
     }
 
-    private readonly WingetQueryService _wingetQueryService;
+    private readonly WingetService _wingetService;
     private readonly LocalizationService _localizationService;
     private readonly IDialogService _dialogService;
     private readonly IOperationRunner _operationRunner;
-    private readonly UpdatesWorkspaceService _updatesWorkspaceService;
     private ObservableCollection<SearchResult> _searchResults = new();
     private SearchResult? _selectedSearchResult;
     private ObservableCollection<SearchResult> _selectedSearchResults = new();
@@ -69,27 +68,25 @@ public sealed class MainViewModel : ObservableObject
     private ObservableCollection<AppEntry>? _observedPresetApps;
 
     public MainViewModel(
-        WingetQueryService wingetQueryService,
-        PresetWorkspaceService presetWorkspaceService,
+        WingetService wingetService,
+        AppDataService appDataService,
         LocalizationService localizationService,
         IDialogService dialogService,
         IAppEntryService appEntryService,
         ITabService tabService,
-        IOperationRunner operationRunner,
-        UpdatesWorkspaceService updatesWorkspaceService)
+        IOperationRunner operationRunner)
     {
-        _wingetQueryService = wingetQueryService;
+        _wingetService = wingetService;
         _localizationService = localizationService;
         _dialogService = dialogService;
         _operationRunner = operationRunner;
-        _updatesWorkspaceService = updatesWorkspaceService;
 
         _selectedLanguage = _localizationService.SelectedLanguage;
-        IsWingetAvailable = _wingetQueryService.TestAvailable();
+        IsWingetAvailable = _wingetService.TestAvailable();
         PresetWorkspace = new PresetWorkspaceViewModel(
             IsWingetAvailable,
             localizationService,
-            presetWorkspaceService,
+            appDataService,
             dialogService,
             appEntryService,
             tabService,
@@ -436,7 +433,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void OpenLogFolder()
     {
-        var logDir = _wingetQueryService.LogDirectory;
+        var logDir = _wingetService.LogDirectory;
         try
         {
             Directory.CreateDirectory(logDir);
@@ -489,7 +486,7 @@ public sealed class MainViewModel : ObservableObject
                     async () =>
                     {
                         SearchResults = new ObservableCollection<SearchResult>();
-                        var results = await _wingetQueryService.SearchAsync(query);
+                        var results = await Task.Run(() => _wingetService.Search(query));
                         SearchResults = new ObservableCollection<SearchResult>(results);
                     });
             },
@@ -575,7 +572,7 @@ public sealed class MainViewModel : ObservableObject
                     async () =>
                     {
                         Updates = new ObservableCollection<UpdateEntry>();
-                        var results = await _updatesWorkspaceService.LoadAsync();
+                        var results = await Task.Run(() => _wingetService.LoadUpdates());
                         Updates = new ObservableCollection<UpdateEntry>(results);
                     });
             },
@@ -621,7 +618,8 @@ public sealed class MainViewModel : ObservableObject
                         enabled => AreUpdatesActionsEnabled = enabled,
                         async () =>
                         {
-                            var refreshedUpdates = await _updatesWorkspaceService.ApplyAsync(selected, TrackAndSetStatus, AppendOutput, ReportOperationProgress, Strings, TrackAndSetError);
+                            await _operationRunner.RunUpdatesAsync(selected, TrackAndSetStatus, AppendOutput, ReportOperationProgress, Strings, TrackAndSetError);
+                            var refreshedUpdates = await Task.Run(() => _wingetService.LoadUpdates());
                             foreach (var entry in refreshedUpdates)
                             {
                                 if (finalStatuses.TryGetValue(entry.Id, out var status))

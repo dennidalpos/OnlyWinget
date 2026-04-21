@@ -18,12 +18,13 @@
         "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs defines MajorUpgrade and a stable UpgradeCode for the internal MSIs.",
         "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs defines a stable Bundle UpgradeCode for the unified setup.",
         "tests/OnlyWinget.Tests/SourceAlignmentTests.cs checks for MajorUpgrade and same-version upgrade support in the MSI source.",
-        "The repository does not include an automated clean-host upgrade verification flow or a versioned previous release artifact to upgrade from in this workspace."
+        "scripts/build-msi.ps1 generates the current-version setup and internal MSIs from the repository sources, but it does not supply a supported previous release artifact to upgrade from.",
+        "The repository does not include an automated clean-host upgrade verification flow, a versioned previous release artifact in the workspace, or git tags that identify a packaged prior release to upgrade from."
       ],
       "impact": "A real end-user upgrade from a supported previous release to the current unified setup remains unproven before release.",
       "recommended_action": "Run an upgrade from a supported previous installer artifact to the current setup on a clean or dedicated Windows host, then verify replacement, app launch, and final uninstall.",
       "verification_state": "NON_VERIFIABLE",
-      "blocked_reason": "This requires both a supported previous installer artifact and a clean or dedicated Windows host. The current repository workspace does not provide that end-to-end upgrade input or automate the scenario.",
+      "blocked_reason": "This requires both a supported previous installer artifact and a clean or dedicated Windows host. The current repository workspace can generate the current installer set, but it does not automate or supply the end-to-end upgrade input.",
       "acceptance_criteria": [
         "The supported previous version installs without errors on a supported Windows machine.",
         "The current setup upgrades the existing installation successfully.",
