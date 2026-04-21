@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using OnlyWinget.Models;
 using OnlyWinget.Services;
@@ -104,6 +105,72 @@ public sealed class SearchResultsLayoutTests
         }
     }
 
+    [Fact]
+    public void UpdatesList_ScrollBarsRenderUsableThumbsAndTrackBindings()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-Scrollbars-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1180,
+                    Height = 720,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    viewModel.IsUpdatesVisible = true;
+
+                    SetUpdates(viewModel, Enumerable.Range(1, 40).Select(index => new UpdateEntry
+                    {
+                        Name = $"Package {index:00} with a long descriptive label",
+                        Id = $"Contoso.Product.Component.{index:00}",
+                        Version = $"1.{index}.0",
+                        Available = $"2.{index}.0",
+                        Status = "Installa",
+                        ErrorMessage = $"Error detail {index:00}",
+                        Resolution = $"Resolution guidance {index:00}"
+                    }).ToArray());
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var updatesList = Assert.IsType<ListView>(window.FindName("UpdatesList"));
+                    updatesList.ScrollIntoView(viewModel.Updates[^1]);
+                    updatesList.UpdateLayout();
+                    DoEvents();
+
+                    AssertScrollBar(updatesList, Orientation.Vertical, minimumThumbLength: 18d);
+                    AssertScrollBar(updatesList, Orientation.Horizontal, minimumThumbLength: 18d);
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static void AssertTextFitsSingleLine(DependencyObject root, string expectedText)
     {
         var textBlock = FindDescendants<TextBlock>(root)
@@ -155,6 +222,35 @@ public sealed class SearchResultsLayoutTests
         var setter = property?.GetSetMethod(nonPublic: true);
         Assert.NotNull(setter);
         setter!.Invoke(viewModel, new object[] { new ObservableCollection<SearchResult>(results) });
+    }
+
+    private static void SetUpdates(MainViewModel viewModel, params UpdateEntry[] updates)
+    {
+        var property = typeof(MainViewModel).GetProperty(nameof(MainViewModel.Updates), BindingFlags.Instance | BindingFlags.Public);
+        var setter = property?.GetSetMethod(nonPublic: true);
+        Assert.NotNull(setter);
+        setter!.Invoke(viewModel, new object[] { new ObservableCollection<UpdateEntry>(updates) });
+    }
+
+    private static void AssertScrollBar(DependencyObject root, Orientation orientation, double minimumThumbLength)
+    {
+        var scrollBar = FindDescendants<ScrollBar>(root)
+            .FirstOrDefault(candidate => candidate.Orientation == orientation && candidate.Visibility == Visibility.Visible);
+
+        Assert.NotNull(scrollBar);
+        Assert.True(scrollBar!.Maximum > 0d, $"{orientation} scrollbar maximum should reflect a scrollable extent.");
+        Assert.True(scrollBar.ViewportSize > 0d, $"{orientation} scrollbar viewport should be populated.");
+
+        var track = Assert.IsType<Track>(scrollBar.Template.FindName("PART_Track", scrollBar));
+        Assert.Equal(scrollBar.Minimum, track.Minimum);
+        Assert.Equal(scrollBar.Maximum, track.Maximum);
+        Assert.Equal(scrollBar.ViewportSize, track.ViewportSize);
+
+        var thumb = Assert.IsType<Thumb>(track.Thumb);
+        var thumbLength = orientation == Orientation.Vertical ? thumb.ActualHeight : thumb.ActualWidth;
+        Assert.True(
+            thumbLength >= minimumThumbLength,
+            $"{orientation} thumb is too small to use. Actual length: {thumbLength}.");
     }
 
     private static void DoEvents()

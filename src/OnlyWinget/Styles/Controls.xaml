@@ -216,11 +216,13 @@
 
   <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
     <Setter Property="Background" Value="{DynamicResource BorderEmphasisBrush}"/>
+    <Setter Property="MinWidth" Value="18"/>
+    <Setter Property="MinHeight" Value="18"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Thumb">
           <Border x:Name="ThumbBorder"
-                  Margin="2"
+                  Margin="1"
                   Background="{TemplateBinding Background}"
                   CornerRadius="{DynamicResource RadiusSm}"
                   Opacity="0.78"/>
@@ -252,6 +254,10 @@
                   CornerRadius="{DynamicResource RadiusSm}">
             <Grid Margin="1">
               <Track x:Name="PART_Track"
+                     Minimum="{TemplateBinding Minimum}"
+                     Maximum="{TemplateBinding Maximum}"
+                     Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                     ViewportSize="{TemplateBinding ViewportSize}"
                      IsDirectionReversed="True">
                 <Track.DecreaseRepeatButton>
                   <RepeatButton x:Name="DecreaseButton"
@@ -271,6 +277,7 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
+              <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
               <Setter TargetName="DecreaseButton" Property="Command" Value="ScrollBar.PageLeftCommand"/>
               <Setter TargetName="IncreaseButton" Property="Command" Value="ScrollBar.PageRightCommand"/>
             </Trigger>
