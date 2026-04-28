@@ -1,0 +1,114 @@
+{
+  "audit": {
+    "date": "2026-04-28",
+    "project_type": "Windows WPF desktop application",
+    "target_platform": "Windows 10/11",
+    "runtime": ".NET 8 Windows Desktop",
+    "architecture": "Single local desktop client with lightweight MVVM, application services, local JSON persistence, winget CLI integration, and WiX-based installer sources.",
+    "delivery_model": "Repository scripts build the app and generate a WiX Burn setup EXE with internal x86/x64 MSI payloads. GitHub Actions runs the repository build gate on windows-latest.",
+    "maturity": "Repository setup, formatting, warning-as-error build, unit/UI tests, run entrypoint, and package generation are supported and passed in this audit.",
+    "technical_risk": "low",
+    "risk_summary": "No concrete open backlog was identified during this audit. Release deployment remains outside this repository because no deploy or release workflow is versioned."
+  },
+  "current_state": {
+    "stack": [
+      "C#",
+      "WPF",
+      "net8.0-windows",
+      "xUnit",
+      "PowerShell repository scripts",
+      "WiX 3.14 bundled binaries",
+      "GitHub Actions"
+    ],
+    "toolchain": {
+      "dotnet_sdk_policy": "global.json requests 9.0.100 with rollForward latestFeature",
+      "dotnet_sdk_observed": "9.0.313",
+      "powershell_observed": "7.6.1",
+      "winget_observed": "v1.28.240",
+      "wix_tools": "tools\\wix314-binaries\\candle.exe, heat.exe, light.exe"
+    },
+    "canonical_entrypoints": {
+      "setup": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
+      "restore": "dotnet restore .\\OnlyWinget.sln --locked-mode",
+      "format": "dotnet format .\\OnlyWinget.sln --verify-no-changes --no-restore",
+      "lint": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -WarnAsError -NoRestore",
+      "typecheck": "Covered by C# compilation in scripts\\build.ps1 and scripts\\internal\\build-gate.ps1.",
+      "test": "dotnet test .\\tests\\OnlyWinget.Tests\\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\\artifacts\\test-results --logger \"trx;LogFileName=unit-tests.trx\"",
+      "build": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -NoRestore",
+      "run": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release",
+      "package": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\package.ps1 -Configuration Release -NoRestore",
+      "installer_lifecycle": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore",
+      "ci_equivalent": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\internal\\build-gate.ps1 -Configuration Release"
+    },
+    "supported_outputs": [
+      "artifacts\\bin\\OnlyWinget\\Release\\net8.0-windows\\OnlyWinget.exe",
+      "artifacts\\test-results\\unit-tests.trx",
+      "artifacts\\dist\\OnlyWinget\\Release\\OnlyWinget-1.0.2-setup.exe",
+      "artifacts\\dist\\OnlyWinget\\Release\\msi\\OnlyWinget-1.0.2-x86.msi",
+      "artifacts\\dist\\OnlyWinget\\Release\\msi\\OnlyWinget-1.0.2-x64.msi"
+    ],
+    "verification": {
+      "last_audit_commands": [
+        {
+          "name": "setup",
+          "command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
+          "result": "passed"
+        },
+        {
+          "name": "format",
+          "command": "dotnet format .\\OnlyWinget.sln --verify-no-changes --no-restore",
+          "result": "passed"
+        },
+        {
+          "name": "lint",
+          "command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -WarnAsError -NoRestore",
+          "result": "passed, 0 warnings, 0 errors"
+        },
+        {
+          "name": "test",
+          "command": "dotnet test .\\tests\\OnlyWinget.Tests\\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\\artifacts\\test-results --logger \"trx;LogFileName=unit-tests.trx\"",
+          "result": "passed, 126 tests"
+        },
+        {
+          "name": "build",
+          "command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -NoRestore",
+          "result": "passed"
+        },
+        {
+          "name": "run",
+          "command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release",
+          "result": "passed, launched OnlyWinget.exe and stopped the verification process after 3 seconds"
+        },
+        {
+          "name": "package",
+          "command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\package.ps1 -Configuration Release -NoRestore",
+          "result": "passed, generated x86 MSI, x64 MSI, and unified setup EXE"
+        },
+        {
+          "name": "script_parse",
+          "command": "Parse every scripts\\*.ps1 file with System.Management.Automation.Language.Parser",
+          "result": "passed"
+        }
+      ],
+      "not_run": [
+        {
+          "name": "installer_lifecycle",
+          "reason": "Supported by scripts\\validate-installer-lifecycle.ps1 but not part of the requested setup/build/lint/test/run/package verification pass; it requires elevated clean-host installer execution."
+        },
+        {
+          "name": "winget_smoke",
+          "reason": "Supported through scripts\\internal\\build-gate.ps1 -RunWingetSmoke, but it is an optional live integration path and was not required to reconstruct repository state."
+        }
+      ]
+    }
+  },
+  "active_dependencies": [
+    {
+      "id": "wix-314-bundled-toolset",
+      "type": "tooling",
+      "risk": "low",
+      "context": "WiX 3.14 binaries are vendored under tools\\wix314-binaries and are used by scripts\\package.ps1."
+    }
+  ],
+  "tasks": []
+}
