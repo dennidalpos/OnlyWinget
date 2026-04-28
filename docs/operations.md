@@ -7,7 +7,7 @@ Use the repository documents with this split:
 - [`../README.md`](../README.md): product-facing overview for GitHub
 - [`architecture.md`](architecture.md): application structure, runtime behavior, and packaging model
 - [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
-- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): residual blocked or non-verifiable work that remains open after repository-based validation
+- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): residual risk and validation status after repository-based checks
 
 ## Environment baseline
 
@@ -32,6 +32,7 @@ Observed toolchain from the repository:
 - build: `pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release -NoRestore`
 - run: `.\artifacts\bin\OnlyWinget\Release\net8.0-windows\OnlyWinget.exe` after a successful build
 - packaging: `pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore`
+- installer lifecycle: `pwsh -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore`
 - CI reproduction locally: `pwsh -ExecutionPolicy Bypass -File .\scripts\internal\build-gate.ps1 -Configuration Release`
 - deploy: no repository command or documented workflow is versioned for deploy
 - release: no repository command or documented workflow is versioned for release
@@ -132,6 +133,28 @@ Packaging prerequisites already versioned in the repository:
 
 The user-facing installer is the Burn setup EXE. It contains the x86 and x64 MSIs and uses package conditions to run the x64 MSI only when `VersionNT64` is true; otherwise it runs the x86 MSI. The architecture-specific MSIs also include direct-execution launch conditions: the x64 MSI blocks 32-bit Windows, and the x86 MSI is reserved for 32-bit Windows rather than direct use on 64-bit Windows.
 
+### Installer lifecycle validation
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore
+```
+
+What it does:
+
+- requires elevated PowerShell and a clean local OnlyWinget install state
+- generates a previous-version setup baseline when `-PreviousSetupPath` is not supplied
+- generates or resolves the current setup EXE
+- installs the previous setup, upgrades through the current setup, launches the app, repairs the current setup, and uninstalls it
+- verifies one visible Add/Remove Programs entry, the Program Files app folder, Start Menu shortcut creation, default no-desktop-shortcut behavior, application directory removal, and `%LOCALAPPDATA%\OnlyWinget` preservation
+- writes logs and `installer-lifecycle-report.txt` under `artifacts\installer-validation\<Configuration>\`
+
+Relevant parameters:
+
+- `-CurrentSetupPath`: use an existing current setup EXE instead of generating one
+- `-PreviousSetupPath`: use an existing previous setup EXE for release-artifact upgrade validation
+- `-PreviousVersion`: generate the previous setup baseline with an explicit MSI-compatible version
+- `-SkipPackage`: skip setup generation and use existing artifacts
+
 ### Cleanup
 
 ```powershell
@@ -155,6 +178,7 @@ Scripts present in `scripts/` are intentionally split between root entrypoints, 
 | `scripts/run.ps1` | root entrypoint | Launch the built WPF app, optionally building first. | `-Configuration`, `-Build`, `-NoRestore`, `-StopRunningInstance`. | Running `OnlyWinget.exe` process. | Built app output, optional `scripts/build.ps1`, `scripts/internal/ScriptHelpers.ps1`. | operations docs. |
 | `scripts/clean.ps1` | root entrypoint | Remove generated build, test, temporary, and artifact outputs. | `-Configuration`, `-StopRunningInstance`, `-DryRun`, `-All`. | Deleted `bin`, `obj`, `TestResults`, `artifacts`, and `tmp`; optionally `.vs` and `packages`. | `dotnet`, `scripts/internal/ScriptHelpers.ps1`. | operations docs. |
 | `scripts/package.ps1` | root entrypoint | Build architecture-specific internal MSIs and the unified setup EXE. | `-Configuration`, `-Version`, `-NoRestore`, `-StopRunningInstance`, `-Architecture`, `-SkipBundle`. | `artifacts/dist/OnlyWinget/<Configuration>/*-setup.exe` and `msi/*.msi`. | `dotnet`, WiX 3.14 tools, app and setup sources, `scripts/internal/ScriptHelpers.ps1`. | `scripts/internal/build-gate.ps1`, operations docs, PROJECT_STATUS. |
+| `scripts/validate-installer-lifecycle.ps1` | root validation entrypoint | Execute real elevated setup install, major-upgrade, launch, repair, uninstall, and artifact checks. | `-Configuration`, `-CurrentSetupPath`, `-PreviousSetupPath`, `-PreviousVersion`, `-NoRestore`, `-SkipPackage`. | Installer logs and `installer-lifecycle-report.txt` under `artifacts/installer-validation/<Configuration>/`. | elevated PowerShell, generated setup EXE, `scripts/package.ps1`, `scripts/internal/ScriptHelpers.ps1`. | operations docs, PROJECT_STATUS. |
 | `scripts/internal/build-gate.ps1` | internal verification | Reproduce CI locally. | `-Configuration`, `-RunWingetSmoke`. | Build report, test results, app build output, setup EXE, internal MSIs. | `dotnet`, `scripts/build.ps1`, `scripts/package.ps1`, tests, WiX tools, `scripts/internal/ScriptHelpers.ps1`. | GitHub Actions, README, operations docs. |
 | `scripts/agents/analyze-scripts.ps1` | agent maintenance | Run PSScriptAnalyzer over active PowerShell scripts. | None. | Console analyzer report. | `PSScriptAnalyzer`, `scripts/agents/PSScriptAnalyzerSettings.psd1`. | Manual agent maintenance only; not CI. |
 | `scripts/agents/PSScriptAnalyzerSettings.psd1` | agent maintenance config | Configure script analysis rules. | Analyzer invocation. | Rule exclusions consumed by PSScriptAnalyzer. | PSScriptAnalyzer. | `scripts/agents/analyze-scripts.ps1`. |
@@ -197,17 +221,18 @@ Action:
 - treat the default gate as the canonical local verification path
 - enable `-RunWingetSmoke` only when you explicitly want live `winget` validation in the current environment
 
-### Packaging verification is not the same as install verification
+### Installer validation requires elevation
 
 Observed behavior:
 
-- the repository can generate the unified setup EXE and the internal MSIs
-- the repository does not, by itself, prove clean-host install, upgrade, uninstall, or rollback execution
+- the repository can generate the unified setup EXE and the internal MSIs without installing them
+- `scripts\validate-installer-lifecycle.ps1` executes the real setup lifecycle and therefore requires elevated PowerShell
+- the validation script refuses to run when an existing OnlyWinget installation is present
 
 Action:
 
-- keep packaging, deploy, and release as separate phases
-- use [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json) for packaging validation work that cannot be closed from the current workspace alone
+- run installer lifecycle validation only on a clean or dedicated Windows host
+- pass `-PreviousSetupPath` when validating upgrade from an official historical release artifact
 
 ### Deploy and release commands are not versioned here
 
@@ -217,7 +242,7 @@ Observed behavior:
 
 Action:
 
-- stop local verification at setup, build, test, run, and packaging unless a separate repository-owned workflow is added
+- stop local release work at setup, build, test, run, packaging, and installer lifecycle validation unless a separate repository-owned deploy or release workflow is added
 
 ## CI
 
@@ -250,17 +275,17 @@ $env:ONLYWINGET_RUN_WINGET_SMOKE='1'
 
 ## Verification boundaries
 
-The repository scripts and sources support app build, test execution, and MSI/setup generation locally, but packaging generation and installation verification are not the same thing.
+The repository scripts and sources support app build, test execution, MSI/setup generation, and elevated installer lifecycle validation locally.
 
 Repository-evidenced state:
 
 - Unified setup generation is scripted and versioned.
 - Internal x86 and x64 MSI generation is scripted and versioned.
-- The installer is per-machine and therefore requires administrative privileges for real install, upgrade, and uninstall validation.
-- The packaging scripts generate installer artifacts for the current code in this workspace, but they do not provide a supported previous release artifact to upgrade from.
-- Residual verification work that remains open after source and script validation is tracked in `PROJECT_STATUS.json`.
+- The installer is per-machine and therefore requires administrative privileges for real install, upgrade, repair, and uninstall validation.
+- `scripts\validate-installer-lifecycle.ps1` can generate a previous-version setup baseline or consume an official previous setup with `-PreviousSetupPath`.
+- Residual release-process risk after source and script validation is tracked in `PROJECT_STATUS.json`.
 
-The repository does not, by itself, prove that a clean-host install, major upgrade, or final uninstall run has been executed successfully. Those checks should be treated as packaging verification work, not as build verification.
+Installer lifecycle results are written to `artifacts\installer-validation\<Configuration>\installer-lifecycle-report.txt`.
 
 ## Tracking
 

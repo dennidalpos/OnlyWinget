@@ -5,6 +5,7 @@
 
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace OnlyWinget.Tests;
@@ -18,6 +19,14 @@ public sealed class SourceAlignmentTests
 
         Assert.Contains("<MajorUpgrade", source, StringComparison.Ordinal);
         Assert.Contains("AllowSameVersionUpgrades=\"yes\"", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MsiSource_HidesInternalMsiFromAddRemovePrograms_WhenInstalledByBundle()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget.Setup", "OnlyWinget.Setup.wxs"));
+
+        Assert.Contains("<Property Id=\"ARPSYSTEMCOMPONENT\" Value=\"1\" />", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -60,6 +69,20 @@ public sealed class SourceAlignmentTests
         Assert.Contains("<Style TargetType=\"GridViewColumnHeader\">", source, StringComparison.Ordinal);
         Assert.Contains("<Thumb x:Name=\"PART_HeaderGripper\"", source, StringComparison.Ordinal);
         Assert.Contains("<ContentPresenter Margin=\"{TemplateBinding Padding}\"", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PackageInterrogationDialog_InputControlsExposeAutomationNames()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Dialogs", "PackageInterrogationDialog.xaml"));
+        var controlMatches = Regex.Matches(source, @"<(ComboBox|TextBox)\b(?:(?!/>|</\1>).)*(?:/>|</\1>)", RegexOptions.Singleline);
+
+        Assert.NotEmpty(controlMatches);
+
+        foreach (Match match in controlMatches)
+        {
+            Assert.Contains("AutomationProperties.Name", match.Value, StringComparison.Ordinal);
+        }
     }
 
     private static string GetRepositoryRoot()

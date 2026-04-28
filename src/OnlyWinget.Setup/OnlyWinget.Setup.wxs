@@ -32,6 +32,7 @@
 
     <Icon Id="OnlyWingetProductIcon" SourceFile="$(var.AppIconPath)" />
     <Property Id="ARPPRODUCTICON" Value="OnlyWingetProductIcon" />
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
 
     <UIRef Id="WixUI_FeatureTree" />
     <UIRef Id="WixUI_ErrorProgressText" />

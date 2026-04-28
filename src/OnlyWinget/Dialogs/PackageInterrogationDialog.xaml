@@ -91,7 +91,8 @@
                 <TextBlock Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding ScopeLabel}"/>
                 <ComboBox Grid.Column="1"
                           ItemsSource="{Binding AvailableScopes}"
-                          SelectedItem="{Binding SelectedScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                          SelectedItem="{Binding SelectedScope, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          AutomationProperties.Name="{Binding ScopeLabel}"/>
               </Grid>
 
               <Grid Margin="{StaticResource TopSpacing10}" Visibility="{Binding HasInstallModes, Converter={StaticResource BoolToVisibility}}">
@@ -102,7 +103,8 @@
                 <TextBlock Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding InstallModeLabel}"/>
                 <ComboBox Grid.Column="1"
                           ItemsSource="{Binding AvailableInstallModes}"
-                          SelectedItem="{Binding SelectedInstallMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                          SelectedItem="{Binding SelectedInstallMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          AutomationProperties.Name="{Binding InstallModeLabel}"/>
               </Grid>
 
               <Grid Margin="{StaticResource TopSpacing10}" Visibility="{Binding HasArchitectures, Converter={StaticResource BoolToVisibility}}">
@@ -114,7 +116,8 @@
                 <Grid Grid.Column="1">
                   <ComboBox ItemsSource="{Binding AvailableArchitectures}"
                             SelectedItem="{Binding SelectedArchitecture, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Visibility="{Binding IsArchitectureSingleSelectVisible, Converter={StaticResource BoolToVisibility}}"/>
+                            Visibility="{Binding IsArchitectureSingleSelectVisible, Converter={StaticResource BoolToVisibility}}"
+                            AutomationProperties.Name="{Binding ArchitectureLabel}"/>
                   <Border Style="{StaticResource InlineStateBorderStyle}"
                           Visibility="{Binding IsArchitectureMultiSelectVisible, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl ItemsSource="{Binding AvailableArchitectureOptions}">
@@ -138,7 +141,8 @@
                 <TextBlock Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding LocaleLabel}"/>
                 <ComboBox Grid.Column="1"
                           ItemsSource="{Binding AvailableLocales}"
-                          SelectedItem="{Binding SelectedLocale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                          SelectedItem="{Binding SelectedLocale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          AutomationProperties.Name="{Binding LocaleLabel}"/>
               </Grid>
 
               <Grid Margin="{StaticResource TopSpacing10}" Visibility="{Binding HasInstallerTypes, Converter={StaticResource BoolToVisibility}}">
@@ -149,7 +153,8 @@
                 <TextBlock Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding InstallerTypeLabel}"/>
                 <ComboBox Grid.Column="1"
                           ItemsSource="{Binding AvailableInstallerTypes}"
-                          SelectedItem="{Binding SelectedInstallerType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                          SelectedItem="{Binding SelectedInstallerType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          AutomationProperties.Name="{Binding InstallerTypeLabel}"/>
               </Grid>
             </StackPanel>
           </Border>
@@ -171,7 +176,8 @@
                 <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding InstallLocationLabel}"/>
                 <TextBox Grid.Row="0" Grid.Column="1"
                          Text="{Binding InstallLocation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding IsLocationSupported}"/>
+                         IsEnabled="{Binding IsLocationSupported}"
+                         AutomationProperties.Name="{Binding InstallLocationLabel}"/>
                 <TextBlock Grid.Row="1" Grid.Column="1"
                            Margin="{StaticResource FieldHelpMargin}"
                            Style="{StaticResource CaptionTextStyle}"
@@ -194,7 +200,8 @@
                 <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding LogPathLabel}"/>
                 <TextBox Grid.Row="0" Grid.Column="1"
                          Text="{Binding LogPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding IsLogSupported}"/>
+                         IsEnabled="{Binding IsLogSupported}"
+                         AutomationProperties.Name="{Binding LogPathLabel}"/>
                 <TextBlock Grid.Row="1" Grid.Column="1"
                            Margin="{StaticResource FieldHelpMargin}"
                            Style="{StaticResource CaptionTextStyle}"
@@ -214,7 +221,8 @@
                          Text="{Binding AdditionalCustomArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          TextWrapping="Wrap"
                          AcceptsReturn="True"
-                         MinHeight="72"/>
+                         MinHeight="72"
+                         AutomationProperties.Name="{Binding AdditionalCustomArgsLabel}"/>
               </Grid>
             </StackPanel>
           </Border>
@@ -234,7 +242,8 @@
                        Text="{Binding OverrideArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                        TextWrapping="Wrap"
                        AcceptsReturn="True"
-                       MinHeight="72"/>
+                       MinHeight="72"
+                       AutomationProperties.Name="{Binding OverrideArgsLabel}"/>
 
               <!-- Override warning: shown when user has entered override args -->
               <Border Margin="{StaticResource TopSpacing8}"
@@ -279,7 +288,8 @@
                        Foreground="{StaticResource LogForegroundBrush}"
                        FontFamily="{StaticResource MonospaceFontFamily}"
                        FontSize="{StaticResource LogFontSize}"
-                       MinHeight="120"/>
+                       MinHeight="120"
+                       AutomationProperties.Name="{Binding CommandPreviewLabel}"/>
             </StackPanel>
           </Border>
         </StackPanel>

@@ -4,39 +4,68 @@
   <img src="src/OnlyWinget/Assets/OnlyWinget-icon.png" alt="OnlyWinget icon" width="128" />
 </p>
 
-OnlyWinget is a Windows WPF desktop app for managing packages with the local `winget` CLI. It is focused on curated preset lists, package discovery, update review, and repeatable local package operations from a desktop UI.
+OnlyWinget is a Windows desktop app for managing local `winget` package workflows from a WPF UI. It is built for curated preset lists, package discovery, update review, and repeatable install or uninstall operations on a Windows machine.
 
 ## Verified Features
 
-- Create, rename, delete, import, and export preset tabs for package lists.
-- Search packages from available `winget` sources and inspect package metadata before adding entries.
+- Create, rename, delete, import, and export package preset tabs.
+- Search packages through the local `winget` sources and preserve the reported source.
+- Inspect package metadata before adding searched packages to a preset.
+- Configure install options captured from package metadata, including version, scope, architecture, locale, installer type, install mode, and custom arguments when available.
 - Run install, uninstall, and pause actions from saved presets.
-- Review available upgrades in a dedicated updates workspace and apply selected updates.
-- Persist local presets, runtime state, and UI language preferences under `%LOCALAPPDATA%\OnlyWinget`.
-- Use the app in English or Italian.
+- Review available package upgrades and run selected upgrades.
+- Persist presets, runtime logs, and UI preferences under `%LOCALAPPDATA%\OnlyWinget`.
+- Use the runtime UI in English or Italian.
+- Build a Windows setup EXE that embeds x86 and x64 MSI payloads.
 
-## Windows-First Setup
+## Requirements
 
-Requirements:
+- Windows 10 or Windows 11.
+- `winget` available on `PATH` for normal app use.
+- .NET SDK compatible with [`global.json`](global.json).
+- PowerShell 7+ (`pwsh`) for repository scripts.
 
-- Windows 10 or Windows 11
-- `winget` available on `PATH`
-- .NET SDK compatible with [global.json](global.json)
-- PowerShell 7 (`pwsh`) for repository scripts
+## Setup
 
-Canonical repository verification:
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\install.ps1
+```
+
+Equivalent direct restore:
 
 ```powershell
 dotnet restore .\OnlyWinget.sln --locked-mode
+```
+
+## Main Commands
+
+```powershell
+# Build the app
+pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release
+
+# Run the built app
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Configuration Release
+
+# Run unit tests
+dotnet test .\tests\OnlyWinget.Tests\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\artifacts\test-results --logger "trx;LogFileName=unit-tests.trx"
+
+# Build setup EXE and internal MSIs
+pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore
+
+# Validate real setup install, upgrade, repair, and uninstall lifecycle
+pwsh -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore
+
+# Reproduce the CI verification gate locally
 pwsh -ExecutionPolicy Bypass -File .\scripts\internal\build-gate.ps1 -Configuration Release
 ```
 
-## Current Project Status
+The default gate restores, verifies formatting, builds with warnings as errors, runs tests, builds the app, generates the setup packages, and writes `artifacts\build-report.txt`.
 
-- The repository contains the desktop app, automated tests, PowerShell build entrypoints, and WiX-based Windows packaging sources.
-- Local CI-equivalent verification is versioned in `scripts/internal/build-gate.ps1` and mirrored by GitHub Actions.
-- Windows setup packaging is versioned in `scripts/package.ps1` and builds a unified setup EXE plus internal x86/x64 MSIs.
-- One blocked packaging validation item remains tracked in [PROJECT_STATUS.json](PROJECT_STATUS.json): verifying a real major upgrade from a supported previous release on a clean or dedicated Windows host.
+## Project Status
+
+The repository contains the WPF app, xUnit tests, Windows PowerShell entrypoints, WiX packaging sources, bundled WiX 3.14 binaries, and a GitHub Actions build gate. Source build, unit/UI tests, live `winget` smoke tests, package generation, and elevated installer lifecycle validation are automated.
+
+Live `winget` smoke tests are opt-in through `-RunWingetSmoke`. Installer lifecycle validation requires an elevated clean or dedicated Windows host and writes its report under `artifacts\installer-validation\`.
 
 ## Technical Documentation
 

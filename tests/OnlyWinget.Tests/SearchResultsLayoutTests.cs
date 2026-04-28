@@ -10,6 +10,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -32,6 +33,142 @@ public sealed class SearchResultsLayoutTests
     private static readonly object WpfHostLock = new();
     private static Thread? _wpfThread;
     private static Dispatcher? _wpfDispatcher;
+
+    [Theory]
+    [InlineData("preset", 860, 640)]
+    [InlineData("search", 1180, 720)]
+    [InlineData("updates", 1567, 1050)]
+    public void MainShell_RendersCoreWorkspacesInsideWindowBounds(string workspace, double width, double height)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-ShellBounds-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = width,
+                    Height = height,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    SeedPresetRows(viewModel);
+                    ApplyWorkspace(viewModel, workspace);
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    AssertElementVisibleInsideWindow(window, "OutputLogBox");
+
+                    if (workspace == "preset")
+                    {
+                        AssertElementVisibleInsideWindow(window, "PresetAppsList");
+                    }
+                    else if (workspace == "search")
+                    {
+                        AssertElementVisibleInsideWindow(window, "SearchResultsList");
+                    }
+                    else
+                    {
+                        AssertElementVisibleInsideWindow(window, "UpdatesList");
+                    }
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("preset")]
+    [InlineData("search")]
+    [InlineData("updates")]
+    public void MainShell_VisibleInteractiveControlsExposeKeyboardAndAccessibleState(string workspace)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-A11y-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1366,
+                    Height = 900,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    SeedPresetRows(viewModel);
+                    ApplyWorkspace(viewModel, workspace);
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var interactiveControls = FindDescendants<Control>(window)
+                        .Where(IsUserInteractiveControl)
+                        .Where(control => control.IsVisible && control.IsEnabled)
+                        .ToList();
+
+                    Assert.NotEmpty(interactiveControls);
+
+                    foreach (var control in interactiveControls)
+                    {
+                        Assert.True(control.Focusable, $"{control.GetType().Name} should be keyboard focusable.");
+
+                        if (RequiresAccessibleName(control))
+                        {
+                            Assert.False(
+                                string.IsNullOrWhiteSpace(AutomationProperties.GetName(control)),
+                                $"{control.GetType().Name} should expose an automation name when visible.");
+                        }
+                    }
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 
     [Fact]
     public void SearchResultsLayout_RendersRegressionSamplesWithoutTruncationAtReportedWidth()
@@ -197,6 +334,103 @@ public sealed class SearchResultsLayoutTests
         Assert.True(
             textBlock.ActualWidth + 4d >= formattedText.WidthIncludingTrailingWhitespace,
             $"Text '{expectedText}' is still narrower than the rendered content area.");
+    }
+
+    private static void AssertElementVisibleInsideWindow(Window window, string elementName)
+    {
+        var element = Assert.IsAssignableFrom<FrameworkElement>(window.FindName(elementName));
+        Assert.True(element.IsVisible, $"{elementName} should be visible.");
+        Assert.True(element.ActualWidth > 0d, $"{elementName} should have width.");
+        Assert.True(element.ActualHeight > 0d, $"{elementName} should have height.");
+
+        var bounds = element.TransformToAncestor(window)
+            .TransformBounds(new Rect(new Point(0d, 0d), new Size(element.ActualWidth, element.ActualHeight)));
+
+        Assert.True(bounds.Left >= -1d, $"{elementName} should not overflow left. Left: {bounds.Left}.");
+        Assert.True(bounds.Top >= -1d, $"{elementName} should not overflow top. Top: {bounds.Top}.");
+        Assert.True(bounds.Right <= window.ActualWidth + 1d, $"{elementName} should not overflow right. Right: {bounds.Right}, window: {window.ActualWidth}.");
+        Assert.True(bounds.Bottom <= window.ActualHeight + 1d, $"{elementName} should not overflow bottom. Bottom: {bounds.Bottom}, window: {window.ActualHeight}.");
+    }
+
+    private static bool IsUserInteractiveControl(Control control)
+    {
+        return control is Button
+            or TextBox
+            or ComboBox
+            or ListBox
+            or ListView
+            or CheckBox;
+    }
+
+    private static bool RequiresAccessibleName(Control control)
+    {
+        if (control is TextBox or ComboBox or ListBox or ListView or CheckBox)
+        {
+            return true;
+        }
+
+        if (control is Button button)
+        {
+            return !HasVisibleTextContent(button);
+        }
+
+        return false;
+    }
+
+    private static bool HasVisibleTextContent(Button button)
+    {
+        return button.Content is string text
+            && !string.IsNullOrWhiteSpace(text);
+    }
+
+    private static void SeedPresetRows(MainViewModel viewModel)
+    {
+        viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
+        {
+            Name = "Microsoft .NET SDK 9.0",
+            Id = "Microsoft.DotNet.SDK.9",
+            Source = "winget",
+            Action = AppActions.Install,
+            Architecture = "x64",
+            Status = "Ready"
+        });
+    }
+
+    private static void ApplyWorkspace(MainViewModel viewModel, string workspace)
+    {
+        switch (workspace)
+        {
+            case "preset":
+                return;
+            case "search":
+                viewModel.OpenSearchCommand.Execute(null);
+                SetSearchResults(
+                    viewModel,
+                    new SearchResult
+                    {
+                        Name = "Microsoft .NET Windows Desktop Runtime 10.0",
+                        Id = "Microsoft.DotNet.DesktopRuntime.10",
+                        Version = "10.0.6",
+                        Source = "winget"
+                    });
+                return;
+            case "updates":
+                viewModel.IsUpdatesVisible = true;
+                SetUpdates(
+                    viewModel,
+                    new UpdateEntry
+                    {
+                        Name = "Microsoft .NET SDK",
+                        Id = "Microsoft.DotNet.SDK.9",
+                        Version = "9.0.100",
+                        Available = "9.0.200",
+                        Source = "winget",
+                        Status = "Ready"
+                    });
+                return;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(workspace), workspace, "Unknown workspace.");
+        }
     }
 
     private static IEnumerable<T> FindDescendants<T>(DependencyObject root) where T : DependencyObject
