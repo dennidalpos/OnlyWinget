@@ -71,6 +71,7 @@
   <sys:Double x:Key="PackageDialogHeight">800</sys:Double>
   <sys:Double x:Key="PackageDialogMinWidth">680</sys:Double>
   <sys:Double x:Key="PackageDialogMinHeight">680</sys:Double>
+  <GridLength x:Key="PackageDialogLabelColumnWidth">180</GridLength>
   <sys:Double x:Key="PromptDialogWidth">420</sys:Double>
   <sys:Double x:Key="PromptInputMinWidth">320</sys:Double>
   <sys:Double x:Key="ButtonMinWidth">88</sys:Double>

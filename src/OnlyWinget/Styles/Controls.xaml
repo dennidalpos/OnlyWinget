@@ -471,16 +471,13 @@
                   </LinearGradientBrush>
                 </Border.Background>
               </Border>
-              <!-- Indeterminate shimmer bar -->
+              <!-- Indeterminate pulse fills the current track width. -->
               <Border x:Name="IndeterminateBar"
-                      Width="80"
-                      HorizontalAlignment="Left"
+                      HorizontalAlignment="Stretch"
                       CornerRadius="3"
+                      Opacity="0"
                       Visibility="Collapsed"
                       RenderTransformOrigin="0,0.5">
-                <Border.RenderTransform>
-                  <TranslateTransform x:Name="IndeterminateTranslate" X="-80"/>
-                </Border.RenderTransform>
                 <Border.Background>
                   <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                     <GradientStop Color="{DynamicResource AccentColor}" Offset="0"/>
@@ -496,15 +493,20 @@
               <Setter TargetName="PART_Indicator" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="IndeterminateBar" Property="Visibility" Value="Visible"/>
               <Trigger.EnterActions>
-                <BeginStoryboard>
+                <BeginStoryboard x:Name="IndeterminateStoryboard">
                   <Storyboard RepeatBehavior="Forever">
-                    <DoubleAnimation Storyboard.TargetName="IndeterminateTranslate"
-                                     Storyboard.TargetProperty="X"
-                                     From="-80" To="1200"
-                                     Duration="0:0:2.2"/>
+                    <DoubleAnimation Storyboard.TargetName="IndeterminateBar"
+                                     Storyboard.TargetProperty="Opacity"
+                                     From="0.45"
+                                     To="1"
+                                     AutoReverse="True"
+                                     Duration="0:0:0.9"/>
                   </Storyboard>
                 </BeginStoryboard>
               </Trigger.EnterActions>
+              <Trigger.ExitActions>
+                <StopStoryboard BeginStoryboardName="IndeterminateStoryboard"/>
+              </Trigger.ExitActions>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

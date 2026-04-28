@@ -110,5 +110,14 @@
       "context": "WiX 3.14 binaries are vendored under tools\\wix314-binaries and are used by scripts\\package.ps1."
     }
   ],
-  "tasks": []
+  "tasks": [
+    {
+      "id": "review-preexisting-xaml-worktree-changes",
+      "type": "refactor",
+      "status": "done",
+      "risk": "medium",
+      "priority": "medium",
+      "context": "Reviewed and kept the XAML updates in src\\OnlyWinget\\Dialogs\\PackageInterrogationDialog.xaml, src\\OnlyWinget\\Dialogs\\TextPromptWindow.xaml, src\\OnlyWinget\\MainWindow.xaml, and src\\OnlyWinget\\Styles\\Controls.xaml. Covered by SourceAlignmentTests plus WPF layout and scrollbar tests; targeted Release test run passed on 2026-04-29."
+    }
+  ]
 }

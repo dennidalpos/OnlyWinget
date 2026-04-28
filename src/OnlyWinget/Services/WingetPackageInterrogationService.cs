@@ -48,8 +48,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
     {
         Log(request, $"event=package_interrogation_started id={Quote(request.PackageId)} source={Quote(request.Source)} version={Quote(request.Version)}");
 
-        var showArgs = BuildShowArguments(request);
-        var commandResult = await Task.Run(() => _wingetService.Invoke(showArgs)).ConfigureAwait(false);
+        var commandResult = await InvokeShowWithVersionFallbackAsync(request).ConfigureAwait(false);
         if (commandResult.ExitCode != 0)
         {
             var failure = ExtractFailureMessage(commandResult.Output, _wingetService.GetErrorMessage(commandResult.ExitCode));
@@ -116,7 +115,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
                     else
                     {
                         isReducedMode = false;
-                        if (installerOptions.Length > 1)
+                        if (HasMultipleSelectableInstallerCandidates(installerOptions))
                         {
                             warnings.Add("Multiple installer candidates available. Review the selections before confirming.");
                         }
@@ -181,6 +180,29 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         }
 
         return args;
+    }
+
+    private async Task<WingetCommandResult> InvokeShowWithVersionFallbackAsync(PackageInterrogationRequest request)
+    {
+        var showArgs = BuildShowArguments(request);
+        var commandResult = await Task.Run(() => _wingetService.Invoke(showArgs)).ConfigureAwait(false);
+        if (commandResult.ExitCode == 0
+            || string.IsNullOrWhiteSpace(request.Version)
+            || !IsVersionResolutionFailure(commandResult.Output))
+        {
+            return commandResult;
+        }
+
+        var fallbackRequest = new PackageInterrogationRequest
+        {
+            PackageId = request.PackageId,
+            PackageName = request.PackageName,
+            Source = request.Source,
+            Log = request.Log
+        };
+        var fallbackArgs = BuildShowArguments(fallbackRequest);
+        Log(request, $"event=package_resolution_version_fallback id={Quote(request.PackageId)} source={Quote(request.Source)} version={Quote(request.Version)}");
+        return await Task.Run(() => _wingetService.Invoke(fallbackArgs)).ConfigureAwait(false);
     }
 
     private static string BuildManifestUrl(string packageId, string version)
@@ -494,6 +516,23 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         return results;
     }
 
+    private static bool HasMultipleSelectableInstallerCandidates(IReadOnlyList<ResolvedInstallerOption> installerOptions)
+    {
+        return installerOptions
+            .Select(option => new
+            {
+                Architecture = NormalizeSelectionValue(option.Architecture),
+                Scope = NormalizeSelectionValue(option.Scope),
+                Locale = NormalizeSelectionValue(option.Locale),
+                InstallerType = NormalizeSelectionValue(option.InstallerType)
+            })
+            .Distinct()
+            .Skip(1)
+            .Any();
+    }
+
+    private static string NormalizeSelectionValue(string? value) => (value ?? string.Empty).Trim().ToUpperInvariant();
+
     private static void ParseInstallerKeyValue(string line, InstallerManifestEntry entry)
     {
         if (!TrySplitKeyValue(line.Trim(), out var key, out var value))
@@ -580,6 +619,15 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             .Select(line => line.Trim())
             .FirstOrDefault(line => !IsProgressLine(line) && !string.IsNullOrWhiteSpace(line));
         return string.IsNullOrWhiteSpace(relevant) ? fallback : relevant;
+    }
+
+    private static bool IsVersionResolutionFailure(string output)
+    {
+        var normalized = NormalizeOutput(output);
+        return normalized.Contains("No version found matching", StringComparison.OrdinalIgnoreCase)
+            || (normalized.Contains("versione", StringComparison.OrdinalIgnoreCase)
+                && normalized.Contains("trovata", StringComparison.OrdinalIgnoreCase)
+                && normalized.Contains("corrispondente", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool MatchesAny(string value, params string[] candidates)

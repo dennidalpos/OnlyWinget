@@ -204,6 +204,15 @@ public sealed class OperationRunner : IOperationRunner
         if (_wingetService.IsAlreadyInstalled(installResult))
         {
             setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.AlreadyInstalled));
+            setErrorById?.Invoke(app.OperationKey, string.Empty, string.Empty);
+            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
+            return;
+        }
+
+        if (_wingetService.IsNoUpgradeNeeded(installResult.ExitCode))
+        {
+            setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
+            setErrorById?.Invoke(app.OperationKey, string.Empty, string.Empty);
             reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
             return;
         }

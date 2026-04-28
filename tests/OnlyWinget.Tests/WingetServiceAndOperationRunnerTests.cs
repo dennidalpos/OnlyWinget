@@ -482,6 +482,45 @@ CapCut                    ByteDance.CapCut  8.3.0.3497     8.4.0.3562    winget
     }
 
     [Fact]
+    public async Task RunApplyAsync_UsesLatestVersionStatus_WhenInstallReportsNoUpgradeNeeded()
+    {
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "install" => new WingetCommandResult { ExitCode = -1978335189, Output = "No available upgrade found." },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+        var error = "previous error";
+        var resolution = "previous resolution";
+        var strings = LocalizedStrings.English;
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "VS Code", Id = "Microsoft.VisualStudioCode", Action = AppActions.Install }
+            },
+            (_, value) => status = RenderStatus(value, strings),
+            _ => { },
+            (_, _) => { },
+            strings,
+            (_, errorMessage, resolutionHint) =>
+            {
+                error = errorMessage;
+                resolution = resolutionHint;
+            });
+
+        Assert.Equal("Latest version installed", status);
+        Assert.Equal(string.Empty, error);
+        Assert.Equal(string.Empty, resolution);
+    }
+
+    [Fact]
     public void UpgradeWinget_DoesNotConvertAlreadyInstalledIntoSuccess()
     {
         var invocations = 0;

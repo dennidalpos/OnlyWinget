@@ -100,7 +100,7 @@ public sealed partial class LocalizedStrings
         StatusOk = "OK",
         StatusPaused = "Pausa",
         StatusUpgradeInProgress = "Upgrade...",
-        StatusAlreadyUpdated = "Gia aggiornata",
+        StatusAlreadyUpdated = "Versione piu recente",
         StatusInstallInProgress = "Installazione...",
         StatusAlreadyInstalled = "Gia installata",
         StatusUninstallInProgress = "Rimozione...",

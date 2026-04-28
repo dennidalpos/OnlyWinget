@@ -85,6 +85,81 @@ public sealed class SourceAlignmentTests
         }
     }
 
+    [Fact]
+    public void DialogWindows_UseOnlyWingetIcon()
+    {
+        var dialogsRoot = Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Dialogs");
+
+        Assert.Contains(
+            "Icon=\"/OnlyWinget;component/Assets/OnlyWinget.ico\"",
+            File.ReadAllText(Path.Combine(dialogsRoot, "PackageInterrogationDialog.xaml")),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Icon=\"/OnlyWinget;component/Assets/OnlyWinget.ico\"",
+            File.ReadAllText(Path.Combine(dialogsRoot, "TextPromptWindow.xaml")),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PackageInterrogationDialog_ConfirmButtonIsDefaultAction()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Dialogs", "PackageInterrogationDialog.xaml"));
+        var confirmButton = Regex.Match(source, "<Button Grid.Column=\"3\"(?:(?!/>).)*/>", RegexOptions.Singleline);
+
+        Assert.True(confirmButton.Success);
+        Assert.Contains("IsDefault=\"True\"", confirmButton.Value, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnConfirmClick\"", confirmButton.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MainWindow_StatusBadgesExposeFullStatusInTooltips()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "MainWindow.xaml"));
+        var statusTextBlocks = Regex.Matches(
+            source,
+            "<TextBlock Style=\"\\{StaticResource StatusBadgeTextStyle\\}\"(?:(?!/>).)*/>",
+            RegexOptions.Singleline);
+
+        Assert.Equal(2, statusTextBlocks.Count);
+        foreach (Match match in statusTextBlocks)
+        {
+            Assert.Contains("Text=\"{Binding Status}\"", match.Value, StringComparison.Ordinal);
+            Assert.Contains("ToolTip=\"{Binding Status}\"", match.Value, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void ProgressBarIndeterminateState_DoesNotUseFixedTravelDistance()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Styles", "Controls.xaml"));
+        var progressBarStyleStart = source.IndexOf("<Style TargetType=\"ProgressBar\">", StringComparison.Ordinal);
+        var progressBarStyleEnd = source.IndexOf("</Style>", progressBarStyleStart, StringComparison.Ordinal);
+
+        Assert.True(progressBarStyleStart >= 0);
+        Assert.True(progressBarStyleEnd > progressBarStyleStart);
+
+        var styleSource = source[progressBarStyleStart..progressBarStyleEnd];
+        Assert.Contains("HorizontalAlignment=\"Stretch\"", styleSource, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetProperty=\"Opacity\"", styleSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("To=\"1200\"", styleSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Width=\"80\"", styleSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IndeterminateTranslate", styleSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PackageInterrogationDialog_UsesSharedLabelColumnToken()
+    {
+        var root = GetRepositoryRoot();
+        var tokens = File.ReadAllText(Path.Combine(root, "src", "OnlyWinget", "Styles", "Tokens.xaml"));
+        var dialog = File.ReadAllText(Path.Combine(root, "src", "OnlyWinget", "Dialogs", "PackageInterrogationDialog.xaml"));
+
+        Assert.Contains("x:Key=\"PackageDialogLabelColumnWidth\">180</GridLength>", tokens, StringComparison.Ordinal);
+        Assert.DoesNotContain("ColumnDefinition Width=\"180\"", dialog, StringComparison.Ordinal);
+        Assert.Equal(
+            11,
+            Regex.Matches(dialog, "ColumnDefinition Width=\"\\{StaticResource PackageDialogLabelColumnWidth\\}\"").Count);
+    }
+
     private static string GetRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

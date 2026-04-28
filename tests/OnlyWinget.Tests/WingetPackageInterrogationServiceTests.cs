@@ -106,6 +106,105 @@ ManifestType: installer
     }
 
     [Fact]
+    public async Task InterrogateAsync_DoesNotWarn_WhenInstallerNodesExposeOneSelectableChoice()
+    {
+        var service = CreateService(
+            showOutput: """
+Found AnyDesk [AnyDesk.AnyDesk]
+Version: 9.7.1
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: AnyDesk.AnyDesk
+PackageVersion: 9.7.1
+InstallerType: exe
+Installers:
+- Architecture: x86
+  InstallerUrl: https://example.invalid/anydesk-a.exe
+- Architecture: x86
+  InstallerUrl: https://example.invalid/anydesk-b.exe
+ManifestType: installer
+""");
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "AnyDesk.AnyDesk",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Warnings, warning => warning.Contains("Multiple installer", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(result.AvailableArchitectures);
+        Assert.Single(result.AvailableInstallerTypes);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_Warns_WhenInstallerNodesExposeDifferentSelectableChoices()
+    {
+        var service = CreateService(
+            showOutput: """
+Found Sample App [Contoso.Sample]
+Version: 1.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Sample
+PackageVersion: 1.0.0
+InstallerType: exe
+Installers:
+- Architecture: x86
+- Architecture: x64
+ManifestType: installer
+""");
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Sample",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.Contains(result.Warnings, warning => warning.Contains("Multiple installer", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_RetriesWithoutVersion_WhenPinnedVersionIsNoLongerAvailable()
+    {
+        var invocations = new List<IReadOnlyList<string>>();
+        var wingetService = new WingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invocations.Add(args.ToArray());
+                return args.Contains("--version")
+                    ? new WingetCommandResult { ExitCode = -1978335212, Output = "No version found matching: 9.7.0" }
+                    : new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Found AnyDesk [AnyDesk.AnyDesk]
+Version: 9.7.1
+Installer Type: exe
+"""
+                    };
+            });
+        var httpClient = new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound)));
+        var service = new WingetPackageInterrogationService(wingetService, httpClient);
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "AnyDesk.AnyDesk",
+            Source = "winget",
+            Version = "9.7.0"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal("9.7.1", result.Version);
+        Assert.Equal(2, invocations.Count);
+        Assert.Contains("--version", invocations[0]);
+        Assert.DoesNotContain("--version", invocations[1]);
+    }
+
+    [Fact]
     public async Task InterrogateAsync_PrefersCurrentArchitectureThenLocaleForDefaultSelection()
     {
         var service = CreateService(

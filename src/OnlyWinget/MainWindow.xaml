@@ -389,7 +389,8 @@
                                 <Border Tag="{Binding StatusBadgeKey}"
                                         Style="{StaticResource StatusBadgeBorderStyle}">
                                   <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
-                                             Text="{Binding Status}"/>
+                                             Text="{Binding Status}"
+                                             ToolTip="{Binding Status}"/>
                                 </Border>
                               </Border>
                             </DataTemplate>
@@ -714,7 +715,8 @@
                                 <Border Tag="{Binding StatusBadgeKey}"
                                         Style="{StaticResource StatusBadgeBorderStyle}">
                                   <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
-                                             Text="{Binding Status}"/>
+                                             Text="{Binding Status}"
+                                             ToolTip="{Binding Status}"/>
                                 </Border>
                               </Border>
                             </DataTemplate>
