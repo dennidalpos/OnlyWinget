@@ -76,15 +76,21 @@ public sealed class UpdateEntry : ObservableObject
             _statusKey = UiStatusKey.None;
             _statusProgressPercentage = null;
             _statusRawText = value ?? string.Empty;
+            OnPropertyChanged(nameof(StatusBadgeKey));
             SetProperty(ref _status, _statusRawText);
         }
     }
+
+    public UiStatusKey? StatusBadgeKey => _statusKey == UiStatusKey.None && string.IsNullOrWhiteSpace(_statusRawText)
+        ? null
+        : _statusKey;
 
     public void ApplyStatus(UiStatusState statusState, Services.LocalizedStrings strings)
     {
         _statusKey = statusState?.Key ?? UiStatusKey.None;
         _statusProgressPercentage = statusState?.ProgressPercentage;
         _statusRawText = statusState?.RawText ?? string.Empty;
+        OnPropertyChanged(nameof(StatusBadgeKey));
         SetProperty(ref _status, BuildStatusText(strings), nameof(Status));
     }
 

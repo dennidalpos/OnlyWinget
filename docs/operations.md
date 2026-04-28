@@ -24,15 +24,15 @@ Observed toolchain from the repository:
 
 ### Verification command map
 
-- setup: `dotnet restore .\OnlyWinget.sln --locked-mode`
+- setup: `pwsh -ExecutionPolicy Bypass -File .\scripts\install.ps1`
 - format: `dotnet format .\OnlyWinget.sln --verify-no-changes --no-restore`
 - lint: `pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release -WarnAsError -NoRestore`
-- typecheck: no standalone repository command is versioned; the C# compilation in `scripts/build.ps1` and `scripts/build-gate.ps1` is the supported typecheck path
+- typecheck: no standalone repository command is versioned; the C# compilation in `scripts/build.ps1` and `scripts/internal/build-gate.ps1` is the supported typecheck path
 - test: `dotnet test .\tests\OnlyWinget.Tests\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\artifacts\test-results --logger "trx;LogFileName=unit-tests.trx"`
 - build: `pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release -NoRestore`
 - run: `.\artifacts\bin\OnlyWinget\Release\net8.0-windows\OnlyWinget.exe` after a successful build
-- packaging: `pwsh -ExecutionPolicy Bypass -File .\scripts\build-msi.ps1 -Configuration Release -NoRestore`
-- CI reproduction locally: `pwsh -ExecutionPolicy Bypass -File .\scripts\build-gate.ps1 -Configuration Release`
+- packaging: `pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore`
+- CI reproduction locally: `pwsh -ExecutionPolicy Bypass -File .\scripts\internal\build-gate.ps1 -Configuration Release`
 - deploy: no repository command or documented workflow is versioned for deploy
 - release: no repository command or documented workflow is versioned for release
 
@@ -40,6 +40,12 @@ Observed toolchain from the repository:
 
 ```powershell
 dotnet restore .\OnlyWinget.sln --locked-mode
+```
+
+Equivalent supported script:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ```
 
 ### App build
@@ -63,12 +69,16 @@ After a successful build, launch the generated WPF executable directly:
 .\artifacts\bin\OnlyWinget\Release\net8.0-windows\OnlyWinget.exe
 ```
 
-The repository does not version a separate `run` script. The supported local run path is the built app output.
+Equivalent supported script:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Configuration Release
+```
 
 ### Repository verification gate
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\build-gate.ps1 -Configuration Release
+pwsh -ExecutionPolicy Bypass -File .\scripts\internal\build-gate.ps1 -Configuration Release
 ```
 
 What it does:
@@ -92,7 +102,7 @@ Primary outputs:
 ### Windows packaging
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\build-msi.ps1 -Configuration Release
+pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release
 ```
 
 What it does:
@@ -134,15 +144,23 @@ What it does:
 - removes generated `bin`, `obj`, `TestResults`, and `artifacts/` directories
 - optionally removes `.vs` and `packages` with `-All`
 
-## Operational scripts
+## Script classification
 
-Scripts present in `scripts/` that are relevant to day-to-day repository operations:
+Scripts present in `scripts/` are intentionally split between root entrypoints, agent maintenance, and internal helpers.
 
-- `scripts/build-gate.ps1`: local reproduction of the CI verification gate
-- `scripts/build.ps1`: app build entrypoint, also used as the repository lint gate through `-WarnAsError`
-- `scripts/build-msi.ps1`: packaging entrypoint for the internal MSIs and the unified setup EXE
-- `scripts/clean.ps1`: removes generated build, test, and artifact outputs
-- `scripts/_analyze.ps1`: optional PowerShell script analysis using `PSScriptAnalyzer`; useful for script maintenance, but not currently wired into CI
+| Script | Scope | Purpose | Inputs | Outputs | Dependencies | Referenced by |
+| --- | --- | --- | --- | --- | --- | --- |
+| `scripts/install.ps1` | root entrypoint | Restore repository dependencies in locked mode. | `-ForceEvaluate` optional restore refresh. | NuGet restore state under the configured package cache and `artifacts/obj`. | `dotnet`, `OnlyWinget.sln`, `scripts/internal/ScriptHelpers.ps1`. | README, operations docs. |
+| `scripts/build.ps1` | root entrypoint | Build the WPF app; also supports warning-as-error verification. | `-Configuration`, `-NoRestore`, `-StopRunningInstance`, `-WarnAsError`. | App build output under `artifacts/bin/OnlyWinget/<Configuration>/net8.0-windows/`. | `dotnet`, app csproj, `scripts/internal/ScriptHelpers.ps1`. | `scripts/internal/build-gate.ps1`, operations docs. |
+| `scripts/run.ps1` | root entrypoint | Launch the built WPF app, optionally building first. | `-Configuration`, `-Build`, `-NoRestore`, `-StopRunningInstance`. | Running `OnlyWinget.exe` process. | Built app output, optional `scripts/build.ps1`, `scripts/internal/ScriptHelpers.ps1`. | operations docs. |
+| `scripts/clean.ps1` | root entrypoint | Remove generated build, test, temporary, and artifact outputs. | `-Configuration`, `-StopRunningInstance`, `-DryRun`, `-All`. | Deleted `bin`, `obj`, `TestResults`, `artifacts`, and `tmp`; optionally `.vs` and `packages`. | `dotnet`, `scripts/internal/ScriptHelpers.ps1`. | operations docs. |
+| `scripts/package.ps1` | root entrypoint | Build architecture-specific internal MSIs and the unified setup EXE. | `-Configuration`, `-Version`, `-NoRestore`, `-StopRunningInstance`, `-Architecture`, `-SkipBundle`. | `artifacts/dist/OnlyWinget/<Configuration>/*-setup.exe` and `msi/*.msi`. | `dotnet`, WiX 3.14 tools, app and setup sources, `scripts/internal/ScriptHelpers.ps1`. | `scripts/internal/build-gate.ps1`, operations docs, PROJECT_STATUS. |
+| `scripts/internal/build-gate.ps1` | internal verification | Reproduce CI locally. | `-Configuration`, `-RunWingetSmoke`. | Build report, test results, app build output, setup EXE, internal MSIs. | `dotnet`, `scripts/build.ps1`, `scripts/package.ps1`, tests, WiX tools, `scripts/internal/ScriptHelpers.ps1`. | GitHub Actions, README, operations docs. |
+| `scripts/agents/analyze-scripts.ps1` | agent maintenance | Run PSScriptAnalyzer over active PowerShell scripts. | None. | Console analyzer report. | `PSScriptAnalyzer`, `scripts/agents/PSScriptAnalyzerSettings.psd1`. | Manual agent maintenance only; not CI. |
+| `scripts/agents/PSScriptAnalyzerSettings.psd1` | agent maintenance config | Configure script analysis rules. | Analyzer invocation. | Rule exclusions consumed by PSScriptAnalyzer. | PSScriptAnalyzer. | `scripts/agents/analyze-scripts.ps1`. |
+| `scripts/internal/ScriptHelpers.ps1` | internal helper | Shared command, path, and running-process guards. | Dot-sourced by scripts. | Helper functions in the caller scope. | PowerShell runtime. | Root operational scripts. |
+
+No active script is currently classified as legacy. The former package script name `build-msi.ps1` was consolidated into `package.ps1`; update callers to the package entrypoint instead of reintroducing a wrapper.
 
 ## Troubleshooting
 
@@ -172,7 +190,7 @@ Action:
 
 Observed behavior:
 
-- `scripts/build-gate.ps1` skips the real `winget` smoke tests unless `-RunWingetSmoke` is supplied
+- `scripts/internal/build-gate.ps1` skips the real `winget` smoke tests unless `-RunWingetSmoke` is supplied
 
 Action:
 
@@ -209,7 +227,7 @@ The workflow:
 
 - runs on `windows-latest`
 - restores with the SDK from `global.json`
-- executes `scripts/build-gate.ps1`
+- executes `scripts/internal/build-gate.ps1`
 - uploads the build report, test results, unified setup, and internal MSI artifacts
 
 An optional `workflow_dispatch` input can enable the `winget` smoke tests.

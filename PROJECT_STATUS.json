@@ -1,35 +1,254 @@
 {
+  "audit": {
+    "date": "2026-04-28",
+    "project_type": "Windows WPF desktop application",
+    "target_platform": "Windows 10/11",
+    "runtime": ".NET 8 Windows Desktop, built with the .NET SDK selected by global.json",
+    "architecture": "Single local desktop client with lightweight MVVM, application services, local JSON persistence, winget CLI integration, and WiX-based installer sources.",
+    "delivery_model": "Repository scripts build the app and generate a WiX Burn setup EXE with internal x86/x64 MSIs. No deploy or release workflow is versioned.",
+    "maturity": "Operationally buildable and test-covered for repository-owned code paths; installer generation is automated, but real install, upgrade, and uninstall validation is not fully automated.",
+    "technical_risk": "medium",
+    "risk_summary": "The main remaining risk is release validation of the generated installer on a clean or dedicated Windows host with a supported previous release artifact."
+  },
+  "current_state": {
+    "stack": [
+      "C#",
+      "WPF",
+      "net8.0-windows",
+      "xUnit",
+      "PowerShell repository scripts",
+      "WiX 3.14"
+    ],
+    "canonical_entrypoints": {
+      "setup": "dotnet restore .\\OnlyWinget.sln --locked-mode",
+      "format": "dotnet format .\\OnlyWinget.sln --verify-no-changes --no-restore",
+      "lint": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -WarnAsError -NoRestore",
+      "typecheck": "Covered by C# compilation in scripts\\build.ps1 and scripts\\internal\\build-gate.ps1.",
+      "test": "dotnet test .\\tests\\OnlyWinget.Tests\\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\\artifacts\\test-results --logger \"trx;LogFileName=unit-tests.trx\"",
+      "build": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -NoRestore",
+      "run": ".\\artifacts\\bin\\OnlyWinget\\Release\\net8.0-windows\\OnlyWinget.exe",
+      "package": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\package.ps1 -Configuration Release -NoRestore",
+      "ci_equivalent": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\internal\\build-gate.ps1 -Configuration Release"
+    },
+    "verification": {
+      "last_command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\internal\\build-gate.ps1 -Configuration Release",
+      "last_result": "passed",
+      "coverage": [
+        "locked restore",
+        "format verification",
+        "warning-as-error build",
+        "unit tests",
+        "app build",
+        "WiX setup and MSI generation",
+        "artifact analysis"
+      ],
+      "limits": [
+        "winget smoke tests are opt-in through -RunWingetSmoke",
+        "interactive app launch was not part of the automated gate",
+        "real installer install, upgrade, uninstall, and rollback execution require a dedicated Windows validation host"
+      ]
+    }
+  },
+  "legacy": [
+    {
+      "id": "wix-314-bundled-toolset",
+      "type": "tooling",
+      "status": "necessary",
+      "risk": "low",
+      "context": "WiX 3.14 binaries are vendored under tools\\wix314-binaries and are used by scripts\\package.ps1. This is an active packaging dependency, not stale legacy."
+    }
+  ],
   "tasks": [
     {
       "id": "setup-verify-clean-major-upgrade",
-      "title": "Verify the unified setup major-upgrade path from a supported previous release",
-      "category": "technical_debt",
-      "priority": 1,
+      "type": "test",
       "status": "blocked",
-      "scope": "core",
-      "risk": "HIGH",
-      "area": "packaging-setup",
+      "risk": "high",
+      "priority": "high",
+      "context": "Verify the unified setup major-upgrade path from a supported previous release on a clean or dedicated Windows host. The repository defines stable MSI and bundle UpgradeCode values, MajorUpgrade with same-version upgrade support, source-alignment tests, and scripts that generate the current setup artifacts. The workspace does not include a supported previous installer artifact or an automated clean-host upgrade flow, so the remaining validation is real packaging execution rather than source drift.",
       "files": [
         "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs",
         "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs",
-        "scripts/build-msi.ps1"
+        "scripts/package.ps1",
+        "tests/OnlyWinget.Tests/SourceAlignmentTests.cs"
       ],
-      "evidence": [
-        "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs defines MajorUpgrade and a stable UpgradeCode for the internal MSIs.",
-        "src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs defines a stable Bundle UpgradeCode for the unified setup.",
-        "tests/OnlyWinget.Tests/SourceAlignmentTests.cs checks for MajorUpgrade and same-version upgrade support in the MSI source.",
-        "scripts/build-msi.ps1 generates the current-version setup and internal MSIs from the repository sources, but it does not supply a supported previous release artifact to upgrade from.",
-        "The repository does not include an automated clean-host upgrade verification flow, a versioned previous release artifact in the workspace, or git tags that identify a packaged prior release to upgrade from."
-      ],
-      "impact": "A real end-user upgrade from a supported previous release to the current unified setup remains unproven before release.",
-      "recommended_action": "Run an upgrade from a supported previous installer artifact to the current setup on a clean or dedicated Windows host, then verify replacement, app launch, and final uninstall.",
-      "verification_state": "NON_VERIFIABLE",
-      "blocked_reason": "This requires both a supported previous installer artifact and a clean or dedicated Windows host. The current repository workspace can generate the current installer set, but it does not automate or supply the end-to-end upgrade input.",
       "acceptance_criteria": [
-        "The supported previous version installs without errors on a supported Windows machine.",
-        "The current setup upgrades the existing installation successfully.",
-        "The application starts correctly after the upgrade.",
-        "The final uninstall completes without errors and removes the installed directory."
+        "Install a supported previous OnlyWinget setup on a clean or dedicated supported Windows host.",
+        "Run the current unified setup generated by scripts\\package.ps1.",
+        "Verify that the upgrade completes without duplicate installed products.",
+        "Verify that OnlyWinget launches after upgrade.",
+        "Verify that final uninstall completes and removes the installed application directory."
+      ]
+    },
+    {
+      "id": "winget-smoke-live-validation",
+      "type": "test",
+      "status": "todo",
+      "risk": "medium",
+      "priority": "medium",
+      "context": "The consolidated build gate passes without live winget smoke tests because they are intentionally opt-in through -RunWingetSmoke. Run the smoke path on a Windows host where winget is installed, on PATH, and safe to query against live package sources.",
+      "files": [
+        "scripts/internal/build-gate.ps1",
+        "tests/OnlyWinget.Tests/WingetSmokeTests.cs"
+      ],
+      "acceptance_criteria": [
+        "Run scripts\\internal\\build-gate.ps1 with -RunWingetSmoke on a suitable Windows host.",
+        "Verify that the smoke test TRX is generated under artifacts\\test-results.",
+        "Confirm that failures, if any, are caused by current product behavior rather than host winget configuration or source availability."
+      ]
+    },
+    {
+      "id": "ui-audit-button-semantics",
+      "type": "refactor",
+      "status": "done",
+      "risk": "medium",
+      "priority": "high",
+      "context": "PrimaryButtonStyle, SuccessButtonStyle, WarningButtonStyle, DangerButtonStyle and NeutralButtonStyle currently resolve to the same neutral outline treatment. This weakens hierarchy and makes destructive or primary actions visually indistinguishable. Define minimal button variants from existing tokens and apply them consistently before changing screen structure.",
+      "files": [
+        "src/OnlyWinget/Styles/Templates.xaml",
+        "src/OnlyWinget/Styles/Tokens.xaml",
+        "src/OnlyWinget/MainWindow.xaml",
+        "src/OnlyWinget/Dialogs/PackageInterrogationDialog.xaml",
+        "src/OnlyWinget/Dialogs/TextPromptWindow.xaml"
+      ],
+      "acceptance_criteria": [
+        "Primary, neutral, danger, warning, success, ghost and disabled states are visually distinct and use shared token resources.",
+        "Primary action is identifiable in each toolbar or dialog without adding new dependencies.",
+        "Danger actions use a consistent destructive treatment and preserve readable contrast.",
+        "Hover, pressed, focus and disabled states remain visible for every button variant."
+      ]
+    },
+    {
+      "id": "ui-audit-token-rationalization",
+      "type": "refactor",
+      "status": "done",
+      "risk": "medium",
+      "priority": "high",
+      "context": "The project already has Tokens.xaml, but screen XAML still contains many hardcoded widths, heights, gaps, table column widths and inline margins. Rationalize only recurring values into reusable tokens or component styles so future UI changes do not duplicate local constants.",
+      "files": [
+        "src/OnlyWinget/Styles/Tokens.xaml",
+        "src/OnlyWinget/Styles/Templates.xaml",
+        "src/OnlyWinget/MainWindow.xaml",
+        "src/OnlyWinget/Dialogs/PackageInterrogationDialog.xaml",
+        "src/OnlyWinget/Dialogs/TextPromptWindow.xaml"
+      ],
+      "acceptance_criteria": [
+        "Common dialog widths, label columns, toolbar gaps, table action widths and fixed panel heights are centralized when reused.",
+        "Single-use layout values remain local when centralizing them would add noise.",
+        "No unrelated XAML reformatting is introduced."
+      ]
+    },
+    {
+      "id": "ui-audit-dialog-shell-consistency",
+      "type": "refactor",
+      "status": "done",
+      "risk": "medium",
+      "priority": "medium",
+      "context": "MainWindow uses custom branded chrome while PackageInterrogationDialog and TextPromptWindow use default Windows chrome with a card border inside. Align modal surface, title hierarchy, action row spacing and warning/error styling with the main app without replacing standard WPF dialog behavior unnecessarily.",
+      "files": [
+        "src/OnlyWinget/Dialogs/PackageInterrogationDialog.xaml",
+        "src/OnlyWinget/Dialogs/TextPromptWindow.xaml",
+        "src/OnlyWinget/Styles/Templates.xaml"
+      ],
+      "acceptance_criteria": [
+        "Dialogs share consistent padding, title sizes, action row spacing and field layout.",
+        "Dialog actions expose the same primary/cancel visual hierarchy.",
+        "Long localized labels and command previews remain readable at minimum dialog sizes."
+      ]
+    },
+    {
+      "id": "ui-audit-layout-responsive-windows",
+      "type": "test",
+      "status": "todo",
+      "risk": "medium",
+      "priority": "medium",
+      "context": "The WPF shell has fixed minimum dimensions, a 220px sidebar, a 220px log panel and wide GridView columns. Existing tests cover selected search and update table regressions, but not the full shell across minimum, default and large desktop sizes or touch-oriented Windows tablet use.",
+      "files": [
+        "src/OnlyWinget/MainWindow.xaml",
+        "tests/OnlyWinget.Tests/SearchResultsLayoutTests.cs",
+        "tests/OnlyWinget.Tests/ScrollBarInteractionTests.cs"
+      ],
+      "acceptance_criteria": [
+        "Main preset, search and updates workspaces are verified at minimum window size, default size and a large desktop size.",
+        "No horizontal overflow occurs outside intended table scroll areas.",
+        "Touch-relevant controls are reviewed for minimum hit area or explicitly kept desktop-dense."
+      ]
+    },
+    {
+      "id": "ui-audit-accessibility-keyboard",
+      "type": "test",
+      "status": "todo",
+      "risk": "medium",
+      "priority": "medium",
+      "context": "Some controls have AutomationProperties.Name and visible focus styles, but coverage is uneven: table cell combo boxes include a hardcoded English automation name, many action buttons rely only on visible text, and dialogs have limited automation labels. Audit keyboard order, focus visibility, automation names and tooltip-only affordances.",
+      "files": [
+        "src/OnlyWinget/MainWindow.xaml",
+        "src/OnlyWinget/Dialogs/PackageInterrogationDialog.xaml",
+        "src/OnlyWinget/Dialogs/TextPromptWindow.xaml",
+        "src/OnlyWinget/Services/LocalizedStrings.cs",
+        "src/OnlyWinget/Services/LocalizedStrings.English.cs",
+        "src/OnlyWinget/Services/LocalizedStrings.Italian.cs"
+      ],
+      "acceptance_criteria": [
+        "Keyboard tab order reaches all actionable controls in a predictable sequence.",
+        "Focus ring is visible on buttons, text inputs, combo boxes, list rows and checkboxes.",
+        "Automation names are localized for non-obvious icon or row-level controls.",
+        "Tooltip-only controls also expose accessible names."
+      ]
+    },
+    {
+      "id": "ui-audit-state-surfaces",
+      "type": "refactor",
+      "status": "done",
+      "risk": "medium",
+      "priority": "medium",
+      "context": "Empty, loading, warning, progress, error and success states exist but are implemented locally across screens. Consolidate state surface patterns so list empty states, loading panels, warning panels and log empty state use consistent typography, spacing and contrast.",
+      "files": [
+        "src/OnlyWinget/Styles/Templates.xaml",
+        "src/OnlyWinget/MainWindow.xaml",
+        "src/OnlyWinget/Dialogs/PackageInterrogationDialog.xaml"
+      ],
+      "acceptance_criteria": [
+        "Empty, loading and warning panels share common style resources.",
+        "Status badges have variants for neutral, success, warning and danger states when data requires them.",
+        "Progress and log states remain readable on light and dark surfaces."
+      ]
+    },
+    {
+      "id": "ui-audit-table-patterns",
+      "type": "refactor",
+      "status": "todo",
+      "risk": "low",
+      "priority": "medium",
+      "context": "Preset, search and updates tables repeat GridView column templates, cell borders, text trimming and status badge composition. Extract only stable repeated patterns to reduce drift while preserving the existing GridViewAutoSizeBehavior tests.",
+      "files": [
+        "src/OnlyWinget/MainWindow.xaml",
+        "src/OnlyWinget/Styles/Templates.xaml",
+        "tests/OnlyWinget.Tests/SearchResultsLayoutTests.cs"
+      ],
+      "acceptance_criteria": [
+        "Repeated table cell templates are reduced without changing table behavior.",
+        "Column minimum widths remain explicit and covered by layout tests.",
+        "Status, action selector and checkbox cells remain keyboard-accessible."
+      ]
+    },
+    {
+      "id": "ui-audit-visual-regression-coverage",
+      "type": "test",
+      "status": "todo",
+      "risk": "medium",
+      "priority": "medium",
+      "context": "Current UI tests validate selected layout and scrollbar regressions but do not capture a systematic visual baseline for the main shell, dialogs, empty/loading states and localized English/Italian text lengths. Add focused WPF layout tests before larger UI normalization work.",
+      "files": [
+        "tests/OnlyWinget.Tests/SearchResultsLayoutTests.cs",
+        "tests/OnlyWinget.Tests/ScrollBarInteractionTests.cs",
+        "tests/OnlyWinget.Tests/MainViewModelTests.cs",
+        "tests/OnlyWinget.Tests/PackageInterrogationDialogViewModelTests.cs"
+      ],
+      "acceptance_criteria": [
+        "Main shell workspaces have automated layout checks for representative data.",
+        "Package interrogation dialog has layout coverage for full mode, reduced mode and long command preview.",
+        "English and Italian strings are exercised for controls with constrained widths."
       ]
     }
   ]

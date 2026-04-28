@@ -40,7 +40,7 @@ jobs:
             $buildGateParameters.RunWingetSmoke = $true
           }
 
-          ./scripts/build-gate.ps1 @buildGateParameters
+          ./scripts/internal/build-gate.ps1 @buildGateParameters
 
       - name: Upload verification artifacts
         if: always()

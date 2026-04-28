@@ -1,7 +1,8 @@
 Import-Module PSScriptAnalyzer -ErrorAction Stop
 $settingsPath = Join-Path $PSScriptRoot 'PSScriptAnalyzerSettings.psd1'
-$scripts = Get-ChildItem $PSScriptRoot -Filter '*.ps1' |
-    Where-Object { $_.Name -notlike '_*' }
+$scriptsRoot = Split-Path $PSScriptRoot -Parent
+$scripts = Get-ChildItem $scriptsRoot -Recurse -Filter '*.ps1' |
+    Where-Object { $_.FullName -ne $PSCommandPath -and $_.FullName -notmatch '\\legacy\\' }
 
 $anyIssue = $false
 foreach ($s in $scripts) {

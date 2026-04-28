@@ -186,6 +186,7 @@ public sealed partial class LocalizedStrings
     public string PackageDialogPackageVersionLabel { get; init; } = string.Empty;
     public string PresetSelectorAutomationName { get; init; } = string.Empty;
     public string AppListAutomationName { get; init; } = string.Empty;
+    public string ActionSelectorAutomationName { get; init; } = string.Empty;
     public string SearchQueryAutomationName { get; init; } = string.Empty;
     public string SearchResultsAutomationName { get; init; } = string.Empty;
     public string SearchSelectedIdAutomationName { get; init; } = string.Empty;

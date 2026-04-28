@@ -19,8 +19,8 @@ OnlyWinget is a Windows desktop client for managing `winget` packages from a loc
 - `src/OnlyWinget/`: WPF application targeting `net8.0-windows`
 - `src/OnlyWinget.Setup/`: WiX source for internal MSIs and the unified setup bundle
 - `tests/OnlyWinget.Tests/`: xUnit test project
-- `scripts/`: PowerShell entrypoints used for build, verification, cleanup, and unified setup/MSI generation
-- `.github/workflows/build-gate.yml`: CI workflow that runs the repository verification gate
+- `scripts/`: PowerShell entrypoints used for install, build, run, cleanup, verification, and unified setup/MSI generation
+- `.github/workflows/build-gate.yml`: CI workflow that runs the repository verification gate through `scripts/internal/build-gate.ps1`
 - `tools/wix314-binaries/`: bundled WiX 3.14 toolset used by the MSI packaging script
 - `artifacts/`: normalized build, test, publish, and packaging output root configured by `Directory.Build.props`
 

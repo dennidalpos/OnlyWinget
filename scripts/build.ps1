@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-. (Join-Path $PSScriptRoot 'ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'internal/ScriptHelpers.ps1')
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'

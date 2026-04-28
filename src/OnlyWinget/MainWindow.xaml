@@ -7,10 +7,10 @@
         xmlns:helpers="clr-namespace:OnlyWinget.Helpers"
         Title="{Binding Strings.Title}"
         Icon="Assets/OnlyWinget.ico"
-        Height="720"
-        Width="1180"
-        MinHeight="640"
-        MinWidth="860"
+        Height="{StaticResource MainWindowHeight}"
+        Width="{StaticResource MainWindowWidth}"
+        MinHeight="{StaticResource MainWindowMinHeight}"
+        MinWidth="{StaticResource MainWindowMinWidth}"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -276,7 +276,7 @@
                           Command="{Binding ApplyCommand}"
                           IsEnabled="{Binding IsApplyEnabled}"
                           ToolTip="{Binding Strings.ApplyTooltip}"
-                          Style="{StaticResource PrimaryButtonStyle}"/>
+                          Style="{StaticResource SuccessButtonStyle}"/>
                 </StackPanel>
 
                 <StackPanel Margin="{StaticResource TopSpacing6}"
@@ -359,17 +359,17 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Width="138"
+                        <GridViewColumn Width="{StaticResource ActionColumnWidth}"
                                         Header="{Binding DataContext.Strings.Action, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
                               <Border Style="{StaticResource TableCellCompactBorderStyle}">
-                                <ComboBox Width="126"
+                                <ComboBox Width="{StaticResource ActionSelectorWidth}"
                                           Height="{StaticResource ControlHeightSm}"
                                           ItemsSource="{Binding DataContext.PresetWorkspace.AvailableActions, RelativeSource={RelativeSource AncestorType=ListView}}"
                                           SelectedValuePath="Value"
                                           SelectedValue="{Binding Action, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          AutomationProperties.Name="Action Selector">
+                                          AutomationProperties.Name="{Binding DataContext.Strings.ActionSelectorAutomationName, RelativeSource={RelativeSource AncestorType=ListView}}">
                                   <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                       <TextBlock Text="{Binding Label}"
@@ -381,12 +381,12 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Width="78"
+                        <GridViewColumn Width="{StaticResource StatusColumnWidth}"
                                         Header="{Binding DataContext.Strings.Status, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
                               <Border Style="{StaticResource TableCellCompactBorderStyle}">
-                                <Border Tag="{Binding Status}"
+                                <Border Tag="{Binding StatusBadgeKey}"
                                         Style="{StaticResource StatusBadgeBorderStyle}">
                                   <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
                                              Text="{Binding Status}"/>
@@ -496,14 +496,14 @@
                   </Grid>
                   <Button Grid.Column="2"
                           Content="{Binding Strings.Search}"
-                          MinWidth="100"
+                          MinWidth="{StaticResource ButtonMinWidth}"
                           Height="{StaticResource ControlHeightLg}"
                           Command="{Binding RunSearchCommand}"
                           IsEnabled="{Binding IsSearchEnabled}"
                           Style="{StaticResource PrimaryButtonStyle}"/>
                   <Button Grid.Column="4"
                           Content="{Binding Strings.CloseButton}"
-                          MinWidth="100"
+                          MinWidth="{StaticResource ButtonMinWidth}"
                           Height="{StaticResource ControlHeightLg}"
                           Command="{Binding CloseSearchCommand}"
                           Style="{StaticResource NeutralButtonStyle}"/>
@@ -561,7 +561,7 @@
 
                   <Border>
                     <Border.Style>
-                      <Style TargetType="Border" BasedOn="{StaticResource EmptyStateBorderStyle}">
+                      <Style TargetType="Border" BasedOn="{StaticResource LoadingStateBorderStyle}">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
                           <DataTrigger Binding="{Binding IsSearchInProgress}" Value="True">
@@ -623,9 +623,9 @@
                              AutomationProperties.Name="{Binding Strings.SearchSelectedIdAutomationName}"/>
                     <Button Grid.Column="2"
                             Content="{Binding SearchAddButtonText}"
-                            MinWidth="152"
+                            MinWidth="{StaticResource DialogPrimaryButtonMinWidth}"
                             Command="{Binding UseSearchIdCommand}"
-                            Style="{StaticResource PrimaryButtonStyle}"/>
+                            Style="{StaticResource SuccessButtonStyle}"/>
                   </Grid>
                 </StackPanel>
               </Grid>
@@ -706,12 +706,12 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Width="78"
+                        <GridViewColumn Width="{StaticResource StatusColumnWidth}"
                                         Header="{Binding DataContext.Strings.Status, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
                               <Border Style="{StaticResource TableCellCompactBorderStyle}">
-                                <Border Tag="{Binding Status}"
+                                <Border Tag="{Binding StatusBadgeKey}"
                                         Style="{StaticResource StatusBadgeBorderStyle}">
                                   <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
                                              Text="{Binding Status}"/>
@@ -752,7 +752,7 @@
 
                   <Border>
                     <Border.Style>
-                      <Style TargetType="Border" BasedOn="{StaticResource EmptyStateBorderStyle}">
+                      <Style TargetType="Border" BasedOn="{StaticResource LoadingStateBorderStyle}">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
                           <DataTrigger Binding="{Binding IsUpdatesLoading}" Value="True">
@@ -810,19 +810,19 @@
                   </Grid.ColumnDefinitions>
                   <Button Grid.Column="1"
                           Content="{Binding Strings.RefreshUpdates}"
-                          MinWidth="130"
+                          MinWidth="{StaticResource DialogButtonMinWidth}"
                           Command="{Binding RefreshUpdatesCommand}"
                           IsEnabled="{Binding AreUpdatesActionsEnabled}"
                           Style="{StaticResource PrimaryButtonStyle}"/>
                   <Button Grid.Column="3"
                           Content="{Binding Strings.ApplyUpdates}"
-                          MinWidth="140"
+                          MinWidth="{StaticResource DialogButtonMinWidth}"
                           Command="{Binding ApplyUpdatesCommand}"
                           IsEnabled="{Binding AreUpdatesActionsEnabled}"
-                          Style="{StaticResource PrimaryButtonStyle}"/>
+                          Style="{StaticResource SuccessButtonStyle}"/>
                   <Button Grid.Column="5"
                           Content="{Binding Strings.CloseButton}"
-                          MinWidth="100"
+                          MinWidth="{StaticResource ButtonMinWidth}"
                           Command="{Binding CloseUpdatesCommand}"
                           IsEnabled="{Binding AreUpdatesActionsEnabled}"
                           Style="{StaticResource NeutralButtonStyle}"/>
@@ -858,7 +858,7 @@
                                  Value="{Binding OperationProgressValue}"/>
                   </StackPanel>
 
-                  <Border Style="{StaticResource SubtleCardBorderStyle}"
+                  <Border Style="{StaticResource InlineStateBorderStyle}"
                           Visibility="{Binding IsWingetUpdateInProgress, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel>
                       <TextBlock Style="{StaticResource SectionBodyTextStyle}"
@@ -900,7 +900,7 @@
                     <TextBlock HorizontalAlignment="Center"
                                Style="{StaticResource SectionTitleTextStyle}"
                                Text="{Binding Strings.LogTitle}"/>
-                    <TextBlock Margin="0,6,0,0"
+                    <TextBlock Margin="{StaticResource TopSpacing6}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                Style="{StaticResource SectionBodyTextStyle}"

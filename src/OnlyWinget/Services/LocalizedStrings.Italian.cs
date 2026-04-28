@@ -188,6 +188,7 @@ public sealed partial class LocalizedStrings
         PackageDialogPackageVersionLabel = "Versione",
         PresetSelectorAutomationName = "Selettore preset",
         AppListAutomationName = "Lista applicazioni",
+        ActionSelectorAutomationName = "Selettore azione",
         SearchQueryAutomationName = "Query di ricerca",
         SearchResultsAutomationName = "Risultati ricerca",
         SearchSelectedIdAutomationName = "ID Winget selezionato",

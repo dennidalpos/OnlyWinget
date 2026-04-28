@@ -8,14 +8,16 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'ScriptHelpers.ps1')
 
-$repoRoot = Split-Path $PSScriptRoot -Parent
+$repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
 $testProjectPath = Join-Path $repoRoot 'tests/OnlyWinget.Tests/OnlyWinget.Tests.csproj'
 $artifactsPath = Join-Path $repoRoot 'artifacts'
+$tmpPath = Join-Path $repoRoot 'tmp'
 $reportPath = Join-Path $artifactsPath 'build-report.txt'
 $testResultsPath = Join-Path $artifactsPath 'test-results'
-$buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
-$buildMsiScriptPath = Join-Path $PSScriptRoot 'build-msi.ps1'
+$scriptsRoot = Split-Path $PSScriptRoot -Parent
+$buildScriptPath = Join-Path $scriptsRoot 'build.ps1'
+$packageScriptPath = Join-Path $scriptsRoot 'package.ps1'
 $targetFramework = 'net8.0-windows'
 $steps = [System.Collections.Generic.List[string]]::new()
 
@@ -40,11 +42,39 @@ function Assert-LastExitCode {
     }
 }
 
+function Remove-GateGeneratedPath {
+    param(
+        [string]$Path
+    )
+
+    $fullRepoRoot = [System.IO.Path]::GetFullPath($repoRoot)
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $allowedPaths = @(
+        [System.IO.Path]::GetFullPath($artifactsPath),
+        [System.IO.Path]::GetFullPath($tmpPath)
+    )
+
+    if ($allowedPaths -notcontains $fullPath -or -not $fullPath.StartsWith($fullRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Pulizia gate rifiutata per percorso non consentito: $Path"
+    }
+
+    if (-not (Test-Path -LiteralPath $fullPath)) {
+        return
+    }
+
+    Remove-Item -LiteralPath $fullPath -Recurse -Force -ErrorAction Stop
+}
+
 Assert-Command -Name 'dotnet'
 Assert-Path -Path $solutionPath -Description 'Solution'
 Assert-Path -Path $testProjectPath -Description 'Test project'
 Assert-Path -Path $buildScriptPath -Description 'Build script'
-Assert-Path -Path $buildMsiScriptPath -Description 'Packaging build script'
+Assert-Path -Path $packageScriptPath -Description 'Packaging script'
+
+Invoke-Step 'clean generated outputs' {
+    Remove-GateGeneratedPath -Path $artifactsPath
+    Remove-GateGeneratedPath -Path $tmpPath
+}
 
 Invoke-Step 'restore' {
     dotnet restore $solutionPath --locked-mode
@@ -91,7 +121,7 @@ Invoke-Step 'build' {
 }
 
 Invoke-Step 'setup package' {
-    & $buildMsiScriptPath -Configuration $Configuration -NoRestore
+    & $packageScriptPath -Configuration $Configuration -NoRestore
 }
 
 Invoke-Step 'artifact analysis' {

@@ -8,10 +8,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-. (Join-Path $PSScriptRoot 'ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'internal/ScriptHelpers.ps1')
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $artifactsPath = Join-Path $repoRoot 'artifacts'
+$tmpPath = Join-Path $repoRoot 'tmp'
 
 function Get-SupportedProjectPath {
     @(
@@ -95,6 +96,7 @@ foreach ($target in $safeTargets | Sort-Object -Unique) {
 }
 
 Remove-GeneratedPath -Path $artifactsPath
+Remove-GeneratedPath -Path $tmpPath
 
 if ($All) {
     $aggressiveTargets = @(

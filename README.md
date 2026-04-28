@@ -28,14 +28,14 @@ Canonical repository verification:
 
 ```powershell
 dotnet restore .\OnlyWinget.sln --locked-mode
-pwsh -ExecutionPolicy Bypass -File .\scripts\build-gate.ps1 -Configuration Release
+pwsh -ExecutionPolicy Bypass -File .\scripts\internal\build-gate.ps1 -Configuration Release
 ```
 
 ## Current Project Status
 
 - The repository contains the desktop app, automated tests, PowerShell build entrypoints, and WiX-based Windows packaging sources.
-- Local CI-equivalent verification is versioned in `scripts/build-gate.ps1` and mirrored by GitHub Actions.
-- Windows setup packaging is versioned and builds a unified setup EXE plus internal x86/x64 MSIs.
+- Local CI-equivalent verification is versioned in `scripts/internal/build-gate.ps1` and mirrored by GitHub Actions.
+- Windows setup packaging is versioned in `scripts/package.ps1` and builds a unified setup EXE plus internal x86/x64 MSIs.
 - One blocked packaging validation item remains tracked in [PROJECT_STATUS.json](PROJECT_STATUS.json): verifying a real major upgrade from a supported previous release on a clean or dedicated Windows host.
 
 ## Technical Documentation
