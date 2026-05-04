@@ -280,7 +280,37 @@ public sealed class OperationRunner : IOperationRunner
 
     private static string FormatArgumentsForLog(IReadOnlyList<string> args)
     {
-        return string.Join(" ", args.Select(arg => arg.Contains(' ', StringComparison.Ordinal) ? $"\"{arg}\"" : arg));
+        var formattedArgs = new List<string>(args.Count);
+        var redactNextValue = false;
+
+        foreach (var arg in args)
+        {
+            if (redactNextValue)
+            {
+                formattedArgs.Add("[redacted]");
+                redactNextValue = false;
+                continue;
+            }
+
+            formattedArgs.Add(FormatArgumentForLog(arg));
+            if (IsSensitiveArgumentOption(arg))
+            {
+                redactNextValue = true;
+            }
+        }
+
+        return string.Join(" ", formattedArgs);
+    }
+
+    private static bool IsSensitiveArgumentOption(string arg)
+    {
+        return string.Equals(arg, "--custom", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(arg, "--override", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FormatArgumentForLog(string arg)
+    {
+        return arg.Contains(' ', StringComparison.Ordinal) ? $"\"{arg}\"" : arg;
     }
 
     private void HandleProgressLine(

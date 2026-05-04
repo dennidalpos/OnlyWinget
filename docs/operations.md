@@ -7,24 +7,28 @@ Use the repository documents with this split:
 - [`../README.md`](../README.md): product-facing overview for GitHub
 - [`architecture.md`](architecture.md): application structure, runtime behavior, and packaging model
 - [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
-- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): residual risk and validation status after repository-based checks
+- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current audit snapshot and residual open work when present
 
 ## Environment baseline
 
 This repository is Windows-first and uses PowerShell for operational entrypoints.
 
-Observed toolchain from the repository:
+Required toolchain from the repository:
 
 - .NET SDK pinned through [`global.json`](../global.json) to `9.0.100`
 - application target framework: `net8.0-windows`
-- PowerShell scripts in `scripts/`
-- bundled WiX 3.14 binaries in `tools/wix314-binaries/`
+- PowerShell 7+ for scripts in `scripts/`
+- `winget` on `PATH` for normal app use and optional smoke tests
+- bundled WiX 3.14 binaries in `tools/wix314-binaries/` for packaging
+
+The setup script restores NuGet dependencies in locked mode. WiX is not installed by setup because the packaging flow resolves the bundled binaries first.
 
 ## Canonical entrypoints
 
 ### Verification command map
 
 - setup: `pwsh -ExecutionPolicy Bypass -File .\scripts\install.ps1`
+- restore: `dotnet restore .\OnlyWinget.sln --locked-mode`
 - format: `dotnet format .\OnlyWinget.sln --verify-no-changes --no-restore`
 - lint: `pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release -WarnAsError -NoRestore`
 - typecheck: no standalone repository command is versioned; the C# compilation in `scripts/build.ps1` and `scripts/internal/build-gate.ps1` is the supported typecheck path
@@ -283,10 +287,10 @@ Repository-evidenced state:
 - Internal x86 and x64 MSI generation is scripted and versioned.
 - The installer is per-machine and therefore requires administrative privileges for real install, upgrade, repair, and uninstall validation.
 - `scripts\validate-installer-lifecycle.ps1` can generate a previous-version setup baseline or consume an official previous setup with `-PreviousSetupPath`.
-- Residual release-process risk after source and script validation is tracked in `PROJECT_STATUS.json`.
+- `PROJECT_STATUS.json` records the latest audit snapshot and stays empty of tasks when no concrete residual backlog is open.
 
 Installer lifecycle results are written to `artifacts\installer-validation\<Configuration>\installer-lifecycle-report.txt`.
 
 ## Tracking
 
-`PROJECT_STATUS.json` is the active repository tracking file for residual verification drift that is still open, blocked, risky, or not verifiable from the current workspace alone.
+`PROJECT_STATUS.json` is the active repository tracking file for residual verification drift that is still open, blocked, risky, or not verifiable from the current workspace alone. If no such work is present, its `tasks` array remains empty.

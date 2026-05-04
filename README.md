@@ -24,8 +24,11 @@ OnlyWinget is a Windows desktop app for managing local `winget` package workflow
 - `winget` available on `PATH` for normal app use.
 - .NET SDK compatible with [`global.json`](global.json).
 - PowerShell 7+ (`pwsh`) for repository scripts.
+- WiX 3.14 is already bundled under `tools\wix314-binaries` for packaging.
 
 ## Setup
+
+Fresh repository setup restores NuGet dependencies in locked mode:
 
 ```powershell
 pwsh -ExecutionPolicy Bypass -File .\scripts\install.ps1
@@ -40,6 +43,12 @@ dotnet restore .\OnlyWinget.sln --locked-mode
 ## Main Commands
 
 ```powershell
+# Verify formatting
+dotnet format .\OnlyWinget.sln --verify-no-changes --no-restore
+
+# Build with warnings as errors
+pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release -WarnAsError -NoRestore
+
 # Build the app
 pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release
 
@@ -59,11 +68,11 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -C
 pwsh -ExecutionPolicy Bypass -File .\scripts\internal\build-gate.ps1 -Configuration Release
 ```
 
-The default gate restores, verifies formatting, builds with warnings as errors, runs tests, builds the app, generates the setup packages, and writes `artifacts\build-report.txt`.
+Typecheck is covered by C# compilation in the build and build-gate scripts. The default gate restores, verifies formatting, builds with warnings as errors, runs tests, builds the app, generates the setup packages, and writes `artifacts\build-report.txt`.
 
 ## Project Status
 
-The repository contains the WPF app, xUnit tests, Windows PowerShell entrypoints, WiX packaging sources, bundled WiX 3.14 binaries, and a GitHub Actions build gate. Source build, unit/UI tests, live `winget` smoke tests, package generation, and elevated installer lifecycle validation are automated.
+The repository contains the WPF app, xUnit tests, Windows PowerShell entrypoints, WiX packaging sources, bundled WiX 3.14 binaries, and a GitHub Actions build gate. Source build, unit/UI tests, package generation, and CI verification are automated.
 
 Live `winget` smoke tests are opt-in through `-RunWingetSmoke`. Installer lifecycle validation requires an elevated clean or dedicated Windows host and writes its report under `artifacts\installer-validation\`.
 

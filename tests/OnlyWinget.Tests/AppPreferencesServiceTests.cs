@@ -77,6 +77,22 @@ public sealed class AppPreferencesServiceTests : IDisposable
         Assert.Equal("en", service.Load().PreferredUiLanguage);
     }
 
+    [Fact]
+    public void Save_DoesNotThrow_WhenSettingsDirectoryCannotBeCreated()
+    {
+        var blockedRoot = Path.Combine(_root, "settings-root");
+        File.WriteAllText(blockedRoot, "not a directory");
+        var service = new AppPreferencesService(blockedRoot);
+
+        var ex = Record.Exception(() => service.Save(new AppPreferences
+        {
+            PreferredUiLanguage = "en"
+        }));
+
+        Assert.Null(ex);
+        Assert.Equal(string.Empty, service.Load().PreferredUiLanguage);
+    }
+
     public void Dispose()
     {
         try

@@ -87,8 +87,8 @@
   <sys:Double x:Key="LogFontSize">11</sys:Double>
 
   <CornerRadius x:Key="RadiusSm">6</CornerRadius>
-  <CornerRadius x:Key="RadiusMd">10</CornerRadius>
-  <CornerRadius x:Key="RadiusLg">14</CornerRadius>
+  <CornerRadius x:Key="RadiusMd">8</CornerRadius>
+  <CornerRadius x:Key="RadiusLg">8</CornerRadius>
 
   <!-- Window & chrome -->
   <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F0F4F9"/>
@@ -112,9 +112,10 @@
   <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
   <SolidColorBrush x:Key="BorderStrongBrush" Color="#CBD5E1"/>
   <SolidColorBrush x:Key="BorderEmphasisBrush" Color="#94A3B8"/>
-  <SolidColorBrush x:Key="PanelBorderBrush" Color="#B6C3D1"/>
-  <SolidColorBrush x:Key="CellBorderBrush" Color="#CBD5E1"/>
-  <SolidColorBrush x:Key="ButtonBorderBrush" Color="#536174"/>
+  <SolidColorBrush x:Key="PanelBorderBrush" Color="#CBD5E1"/>
+  <SolidColorBrush x:Key="CellBorderBrush" Color="#DDE6F0"/>
+  <SolidColorBrush x:Key="ColumnSeparatorBrush" Color="#EDF2F7"/>
+  <SolidColorBrush x:Key="ButtonBorderBrush" Color="#94A3B8"/>
   <SolidColorBrush x:Key="ButtonHoverBrush" Color="#F8FAFC"/>
   <SolidColorBrush x:Key="ButtonPressedBrush" Color="#E2E8F0"/>
   <SolidColorBrush x:Key="SelectedRowBrush" Color="#E8EEF6"/>

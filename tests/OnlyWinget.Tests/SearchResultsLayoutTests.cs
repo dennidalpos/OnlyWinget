@@ -100,6 +100,62 @@ public sealed class SearchResultsLayoutTests
         }
     }
 
+    [Fact]
+    public void MainShell_MaximizedWindowFitsInsideDesktopWorkArea()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-MaximizedBounds-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var workArea = SystemParameters.WorkArea;
+                var window = new MainWindow
+                {
+                    Width = 1180,
+                    Height = 720,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = workArea.Left,
+                    Top = workArea.Top,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    SeedPresetRows(viewModel);
+
+                    window.Show();
+                    DoEvents();
+
+                    window.WindowState = WindowState.Maximized;
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    Assert.Equal(WindowState.Maximized, window.WindowState);
+                    Assert.True(window.ActualWidth <= workArea.Width + 1d, $"Maximized width should fit work area. Actual: {window.ActualWidth}, work area: {workArea.Width}.");
+                    Assert.True(window.ActualHeight <= workArea.Height + 1d, $"Maximized height should fit work area. Actual: {window.ActualHeight}, work area: {workArea.Height}.");
+                    AssertElementVisibleInsideWindow(window, "OutputLogBox");
+                    AssertElementVisibleInsideWindow(window, "PresetAppsList");
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData("preset")]
     [InlineData("search")]

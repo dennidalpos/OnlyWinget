@@ -101,25 +101,6 @@ public sealed class UpdateEntry : ObservableObject
 
     private string BuildStatusText(Services.LocalizedStrings strings)
     {
-        if (!string.IsNullOrWhiteSpace(_statusRawText))
-        {
-            return _statusRawText;
-        }
-
-        var baseText = _statusKey switch
-        {
-            UiStatusKey.Ok => strings.StatusOk,
-            UiStatusKey.Paused => strings.StatusPaused,
-            UiStatusKey.UpgradeInProgress => strings.StatusUpgradeInProgress,
-            UiStatusKey.AlreadyUpdated => strings.StatusAlreadyUpdated,
-            UiStatusKey.InstallInProgress => strings.StatusInstallInProgress,
-            UiStatusKey.AlreadyInstalled => strings.StatusAlreadyInstalled,
-            UiStatusKey.UninstallInProgress => strings.StatusUninstallInProgress,
-            _ => string.Empty
-        };
-
-        return _statusProgressPercentage.HasValue && !string.IsNullOrWhiteSpace(baseText)
-            ? $"{baseText} {_statusProgressPercentage.Value}%"
-            : baseText;
+        return UiStatusTextFormatter.Format(_statusKey, _statusProgressPercentage, _statusRawText, strings);
     }
 }

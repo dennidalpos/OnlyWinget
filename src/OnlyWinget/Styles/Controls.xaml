@@ -413,7 +413,7 @@
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSm}"/>
     <Setter Property="Padding" Value="10,6"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource CellBorderBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ColumnSeparatorBrush}"/>
     <Setter Property="BorderThickness" Value="0,0,1,1"/>
     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
     <Setter Property="Template">
@@ -431,15 +431,20 @@
             </Border>
             <Thumb x:Name="PART_HeaderGripper"
                    HorizontalAlignment="Right"
-                   Width="8"
+                   Width="6"
+                   Opacity="0.35"
                    Background="{DynamicResource TransparentBrush}"/>
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+              <Setter TargetName="PART_HeaderGripper" Property="Background" Value="{DynamicResource ColumnSeparatorBrush}"/>
+              <Setter TargetName="PART_HeaderGripper" Property="Opacity" Value="1"/>
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
               <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+              <Setter TargetName="PART_HeaderGripper" Property="Background" Value="{DynamicResource BorderBrush}"/>
+              <Setter TargetName="PART_HeaderGripper" Property="Opacity" Value="1"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

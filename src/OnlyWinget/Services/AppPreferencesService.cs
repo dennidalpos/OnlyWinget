@@ -65,9 +65,18 @@ public sealed class AppPreferencesService
 
     public void Save(AppPreferences preferences)
     {
-        var path = GetSettingsPath();
-        var json = JsonSerializer.Serialize(preferences ?? new AppPreferences(), JsonOptions());
-        WriteFileAtomically(path, json);
+        try
+        {
+            var path = GetSettingsPath();
+            var json = JsonSerializer.Serialize(preferences ?? new AppPreferences(), JsonOptions());
+            WriteFileAtomically(path, json);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     private static JsonSerializerOptions JsonOptions() => new()

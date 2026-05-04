@@ -105,6 +105,42 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public async Task RunApplyAsync_RedactsCustomAndOverrideArguments_InDiagnosticLog()
+    {
+        IReadOnlyList<string> invokedArgs = Array.Empty<string>();
+        var output = new List<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invokedArgs = args;
+                return new WingetCommandResult { ExitCode = 0, Output = "installed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry
+                {
+                    Name = "Internal Tool",
+                    Id = "Contoso.InternalTool",
+                    Action = AppActions.Install,
+                    OverrideArgs = "/token super-secret-token"
+                }
+            },
+            (_, _) => { },
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.English);
+
+        Assert.Contains("--override", invokedArgs);
+        Assert.Contains("/token super-secret-token", invokedArgs);
+        var commandLog = Assert.Single(output, line => line.Contains("event=install_command_built", StringComparison.Ordinal));
+        Assert.Contains("--override [redacted]", commandLog, StringComparison.Ordinal);
+        Assert.DoesNotContain("super-secret-token", commandLog, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task RunApplyAsync_SkipsWingetInvocation_ForPauseAction()
     {
         var invokedCommands = new List<string>();
@@ -165,6 +201,25 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         Assert.Contains(0, reportedProgress);
         Assert.Contains(50, reportedProgress);
         Assert.Contains(100, reportedProgress);
+    }
+
+    [Fact]
+    public void UiStatusFormatting_IsConsistentForPresetAndUpdateRows()
+    {
+        var appEntry = new AppEntry();
+        var updateEntry = new UpdateEntry();
+
+        appEntry.ApplyStatus(UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55), LocalizedStrings.English);
+        updateEntry.ApplyStatus(UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55), LocalizedStrings.English);
+
+        Assert.Equal("Installing... 55%", appEntry.Status);
+        Assert.Equal(appEntry.Status, updateEntry.Status);
+
+        appEntry.ApplyStatus(UiStatusState.FromRawText("custom status"), LocalizedStrings.Italian);
+        updateEntry.ApplyStatus(UiStatusState.FromRawText("custom status"), LocalizedStrings.Italian);
+
+        Assert.Equal("custom status", appEntry.Status);
+        Assert.Equal(appEntry.Status, updateEntry.Status);
     }
 
     [Fact]

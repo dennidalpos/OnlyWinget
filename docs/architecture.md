@@ -8,7 +8,7 @@ Use the adjacent repository documents for the other concerns:
 
 - [`../README.md`](../README.md): product-facing overview
 - [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
-- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): residual blocked or non-verifiable work that remains open after repository-based validation
+- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current audit snapshot and any residual open work when present
 
 ## Purpose
 

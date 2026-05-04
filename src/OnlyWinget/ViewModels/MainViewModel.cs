@@ -1034,6 +1034,7 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(PermissionStatusBadgeText));
         OnPropertyChanged(nameof(CurrentWorkspaceTitle));
         OnPropertyChanged(nameof(CurrentWorkspaceDescription));
+        OnPropertyChanged(nameof(SearchAddButtonText));
 
         foreach (var update in Updates)
         {

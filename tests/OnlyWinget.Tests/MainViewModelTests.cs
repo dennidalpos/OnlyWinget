@@ -149,9 +149,20 @@ public sealed class MainViewModelTests
         {
             var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService(), systemCulture: "it-IT");
             viewModel.Initialize();
+            var changedProperties = new List<string>();
+            viewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != null)
+                {
+                    changedProperties.Add(e.PropertyName);
+                }
+            };
 
             Assert.Equal("it", viewModel.SelectedLanguage?.Code);
             Assert.Equal("Aggiungi", viewModel.Strings.Add);
+            Assert.Equal("Pronto", viewModel.HeaderStatusText);
+            Assert.Equal("Workspace preset", viewModel.CurrentWorkspaceTitle);
+            Assert.Equal("Aggiungi pacchetto selezionato", viewModel.SearchAddButtonText);
             Assert.Equal(
                 viewModel.IsRunningAsAdministrator ? "Amministratore" : "Permessi standard",
                 viewModel.PermissionStatusBadgeText);
@@ -161,9 +172,16 @@ public sealed class MainViewModelTests
             Assert.Equal("en", viewModel.SelectedLanguage?.Code);
             Assert.Equal("Add", viewModel.Strings.Add);
             Assert.Equal("Language", viewModel.Strings.LanguageLabel);
+            Assert.Equal("Ready", viewModel.HeaderStatusText);
+            Assert.Equal("Preset workspace", viewModel.CurrentWorkspaceTitle);
+            Assert.Equal("Add selected package", viewModel.SearchAddButtonText);
             Assert.Equal(
                 viewModel.IsRunningAsAdministrator ? "Administrator" : "Standard permissions",
                 viewModel.PermissionStatusBadgeText);
+            Assert.Contains(nameof(MainViewModel.HeaderStatusText), changedProperties);
+            Assert.Contains(nameof(MainViewModel.CurrentWorkspaceTitle), changedProperties);
+            Assert.Contains(nameof(MainViewModel.SearchAddButtonText), changedProperties);
+            Assert.Contains(nameof(MainViewModel.PermissionStatusBadgeText), changedProperties);
 
             var preferences = new AppPreferencesService(root);
             Assert.Equal("en", preferences.Load().PreferredUiLanguage);
