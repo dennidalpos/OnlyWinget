@@ -123,7 +123,7 @@
   <!-- Primary action -->
   <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
     <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
@@ -140,7 +140,7 @@
   <!-- Success -->
   <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
     <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SuccessHoverBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
@@ -157,7 +157,7 @@
   <!-- Warning -->
   <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
     <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningHoverBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
@@ -174,7 +174,7 @@
   <!-- Danger -->
   <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
     <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource DangerHoverBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">

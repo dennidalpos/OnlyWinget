@@ -109,13 +109,14 @@
   <SolidColorBrush x:Key="SurfaceMutedBrush" Color="#F4F7FA"/>
   <SolidColorBrush x:Key="SurfaceAccentBrush" Color="#EFF6FF"/>
   <SolidColorBrush x:Key="OverlayBrush" Color="#EFF6FF"/>
-  <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
-  <SolidColorBrush x:Key="BorderStrongBrush" Color="#CBD5E1"/>
+  <SolidColorBrush x:Key="BorderBrush" Color="#DDE6F0"/>
+  <SolidColorBrush x:Key="BorderStrongBrush" Color="#94A3B8"/>
   <SolidColorBrush x:Key="BorderEmphasisBrush" Color="#94A3B8"/>
-  <SolidColorBrush x:Key="PanelBorderBrush" Color="#CBD5E1"/>
-  <SolidColorBrush x:Key="CellBorderBrush" Color="#DDE6F0"/>
-  <SolidColorBrush x:Key="ColumnSeparatorBrush" Color="#EDF2F7"/>
-  <SolidColorBrush x:Key="ButtonBorderBrush" Color="#94A3B8"/>
+  <SolidColorBrush x:Key="PanelBorderBrush" Color="#B6C2D1"/>
+  <SolidColorBrush x:Key="CellBorderBrush" Color="#D3DEE9"/>
+  <SolidColorBrush x:Key="ColumnSeparatorBrush" Color="#D8E1EC"/>
+  <SolidColorBrush x:Key="HeaderSeparatorBrush" Color="#B7C4D3"/>
+  <SolidColorBrush x:Key="ButtonBorderBrush" Color="#64748B"/>
   <SolidColorBrush x:Key="ButtonHoverBrush" Color="#F8FAFC"/>
   <SolidColorBrush x:Key="ButtonPressedBrush" Color="#E2E8F0"/>
   <SolidColorBrush x:Key="SelectedRowBrush" Color="#E8EEF6"/>

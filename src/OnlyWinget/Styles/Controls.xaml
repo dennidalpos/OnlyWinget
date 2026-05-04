@@ -218,13 +218,13 @@
 
   <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
     <Setter Property="Background" Value="{DynamicResource BorderEmphasisBrush}"/>
-    <Setter Property="MinWidth" Value="18"/>
-    <Setter Property="MinHeight" Value="18"/>
+    <Setter Property="MinWidth" Value="0"/>
+    <Setter Property="MinHeight" Value="0"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Thumb">
           <Border x:Name="ThumbBorder"
-                  Margin="2"
+                  Margin="1"
                   Background="{TemplateBinding Background}"
                   CornerRadius="{DynamicResource RadiusSm}"
                   Opacity="0.92"/>
@@ -244,7 +244,7 @@
   </Style>
 
   <Style TargetType="ScrollBar">
-    <Setter Property="Padding" Value="2"/>
+    <Setter Property="Padding" Value="0"/>
     <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
     <Setter Property="Opacity" Value="0.94"/>
     <Setter Property="HorizontalAlignment" Value="Stretch"/>
@@ -261,7 +261,7 @@
                     BorderThickness="1"
                     CornerRadius="{DynamicResource RadiusSm}"
                     Opacity="0.95"/>
-            <Grid Margin="1">
+            <Grid Margin="2">
               <Track x:Name="PART_Track"
                      IsDirectionReversed="True">
                 <Track.DecreaseRepeatButton>
@@ -270,7 +270,8 @@
                                 Command="ScrollBar.PageUpCommand"/>
                 </Track.DecreaseRepeatButton>
                 <Track.Thumb>
-                  <Thumb Style="{StaticResource ScrollBarThumbStyle}"/>
+                  <Thumb x:Name="TrackThumb"
+                         Style="{StaticResource ScrollBarThumbStyle}"/>
                 </Track.Thumb>
                 <Track.IncreaseRepeatButton>
                   <RepeatButton x:Name="IncreaseButton"
@@ -284,12 +285,16 @@
             <Trigger Property="Orientation" Value="Horizontal">
               <Setter TargetName="PART_Track" Property="Orientation" Value="Horizontal"/>
               <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+              <Setter TargetName="TrackThumb" Property="MinWidth" Value="20"/>
+              <Setter TargetName="TrackThumb" Property="MinHeight" Value="0"/>
               <Setter TargetName="DecreaseButton" Property="Command" Value="ScrollBar.PageLeftCommand"/>
               <Setter TargetName="IncreaseButton" Property="Command" Value="ScrollBar.PageRightCommand"/>
             </Trigger>
             <Trigger Property="Orientation" Value="Vertical">
               <Setter TargetName="PART_Track" Property="Orientation" Value="Vertical"/>
               <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="True"/>
+              <Setter TargetName="TrackThumb" Property="MinWidth" Value="0"/>
+              <Setter TargetName="TrackThumb" Property="MinHeight" Value="20"/>
               <Setter TargetName="DecreaseButton" Property="Command" Value="ScrollBar.PageUpCommand"/>
               <Setter TargetName="IncreaseButton" Property="Command" Value="ScrollBar.PageDownCommand"/>
             </Trigger>
@@ -307,14 +312,14 @@
     </Setter>
     <Style.Triggers>
       <Trigger Property="Orientation" Value="Horizontal">
-        <Setter Property="Height" Value="14"/>
-        <Setter Property="MinHeight" Value="14"/>
+        <Setter Property="Height" Value="16"/>
+        <Setter Property="MinHeight" Value="16"/>
         <Setter Property="Width" Value="{x:Static sys:Double.NaN}"/>
         <Setter Property="MinWidth" Value="0"/>
       </Trigger>
       <Trigger Property="Orientation" Value="Vertical">
-        <Setter Property="Width" Value="14"/>
-        <Setter Property="MinWidth" Value="14"/>
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="MinWidth" Value="16"/>
         <Setter Property="Height" Value="{x:Static sys:Double.NaN}"/>
         <Setter Property="MinHeight" Value="0"/>
       </Trigger>
@@ -414,7 +419,7 @@
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSm}"/>
     <Setter Property="Padding" Value="10,6"/>
     <Setter Property="BorderBrush" Value="{DynamicResource ColumnSeparatorBrush}"/>
-    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+    <Setter Property="BorderThickness" Value="0,0,0,1"/>
     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
     <Setter Property="Template">
       <Setter.Value>
@@ -431,20 +436,32 @@
             </Border>
             <Thumb x:Name="PART_HeaderGripper"
                    HorizontalAlignment="Right"
-                   Width="6"
-                   Opacity="0.35"
-                   Background="{DynamicResource TransparentBrush}"/>
+                   Width="8"
+                   Background="{DynamicResource TransparentBrush}">
+              <Thumb.Template>
+                <ControlTemplate TargetType="Thumb">
+                  <Border Background="{TemplateBinding Background}"/>
+                </ControlTemplate>
+              </Thumb.Template>
+            </Thumb>
+            <Rectangle x:Name="HeaderSeparator"
+                       Width="1"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Stretch"
+                       Fill="{DynamicResource HeaderSeparatorBrush}"
+                       Opacity="0.75"
+                       IsHitTestVisible="False"/>
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-              <Setter TargetName="PART_HeaderGripper" Property="Background" Value="{DynamicResource ColumnSeparatorBrush}"/>
-              <Setter TargetName="PART_HeaderGripper" Property="Opacity" Value="1"/>
+              <Setter TargetName="HeaderSeparator" Property="Fill" Value="{DynamicResource BorderEmphasisBrush}"/>
+              <Setter TargetName="HeaderSeparator" Property="Opacity" Value="1"/>
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
               <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-              <Setter TargetName="PART_HeaderGripper" Property="Background" Value="{DynamicResource BorderBrush}"/>
-              <Setter TargetName="PART_HeaderGripper" Property="Opacity" Value="1"/>
+              <Setter TargetName="HeaderSeparator" Property="Fill" Value="{DynamicResource AccentBrush}"/>
+              <Setter TargetName="HeaderSeparator" Property="Opacity" Value="1"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
