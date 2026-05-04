@@ -185,11 +185,43 @@ public sealed class WingetService
             .ToList();
     }
 
-    public WingetCommandResult UpgradeApp(string id, string? source = "winget", Action<string>? onOutputLine = null)
+    public WingetCommandResult UpgradeApp(
+        string id,
+        string? source = "winget",
+        string? availableVersion = null,
+        string? configuredScope = null,
+        string? configuredArchitecture = null,
+        string? configuredLocale = null,
+        string? configuredInstallerType = null,
+        Action<string>? onOutputLine = null)
     {
         var parameters = CreatePackageParameters("upgrade", id, source, includeLog: true);
+        parameters["--include-pinned"] = null;
         var result = Invoke("upgrade", parameters, onOutputLine);
-        return ToDisplayResult("upgrade", parameters, result);
+        if (!IsNoApplicableUpgrade(result))
+        {
+            return ToDisplayResult("upgrade", parameters, result);
+        }
+
+        var retryParameters = CreateNoApplicableUpgradeRetryParameters(
+            id,
+            source,
+            availableVersion,
+            configuredScope,
+            configuredArchitecture,
+            configuredLocale,
+            configuredInstallerType);
+        if (retryParameters == null)
+        {
+            return ToDisplayResult("upgrade", parameters, result);
+        }
+
+        var retryResult = Invoke("upgrade", retryParameters, onOutputLine);
+        var log = new List<string>();
+        log.AddRange(FormatCommandSummary("upgrade", parameters, result));
+        log.Add("retrying with installed package requirements");
+        log.AddRange(FormatCommandSummary("upgrade", retryParameters, retryResult));
+        return CombineResults(retryResult, log);
     }
 
     public WingetCommandResult UpgradeWinget()
@@ -273,6 +305,8 @@ public sealed class WingetService
     }
 
     public bool IsNoUpgradeNeeded(int exitCode) => _outputClassifier.IsNoUpgradeNeeded(exitCode);
+
+    public bool IsNoApplicableUpgrade(WingetCommandResult result) => _outputClassifier.IsNoApplicableUpgrade(result);
 
     public bool IsAlreadyInstalled(int exitCode) => _outputClassifier.IsAlreadyInstalled(exitCode);
 
@@ -550,6 +584,163 @@ public sealed class WingetService
         return parameters;
     }
 
+    private Dictionary<string, string?>? CreateNoApplicableUpgradeRetryParameters(
+        string id,
+        string? source,
+        string? availableVersion,
+        string? configuredScope,
+        string? configuredArchitecture,
+        string? configuredLocale,
+        string? configuredInstallerType)
+    {
+        if (string.IsNullOrWhiteSpace(availableVersion))
+        {
+            return null;
+        }
+
+        var installedDetails = LoadInstalledPackageDetails(id, source);
+        var installerDetails = LoadInstallerDetails(id, source, availableVersion);
+        var parameters = CreatePackageParameters("upgrade-retry", id, source, includeLog: true);
+        parameters["--include-pinned"] = null;
+
+        var addedConstraint = false;
+        if (TryNormalizeScope(configuredScope, out var scope) || TryNormalizeScope(installedDetails.Scope, out scope))
+        {
+            parameters["--scope"] = scope;
+            addedConstraint = true;
+        }
+
+        if (TryNormalizeArchitecture(configuredArchitecture, out var architecture) || TryNormalizeArchitecture(installedDetails.Architecture, out architecture))
+        {
+            parameters["--architecture"] = architecture;
+            addedConstraint = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuredLocale))
+        {
+            parameters["--locale"] = configuredLocale.Trim();
+            addedConstraint = true;
+        }
+        else if (!string.IsNullOrWhiteSpace(installerDetails.Locale))
+        {
+            parameters["--locale"] = installerDetails.Locale;
+            addedConstraint = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuredInstallerType))
+        {
+            parameters["--installer-type"] = configuredInstallerType.Trim();
+            addedConstraint = true;
+        }
+
+        return addedConstraint ? parameters : null;
+    }
+
+    private PackageDetails LoadInstalledPackageDetails(string id, string? source)
+    {
+        var parameters = new Dictionary<string, string?>
+        {
+            ["--id"] = id,
+            ["--exact"] = null,
+            ["--details"] = null,
+            ["--accept-source-agreements"] = null
+        };
+
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            parameters["--source"] = source;
+        }
+
+        var result = Invoke("list", parameters);
+        return ParsePackageDetails(result.Output);
+    }
+
+    private PackageDetails LoadInstallerDetails(string id, string? source, string availableVersion)
+    {
+        var parameters = new Dictionary<string, string?>
+        {
+            ["--id"] = id,
+            ["--exact"] = null,
+            ["--version"] = availableVersion,
+            ["--accept-source-agreements"] = null
+        };
+
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            parameters["--source"] = source;
+        }
+
+        var result = Invoke("show", parameters);
+        return ParsePackageDetails(result.Output);
+    }
+
+    private static PackageDetails ParsePackageDetails(string output)
+    {
+        var details = new PackageDetails();
+        foreach (var rawLine in output.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = rawLine.Trim();
+            var separatorIndex = line.IndexOf(':', StringComparison.Ordinal);
+            if (separatorIndex <= 0)
+            {
+                continue;
+            }
+
+            var key = line[..separatorIndex].Trim();
+            var value = line[(separatorIndex + 1)..].Trim();
+            if (string.Equals(key, "Installed Scope", StringComparison.OrdinalIgnoreCase))
+            {
+                details.Scope = value;
+            }
+            else if (string.Equals(key, "Installed Architecture", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(key, "Architecture", StringComparison.OrdinalIgnoreCase))
+            {
+                details.Architecture = value;
+            }
+            else if (string.Equals(key, "Installer Locale", StringComparison.OrdinalIgnoreCase))
+            {
+                details.Locale = value;
+            }
+        }
+
+        return details;
+    }
+
+    private static bool TryNormalizeScope(string? value, out string normalized)
+    {
+        normalized = string.Empty;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        if (string.Equals(value, "Machine", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = "machine";
+            return true;
+        }
+
+        if (string.Equals(value, "User", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = "user";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryNormalizeArchitecture(string? value, out string normalized)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            normalized = string.Empty;
+            return false;
+        }
+
+        normalized = value.Trim().ToLowerInvariant();
+        return normalized is "x64" or "x86" or "arm64" or "arm";
+    }
+
     private IEnumerable<string> FormatCommandSummary(string command, IReadOnlyDictionary<string, string?> parameters, WingetCommandResult result)
     {
         var id = parameters.TryGetValue("--id", out var value) ? value : string.Empty;
@@ -558,12 +749,13 @@ public sealed class WingetService
 
         yield return $"{command}: {target}";
 
-        foreach (var line in _outputClassifier.GetRelevantOutputLines(result.Output))
+        var relevantOutputLines = _outputClassifier.GetRelevantOutputLines(result.Output);
+        foreach (var line in relevantOutputLines)
         {
             yield return $"  {line}";
         }
 
-        if (result.ExitCode != 0)
+        if (result.ExitCode != 0 && relevantOutputLines.Count == 0)
         {
             yield return $"  {GetErrorMessage(result.ExitCode)}";
         }
@@ -601,4 +793,11 @@ public sealed class WingetService
     public string GetErrorMessage(int exitCode, string? localeCode = null) => _outputClassifier.GetErrorMessage(exitCode, localeCode ?? System.Globalization.CultureInfo.CurrentUICulture.Name);
 
     public string GetResolutionHint(int exitCode, string? localeCode = null) => _outputClassifier.GetResolutionHint(exitCode, localeCode ?? System.Globalization.CultureInfo.CurrentUICulture.Name);
+
+    private sealed class PackageDetails
+    {
+        public string Scope { get; set; } = string.Empty;
+        public string Architecture { get; set; } = string.Empty;
+        public string Locale { get; set; } = string.Empty;
+    }
 }

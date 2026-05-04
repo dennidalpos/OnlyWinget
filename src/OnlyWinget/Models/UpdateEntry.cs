@@ -12,6 +12,10 @@ public sealed class UpdateEntry : ObservableObject
     private string _version = string.Empty;
     private string _available = string.Empty;
     private string _source = "winget";
+    private string _scope = string.Empty;
+    private string _architecture = string.Empty;
+    private string _locale = string.Empty;
+    private string _installerType = string.Empty;
     private string _status = string.Empty;
     private string _errorMessage = string.Empty;
     private string _resolution = string.Empty;
@@ -48,6 +52,30 @@ public sealed class UpdateEntry : ObservableObject
     {
         get => _source;
         set => SetProperty(ref _source, value);
+    }
+
+    public string Scope
+    {
+        get => _scope;
+        set => SetProperty(ref _scope, value);
+    }
+
+    public string Architecture
+    {
+        get => _architecture;
+        set => SetProperty(ref _architecture, value);
+    }
+
+    public string Locale
+    {
+        get => _locale;
+        set => SetProperty(ref _locale, value);
+    }
+
+    public string InstallerType
+    {
+        get => _installerType;
+        set => SetProperty(ref _installerType, value);
     }
 
     public bool Selected

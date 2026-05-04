@@ -31,6 +31,18 @@ public sealed class WingetOutputClassifier
 
     public bool IsAlreadyInstalled(int exitCode) => AlreadyInstalledCodes.Contains(exitCode);
 
+    public bool IsNoApplicableUpgrade(WingetCommandResult result)
+    {
+        var output = NormalizeWingetOutput(result.Output);
+        return ContainsAny(output,
+            "no applicable upgrade found",
+            "does not apply to your system or requirements",
+            "no applicable update found",
+            "nessun aggiornamento applicabile",
+            "non si applica al sistema",
+            "non applicabile ai requisiti");
+    }
+
     public bool IsAlreadyInstalled(WingetCommandResult result)
     {
         if (IsAlreadyInstalled(result.ExitCode))
@@ -417,8 +429,12 @@ public sealed class WingetOutputClassifier
             "failed",
             "failure",
             "not found",
+            "applicable upgrade",
+            "applicable update",
+            "requirements",
             "already installed",
             "newer version",
+            "newer package version",
             "download",
             "installing",
             "installed",
@@ -430,6 +446,8 @@ public sealed class WingetOutputClassifier
             "requires admin",
             "errore",
             "non trovato",
+            "aggiornamento applicabile",
+            "requisiti",
             "gia installata",
             "gia' installata",
             "versione superiore",

@@ -474,6 +474,319 @@ CapCut                    ByteDance.CapCut  8.3.0.3497     8.4.0.3562    winget
         Assert.Contains("upgrade", invokedArgs);
         Assert.Contains("--source", invokedArgs);
         Assert.Contains("msstore", invokedArgs);
+        Assert.Contains("--include-pinned", invokedArgs);
+    }
+
+    [Fact]
+    public async Task RunUpdatesAsync_RetriesNoApplicableUpgrade_WithInstalledScopeArchitectureAndInstallerLocale()
+    {
+        var upgradeInvocations = new List<IReadOnlyList<string>>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command == "upgrade")
+                {
+                    upgradeInvocations.Add(args.ToArray());
+                    if (args.Contains("--locale"))
+                    {
+                        return new WingetCommandResult { ExitCode = 0, Output = "Successfully installed" };
+                    }
+
+                    return new WingetCommandResult
+                    {
+                        ExitCode = -1978335189,
+                        Output = """
+No applicable upgrade found.
+A newer package version is available in a configured source, but it does not apply to your system or requirements.
+"""
+                    };
+                }
+
+                if (command == "list")
+                {
+                    return new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+WinRAR 7.20 (64-bit) [RARLab.WinRAR]
+Installed Scope: Machine
+Installed Architecture: X64
+Installed Locale: it-IT
+"""
+                    };
+                }
+
+                if (command == "show")
+                {
+                    Assert.Contains("--version", args);
+                    Assert.Contains("7.22.0", args);
+                    return new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Found WinRAR [RARLab.WinRAR]
+Version: 7.22.0
+Installer:
+  Installer Locale: en
+"""
+                    };
+                }
+
+                return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "WinRAR",
+                    Id = "RARLab.WinRAR",
+                    Version = "7.20.0",
+                    Available = "7.22.0",
+                    Source = "winget",
+                    Selected = true
+                }
+            },
+            (_, value) => status = RenderStatus(value, LocalizedStrings.English),
+            _ => { },
+            (_, _) => { },
+            LocalizedStrings.English);
+
+        Assert.Equal("OK", status);
+        Assert.Equal(2, upgradeInvocations.Count);
+        var retryArgs = upgradeInvocations[1];
+        Assert.Contains("--scope", retryArgs);
+        Assert.Contains("machine", retryArgs);
+        Assert.Contains("--architecture", retryArgs);
+        Assert.Contains("x64", retryArgs);
+        Assert.Contains("--locale", retryArgs);
+        Assert.Contains("en", retryArgs);
+        Assert.Contains("--include-pinned", retryArgs);
+    }
+
+    [Fact]
+    public async Task RunUpdatesAsync_RetriesNoApplicableUpgrade_WithConfiguredPackageOptions()
+    {
+        var upgradeInvocations = new List<IReadOnlyList<string>>();
+        var resolution = string.Empty;
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command == "upgrade")
+                {
+                    upgradeInvocations.Add(args.ToArray());
+                    return new WingetCommandResult
+                    {
+                        ExitCode = -1978335189,
+                        Output = """
+No applicable upgrade found.
+A newer package version is available in a configured source, but it does not apply to your system or requirements.
+"""
+                    };
+                }
+
+                if (command == "list")
+                {
+                    return new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+WinRAR 7.20 (64-bit) [RARLab.WinRAR]
+Installed Scope: Machine
+Installed Architecture: X64
+Installed Locale: it-IT
+"""
+                    };
+                }
+
+                if (command == "show")
+                {
+                    return new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Found WinRAR [RARLab.WinRAR]
+Version: 7.22.0
+Installer:
+  Installer Locale: en
+"""
+                    };
+                }
+
+                return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "WinRAR",
+                    Id = "RARLab.WinRAR",
+                    Version = "7.20.0",
+                    Available = "7.22.0",
+                    Source = "winget",
+                    Scope = "machine",
+                    Architecture = "x64",
+                    Locale = "it",
+                    InstallerType = "exe",
+                    Selected = true
+                }
+            },
+            (_, _) => { },
+            _ => { },
+            (_, _) => { },
+            LocalizedStrings.Italian,
+            (_, _, resolutionHint) => resolution = resolutionHint);
+
+        Assert.Equal(2, upgradeInvocations.Count);
+        var retryArgs = upgradeInvocations[1];
+        Assert.Contains("--scope", retryArgs);
+        Assert.Contains("machine", retryArgs);
+        Assert.Contains("--architecture", retryArgs);
+        Assert.Contains("x64", retryArgs);
+        Assert.Contains("--locale", retryArgs);
+        Assert.Contains("it", retryArgs);
+        Assert.Contains("--installer-type", retryArgs);
+        Assert.Contains("exe", retryArgs);
+        Assert.Contains("locale=it", resolution, StringComparison.Ordinal);
+        Assert.Contains("Modifica le opzioni del pacchetto", resolution, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunUpdatesAsync_LogsNoopResult_WhenWingetReportsNoUpgrade()
+    {
+        var output = new List<string>();
+        var error = string.Empty;
+        var resolution = string.Empty;
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
+            {
+                ExitCode = -1978335189,
+                Output = "No available upgrade found."
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "WinRAR",
+                    Id = "RARLab.WinRAR",
+                    Source = "winget",
+                    Selected = true
+                }
+            },
+            (_, _) => { },
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.English,
+            (_, errorMessage, resolutionHint) =>
+            {
+                error = errorMessage;
+                resolution = resolutionHint;
+            });
+
+        Assert.Equal("No update available", error);
+        Assert.Equal("Already at the latest version.", resolution);
+        Assert.Contains(output, line => line.Contains("event=winget_upgrade_noop", StringComparison.Ordinal));
+        Assert.Contains(output, line => line.Contains("exit_code=-1978335189", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunUpdatesAsync_ReportsNoApplicableUpgrade_WhenWingetSaysNewerVersionDoesNotApply()
+    {
+        var output = new List<string>();
+        var status = string.Empty;
+        var error = string.Empty;
+        var resolution = string.Empty;
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
+            {
+                ExitCode = -1978335189,
+                Output = """
+No applicable upgrade found.
+A newer package version is available in a configured source, but it does not apply to your system or requirements.
+"""
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "WinRAR",
+                    Id = "RARLab.WinRAR",
+                    Source = "winget",
+                    Selected = true
+                }
+            },
+            (_, value) => status = RenderStatus(value, LocalizedStrings.English),
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.English,
+            (_, errorMessage, resolutionHint) =>
+            {
+                error = errorMessage;
+                resolution = resolutionHint;
+            });
+
+        Assert.Equal("Upgrade not applicable", status);
+        Assert.Equal("Upgrade not applicable", error);
+        Assert.Contains("does not apply to this system", resolution, StringComparison.Ordinal);
+        Assert.Contains(output, line => line.Contains("No applicable upgrade found.", StringComparison.Ordinal));
+        Assert.Contains(output, line => line.Contains("newer package version", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(output, line => string.Equals(line.Trim(), "No update available", StringComparison.Ordinal));
+        Assert.Contains(output, line => line.Contains("event=winget_upgrade_noop", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunUpdatesAsync_DoesNotDuplicateLiveNoApplicableUpgradeOutput()
+    {
+        var output = new List<string>();
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) =>
+            {
+                onOutputLine?.Invoke("No applicable upgrade found.");
+                onOutputLine?.Invoke("A newer package version is available in a configured source, but it does not apply to your system or requirements.");
+                return new WingetCommandResult
+                {
+                    ExitCode = -1978335189,
+                    Output = """
+No applicable upgrade found.
+A newer package version is available in a configured source, but it does not apply to your system or requirements.
+"""
+                };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "WinRAR",
+                    Id = "RARLab.WinRAR",
+                    Source = "winget",
+                    Selected = true
+                }
+            },
+            (_, _) => { },
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.English);
+
+        Assert.Equal(1, output.Count(line => string.Equals(line.Trim(), "No applicable upgrade found.", StringComparison.Ordinal)));
+        Assert.Equal(1, output.Count(line => line.Contains("newer package version", StringComparison.OrdinalIgnoreCase)));
+        Assert.DoesNotContain(output, line => string.Equals(line.Trim(), "No update available", StringComparison.Ordinal));
     }
 
     [Fact]

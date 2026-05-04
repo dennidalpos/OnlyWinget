@@ -573,6 +573,7 @@ public sealed class MainViewModel : ObservableObject
                     {
                         Updates = new ObservableCollection<UpdateEntry>();
                         var results = await Task.Run(() => _wingetService.LoadUpdates());
+                        ApplyPresetUpdateOptions(results);
                         Updates = new ObservableCollection<UpdateEntry>(results);
                     });
             },
@@ -620,8 +621,30 @@ public sealed class MainViewModel : ObservableObject
                         {
                             await _operationRunner.RunUpdatesAsync(selected, TrackAndSetStatus, AppendOutput, ReportOperationProgress, Strings, TrackAndSetError);
                             var refreshedUpdates = await Task.Run(() => _wingetService.LoadUpdates());
+                            ApplyPresetUpdateOptions(refreshedUpdates);
+                            var attemptedUpdates = selected
+                                .GroupBy(update => update.Id, StringComparer.OrdinalIgnoreCase)
+                                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
                             foreach (var entry in refreshedUpdates)
                             {
+                                if (attemptedUpdates.TryGetValue(entry.Id, out var attemptedUpdate))
+                                {
+                                    if (finalErrors.TryGetValue(entry.Id, out var attemptedError))
+                                    {
+                                        entry.Status = attemptedError.ErrorMessage;
+                                        entry.ErrorMessage = attemptedError.ErrorMessage;
+                                        entry.Resolution = attemptedError.Resolution;
+                                        continue;
+                                    }
+
+                                    var stillAvailableStatus = FormatUpdateStillAvailableStatus(entry);
+                                    entry.Status = stillAvailableStatus;
+                                    entry.ErrorMessage = stillAvailableStatus;
+                                    entry.Resolution = FormatUpdateStillAvailableResolution(attemptedUpdate, entry);
+                                    AppendOutput(FormatUpdateStillAvailableLog(attemptedUpdate, entry));
+                                    continue;
+                                }
+
                                 if (finalStatuses.TryGetValue(entry.Id, out var status))
                                     entry.ApplyStatus(status, Strings);
                                 if (finalErrors.TryGetValue(entry.Id, out var err))
@@ -905,6 +928,70 @@ public sealed class MainViewModel : ObservableObject
     private bool HasSelectedUpdates()
     {
         return Updates.Any(update => update.Selected);
+    }
+
+    private void ApplyPresetUpdateOptions(IEnumerable<UpdateEntry> updates)
+    {
+        var configuredApps = PresetWorkspace.CurrentApps
+            .Where(app => !string.IsNullOrWhiteSpace(app.Id))
+            .GroupBy(app => app.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var update in updates)
+        {
+            if (!configuredApps.TryGetValue(update.Id, out var candidates))
+            {
+                continue;
+            }
+
+            var configured = candidates.FirstOrDefault(app => string.Equals(app.Source, update.Source, StringComparison.OrdinalIgnoreCase))
+                ?? candidates[0];
+            update.Scope = configured.Scope;
+            update.Architecture = configured.Architecture;
+            update.Locale = configured.Locale;
+            update.InstallerType = configured.InstallerType;
+        }
+    }
+
+    private string FormatUpdateStillAvailableStatus(UpdateEntry update)
+    {
+        return Strings.LocaleCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)
+            ? "Update still available"
+            : "Aggiornamento ancora disponibile";
+    }
+
+    private string FormatUpdateStillAvailableResolution(UpdateEntry attemptedUpdate, UpdateEntry refreshedUpdate)
+    {
+        var currentVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Version)
+            ? attemptedUpdate.Version
+            : refreshedUpdate.Version;
+        var availableVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Available)
+            ? attemptedUpdate.Available
+            : refreshedUpdate.Available;
+
+        return Strings.LocaleCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)
+            ? $"winget still reports {currentVersion} -> {availableVersion}. Open the operation log folder for installer details."
+            : $"winget segnala ancora {currentVersion} -> {availableVersion}. Apri la cartella log per i dettagli dell'installer.";
+    }
+
+    private static string FormatUpdateStillAvailableLog(UpdateEntry attemptedUpdate, UpdateEntry refreshedUpdate)
+    {
+        var currentVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Version)
+            ? attemptedUpdate.Version
+            : refreshedUpdate.Version;
+        var availableVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Available)
+            ? attemptedUpdate.Available
+            : refreshedUpdate.Available;
+        var source = string.IsNullOrWhiteSpace(refreshedUpdate.Source)
+            ? attemptedUpdate.Source
+            : refreshedUpdate.Source;
+
+        return $"event=update_still_available id=\"{EscapeLogValue(refreshedUpdate.Id)}\" name=\"{EscapeLogValue(refreshedUpdate.Name)}\" version=\"{EscapeLogValue(currentVersion)}\" available=\"{EscapeLogValue(availableVersion)}\" source=\"{EscapeLogValue(source)}\"";
+    }
+
+    private static string EscapeLogValue(string value)
+    {
+        return value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
     }
 
     private void OnPresetWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)

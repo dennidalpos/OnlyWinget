@@ -381,6 +381,169 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
+    public async Task UpdatesFlow_UsesConfiguredPackageOptions_WhenApplyingUpdates()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(root, "AppsList.json"),
+                """
+                {
+                  "Tabs": [
+                    {
+                      "Name": "Default",
+                      "Apps": [
+                        {
+                          "Name": "WinRAR",
+                          "Id": "RARLab.WinRAR",
+                          "Source": "winget",
+                          "Action": "Install",
+                          "Scope": "machine",
+                          "Architecture": "x64",
+                          "Locale": "it",
+                          "InstallerType": "exe"
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+            var wingetService = new WingetService(
+                wingetRunner: static (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    return command switch
+                    {
+                        "--version" => new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" },
+                        "list" => new WingetCommandResult
+                        {
+                            ExitCode = 0,
+                            Output = """
+Name                 Id            Version   Available Source
+-------------------------------------------------------------
+WinRAR 7.20 (64-bit) RARLab.WinRAR 7.20.0    7.22.0    winget
+"""
+                        },
+                        _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                    };
+                });
+            var operationRunner = new CapturingUpdatesOperationRunner();
+            var viewModel = CreateViewModel(root, wingetService, operationRunner, new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.OpenUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.Updates.Count == 1);
+
+            viewModel.ApplyUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => operationRunner.CapturedUpdates.Count == 1);
+
+            var update = Assert.Single(operationRunner.CapturedUpdates);
+            Assert.Equal("machine", update.Scope);
+            Assert.Equal("x64", update.Architecture);
+            Assert.Equal("it", update.Locale);
+            Assert.Equal("exe", update.InstallerType);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task UpdatesFlow_MarksAttemptedUpdateStillAvailable_AfterRefreshKeepsSamePackage()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var wingetService = new WingetService(
+                wingetRunner: static (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    return command switch
+                    {
+                        "--version" => new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" },
+                        "list" => new WingetCommandResult
+                        {
+                            ExitCode = 0,
+                            Output = """
+Name                 Id                    Version   Available Source
+--------------------------------------------------------------------
+Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
+"""
+                        },
+                        _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                    };
+                });
+            var viewModel = CreateViewModel(root, wingetService, new CompletedUpdatesOperationRunner(), new FakeDialogService(), systemCulture: "en-US");
+            viewModel.Initialize();
+
+            viewModel.OpenUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.Updates.Count == 1);
+
+            viewModel.ApplyUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.AreUpdatesActionsEnabled && !viewModel.IsOperationProgressVisible);
+
+            var update = Assert.Single(viewModel.Updates);
+            Assert.Equal("Update still available", update.Status);
+            Assert.Equal("Update still available", update.ErrorMessage);
+            Assert.Contains("winget still reports 0.90.0 -> 0.90.1", update.Resolution, StringComparison.Ordinal);
+            Assert.Contains("event=update_still_available", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.DoesNotContain(viewModel.Strings.StatusAlreadyUpdated, update.Status, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task UpdatesFlow_DoesNotLogStillAvailableEvent_WhenAttemptHasSpecificError()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var wingetService = new WingetService(
+                wingetRunner: static (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    return command switch
+                    {
+                        "--version" => new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" },
+                        "list" => new WingetCommandResult
+                        {
+                            ExitCode = 0,
+                            Output = """
+Name                 Id                    Version   Available Source
+--------------------------------------------------------------------
+Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
+"""
+                        },
+                        _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                    };
+                });
+            var viewModel = CreateViewModel(root, wingetService, new FailedUpdatesOperationRunner(), new FakeDialogService(), systemCulture: "en-US");
+            viewModel.Initialize();
+
+            viewModel.OpenUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.Updates.Count == 1);
+
+            viewModel.ApplyUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.AreUpdatesActionsEnabled && !viewModel.IsOperationProgressVisible);
+
+            var update = Assert.Single(viewModel.Updates);
+            Assert.Equal("Upgrade not applicable", update.Status);
+            Assert.Equal("Upgrade not applicable", update.ErrorMessage);
+            Assert.Equal("Manifest requirements do not match this system.", update.Resolution);
+            Assert.DoesNotContain("event=update_still_available", viewModel.OutputText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Initialize_ShowsWarning_WhenSavedListIsMalformed()
     {
         var root = CreateTempDirectory();
@@ -1335,6 +1498,100 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             LocalizedStrings strings,
             Action<string, string, string>? setErrorById = null)
         {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CompletedUpdatesOperationRunner : IOperationRunner
+    {
+        public Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            setStatusById(updates[0].Id, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
+            reportProgress(100, $"{updates[0].Name}: 100%");
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FailedUpdatesOperationRunner : IOperationRunner
+    {
+        public Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            setStatusById(updates[0].Id, UiStatusState.FromRawText("Upgrade not applicable"));
+            setErrorById?.Invoke(updates[0].Id, "Upgrade not applicable", "Manifest requirements do not match this system.");
+            reportProgress(100, $"{updates[0].Name}: 100%");
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CapturingUpdatesOperationRunner : IOperationRunner
+    {
+        public List<UpdateEntry> CapturedUpdates { get; } = new();
+
+        public Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            CapturedUpdates.AddRange(updates.Select(update => new UpdateEntry
+            {
+                Name = update.Name,
+                Id = update.Id,
+                Version = update.Version,
+                Available = update.Available,
+                Source = update.Source,
+                Scope = update.Scope,
+                Architecture = update.Architecture,
+                Locale = update.Locale,
+                InstallerType = update.InstallerType
+            }));
             return Task.CompletedTask;
         }
     }

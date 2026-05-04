@@ -101,13 +101,24 @@ public sealed class OperationRunner : IOperationRunner
                 setErrorById?.Invoke(update.Id, string.Empty, string.Empty);
                 appendOutput($"--- {update.Name} [{update.Id}] : {strings.OperationUpgradeLabel} ---");
                 var receivedLiveOutput = false;
-                var result = await Task.Run(() => _wingetService.UpgradeApp(update.Id, update.Source, line =>
+                var loggedOutputLines = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var result = await Task.Run(() => _wingetService.UpgradeApp(
+                    update.Id,
+                    update.Source,
+                    update.Available,
+                    update.Scope,
+                    update.Architecture,
+                    update.Locale,
+                    update.InstallerType,
+                    line =>
                 {
                     receivedLiveOutput = true;
                     HandleProgressLine(line, update.Id, update.Name, UiStatusKey.UpgradeInProgress, index, updates.Count, setStatusById, reportProgress);
                     if (_wingetService.ShouldLogOutputLine(line))
                     {
-                        appendOutput(line.Trim());
+                        var trimmedLine = line.Trim();
+                        loggedOutputLines.Add(trimmedLine);
+                        appendOutput(trimmedLine);
                     }
                 }));
 
@@ -122,7 +133,29 @@ public sealed class OperationRunner : IOperationRunner
                 }
                 else if (_wingetService.IsNoUpgradeNeeded(result.ExitCode))
                 {
-                    setStatusById(update.Id, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
+                    if (receivedLiveOutput)
+                    {
+                        foreach (var line in _wingetService.GetRelevantOutputLines(result.Output))
+                        {
+                            if (loggedOutputLines.Add(line.Trim()))
+                            {
+                                appendOutput(line);
+                            }
+                        }
+                    }
+
+                    var isNoApplicableUpgrade = _wingetService.IsNoApplicableUpgrade(result);
+                    var message = isNoApplicableUpgrade
+                        ? GetNoApplicableUpgradeMessage(strings.LocaleCode)
+                        : _wingetService.GetErrorMessage(result.ExitCode, strings.LocaleCode);
+                    var resolution = isNoApplicableUpgrade
+                        ? GetNoApplicableUpgradeResolution(strings.LocaleCode, update)
+                        : _wingetService.GetResolutionHint(result.ExitCode, strings.LocaleCode);
+                    setStatusById(update.Id, isNoApplicableUpgrade
+                        ? UiStatusState.FromRawText(message)
+                        : UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
+                    setErrorById?.Invoke(update.Id, message, resolution);
+                    appendOutput($"event=winget_upgrade_noop id=\"{FormatLogValue(update.Id)}\" exit_code={result.ExitCode} message=\"{FormatLogValue(message)}\" resolution=\"{FormatLogValue(resolution)}\"");
                 }
                 else
                 {
@@ -311,6 +344,57 @@ public sealed class OperationRunner : IOperationRunner
     private static string FormatArgumentForLog(string arg)
     {
         return arg.Contains(' ', StringComparison.Ordinal) ? $"\"{arg}\"" : arg;
+    }
+
+    private static string FormatLogValue(string value)
+    {
+        return value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
+    }
+
+    private static string GetNoApplicableUpgradeMessage(string localeCode)
+    {
+        return UseEnglish(localeCode)
+            ? "Upgrade not applicable"
+            : "Aggiornamento non applicabile";
+    }
+
+    private static string GetNoApplicableUpgradeResolution(string localeCode, UpdateEntry update)
+    {
+        var configuredOptions = FormatConfiguredUpdateOptions(update);
+        if (!string.IsNullOrWhiteSpace(configuredOptions))
+        {
+            return UseEnglish(localeCode)
+                ? $"winget found a newer version in the source, but no installer applies to the configured package options ({configuredOptions}). Edit the package options to a supported installer, or wait for the package maintainer to publish a matching installer."
+                : $"winget ha trovato una versione piu recente nella sorgente, ma nessun installer e compatibile con le opzioni configurate nel pacchetto ({configuredOptions}). Modifica le opzioni del pacchetto scegliendo un installer supportato oppure attendi che il manutentore pubblichi un installer compatibile.";
+        }
+
+        return UseEnglish(localeCode)
+            ? "winget found a newer version in the source, but its manifest does not apply to this system or its requirements."
+            : "winget ha trovato una versione piu recente nella sorgente, ma il manifest non si applica a questo sistema o ai suoi requisiti.";
+    }
+
+    private static string FormatConfiguredUpdateOptions(UpdateEntry update)
+    {
+        var options = new List<string>();
+        AddConfiguredOption(options, "scope", update.Scope);
+        AddConfiguredOption(options, "architecture", update.Architecture);
+        AddConfiguredOption(options, "locale", update.Locale);
+        AddConfiguredOption(options, "installer-type", update.InstallerType);
+        return string.Join(", ", options);
+    }
+
+    private static void AddConfiguredOption(List<string> options, string name, string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            options.Add($"{name}={value.Trim()}");
+        }
+    }
+
+    private static bool UseEnglish(string localeCode)
+    {
+        return !string.IsNullOrWhiteSpace(localeCode)
+            && localeCode.StartsWith("en", StringComparison.OrdinalIgnoreCase);
     }
 
     private void HandleProgressLine(
