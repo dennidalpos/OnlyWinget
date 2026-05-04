@@ -166,6 +166,8 @@ public sealed class MainViewModelTests
             Assert.Equal(
                 viewModel.IsRunningAsAdministrator ? "Amministratore" : "Permessi standard",
                 viewModel.PermissionStatusBadgeText);
+            Assert.Equal("Windows 11 x64 it-IT", viewModel.OperatingSystemStatusBadgeText);
+            Assert.Equal("OS rilevato: Windows 11 x64 it-IT", viewModel.OperatingSystemStatusBadgeTooltip);
 
             viewModel.SelectedLanguage = viewModel.AvailableLanguages.Single(option => option.Code == "en");
 
@@ -178,10 +180,13 @@ public sealed class MainViewModelTests
             Assert.Equal(
                 viewModel.IsRunningAsAdministrator ? "Administrator" : "Standard permissions",
                 viewModel.PermissionStatusBadgeText);
+            Assert.Equal("Windows 11 x64 it-IT", viewModel.OperatingSystemStatusBadgeText);
+            Assert.Equal("Detected OS: Windows 11 x64 it-IT", viewModel.OperatingSystemStatusBadgeTooltip);
             Assert.Contains(nameof(MainViewModel.HeaderStatusText), changedProperties);
             Assert.Contains(nameof(MainViewModel.CurrentWorkspaceTitle), changedProperties);
             Assert.Contains(nameof(MainViewModel.SearchAddButtonText), changedProperties);
             Assert.Contains(nameof(MainViewModel.PermissionStatusBadgeText), changedProperties);
+            Assert.Contains(nameof(MainViewModel.OperatingSystemStatusBadgeTooltip), changedProperties);
 
             var preferences = new AppPreferencesService(root);
             Assert.Equal("en", preferences.Load().PreferredUiLanguage);
@@ -1249,7 +1254,21 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             dialogService,
             new AppEntryService(wingetService),
             new TabService(),
-            operationRunner);
+            operationRunner,
+            CreateOperatingSystemInfo(systemCulture));
+    }
+
+    private static OperatingSystemInfo CreateOperatingSystemInfo(string culture)
+    {
+        return new OperatingSystemInfo
+        {
+            ProductName = "Windows 11",
+            Version = "10.0.22631.0",
+            Build = "22631",
+            NormalizedArchitecture = "x64",
+            ProcessArchitecture = "x64",
+            UiCultureName = culture
+        };
     }
 
     private static WingetService CreateWingetService()

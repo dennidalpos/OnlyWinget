@@ -23,9 +23,10 @@ public partial class App : Application
         var preferencesService = new AppPreferencesService();
         var localizationService = new LocalizationService(preferencesService);
         _localizationService = localizationService;
+        var operatingSystemInfo = new OperatingSystemInfoService().Detect();
         var wingetService = new WingetService();
         var installCommandBuilder = new InstallCommandBuilder(wingetService);
-        var interrogationService = new WingetPackageInterrogationService(wingetService, new HttpClient());
+        var interrogationService = new WingetPackageInterrogationService(wingetService, new HttpClient(), operatingSystemInfo: operatingSystemInfo);
         var dataService = new AppDataService();
         var dialogService = new DialogService(interrogationService, localizationService);
         var appEntryService = new AppEntryService(wingetService);
@@ -40,7 +41,8 @@ public partial class App : Application
             dialogService,
             appEntryService,
             tabService,
-            operationRunner);
+            operationRunner,
+            operatingSystemInfo);
 
         if (!startupCoordinator.CanContinueStartup(viewModel))
         {

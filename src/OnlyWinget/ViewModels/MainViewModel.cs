@@ -40,6 +40,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly LocalizationService _localizationService;
     private readonly IDialogService _dialogService;
     private readonly IOperationRunner _operationRunner;
+    private readonly OperatingSystemInfo _operatingSystemInfo;
     private ObservableCollection<SearchResult> _searchResults = new();
     private SearchResult? _selectedSearchResult;
     private ObservableCollection<SearchResult> _selectedSearchResults = new();
@@ -74,12 +75,14 @@ public sealed class MainViewModel : ObservableObject
         IDialogService dialogService,
         IAppEntryService appEntryService,
         ITabService tabService,
-        IOperationRunner operationRunner)
+        IOperationRunner operationRunner,
+        OperatingSystemInfo? operatingSystemInfo = null)
     {
         _wingetService = wingetService;
         _localizationService = localizationService;
         _dialogService = dialogService;
         _operationRunner = operationRunner;
+        _operatingSystemInfo = operatingSystemInfo ?? new OperatingSystemInfoService().Detect();
 
         _selectedLanguage = _localizationService.SelectedLanguage;
         IsWingetAvailable = _wingetService.TestAvailable();
@@ -125,6 +128,10 @@ public sealed class MainViewModel : ObservableObject
     public string PermissionStatusBadgeText => IsRunningAsAdministrator
         ? Strings.AdministratorBadge
         : Strings.StandardUserBadge;
+
+    public string OperatingSystemStatusBadgeText => _operatingSystemInfo.DisplayText;
+
+    public string OperatingSystemStatusBadgeTooltip => string.Format(Strings.OperatingSystemBadgeTooltip, _operatingSystemInfo.DisplayText);
 
     public PresetWorkspaceViewModel PresetWorkspace { get; }
 
@@ -428,6 +435,7 @@ public sealed class MainViewModel : ObservableObject
     {
         PresetWorkspace.Initialize();
         AppendOutput(Strings.WingetAvailableLogText);
+        AppendOutput($"event=os_detected product=\"{EscapeLogValue(_operatingSystemInfo.ProductName)}\" version=\"{EscapeLogValue(_operatingSystemInfo.Version)}\" build=\"{EscapeLogValue(_operatingSystemInfo.Build)}\" os_arch=\"{EscapeLogValue(_operatingSystemInfo.NormalizedArchitecture)}\" process_arch=\"{EscapeLogValue(_operatingSystemInfo.ProcessArchitecture)}\" ui_culture=\"{EscapeLogValue(_operatingSystemInfo.UiCultureName)}\"");
         AppendOutput($"event=process_elevation elevated={IsRunningAsAdministrator}");
     }
 
@@ -1119,6 +1127,7 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(AvailableLanguages));
         OnPropertyChanged(nameof(HeaderStatusText));
         OnPropertyChanged(nameof(PermissionStatusBadgeText));
+        OnPropertyChanged(nameof(OperatingSystemStatusBadgeTooltip));
         OnPropertyChanged(nameof(CurrentWorkspaceTitle));
         OnPropertyChanged(nameof(CurrentWorkspaceDescription));
         OnPropertyChanged(nameof(SearchAddButtonText));

@@ -185,6 +185,18 @@ public sealed class WingetService
             .ToList();
     }
 
+    public WingetPackageDetails TryLoadInstalledPackageDetails(string id, string? source = "winget")
+    {
+        try
+        {
+            return LoadInstalledPackageDetails(id, source);
+        }
+        catch
+        {
+            return new WingetPackageDetails();
+        }
+    }
+
     public WingetCommandResult UpgradeApp(
         string id,
         string? source = "winget",
@@ -636,7 +648,7 @@ public sealed class WingetService
         return addedConstraint ? parameters : null;
     }
 
-    private PackageDetails LoadInstalledPackageDetails(string id, string? source)
+    private WingetPackageDetails LoadInstalledPackageDetails(string id, string? source)
     {
         var parameters = new Dictionary<string, string?>
         {
@@ -655,7 +667,7 @@ public sealed class WingetService
         return ParsePackageDetails(result.Output);
     }
 
-    private PackageDetails LoadInstallerDetails(string id, string? source, string availableVersion)
+    private WingetPackageDetails LoadInstallerDetails(string id, string? source, string availableVersion)
     {
         var parameters = new Dictionary<string, string?>
         {
@@ -674,9 +686,12 @@ public sealed class WingetService
         return ParsePackageDetails(result.Output);
     }
 
-    private static PackageDetails ParsePackageDetails(string output)
+    private static WingetPackageDetails ParsePackageDetails(string output)
     {
-        var details = new PackageDetails();
+        var scope = string.Empty;
+        var architecture = string.Empty;
+        var locale = string.Empty;
+        var installerType = string.Empty;
         foreach (var rawLine in output.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries))
         {
             var line = rawLine.Trim();
@@ -688,22 +703,31 @@ public sealed class WingetService
 
             var key = line[..separatorIndex].Trim();
             var value = line[(separatorIndex + 1)..].Trim();
-            if (string.Equals(key, "Installed Scope", StringComparison.OrdinalIgnoreCase))
+            if (MatchesAny(key, "Installed Scope", "Scope", "Ambito installato", "Ambito"))
             {
-                details.Scope = value;
+                scope = NormalizeScopeValue(value);
             }
-            else if (string.Equals(key, "Installed Architecture", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(key, "Architecture", StringComparison.OrdinalIgnoreCase))
+            else if (MatchesAny(key, "Installed Architecture", "Architecture", "Architettura installata", "Architettura"))
             {
-                details.Architecture = value;
+                architecture = NormalizeArchitectureValue(value);
             }
-            else if (string.Equals(key, "Installer Locale", StringComparison.OrdinalIgnoreCase))
+            else if (MatchesAny(key, "Installer Locale", "Locale programma di installazione"))
             {
-                details.Locale = value;
+                locale = value.Trim();
+            }
+            else if (MatchesAny(key, "Installer Type", "Tipo di programma di installazione"))
+            {
+                installerType = value.Trim();
             }
         }
 
-        return details;
+        return new WingetPackageDetails
+        {
+            Scope = scope,
+            Architecture = architecture,
+            Locale = locale,
+            InstallerType = installerType
+        };
     }
 
     private static bool TryNormalizeScope(string? value, out string normalized)
@@ -739,6 +763,21 @@ public sealed class WingetService
 
         normalized = value.Trim().ToLowerInvariant();
         return normalized is "x64" or "x86" or "arm64" or "arm";
+    }
+
+    private static bool MatchesAny(string value, params string[] candidates)
+    {
+        return candidates.Any(candidate => string.Equals(value, candidate, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeScopeValue(string value)
+    {
+        return TryNormalizeScope(value, out var normalized) ? normalized : value.Trim();
+    }
+
+    private static string NormalizeArchitectureValue(string value)
+    {
+        return TryNormalizeArchitecture(value, out var normalized) ? normalized : value.Trim();
     }
 
     private IEnumerable<string> FormatCommandSummary(string command, IReadOnlyDictionary<string, string?> parameters, WingetCommandResult result)
@@ -794,10 +833,4 @@ public sealed class WingetService
 
     public string GetResolutionHint(int exitCode, string? localeCode = null) => _outputClassifier.GetResolutionHint(exitCode, localeCode ?? System.Globalization.CultureInfo.CurrentUICulture.Name);
 
-    private sealed class PackageDetails
-    {
-        public string Scope { get; set; } = string.Empty;
-        public string Architecture { get; set; } = string.Empty;
-        public string Locale { get; set; } = string.Empty;
-    }
 }

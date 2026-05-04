@@ -73,6 +73,14 @@
                          Foreground="{StaticResource WarningTextBrush}"
                          Text="{Binding PermissionStatusBadgeText}"/>
             </Border>
+            <Border Margin="{StaticResource ChromeBadgeMargin}"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource ChromeStatusBadgeBorderStyle}"
+                    ToolTip="{Binding OperatingSystemStatusBadgeTooltip}"
+                    AutomationProperties.Name="{Binding OperatingSystemStatusBadgeTooltip}">
+              <TextBlock Style="{StaticResource ChromeStatusBadgeTextStyle}"
+                         Text="{Binding OperatingSystemStatusBadgeText}"/>
+            </Border>
           </StackPanel>
 
           <Border Grid.Column="2"

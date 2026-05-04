@@ -154,6 +154,7 @@ public sealed partial class LocalizedStrings
         OpenLogFolder = "Open log folder",
         AdministratorBadge = "Administrator",
         StandardUserBadge = "Standard permissions",
+        OperatingSystemBadgeTooltip = "Detected OS: {0}",
         LanguageLabel = "Language",
         LanguageSelectorAutomationName = "Language selector",
         LanguageSelectorTooltip = "Choose the application language.",

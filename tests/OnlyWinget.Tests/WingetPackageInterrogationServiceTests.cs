@@ -199,9 +199,10 @@ Installer Type: exe
 
         Assert.True(result.Success);
         Assert.Equal("9.7.1", result.Version);
-        Assert.Equal(2, invocations.Count);
-        Assert.Contains("--version", invocations[0]);
-        Assert.DoesNotContain("--version", invocations[1]);
+        var showInvocations = invocations.Where(args => args.Count > 0 && args[0] == "show").ToList();
+        Assert.Equal(2, showInvocations.Count);
+        Assert.Contains("--version", showInvocations[0]);
+        Assert.DoesNotContain("--version", showInvocations[1]);
     }
 
     [Fact]
@@ -240,6 +241,136 @@ ManifestType: installer
         Assert.Equal("en-US", result.DefaultSelection.Locale);
     }
 
+    [Fact]
+    public async Task InterrogateAsync_InstalledDetailsOutrankManifestOrder()
+    {
+        var service = CreateService(
+            showOutput: """
+Found Sample App [Contoso.Sample]
+Version: 1.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Sample
+PackageVersion: 1.0.0
+InstallerType: msi
+Installers:
+- Architecture: x86
+  Scope: user
+  InstallerLocale: en-US
+  InstallerType: msi
+- Architecture: x64
+  Scope: machine
+  InstallerLocale: it-IT
+  InstallerType: exe
+ManifestType: installer
+""",
+            architectureProvider: () => "x86",
+            cultureProvider: () => CultureInfo.GetCultureInfo("en-US"),
+            listOutput: """
+Name: Sample App
+Id: Contoso.Sample
+Installed Scope: Machine
+Installed Architecture: x64
+Installer Locale: it-IT
+Installer Type: exe
+""");
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Sample",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal("machine", result.DefaultSelection.Scope);
+        Assert.Equal("x64", result.DefaultSelection.Architecture);
+        Assert.Equal("it-IT", result.DefaultSelection.Locale);
+        Assert.Equal("exe", result.DefaultSelection.InstallerType);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_UsesCultureFallbackWhenInstalledLocaleMissing()
+    {
+        var service = CreateService(
+            showOutput: """
+Found Sample App [Contoso.Sample]
+Version: 1.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Sample
+PackageVersion: 1.0.0
+InstallerType: exe
+Installers:
+- Architecture: x64
+  InstallerLocale: en-US
+- Architecture: x64
+  InstallerLocale: fr-FR
+ManifestType: installer
+""",
+            architectureProvider: () => "x64",
+            cultureProvider: () => CultureInfo.GetCultureInfo("fr-FR"));
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Sample",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal("fr-FR", result.DefaultSelection.Locale);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_ContinuesWhenInstalledDetailsLookupFails()
+    {
+        var wingetService = new WingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "show" => new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Found Sample App [Contoso.Sample]
+Version: 1.0.0
+Installer Type: exe
+"""
+                    },
+                    "list" => throw new InvalidOperationException("list failed"),
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+        var httpClient = new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""
+PackageIdentifier: Contoso.Sample
+PackageVersion: 1.0.0
+InstallerType: exe
+Installers:
+- Architecture: x64
+ManifestType: installer
+""")
+        }));
+        var service = new WingetPackageInterrogationService(
+            wingetService,
+            httpClient,
+            architectureProvider: () => "x64",
+            cultureProvider: () => CultureInfo.GetCultureInfo("en-US"));
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Sample",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal("x64", result.DefaultSelection.Architecture);
+    }
+
     private static WingetPackageInterrogationService CreateService(
         string showOutput,
         HttpStatusCode manifestStatusCode,
@@ -255,7 +386,8 @@ ManifestType: installer
         string manifestContent,
         Func<string>? architectureProvider = null,
         Func<CultureInfo>? cultureProvider = null,
-        HttpStatusCode manifestStatusCode = HttpStatusCode.OK)
+        HttpStatusCode manifestStatusCode = HttpStatusCode.OK,
+        string listOutput = "")
     {
         var wingetService = new WingetService(
             wingetRunner: (singleArg, args, onOutputLine) =>
@@ -264,6 +396,7 @@ ManifestType: installer
                 return command switch
                 {
                     "show" => new WingetCommandResult { ExitCode = 0, Output = showOutput },
+                    "list" => new WingetCommandResult { ExitCode = 0, Output = listOutput },
                     _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
                 };
             });

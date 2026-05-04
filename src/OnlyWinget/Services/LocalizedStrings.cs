@@ -152,6 +152,7 @@ public sealed partial class LocalizedStrings
     public string OpenLogFolder { get; init; } = string.Empty;
     public string AdministratorBadge { get; init; } = string.Empty;
     public string StandardUserBadge { get; init; } = string.Empty;
+    public string OperatingSystemBadgeTooltip { get; init; } = string.Empty;
     public string LanguageLabel { get; init; } = string.Empty;
     public string LanguageSelectorAutomationName { get; init; } = string.Empty;
     public string LanguageSelectorTooltip { get; init; } = string.Empty;

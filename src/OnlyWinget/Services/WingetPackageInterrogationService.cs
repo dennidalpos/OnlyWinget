@@ -31,17 +31,23 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
     private readonly HttpClient _httpClient;
     private readonly Func<string> _architectureProvider;
     private readonly Func<CultureInfo> _cultureProvider;
+    private readonly OperatingSystemInfo _operatingSystemInfo;
 
     public WingetPackageInterrogationService(
         WingetService wingetService,
         HttpClient? httpClient = null,
         Func<string>? architectureProvider = null,
-        Func<CultureInfo>? cultureProvider = null)
+        Func<CultureInfo>? cultureProvider = null,
+        OperatingSystemInfo? operatingSystemInfo = null)
     {
         _wingetService = wingetService;
         _httpClient = httpClient ?? new HttpClient();
-        _architectureProvider = architectureProvider ?? (() => RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant());
-        _cultureProvider = cultureProvider ?? (() => CultureInfo.CurrentUICulture);
+        _operatingSystemInfo = operatingSystemInfo ?? new OperatingSystemInfoService(
+            osArchitectureProvider: () => RuntimeInformation.OSArchitecture,
+            processArchitectureProvider: () => RuntimeInformation.ProcessArchitecture,
+            cultureProvider: cultureProvider).Detect();
+        _architectureProvider = architectureProvider ?? (() => _operatingSystemInfo.NormalizedArchitecture);
+        _cultureProvider = cultureProvider ?? (() => GetCultureFromOperatingSystemInfo(_operatingSystemInfo));
     }
 
     public async Task<PackageInterrogationResult> InterrogateAsync(PackageInterrogationRequest request)
@@ -83,10 +89,15 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         var installerOptions = Array.Empty<ResolvedInstallerOption>();
         var manifestFingerprint = string.Empty;
         var isReducedMode = true;
+        var installedDetails = _wingetService.TryLoadInstalledPackageDetails(showMetadata.Id, showMetadata.Source);
         var defaultSelection = new SelectedInstallOptions
         {
             LogPath = _wingetService.CreateOperationLogPath("install", showMetadata.Id),
-            InstallMode = InstallModes.SilentWithProgress
+            InstallMode = InstallModes.SilentWithProgress,
+            Scope = installedDetails.Scope,
+            Architecture = string.IsNullOrWhiteSpace(installedDetails.Architecture) ? _architectureProvider() : installedDetails.Architecture,
+            Locale = string.IsNullOrWhiteSpace(installedDetails.Locale) ? _cultureProvider().Name : installedDetails.Locale,
+            InstallerType = installedDetails.InstallerType
         };
 
         if (string.Equals(showMetadata.Source, "winget", StringComparison.OrdinalIgnoreCase)
@@ -105,7 +116,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
                 {
                     var manifest = ParseInstallerManifest(manifestContent);
                     manifestFingerprint = ComputeFingerprint(manifestContent);
-                    installerOptions = NormalizeInstallerOptions(manifest, _architectureProvider(), _cultureProvider()).ToArray();
+                    installerOptions = NormalizeInstallerOptions(manifest, _architectureProvider(), _cultureProvider(), installedDetails).ToArray();
 
                     if (installerOptions.Length == 0)
                     {
@@ -428,7 +439,11 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         return manifest;
     }
 
-    private static IEnumerable<ResolvedInstallerOption> NormalizeInstallerOptions(InstallerManifest manifest, string currentArchitecture, CultureInfo currentCulture)
+    private static IEnumerable<ResolvedInstallerOption> NormalizeInstallerOptions(
+        InstallerManifest manifest,
+        string currentArchitecture,
+        CultureInfo currentCulture,
+        WingetPackageDetails installedDetails)
     {
         var candidates = new List<(ResolvedInstallerOption Option, int Score, int Index)>();
         for (var index = 0; index < manifest.Installers.Count; index++)
@@ -464,8 +479,10 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
                 DisplayLabel = BuildDisplayLabel(architecture, scope, locale, installerType)
             };
 
-            var score = ScoreArchitecture(architecture, currentArchitecture) * 100
-                + ScoreLocale(locale, currentCulture) * 10
+            var score = ScoreInstalledValue(scope, installedDetails.Scope) * 10000
+                + ScoreArchitecture(architecture, FirstNonEmpty(installedDetails.Architecture, currentArchitecture)) * 1000
+                + ScoreLocale(locale, FirstNonEmpty(installedDetails.Locale, currentCulture.Name), currentCulture) * 100
+                + ScoreInstalledValue(installerType, installedDetails.InstallerType) * 10
                 + index;
             candidates.Add((option, score, index));
         }
@@ -645,11 +662,27 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         return string.Equals(architecture, currentArchitecture, StringComparison.OrdinalIgnoreCase) ? 0 : 2;
     }
 
-    private static int ScoreLocale(string locale, CultureInfo currentCulture)
+    private static int ScoreLocale(string locale, string preferredLocale, CultureInfo currentCulture)
     {
         if (string.IsNullOrWhiteSpace(locale))
         {
             return 2;
+        }
+
+        if (!string.IsNullOrWhiteSpace(preferredLocale))
+        {
+            if (string.Equals(locale, preferredLocale, StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            var preferredLanguage = GetLanguageName(preferredLocale);
+            if (!string.IsNullOrWhiteSpace(preferredLanguage)
+                && (string.Equals(locale, preferredLanguage, StringComparison.OrdinalIgnoreCase)
+                    || locale.StartsWith(preferredLanguage + "-", StringComparison.OrdinalIgnoreCase)))
+            {
+                return 1;
+            }
         }
 
         if (string.Equals(locale, currentCulture.Name, StringComparison.OrdinalIgnoreCase))
@@ -661,6 +694,43 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             || locale.StartsWith(currentCulture.TwoLetterISOLanguageName + "-", StringComparison.OrdinalIgnoreCase)
             ? 1
             : 3;
+    }
+
+    private static int ScoreInstalledValue(string value, string preferredValue)
+    {
+        if (string.IsNullOrWhiteSpace(preferredValue))
+        {
+            return 0;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return 1;
+        }
+
+        return string.Equals(value, preferredValue, StringComparison.OrdinalIgnoreCase) ? 0 : 2;
+    }
+
+    private static string GetLanguageName(string locale)
+    {
+        var separatorIndex = locale.IndexOf('-', StringComparison.Ordinal);
+        return separatorIndex <= 0 ? locale : locale[..separatorIndex];
+    }
+
+    private static CultureInfo GetCultureFromOperatingSystemInfo(OperatingSystemInfo operatingSystemInfo)
+    {
+        if (!string.IsNullOrWhiteSpace(operatingSystemInfo.UiCultureName))
+        {
+            try
+            {
+                return CultureInfo.GetCultureInfo(operatingSystemInfo.UiCultureName);
+            }
+            catch (CultureNotFoundException)
+            {
+            }
+        }
+
+        return CultureInfo.CurrentUICulture;
     }
 
     private static string BuildDisplayLabel(string architecture, string scope, string locale, string installerType)
