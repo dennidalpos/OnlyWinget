@@ -22,6 +22,8 @@ $installerDialogBmpPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/Assets/WixUI
 $installerBannerBmpPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/Assets/WixUIBanner.bmp'
 $wixSourcePath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.Setup.wxs'
 $bundleSourcePath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs'
+$bundleThemePath = Join-Path $repoRoot 'src/OnlyWinget.Setup/BurnResponsiveTheme.xml'
+$bundleThemeLocalizationPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/BurnResponsiveTheme.wxl'
 $artifactsPath = Join-Path $repoRoot 'artifacts'
 $stagingRoot = Join-Path $artifactsPath 'installer'
 $msiOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration/msi"
@@ -267,6 +269,8 @@ function Invoke-UnifiedSetup {
         "-dAppIconPath=$appIconPath" `
         "-dBundleLogoPath=$bundleLogoPath" `
         "-dLicenseRtfPath=$licenseRtfPath" `
+        "-dBundleThemePath=$bundleThemePath" `
+        "-dBundleThemeLocalizationPath=$bundleThemeLocalizationPath" `
         "-dX86MsiPath=$($builtMsiPaths['x86'])" `
         "-dX64MsiPath=$($builtMsiPaths['x64'])" `
         "-dBundleUpgradeCode=$bundleUpgradeCode" `
@@ -299,6 +303,8 @@ Assert-Path -Path $installerDialogBmpPath -Description 'Installer dialog bitmap'
 Assert-Path -Path $installerBannerBmpPath -Description 'Installer banner bitmap'
 Assert-Path -Path $wixSourcePath -Description 'WiX MSI source'
 Assert-Path -Path $bundleSourcePath -Description 'WiX bundle source'
+Assert-Path -Path $bundleThemePath -Description 'WiX Burn theme'
+Assert-Path -Path $bundleThemeLocalizationPath -Description 'WiX Burn theme localization'
 
 $heatExe = Resolve-WixTool -ToolName 'heat.exe'
 $candleExe = Resolve-WixTool -ToolName 'candle.exe'

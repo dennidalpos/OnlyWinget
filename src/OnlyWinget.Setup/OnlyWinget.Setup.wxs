@@ -76,6 +76,7 @@
                Title="Desktop shortcut"
                Description="Crea un collegamento sul desktop condiviso per tutti gli utenti."
                Level="2">
+        <Condition Level="1">INSTALLDESKTOPSHORTCUT = "1"</Condition>
         <ComponentRef Id="DesktopShortcutComponent" />
       </Feature>
     </Feature>

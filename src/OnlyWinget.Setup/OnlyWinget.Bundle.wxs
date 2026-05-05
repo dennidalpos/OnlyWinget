@@ -10,25 +10,31 @@
           UpgradeCode="$(var.BundleUpgradeCode)"
           IconSourceFile="$(var.AppIconPath)"
           Compressed="yes">
+    <Variable Name="InstallDesktopShortcut" Type="numeric" Value="0" />
+
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
       <bal:WixStandardBootstrapperApplication LicenseFile="$(var.LicenseRtfPath)"
                                               LogoFile="$(var.BundleLogoPath)"
+                                              ThemeFile="$(var.BundleThemePath)"
+                                              LocalizationFile="$(var.BundleThemeLocalizationPath)"
                                               SuppressOptionsUI="yes" />
     </BootstrapperApplicationRef>
 
     <Chain>
       <MsiPackage Id="OnlyWingetX64"
                   SourceFile="$(var.X64MsiPath)"
-                  DisplayInternalUI="yes"
                   Visible="no"
                   ForcePerMachine="yes"
-                  InstallCondition="VersionNT64" />
+                  InstallCondition="VersionNT64">
+        <MsiProperty Name="INSTALLDESKTOPSHORTCUT" Value="[InstallDesktopShortcut]" />
+      </MsiPackage>
       <MsiPackage Id="OnlyWingetX86"
                   SourceFile="$(var.X86MsiPath)"
-                  DisplayInternalUI="yes"
                   Visible="no"
                   ForcePerMachine="yes"
-                  InstallCondition="NOT VersionNT64" />
+                  InstallCondition="NOT VersionNT64">
+        <MsiProperty Name="INSTALLDESKTOPSHORTCUT" Value="[InstallDesktopShortcut]" />
+      </MsiPackage>
     </Chain>
   </Bundle>
 </Wix>

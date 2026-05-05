@@ -137,6 +137,8 @@ Packaging prerequisites already versioned in the repository:
 
 The user-facing installer is the Burn setup EXE. It contains the x86 and x64 MSIs and uses package conditions to run the x64 MSI only when `VersionNT64` is true; otherwise it runs the x86 MSI. The architecture-specific MSIs also include direct-execution launch conditions: the x64 MSI blocks 32-bit Windows, and the x86 MSI is reserved for 32-bit Windows rather than direct use on 64-bit Windows.
 
+The Burn setup UI includes an optional desktop shortcut checkbox. It is off by default and passes `INSTALLDESKTOPSHORTCUT=1` to the selected internal MSI only when the user enables it.
+
 ### Installer lifecycle validation
 
 ```powershell
