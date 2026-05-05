@@ -144,6 +144,7 @@ public sealed class WingetOutputClassifier
         {
             0 => string.Empty,
             -1978335207 => "Rieseguire OnlyWinget come Amministratore.",
+            -2147009240 => "Rieseguire OnlyWinget come Amministratore.",
             -1978335146 => "Rieseguire OnlyWinget senza privilegi di Amministratore.",
             -1978334963 => "È presente un'altra versione. Rimuoverla manualmente, poi reinstallare tramite OnlyWinget.",
             -1978334962 => "La versione corrente è già superiore. Nessuna azione necessaria.",
@@ -165,7 +166,8 @@ public sealed class WingetOutputClassifier
             -1978335215 => "Riprovare. Se l'errore persiste, segnalare al manutentore del pacchetto.",
             -2145844844 => "Consultare il log. Potrebbe richiedere installazione manuale.",
             -1978334955 => "Consultare il log. Potrebbe richiedere installazione manuale.",
-            -1978335212 => "Verificare l'ID del pacchetto e la sorgente configurata.",
+            -1978335212 => "Verificare l'ID del pacchetto e la sorgente configurata. Se il pacchetto appare nella lista aggiornamenti, OnlyWinget riprovera usando il nome installato.",
+            -2147009295 => "Il pacchetto MSIX non risulta installato per l'utente corrente.",
             -1978335231 => "Riprovare. Se l'errore persiste, aggiornare winget.",
             -1978335189 => "Già alla versione più recente.",
             -1978335135 => "Già installata. Nessuna azione necessaria.",
@@ -185,6 +187,7 @@ public sealed class WingetOutputClassifier
         {
             0 => string.Empty,
             -1978335207 => "Re-run OnlyWinget as Administrator.",
+            -2147009240 => "Re-run OnlyWinget as Administrator.",
             -1978335146 => "Re-run OnlyWinget without Administrator privileges.",
             -1978334963 => "Another version is installed. Remove it manually, then reinstall via OnlyWinget.",
             -1978334962 => "Current version is already newer. No action required.",
@@ -206,7 +209,8 @@ public sealed class WingetOutputClassifier
             -1978335215 => "Retry. If the issue persists, report to the package maintainer.",
             -2145844844 => "Check the log. Manual installation may be required.",
             -1978334955 => "Check the log. Manual installation may be required.",
-            -1978335212 => "Verify the package ID and configured source.",
+            -1978335212 => "Verify the package ID and configured source. If the package appears in the updates list, OnlyWinget will retry using the installed package name.",
+            -2147009295 => "The MSIX package is not installed for the current user.",
             -1978335231 => "Retry. If the issue persists, update winget.",
             -1978335189 => "Already at the latest version.",
             -1978335135 => "Already installed. No action required.",
@@ -242,10 +246,12 @@ public sealed class WingetOutputClassifier
             -1978335215 => "Hash non corrisponde",
             -1978335214 => "Nome origine non esiste",
             -1978335212 => "App non trovata",
+            -2147009295 => "Pacchetto MSIX non trovato",
             -1978335211 => "Nessuna origine configurata",
             -1978335210 => "Più app trovate",
             -1978335209 => "Manifest non trovato",
             -1978335207 => "Richiesti privilegi admin",
+            -2147009240 => "Richiesti privilegi admin",
             -1978335205 => "MS Store bloccato da policy",
             -1978335204 => "App MS Store bloccata da policy",
             -1978335203 => "Funzione sperimentale disabilitata",
@@ -335,10 +341,12 @@ public sealed class WingetOutputClassifier
             -1978335215 => "Hash mismatch",
             -1978335214 => "Source name does not exist",
             -1978335212 => "App not found",
+            -2147009295 => "MSIX package not found",
             -1978335211 => "No source configured",
             -1978335210 => "Multiple apps found",
             -1978335209 => "Manifest not found",
             -1978335207 => "Administrator privileges required",
+            -2147009240 => "Administrator privileges required",
             -1978335205 => "Microsoft Store blocked by policy",
             -1978335204 => "Microsoft Store app blocked by policy",
             -1978335203 => "Experimental feature disabled",
@@ -459,7 +467,9 @@ public sealed class WingetOutputClassifier
             "disinstallazione",
             "disinstallata",
             "annullata",
-            "privilegi admin");
+            "privilegi admin",
+            "privilegi di amministratore",
+            "amministratore necessari");
     }
 
     private static bool ContainsAny(string text, params string[] values)

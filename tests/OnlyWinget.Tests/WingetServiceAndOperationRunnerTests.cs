@@ -75,6 +75,73 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public void UpdateSources_InvokesWingetSourceUpdate()
+    {
+        IReadOnlyList<string> invokedArgs = Array.Empty<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invokedArgs = args;
+                return new WingetCommandResult { ExitCode = 0, Output = "Done" };
+            });
+
+        var result = service.UpdateSources();
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(new[] { "source", "update" }, invokedArgs);
+    }
+
+    [Fact]
+    public void UpgradeApp_RetriesByName_WhenExactIdDoesNotMatchInstalledPackage()
+    {
+        var invocations = new List<IReadOnlyList<string>>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invocations.Add(args.ToArray());
+                if (args.Contains("--id"))
+                {
+                    return new WingetCommandResult
+                    {
+                        ExitCode = -1978335212,
+                        Output = "No installed package found matching input criteria."
+                    };
+                }
+
+                return new WingetCommandResult { ExitCode = 0, Output = "Successfully installed" };
+            });
+
+        var result = service.UpgradeApp("Python.Python.3.14", "winget", "Python 3.14.4", "3.14.5rc1");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(2, invocations.Count);
+        Assert.Contains("--id", invocations[0]);
+        Assert.Contains("--name", invocations[1]);
+        Assert.Contains("Python 3.14.4", invocations[1]);
+        Assert.Contains("retrying with installed package name", result.Output);
+    }
+
+    [Fact]
+    public void Classifier_MapsPackagedServiceAdminRequirementToElevationHint()
+    {
+        var classifier = new WingetOutputClassifier();
+
+        Assert.Equal("Administrator privileges required", classifier.GetErrorMessage(-2147009240, "en-US"));
+        Assert.Equal("Re-run OnlyWinget as Administrator.", classifier.GetResolutionHint(-2147009240, "en-US"));
+    }
+
+    [Fact]
+    public void Classifier_MapsPackageMatchingAndMsixRollbackErrors()
+    {
+        var classifier = new WingetOutputClassifier();
+
+        Assert.Equal("App not found", classifier.GetErrorMessage(-1978335212, "en-US"));
+        Assert.Contains("retry using the installed package name", classifier.GetResolutionHint(-1978335212, "en-US"), StringComparison.Ordinal);
+        Assert.Equal("MSIX package not found", classifier.GetErrorMessage(-2147009295, "en-US"));
+        Assert.Equal("The MSIX package is not installed for the current user.", classifier.GetResolutionHint(-2147009295, "en-US"));
+    }
+
+    [Fact]
     public async Task RunApplyAsync_UsesInstallCommand_ForInstallAction()
     {
         var invokedCommands = new List<string>();

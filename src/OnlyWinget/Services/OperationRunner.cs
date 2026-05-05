@@ -105,6 +105,7 @@ public sealed class OperationRunner : IOperationRunner
                 var result = await Task.Run(() => _wingetService.UpgradeApp(
                     update.Id,
                     update.Source,
+                    update.Name,
                     update.Available,
                     update.Scope,
                     update.Architecture,

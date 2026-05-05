@@ -51,6 +51,12 @@ public sealed class AppStartupCoordinator
         try
         {
             var strings = viewModel.Strings;
+            var sourceUpdate = await Task.Run(_wingetService.UpdateSources).ConfigureAwait(true);
+            if (sourceUpdate.ExitCode != 0)
+            {
+                viewModel.AppendLog(sourceUpdate.Output);
+            }
+
             var versionCheck = await _wingetService.CheckForWingetUpdateAsync().ConfigureAwait(true);
 
             if (!versionCheck.IsUpdateAvailable)

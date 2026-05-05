@@ -54,10 +54,12 @@ public sealed class AppStartupCoordinatorTests
             var dialog = new RecordingDialogService();
             dialog.EnqueueConfirm(true);
             var upgraded = false;
+            var invocations = new List<IReadOnlyList<string>>();
             var wingetService = new WingetService(
                 wingetRunner: (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
+                    invocations.Add(args.ToArray());
 
                     if (command == "--version")
                     {
@@ -105,6 +107,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
             Assert.False(viewModel.IsWingetUpdateInProgress);
             Assert.Equal(string.Empty, viewModel.StatusText);
             Assert.Contains("Microsoft.AppInstaller", viewModel.OutputText, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(invocations, args => args.SequenceEqual(new[] { "source", "update" }));
             // Runtime directory is preserved (only old logs are pruned, not the directory itself).
             Assert.True(Directory.Exists(runtimeRoot));
         }

@@ -200,6 +200,7 @@ public sealed class WingetService
     public WingetCommandResult UpgradeApp(
         string id,
         string? source = "winget",
+        string? name = null,
         string? availableVersion = null,
         string? configuredScope = null,
         string? configuredArchitecture = null,
@@ -210,6 +211,18 @@ public sealed class WingetService
         var parameters = CreatePackageParameters("upgrade", id, source, includeLog: true);
         parameters["--include-pinned"] = null;
         var result = Invoke("upgrade", parameters, onOutputLine);
+        if (ShouldFallbackToInstall(result) && !string.IsNullOrWhiteSpace(name))
+        {
+            var nameParameters = CreatePackageNameParameters("upgrade-by-name", name, source, includeLog: true);
+            nameParameters["--include-pinned"] = null;
+            var nameResult = Invoke("upgrade", nameParameters, onOutputLine);
+            var nameLog = new List<string>();
+            nameLog.AddRange(FormatCommandSummary("upgrade", parameters, result));
+            nameLog.Add("retrying with installed package name");
+            nameLog.AddRange(FormatCommandSummary("upgrade", nameParameters, nameResult));
+            return CombineResults(nameResult, nameLog);
+        }
+
         if (!IsNoApplicableUpgrade(result))
         {
             return ToDisplayResult("upgrade", parameters, result);
@@ -295,6 +308,11 @@ public sealed class WingetService
         return lastResult is null
             ? new WingetCommandResult { ExitCode = 9999, Output = GetErrorMessage(9999) }
             : CombineResults(lastResult, log);
+    }
+
+    public WingetCommandResult UpdateSources()
+    {
+        return Invoke(new[] { "source", "update" });
     }
 
     public WingetCommandResult InstallApp(string id, Action<string>? onOutputLine = null)
@@ -591,6 +609,33 @@ public sealed class WingetService
             parameters["--accept-package-agreements"] = null;
         }
 
+        parameters["--accept-source-agreements"] = null;
+        parameters["--disable-interactivity"] = null;
+        return parameters;
+    }
+
+    private Dictionary<string, string?> CreatePackageNameParameters(
+        string operation,
+        string name,
+        string? source = null,
+        bool includeLog = false)
+    {
+        var parameters = new Dictionary<string, string?>
+        {
+            ["--name"] = name
+        };
+
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            parameters["--source"] = source;
+        }
+
+        if (includeLog)
+        {
+            parameters["--log"] = _runtimeEnvironment.CreateOperationLogPath(operation, name);
+        }
+
+        parameters["--accept-package-agreements"] = null;
         parameters["--accept-source-agreements"] = null;
         parameters["--disable-interactivity"] = null;
         return parameters;
