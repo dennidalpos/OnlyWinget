@@ -199,40 +199,30 @@ public sealed class OperationRunner : IOperationRunner
         setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
         appendOutput($"--- {app.Name} [{app.Id}] : {strings.OperationInstallLabel} ---");
 
-        WingetCommandResult installResult;
         if (elevationMode == ElevationMode.ElevatedRequired)
         {
             appendOutput($"event=elevated_launch_starting id=\"{app.Id}\"");
-            var logPath = string.IsNullOrWhiteSpace(app.LogPath)
-                ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
-                : app.LogPath;
-            installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath));
-            appendOutput(installResult.Output);
         }
-        else
-        {
-            var receivedLiveOutput = false;
-            installResult = await Task.Run(() => _wingetService.Invoke(installArgs, line =>
-            {
-                receivedLiveOutput = true;
-                HandleProgressLine(line, app.OperationKey, app.Name, UiStatusKey.InstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
-                if (_wingetService.ShouldLogOutputLine(line))
-                {
-                    appendOutput(line.Trim());
-                }
-            }));
 
-            if (!receivedLiveOutput)
-            {
-                AppendResultOutput(appendOutput, installResult);
-            }
-        }
+        var installResult = await RunInstallCommandAsync(app, installArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress);
 
         if (installResult.ExitCode == 0)
         {
             setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
             reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
             return;
+        }
+
+        if (_wingetService.IsNoApplicableInstaller(installResult) && TryBuildInstallArgumentsWithoutInstallerSelectors(installArgs, out var retryInstallArgs))
+        {
+            appendOutput($"event=install_retry_without_installer_selectors id=\"{app.Id}\"");
+            installResult = await RunInstallCommandAsync(app, retryInstallArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress);
+            if (installResult.ExitCode == 0)
+            {
+                setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
+                reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
+                return;
+            }
         }
 
         if (_wingetService.IsAlreadyInstalled(installResult))
@@ -256,6 +246,85 @@ public sealed class OperationRunner : IOperationRunner
         setStatusById(app.OperationKey, UiStatusState.FromRawText(installError));
         setErrorById?.Invoke(app.OperationKey, installError, installResolution);
         reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
+    }
+
+    private async Task<WingetCommandResult> RunInstallCommandAsync(
+        AppEntry app,
+        IReadOnlyList<string> installArgs,
+        ElevationMode elevationMode,
+        int currentIndex,
+        int totalCount,
+        Action<string, UiStatusState> setStatusById,
+        Action<string> appendOutput,
+        Action<int, string> reportProgress)
+    {
+        if (elevationMode == ElevationMode.ElevatedRequired)
+        {
+            var logPath = GetInstallLogPath(app);
+            var installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath));
+            appendOutput(installResult.Output);
+            return installResult;
+        }
+
+        var receivedLiveOutput = false;
+        var result = await Task.Run(() => _wingetService.Invoke(installArgs, line =>
+        {
+            receivedLiveOutput = true;
+            HandleProgressLine(line, app.OperationKey, app.Name, UiStatusKey.InstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
+            if (_wingetService.ShouldLogOutputLine(line))
+            {
+                appendOutput(line.Trim());
+            }
+        }));
+
+        if (!receivedLiveOutput)
+        {
+            AppendResultOutput(appendOutput, result);
+        }
+
+        return result;
+    }
+
+    private string GetInstallLogPath(AppEntry app)
+    {
+        return string.IsNullOrWhiteSpace(app.LogPath)
+            ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
+            : app.LogPath;
+    }
+
+    private static bool TryBuildInstallArgumentsWithoutInstallerSelectors(
+        IReadOnlyList<string> installArgs,
+        out IReadOnlyList<string> retryInstallArgs)
+    {
+        var selectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "--scope",
+            "--architecture",
+            "--installer-type",
+            "--locale"
+        };
+
+        var retryArgs = new List<string>(installArgs.Count);
+        var removedSelector = false;
+        for (var index = 0; index < installArgs.Count; index++)
+        {
+            var arg = installArgs[index];
+            if (selectors.Contains(arg))
+            {
+                removedSelector = true;
+                if (index + 1 < installArgs.Count)
+                {
+                    index++;
+                }
+
+                continue;
+            }
+
+            retryArgs.Add(arg);
+        }
+
+        retryInstallArgs = retryArgs;
+        return removedSelector;
     }
 
     private async Task RunUninstallAsync(

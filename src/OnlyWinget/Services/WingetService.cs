@@ -338,6 +338,8 @@ public sealed class WingetService
 
     public bool IsNoApplicableUpgrade(WingetCommandResult result) => _outputClassifier.IsNoApplicableUpgrade(result);
 
+    public bool IsNoApplicableInstaller(WingetCommandResult result) => _outputClassifier.IsNoApplicableInstaller(result);
+
     public bool IsAlreadyInstalled(int exitCode) => _outputClassifier.IsAlreadyInstalled(exitCode);
 
     public bool IsAlreadyInstalled(WingetCommandResult result) => _outputClassifier.IsAlreadyInstalled(result);

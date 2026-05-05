@@ -43,6 +43,21 @@ public sealed class WingetOutputClassifier
             "non applicabile ai requisiti");
     }
 
+    public bool IsNoApplicableInstaller(WingetCommandResult result)
+    {
+        if (result.ExitCode == -1978335216)
+        {
+            return true;
+        }
+
+        var output = NormalizeWingetOutput(result.Output);
+        return ContainsAny(output,
+            "no applicable installer",
+            "no installer found",
+            "nessun installer applicabile",
+            "nessun programma di installazione applicabile");
+    }
+
     public bool IsAlreadyInstalled(WingetCommandResult result)
     {
         if (IsAlreadyInstalled(result.ExitCode))
@@ -462,6 +477,7 @@ public sealed class WingetOutputClassifier
             "failed",
             "failure",
             "not found",
+            "applicable installer",
             "applicable upgrade",
             "applicable update",
             "requirements",
@@ -479,6 +495,8 @@ public sealed class WingetOutputClassifier
             "requires admin",
             "errore",
             "non trovato",
+            "installer applicabile",
+            "programma di installazione applicabile",
             "aggiornamento applicabile",
             "requisiti",
             "gia installata",

@@ -975,6 +975,68 @@ A newer package version is available in a configured source, but it does not app
     }
 
     [Fact]
+    public async Task RunApplyAsync_RetriesInstallWithoutInstallerSelectors_WhenWingetReportsNoApplicableInstaller()
+    {
+        var installInvocations = new List<IReadOnlyList<string>>();
+        var output = new List<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command != "install")
+                {
+                    return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+                }
+
+                installInvocations.Add(args.ToArray());
+                if (args.Contains("--architecture"))
+                {
+                    return new WingetCommandResult
+                    {
+                        ExitCode = -1978335216,
+                        Output = "No applicable installer found; see logs for more details."
+                    };
+                }
+
+                return new WingetCommandResult { ExitCode = 0, Output = "Successfully installed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry
+                {
+                    Name = ".NET Framework Developer Pack",
+                    Id = "Microsoft.DotNet.Framework.DeveloperPack.4.6",
+                    Source = "winget",
+                    Action = AppActions.Install,
+                    Scope = "machine",
+                    Architecture = "x64",
+                    InstallerType = "burn",
+                    InstallMode = InstallModes.SilentWithProgress
+                }
+            },
+            (_, value) => status = RenderStatus(value, LocalizedStrings.English),
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.English);
+
+        Assert.Equal("OK", status);
+        Assert.Equal(2, installInvocations.Count);
+        Assert.Contains("--scope", installInvocations[0]);
+        Assert.Contains("--architecture", installInvocations[0]);
+        Assert.Contains("--installer-type", installInvocations[0]);
+        Assert.DoesNotContain("--scope", installInvocations[1]);
+        Assert.DoesNotContain("--architecture", installInvocations[1]);
+        Assert.DoesNotContain("--installer-type", installInvocations[1]);
+        Assert.Contains("--source", installInvocations[1]);
+        Assert.Contains("winget", installInvocations[1]);
+        Assert.Contains(output, line => line.Contains("event=install_retry_without_installer_selectors", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void UpgradeWinget_DoesNotConvertAlreadyInstalledIntoSuccess()
     {
         var invocations = 0;
