@@ -7,6 +7,7 @@ namespace OnlyWinget.Models;
 
 public sealed class AppEntry : ObservableObject
 {
+    private bool _enabled = true;
     private string _name = string.Empty;
     private string _id = string.Empty;
     private string _source = "winget";
@@ -30,6 +31,12 @@ public sealed class AppEntry : ObservableObject
     private UiStatusKey _statusKey = UiStatusKey.None;
     private int? _statusProgressPercentage;
     private string _statusRawText = string.Empty;
+
+    public bool Enabled
+    {
+        get => _enabled;
+        set => SetProperty(ref _enabled, value);
+    }
 
     public string Name
     {
@@ -156,6 +163,7 @@ public sealed class AppEntry : ObservableObject
             _statusProgressPercentage = null;
             _statusRawText = value ?? string.Empty;
             OnPropertyChanged(nameof(StatusBadgeKey));
+            OnPropertyChanged(nameof(StatusBadgeSymbol));
             SetProperty(ref _status, _statusRawText);
         }
     }
@@ -164,12 +172,25 @@ public sealed class AppEntry : ObservableObject
         ? null
         : _statusKey;
 
+    public string StatusBadgeSymbol => _statusKey switch
+    {
+        UiStatusKey.Ok => "\uE73E",
+        UiStatusKey.Paused => "\uE769",
+        UiStatusKey.UpgradeInProgress => "\uE895",
+        UiStatusKey.AlreadyUpdated => "\uE930",
+        UiStatusKey.InstallInProgress => "\uE895",
+        UiStatusKey.AlreadyInstalled => "\uE930",
+        UiStatusKey.UninstallInProgress => "\uE74D",
+        _ => string.IsNullOrWhiteSpace(_statusRawText) ? string.Empty : "\uE946"
+    };
+
     public void ApplyStatus(UiStatusState statusState, Services.LocalizedStrings strings)
     {
         _statusKey = statusState?.Key ?? UiStatusKey.None;
         _statusProgressPercentage = statusState?.ProgressPercentage;
         _statusRawText = statusState?.RawText ?? string.Empty;
         OnPropertyChanged(nameof(StatusBadgeKey));
+        OnPropertyChanged(nameof(StatusBadgeSymbol));
         SetProperty(ref _status, BuildStatusText(strings), nameof(Status));
     }
 

@@ -417,7 +417,7 @@
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSm}"/>
-    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="Padding" Value="{DynamicResource TableHeaderPadding}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource ColumnSeparatorBrush}"/>
     <Setter Property="BorderThickness" Value="0,0,0,1"/>
     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

@@ -38,6 +38,7 @@
   <Thickness x:Key="ChromeBadgeMargin">8,0,0,0</Thickness>
   <Thickness x:Key="ChromeStatusMargin">0,0,10,0</Thickness>
   <Thickness x:Key="BadgePadding">7,3</Thickness>
+  <Thickness x:Key="StatusBadgePadding">0</Thickness>
   <Thickness x:Key="ChromeBadgePadding">8,3</Thickness>
   <Thickness x:Key="WarningBadgePadding">5,1</Thickness>
   <Thickness x:Key="ButtonInlineSpacing">0,0,6,0</Thickness>
@@ -59,6 +60,9 @@
   <Thickness x:Key="ButtonPadding">12,0</Thickness>
   <Thickness x:Key="CompactButtonPadding">10,0</Thickness>
   <Thickness x:Key="DialogActionRowMargin">0,12,0,0</Thickness>
+  <Thickness x:Key="TableCellPadding">10,6</Thickness>
+  <Thickness x:Key="TableCellCompactPadding">5,3</Thickness>
+  <Thickness x:Key="TableHeaderPadding">10,6</Thickness>
 
   <sys:Double x:Key="ControlHeightSm">26</sys:Double>
   <sys:Double x:Key="ControlHeightMd">32</sys:Double>
@@ -79,7 +83,9 @@
   <sys:Double x:Key="DialogPrimaryButtonMinWidth">164</sys:Double>
   <sys:Double x:Key="ActionColumnWidth">138</sys:Double>
   <sys:Double x:Key="ActionSelectorWidth">126</sys:Double>
-  <sys:Double x:Key="StatusColumnWidth">78</sys:Double>
+  <sys:Double x:Key="SelectColumnWidth">44</sys:Double>
+  <sys:Double x:Key="StatusColumnWidth">54</sys:Double>
+  <sys:Double x:Key="StatusBadgeSize">22</sys:Double>
   <sys:Double x:Key="ChromeIconSize">24</sys:Double>
   <sys:Double x:Key="WindowCommandWidth">46</sys:Double>
   <sys:Double x:Key="WindowCommandHeight">36</sys:Double>

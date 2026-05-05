@@ -123,9 +123,36 @@ public sealed class SourceAlignmentTests
         Assert.Equal(2, statusTextBlocks.Count);
         foreach (Match match in statusTextBlocks)
         {
-            Assert.Contains("Text=\"{Binding Status}\"", match.Value, StringComparison.Ordinal);
+            Assert.Contains("Text=\"{Binding StatusBadgeSymbol}\"", match.Value, StringComparison.Ordinal);
             Assert.Contains("ToolTip=\"{Binding Status}\"", match.Value, StringComparison.Ordinal);
         }
+
+        Assert.Equal(2, Regex.Matches(source, "AutomationProperties.Name=\"\\{Binding Status\\}\"").Count);
+    }
+
+    [Fact]
+    public void TableHeadersAndCellsUseSharedAlignedPaddingTokens()
+    {
+        var root = GetRepositoryRoot();
+        var tokens = File.ReadAllText(Path.Combine(root, "src", "OnlyWinget", "Styles", "Tokens.xaml"));
+        var controls = File.ReadAllText(Path.Combine(root, "src", "OnlyWinget", "Styles", "Controls.xaml"));
+        var templates = File.ReadAllText(Path.Combine(root, "src", "OnlyWinget", "Styles", "Templates.xaml"));
+
+        Assert.Contains("x:Key=\"TableCellPadding\">10,6</Thickness>", tokens, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"TableHeaderPadding\">10,6</Thickness>", tokens, StringComparison.Ordinal);
+        Assert.Contains("Property=\"Padding\" Value=\"{DynamicResource TableHeaderPadding}\"", controls, StringComparison.Ordinal);
+        Assert.Contains("Property=\"Padding\" Value=\"{DynamicResource TableCellPadding}\"", templates, StringComparison.Ordinal);
+        Assert.Contains("Property=\"Padding\" Value=\"{DynamicResource TableCellCompactPadding}\"", templates, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GridViewAutoSizeBehavior_IgnoresResizeFeedbackAndPreservesStarMinimums()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget", "Helpers", "GridViewAutoSizeBehavior.cs"));
+
+        Assert.Contains("IsResizing", source, StringComparison.Ordinal);
+        Assert.Contains("SetColumnWidth(state, column", source, StringComparison.Ordinal);
+        Assert.Contains("Math.Max(0, available - starMinWidth)", source, StringComparison.Ordinal);
     }
 
     [Fact]

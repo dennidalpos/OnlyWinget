@@ -369,6 +369,173 @@ public sealed class SearchResultsLayoutTests
         }
     }
 
+    [Fact]
+    public void UpdatesList_UsesCompactStatusColumnAndReadableErrorResolutionSizing()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-UpdatesGrid-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1567,
+                    Height = 1050,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    viewModel.IsUpdatesVisible = true;
+
+                    SetUpdates(
+                        viewModel,
+                        new UpdateEntry
+                        {
+                            Name = "Microsoft .NET SDK",
+                            Id = "Microsoft.DotNet.SDK.9",
+                            Version = "9.0.100",
+                            Available = "9.0.200",
+                            Source = "winget",
+                            Status = "Installa",
+                            ErrorMessage = "Package returned a recoverable update error",
+                            Resolution = "Review package options and retry the update"
+                        });
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var updatesList = Assert.IsType<ListView>(window.FindName("UpdatesList"));
+                    var gridView = Assert.IsType<GridView>(updatesList.View);
+
+                    Assert.Equal(8, gridView.Columns.Count);
+                    Assert.Equal(44d, gridView.Columns[0].Width);
+                    Assert.Equal(54d, gridView.Columns[1].Width);
+                    Assert.True(gridView.Columns[2].Width >= 220d);
+                    Assert.True(gridView.Columns[3].Width >= 280d);
+                    Assert.True(gridView.Columns[6].Width >= 180d);
+                    Assert.True(gridView.Columns[7].Width >= 220d);
+
+                    var selectUpdateCheckBox = FindDescendants<CheckBox>(updatesList).FirstOrDefault();
+                    Assert.NotNull(selectUpdateCheckBox);
+                    AssertElementVisibleInsideWindow(window, selectUpdateCheckBox!);
+
+                    var statusBadge = FindDescendants<Border>(updatesList)
+                        .FirstOrDefault(candidate => AutomationProperties.GetName(candidate) == "Installa");
+                    Assert.NotNull(statusBadge);
+                    Assert.Equal("Installa", statusBadge!.ToolTip);
+
+                    Assert.Contains(FindDescendants<TextBlock>(updatesList), textBlock => textBlock.Text == "\uE946");
+                    Assert.DoesNotContain(FindDescendants<TextBlock>(updatesList), textBlock => textBlock.Text == "Installa");
+
+                    var horizontalScrollViewer = FindDescendants<ScrollViewer>(updatesList)
+                        .FirstOrDefault(candidate => candidate.ComputedHorizontalScrollBarVisibility == Visibility.Visible);
+
+                    Assert.Null(horizontalScrollViewer);
+                    AssertTextFitsSingleLine(updatesList, "Come risolvere");
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PresetAppsList_KeepsAllColumnsVisibleAtDefaultWindowWidth()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-PresetGrid-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1366,
+                    Height = 768,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+
+                    viewModel.PresetWorkspace.CurrentApps.Clear();
+                    viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
+                    {
+                        Name = "WiX Toolset Command-Line Tools",
+                        Id = "WiXToolset.WiXCLI",
+                        Architecture = "x64",
+                        Action = AppActions.Install,
+                        Status = "Pronto",
+                        ErrorMessage = "Errore",
+                        Resolution = "Come risolvere"
+                    });
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var presetAppsList = Assert.IsType<ListView>(window.FindName("PresetAppsList"));
+                    var gridView = Assert.IsType<GridView>(presetAppsList.View);
+
+                    Assert.Equal(8, gridView.Columns.Count);
+                    Assert.Equal(44d, gridView.Columns[0].Width);
+                    Assert.Equal(54d, gridView.Columns[1].Width);
+                    Assert.True(gridView.Columns[2].Width >= 180d);
+                    Assert.True(gridView.Columns[3].Width >= 220d);
+                    Assert.True(gridView.Columns[4].Width >= 100d);
+                    Assert.Equal(138d, gridView.Columns[5].Width);
+                    Assert.True(gridView.Columns[6].Width >= 140d);
+                    Assert.True(gridView.Columns[7].Width >= 160d);
+
+                    var horizontalScrollViewer = FindDescendants<ScrollViewer>(presetAppsList)
+                        .FirstOrDefault(candidate => candidate.ComputedHorizontalScrollBarVisibility == Visibility.Visible);
+
+                    Assert.Null(horizontalScrollViewer);
+                    AssertTextFitsSingleLine(presetAppsList, "Come risolvere");
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static void AssertTextFitsSingleLine(DependencyObject root, string expectedText)
     {
         var textBlock = FindDescendants<TextBlock>(root)
@@ -395,6 +562,12 @@ public sealed class SearchResultsLayoutTests
     private static void AssertElementVisibleInsideWindow(Window window, string elementName)
     {
         var element = Assert.IsAssignableFrom<FrameworkElement>(window.FindName(elementName));
+        AssertElementVisibleInsideWindow(window, element);
+    }
+
+    private static void AssertElementVisibleInsideWindow(Window window, FrameworkElement element)
+    {
+        var elementName = string.IsNullOrWhiteSpace(element.Name) ? element.GetType().Name : element.Name;
         Assert.True(element.IsVisible, $"{elementName} should be visible.");
         Assert.True(element.ActualWidth > 0d, $"{elementName} should have width.");
         Assert.True(element.ActualHeight > 0d, $"{elementName} should have height.");

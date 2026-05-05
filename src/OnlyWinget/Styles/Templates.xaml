@@ -335,7 +335,11 @@
   </Style>
 
   <Style x:Key="StatusBadgeBorderStyle" TargetType="Border" BasedOn="{StaticResource BadgeBorderStyle}">
-    <Setter Property="HorizontalAlignment" Value="Left"/>
+    <Setter Property="Width" Value="{DynamicResource StatusBadgeSize}"/>
+    <Setter Property="Height" Value="{DynamicResource StatusBadgeSize}"/>
+    <Setter Property="Padding" Value="{DynamicResource StatusBadgePadding}"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
     <Setter Property="Visibility" Value="Visible"/>
     <Setter Property="Background" Value="{DynamicResource NeutralSoftBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
@@ -376,7 +380,12 @@
 
   <Style x:Key="StatusBadgeTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BadgeTextStyle}">
     <Setter Property="Foreground" Value="{DynamicResource NeutralBrush}"/>
-    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    <Setter Property="FontFamily" Value="{DynamicResource IconFontFamily}"/>
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeSm}"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+    <Setter Property="TextTrimming" Value="None"/>
   </Style>
 
   <Style x:Key="ChromeStatusBadgeBorderStyle" TargetType="Border" BasedOn="{StaticResource BadgeBorderStyle}">
@@ -466,7 +475,7 @@
   <Style x:Key="TableCellBorderStyle" TargetType="Border">
     <Setter Property="BorderBrush" Value="{DynamicResource ColumnSeparatorBrush}"/>
     <Setter Property="BorderThickness" Value="0,0,1,0"/>
-    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="Padding" Value="{DynamicResource TableCellPadding}"/>
     <Setter Property="MinHeight" Value="32"/>
     <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
     <Setter Property="HorizontalAlignment" Value="Stretch"/>
@@ -482,7 +491,7 @@
   </Style>
 
   <Style x:Key="TableCellCompactBorderStyle" TargetType="Border" BasedOn="{StaticResource TableCellBorderStyle}">
-    <Setter Property="Padding" Value="5,3"/>
+    <Setter Property="Padding" Value="{DynamicResource TableCellCompactPadding}"/>
   </Style>
 
   <Style x:Key="DialogFieldPanelBorderStyle" TargetType="Border" BasedOn="{StaticResource SubtleCardBorderStyle}">

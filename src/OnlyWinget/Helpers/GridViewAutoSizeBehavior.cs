@@ -268,6 +268,11 @@ public static class GridViewAutoSizeBehavior
             return;
         }
 
+        if (!States.TryGetValue(listView, out var state))
+        {
+            return;
+        }
+
         var totalStars = 0.0;
         var fixedWidth = 0.0;
         var starMinWidth = 0.0;
@@ -285,7 +290,7 @@ public static class GridViewAutoSizeBehavior
 
             var width = double.IsNaN(column.Width) ? column.ActualWidth : column.Width;
             width = Math.Max(width, minWidth);
-            column.Width = width;
+            SetColumnWidth(state, column, width);
             fixedWidth += width;
         }
 
@@ -296,7 +301,7 @@ public static class GridViewAutoSizeBehavior
 
         var borderWidth = listView.BorderThickness.Left + listView.BorderThickness.Right;
         var available = listView.ActualWidth - borderWidth - fixedWidth - SystemParameters.VerticalScrollBarWidth - 4;
-        if (available <= 0)
+        if (available <= 0 && listView.ActualWidth <= 0)
         {
             return;
         }
@@ -312,7 +317,25 @@ public static class GridViewAutoSizeBehavior
             }
 
             var minWidth = GetMinWidth(column);
-            column.Width = minWidth + (distributableWidth * (star / totalStars));
+            SetColumnWidth(state, column, minWidth + (distributableWidth * (star / totalStars)));
+        }
+    }
+
+    private static void SetColumnWidth(SubscriptionState state, GridViewColumn column, double width)
+    {
+        if (Math.Abs(column.Width - width) < 0.5)
+        {
+            return;
+        }
+
+        state.IsResizing = true;
+        try
+        {
+            column.Width = width;
+        }
+        finally
+        {
+            state.IsResizing = false;
         }
     }
 
@@ -322,7 +345,7 @@ public static class GridViewAutoSizeBehavior
         {
             ColumnWidthChangedHandler = (_, _) =>
             {
-                if (Owner != null)
+                if (Owner != null && !IsResizing)
                 {
                     ScheduleResize(Owner);
                 }
@@ -355,6 +378,7 @@ public static class GridViewAutoSizeBehavior
 
         public bool IsAttached { get; set; }
         public bool ResizeScheduled { get; set; }
+        public bool IsResizing { get; set; }
         public DependencyPropertyDescriptor? ColumnWidthDescriptor { get; set; }
         public INotifyCollectionChanged? ObservedCollection { get; set; }
         public HashSet<INotifyPropertyChanged> ObservedItems { get; } = new();

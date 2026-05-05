@@ -456,6 +456,77 @@ WinRAR 7.20 (64-bit) RARLab.WinRAR 7.20.0    7.22.0    winget
     }
 
     [Fact]
+    public async Task UpdatesFlow_IgnoresDisabledPresetPackageOptions()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(root, "AppsList.json"),
+                """
+                {
+                  "Tabs": [
+                    {
+                      "Name": "Default",
+                      "Apps": [
+                        {
+                          "Enabled": false,
+                          "Name": "WinRAR",
+                          "Id": "RARLab.WinRAR",
+                          "Source": "winget",
+                          "Action": "Install",
+                          "Scope": "machine",
+                          "Architecture": "x64",
+                          "Locale": "it",
+                          "InstallerType": "exe"
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+            var wingetService = new WingetService(
+                wingetRunner: static (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    return command switch
+                    {
+                        "--version" => new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" },
+                        "list" => new WingetCommandResult
+                        {
+                            ExitCode = 0,
+                            Output = """
+Name                 Id            Version   Available Source
+-------------------------------------------------------------
+WinRAR 7.20 (64-bit) RARLab.WinRAR 7.20.0    7.22.0    winget
+"""
+                        },
+                        _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                    };
+                });
+            var operationRunner = new CapturingUpdatesOperationRunner();
+            var viewModel = CreateViewModel(root, wingetService, operationRunner, new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.OpenUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.Updates.Count == 1);
+
+            viewModel.ApplyUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => operationRunner.CapturedUpdates.Count == 1);
+
+            var update = Assert.Single(operationRunner.CapturedUpdates);
+            Assert.Equal(string.Empty, update.Scope);
+            Assert.Equal(string.Empty, update.Architecture);
+            Assert.Equal(string.Empty, update.Locale);
+            Assert.Equal(string.Empty, update.InstallerType);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task UpdatesFlow_MarksAttemptedUpdateStillAvailable_AfterRefreshKeepsSamePackage()
     {
         var root = CreateTempDirectory();
@@ -1001,6 +1072,72 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
+    public void ApplyCommand_TracksEnabledPresetApps()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
+            {
+                Enabled = false,
+                Name = "PowerToys",
+                Id = "Microsoft.PowerToys",
+                Action = AppActions.Install
+            });
+
+            Assert.False(viewModel.ApplyCommand.CanExecute(null));
+
+            viewModel.PresetWorkspace.CurrentApps[0].Enabled = true;
+
+            Assert.True(viewModel.ApplyCommand.CanExecute(null));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyCommand_ExcludesDisabledPresetApps()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var operationRunner = new CapturingApplyOperationRunner();
+            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            viewModel.Initialize();
+            viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
+            {
+                Enabled = true,
+                Name = "VS Code",
+                Id = "Microsoft.VisualStudioCode",
+                Action = AppActions.Install
+            });
+            viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
+            {
+                Enabled = false,
+                Name = "PowerToys",
+                Id = "Microsoft.PowerToys",
+                Action = AppActions.Install
+            });
+
+            viewModel.ApplyCommand.Execute(null);
+            await WaitForConditionAsync(() => operationRunner.CapturedApps.Count == 1);
+
+            var app = Assert.Single(operationRunner.CapturedApps);
+            Assert.Equal("Microsoft.VisualStudioCode", app.Id);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task SearchFlow_QueuesSeparateEntriesForEachSelectedArchitecture()
     {
         var root = CreateTempDirectory();
@@ -1506,6 +1643,42 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             LocalizedStrings strings,
             Action<string, string, string>? setErrorById = null)
         {
+            return Task.CompletedTask;
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CapturingApplyOperationRunner : IOperationRunner
+    {
+        public List<AppEntry> CapturedApps { get; } = new();
+
+        public Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            CapturedApps.AddRange(apps.Select(app => new AppEntry
+            {
+                Enabled = app.Enabled,
+                Name = app.Name,
+                Id = app.Id,
+                Action = app.Action,
+                Source = app.Source,
+                Architecture = app.Architecture
+            }));
             return Task.CompletedTask;
         }
 

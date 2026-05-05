@@ -192,6 +192,7 @@ public sealed partial class LocalizedStrings
     public string SearchResultsAutomationName { get; init; } = string.Empty;
     public string SearchSelectedIdAutomationName { get; init; } = string.Empty;
     public string UpdatesListAutomationName { get; init; } = string.Empty;
+    public string SelectAppAutomationName { get; init; } = string.Empty;
     public string SelectUpdateAutomationName { get; init; } = string.Empty;
     public string OutputLogAutomationName { get; init; } = string.Empty;
     public string ErrorHeader { get; init; } = string.Empty;

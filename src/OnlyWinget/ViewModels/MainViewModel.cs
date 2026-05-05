@@ -67,6 +67,7 @@ public sealed class MainViewModel : ObservableObject
     private ObservableCollection<UpdateEntry>? _observedUpdates;
     private ObservableCollection<SearchResult>? _observedSelectedSearchResults;
     private ObservableCollection<AppEntry>? _observedPresetApps;
+    private readonly HashSet<AppEntry> _observedPresetAppItems = new();
 
     public MainViewModel(
         WingetService wingetService,
@@ -100,7 +101,7 @@ public sealed class MainViewModel : ObservableObject
         CloseSearchCommand = new RelayCommand(CloseSearch, () => IsSearchVisible);
         RunSearchCommand = new AsyncRelayCommand(RunSearchAsync, () => IsWingetAvailable && IsSearchEnabled && !string.IsNullOrWhiteSpace(SearchQuery.Trim()));
         UseSearchIdCommand = new AsyncRelayCommand(UseSearchIdAsync, () => IsWingetAvailable && AreMainActionsEnabled && IsSearchVisible && CanUseSearchId());
-        ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => IsWingetAvailable && IsApplyEnabled && PresetWorkspace.CurrentApps.Count > 0);
+        ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => IsWingetAvailable && IsApplyEnabled && HasEnabledPresetApps());
         OpenUpdatesCommand = new AsyncRelayCommand(OpenUpdatesAsync, () => IsWingetAvailable && AreMainActionsEnabled && !IsUpdatesVisible);
         RefreshUpdatesCommand = new AsyncRelayCommand(RefreshUpdatesAsync, () => IsWingetAvailable && AreUpdatesActionsEnabled);
         ApplyUpdatesCommand = new AsyncRelayCommand(ApplyUpdatesAsync, () => IsWingetAvailable && AreUpdatesActionsEnabled && IsUpdatesVisible && HasSelectedUpdates());
@@ -677,7 +678,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task ApplyAsync()
     {
-        if (PresetWorkspace.CurrentApps.Count == 0)
+        if (!HasEnabledPresetApps())
         {
             return;
         }
@@ -688,8 +689,10 @@ public sealed class MainViewModel : ObservableObject
         OperationProgressValue = 0;
         SetProgressTextState(ProgressTextState.OperationStart);
         var snapshot = PresetWorkspace.CurrentApps
+            .Where(app => app.Enabled)
             .Select(app => new AppEntry
             {
+                Enabled = app.Enabled,
                 Name = app.Name,
                 Id = app.Id,
                 Source = app.Source,
@@ -938,10 +941,15 @@ public sealed class MainViewModel : ObservableObject
         return Updates.Any(update => update.Selected);
     }
 
+    private bool HasEnabledPresetApps()
+    {
+        return PresetWorkspace.CurrentApps.Any(app => app.Enabled);
+    }
+
     private void ApplyPresetUpdateOptions(IEnumerable<UpdateEntry> updates)
     {
         var configuredApps = PresetWorkspace.CurrentApps
-            .Where(app => !string.IsNullOrWhiteSpace(app.Id))
+            .Where(app => app.Enabled && !string.IsNullOrWhiteSpace(app.Id))
             .GroupBy(app => app.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
 
@@ -1023,16 +1031,88 @@ public sealed class MainViewModel : ObservableObject
         if (_observedPresetApps != null)
         {
             _observedPresetApps.CollectionChanged -= OnPresetAppsCollectionChanged;
+            DetachPresetAppItems();
         }
 
         _observedPresetApps = apps;
         _observedPresetApps.CollectionChanged += OnPresetAppsCollectionChanged;
+        SyncPresetAppItems();
         ApplyCommand.RaiseCanExecuteChanged();
     }
 
     private void OnPresetAppsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems != null)
+        {
+            foreach (AppEntry app in e.OldItems)
+            {
+                DetachPresetAppItem(app);
+            }
+        }
+
+        if (e.NewItems != null)
+        {
+            foreach (AppEntry app in e.NewItems)
+            {
+                AttachPresetAppItem(app);
+            }
+        }
+
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            SyncPresetAppItems();
+        }
+
         ApplyCommand.RaiseCanExecuteChanged();
+    }
+
+    private void SyncPresetAppItems()
+    {
+        var currentItems = _observedPresetApps == null
+            ? new HashSet<AppEntry>()
+            : new HashSet<AppEntry>(_observedPresetApps);
+
+        foreach (var app in _observedPresetAppItems.Where(app => !currentItems.Contains(app)).ToList())
+        {
+            DetachPresetAppItem(app);
+        }
+
+        foreach (var app in currentItems)
+        {
+            AttachPresetAppItem(app);
+        }
+    }
+
+    private void AttachPresetAppItem(AppEntry app)
+    {
+        if (_observedPresetAppItems.Add(app))
+        {
+            app.PropertyChanged += OnPresetAppPropertyChanged;
+        }
+    }
+
+    private void DetachPresetAppItem(AppEntry app)
+    {
+        if (_observedPresetAppItems.Remove(app))
+        {
+            app.PropertyChanged -= OnPresetAppPropertyChanged;
+        }
+    }
+
+    private void DetachPresetAppItems()
+    {
+        foreach (var app in _observedPresetAppItems.ToList())
+        {
+            DetachPresetAppItem(app);
+        }
+    }
+
+    private void OnPresetAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AppEntry.Enabled))
+        {
+            ApplyCommand.RaiseCanExecuteChanged();
+        }
     }
 
     private void AttachSelectedSearchResultsCollection(ObservableCollection<SearchResult> selectedResults)

@@ -331,8 +331,39 @@
                             AutomationProperties.Name="{Binding Strings.AppListAutomationName}">
                     <ListView.View>
                       <GridView>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.15"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="220"
+                        <GridViewColumn Width="{StaticResource SelectColumnWidth}"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource SelectColumnWidth}"
+                                        Header="">
+                          <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Style="{StaticResource TableCellCompactBorderStyle}">
+                                <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          HorizontalAlignment="Center"
+                                          AutomationProperties.Name="{Binding DataContext.Strings.SelectAppAutomationName, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                              </Border>
+                            </DataTemplate>
+                          </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Width="{StaticResource StatusColumnWidth}"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource StatusColumnWidth}"
+                                        Header="{Binding DataContext.Strings.Status, RelativeSource={RelativeSource AncestorType=ListView}}">
+                          <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Style="{StaticResource TableCellCompactBorderStyle}">
+                                <Border Tag="{Binding StatusBadgeKey}"
+                                        Style="{StaticResource StatusBadgeBorderStyle}"
+                                        ToolTip="{Binding Status}"
+                                        AutomationProperties.Name="{Binding Status}">
+                                  <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
+                                             Text="{Binding StatusBadgeSymbol}"
+                                             ToolTip="{Binding Status}"/>
+                                </Border>
+                              </Border>
+                            </DataTemplate>
+                          </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.25"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="180"
                                         Header="{Binding DataContext.Strings.Name, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -343,8 +374,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.25"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="240"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.35"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="220"
                                         Header="{Binding DataContext.Strings.Id, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -355,8 +386,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="0.7"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="120"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="0.55"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="100"
                                         Header="{Binding DataContext.Strings.PackageDialogArchitectureLabel, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -368,6 +399,7 @@
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
                         <GridViewColumn Width="{StaticResource ActionColumnWidth}"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource ActionColumnWidth}"
                                         Header="{Binding DataContext.Strings.Action, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -389,23 +421,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Width="{StaticResource StatusColumnWidth}"
-                                        Header="{Binding DataContext.Strings.Status, RelativeSource={RelativeSource AncestorType=ListView}}">
-                          <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                              <Border Style="{StaticResource TableCellCompactBorderStyle}">
-                                <Border Tag="{Binding StatusBadgeKey}"
-                                        Style="{StaticResource StatusBadgeBorderStyle}">
-                                  <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
-                                             Text="{Binding Status}"
-                                             ToolTip="{Binding Status}"/>
-                                </Border>
-                              </Border>
-                            </DataTemplate>
-                          </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="200"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="0.85"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="140"
                                         Header="{Binding DataContext.Strings.ErrorHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -417,8 +434,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="200"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="0.95"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="160"
                                         Header="{Binding DataContext.Strings.ResolutionHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -656,7 +673,9 @@
                             AutomationProperties.Name="{Binding Strings.UpdatesListAutomationName}">
                     <ListView.View>
                       <GridView>
-                        <GridViewColumn Width="40" Header="">
+                        <GridViewColumn Width="{StaticResource SelectColumnWidth}"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource SelectColumnWidth}"
+                                        Header="">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
                               <Border Style="{StaticResource TableCellCompactBorderStyle}">
@@ -667,8 +686,26 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.3"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="280"
+                        <GridViewColumn Width="{StaticResource StatusColumnWidth}"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource StatusColumnWidth}"
+                                        Header="{Binding DataContext.Strings.Status, RelativeSource={RelativeSource AncestorType=ListView}}">
+                          <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Style="{StaticResource TableCellCompactBorderStyle}">
+                                <Border Tag="{Binding StatusBadgeKey}"
+                                        Style="{StaticResource StatusBadgeBorderStyle}"
+                                        ToolTip="{Binding Status}"
+                                        AutomationProperties.Name="{Binding Status}">
+                                  <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
+                                             Text="{Binding StatusBadgeSymbol}"
+                                             ToolTip="{Binding Status}"/>
+                                </Border>
+                              </Border>
+                            </DataTemplate>
+                          </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.2"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="220"
                                         Header="{Binding DataContext.Strings.Name, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -679,8 +716,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.7"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="360"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.45"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="280"
                                         Header="{Binding DataContext.Strings.Id, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -691,8 +728,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="150"
-                                        Width="150"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="120"
+                                        Width="120"
                                         Header="{Binding DataContext.Strings.VersionHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -703,8 +740,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="150"
-                                        Width="150"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.MinWidth="120"
+                                        Width="120"
                                         Header="{Binding DataContext.Strings.AvailableHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -715,23 +752,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Width="{StaticResource StatusColumnWidth}"
-                                        Header="{Binding DataContext.Strings.Status, RelativeSource={RelativeSource AncestorType=ListView}}">
-                          <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                              <Border Style="{StaticResource TableCellCompactBorderStyle}">
-                                <Border Tag="{Binding StatusBadgeKey}"
-                                        Style="{StaticResource StatusBadgeBorderStyle}">
-                                  <TextBlock Style="{StaticResource StatusBadgeTextStyle}"
-                                             Text="{Binding Status}"
-                                             ToolTip="{Binding Status}"/>
-                                </Border>
-                              </Border>
-                            </DataTemplate>
-                          </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="240"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.1"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="180"
                                         Header="{Binding DataContext.Strings.ErrorHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -743,8 +765,8 @@
                             </DataTemplate>
                           </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1"
-                                        helpers:GridViewAutoSizeBehavior.MinWidth="240"
+                        <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.3"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="220"
                                         Header="{Binding DataContext.Strings.ResolutionHeader, RelativeSource={RelativeSource AncestorType=ListView}}">
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>

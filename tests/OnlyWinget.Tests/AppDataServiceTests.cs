@@ -157,6 +157,7 @@ public sealed class AppDataServiceTests
                     [
                         new AppEntry
                         {
+                            Enabled = false,
                             Name = "PowerToys",
                             Id = "Microsoft.PowerToys",
                             Source = "winget",
@@ -182,6 +183,7 @@ public sealed class AppDataServiceTests
 
             var loaded = service.Load(jsonPath);
             var app = Assert.Single(loaded.Tabs["Default"]);
+            Assert.False(app.Enabled);
             Assert.Equal("winget", app.Source);
             Assert.Equal("0.98.1", app.Version);
             Assert.Equal("machine", app.Scope);
@@ -269,6 +271,7 @@ public sealed class AppDataServiceTests
             Assert.Equal(AppDataLoadStatus.Success, result.Status);
             var app = Assert.Single(result.Tabs["Default"]);
             Assert.Equal("winget", app.Source);
+            Assert.True(app.Enabled);
             Assert.Equal(InstallModes.SilentWithProgress, app.InstallMode);
             Assert.Equal(string.Empty, app.OverrideArgs);
         }

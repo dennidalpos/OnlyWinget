@@ -371,6 +371,7 @@ public sealed class AppDataService
 
         return new AppEntry
         {
+            Enabled = app.Enabled,
             Name = name,
             Id = id,
             Source = NormalizeSource(app.Source),
@@ -420,6 +421,7 @@ public sealed class AppDataService
 
             result.Add(new AppDataItem
             {
+                Enabled = app.Enabled,
                 Name = name,
                 Id = id,
                 Action = NormalizeAction(app.Action),

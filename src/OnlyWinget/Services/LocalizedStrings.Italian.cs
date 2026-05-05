@@ -194,6 +194,7 @@ public sealed partial class LocalizedStrings
         SearchResultsAutomationName = "Risultati ricerca",
         SearchSelectedIdAutomationName = "ID Winget selezionato",
         UpdatesListAutomationName = "Lista aggiornamenti",
+        SelectAppAutomationName = "Abilita app preset",
         SelectUpdateAutomationName = "Seleziona aggiornamento",
         OutputLogAutomationName = "Log output",
         ErrorHeader = "Errore",
