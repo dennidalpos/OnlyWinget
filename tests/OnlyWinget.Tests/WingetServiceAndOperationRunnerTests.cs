@@ -142,6 +142,25 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public void Classifier_MapsOfficialWinGetCatalogFallbacks()
+    {
+        var classifier = new WingetOutputClassifier();
+
+        Assert.True(WingetKnownErrorCatalog.Count >= 200);
+        Assert.False(WingetKnownErrorCatalog.ContainsDuplicateCodes);
+        Assert.Equal(
+            "WinGet error: Update Install Technology Mismatch",
+            classifier.GetErrorMessage(unchecked((int)0x8A15008E), "en-US"));
+        Assert.Contains(
+            "winget error 0x8A15008E",
+            classifier.GetResolutionHint(unchecked((int)0x8A15008E), "en-US"),
+            StringComparison.Ordinal);
+        Assert.Equal(
+            "Errore WinGet: Invalid Configuration File",
+            classifier.GetErrorMessage(unchecked((int)0x8A15C001), "it-IT"));
+    }
+
+    [Fact]
     public async Task RunApplyAsync_UsesInstallCommand_ForInstallAction()
     {
         var invokedCommands = new List<string>();

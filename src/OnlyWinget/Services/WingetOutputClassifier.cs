@@ -177,7 +177,7 @@ public sealed class WingetOutputClassifier
             -1978335128 => "Pacchetto bloccato da pin winget. Rimuovere il pin per procedere.",
             -1978335230 => "Verificare la configurazione del pacchetto in OnlyWinget.",
             9999 => "Verificare che winget sia disponibile e riprovare.",
-            _ => "Consultare il log per i dettagli."
+            _ => GetKnownWingetResolutionHint(exitCode, english: false, "Consultare il log per i dettagli.")
         };
     }
 
@@ -220,7 +220,7 @@ public sealed class WingetOutputClassifier
             -1978335128 => "Package is blocked by a winget pin. Remove the pin to proceed.",
             -1978335230 => "Check the package configuration in OnlyWinget.",
             9999 => "Check that winget is available and retry.",
-            _ => "Check the log for details."
+            _ => GetKnownWingetResolutionHint(exitCode, english: true, "Check the log for details.")
         };
     }
 
@@ -315,7 +315,7 @@ public sealed class WingetOutputClassifier
             -2145844844 => "Errore installer",
             -2147023673 => "Operazione annullata dall'utente",
             9999 => "Errore esecuzione",
-            _ => $"Errore ({exitCode})"
+            _ => GetKnownWingetErrorMessage(exitCode, english: false, $"Errore ({exitCode})")
         };
     }
 
@@ -410,8 +410,33 @@ public sealed class WingetOutputClassifier
             -2145844844 => "Installer error",
             -2147023673 => "Operation cancelled by user",
             9999 => "Execution error",
-            _ => $"Error ({exitCode})"
+            _ => GetKnownWingetErrorMessage(exitCode, english: true, $"Error ({exitCode})")
         };
+    }
+
+    private static string GetKnownWingetErrorMessage(int exitCode, bool english, string fallback)
+    {
+        if (!WingetKnownErrorCatalog.TryGetLabel(exitCode, out var label))
+        {
+            return fallback;
+        }
+
+        return english
+            ? $"WinGet error: {label}"
+            : $"Errore WinGet: {label}";
+    }
+
+    private static string GetKnownWingetResolutionHint(int exitCode, bool english, string fallback)
+    {
+        if (!WingetKnownErrorCatalog.TryGetSymbol(exitCode, out var symbol))
+        {
+            return fallback;
+        }
+
+        var hex = WingetKnownErrorCatalog.FormatHex(exitCode);
+        return english
+            ? $"Check the operation log and run 'winget error {hex}' for the official WinGet description ({symbol})."
+            : $"Consultare il log operazione ed eseguire 'winget error {hex}' per la descrizione ufficiale WinGet ({symbol}).";
     }
 
     private static string NormalizeWingetOutput(string output)
