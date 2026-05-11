@@ -313,27 +313,36 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             }
 
             var indent = rawLine.Length - rawLine.TrimStart(' ').Length;
+            if (section == ManifestSection.Installers && IsInstallerEntryStart(trimmed))
+            {
+                currentEntry = new InstallerManifestEntry();
+                manifest.Installers.Add(currentEntry);
+                entrySection = ManifestSection.None;
+                ParseInstallerKeyValue(trimmed[2..], currentEntry);
+                continue;
+            }
+
             if (section == ManifestSection.RootInstallModes && trimmed.StartsWith("- ", StringComparison.Ordinal))
             {
-                manifest.InstallModes.Add(trimmed[2..].Trim());
+                manifest.InstallModes.Add(NormalizeYamlScalar(trimmed[2..]));
                 continue;
             }
 
             if (section == ManifestSection.RootUnsupportedArguments && trimmed.StartsWith("- ", StringComparison.Ordinal))
             {
-                manifest.UnsupportedArguments.Add(trimmed[2..].Trim());
+                manifest.UnsupportedArguments.Add(NormalizeYamlScalar(trimmed[2..]));
                 continue;
             }
 
             if (entrySection == ManifestSection.EntryInstallModes && currentEntry != null && trimmed.StartsWith("- ", StringComparison.Ordinal))
             {
-                currentEntry.InstallModes.Add(trimmed[2..].Trim());
+                currentEntry.InstallModes.Add(NormalizeYamlScalar(trimmed[2..]));
                 continue;
             }
 
             if (entrySection == ManifestSection.EntryUnsupportedArguments && currentEntry != null && trimmed.StartsWith("- ", StringComparison.Ordinal))
             {
-                currentEntry.UnsupportedArguments.Add(trimmed[2..].Trim());
+                currentEntry.UnsupportedArguments.Add(NormalizeYamlScalar(trimmed[2..]));
                 continue;
             }
 
@@ -374,12 +383,14 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
                             section = ManifestSection.None;
                             break;
                         case "InstallModes":
+                            AddYamlSequenceValues(manifest.InstallModes, value);
                             section = ManifestSection.RootInstallModes;
                             break;
                         case "InstallerSwitches":
                             section = ManifestSection.RootInstallerSwitches;
                             break;
                         case "UnsupportedArguments":
+                            AddYamlSequenceValues(manifest.UnsupportedArguments, value);
                             section = ManifestSection.RootUnsupportedArguments;
                             break;
                         case "Installers":
@@ -405,20 +416,22 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
                 continue;
             }
 
-            if (indent == 2 && trimmed.StartsWith("InstallModes:", StringComparison.Ordinal))
+            if (indent >= 2 && TrySplitKeyValue(trimmed, out var entryKey, out var entryValue) && entryKey == "InstallModes")
             {
+                AddYamlSequenceValues(currentEntry.InstallModes, entryValue);
                 entrySection = ManifestSection.EntryInstallModes;
                 continue;
             }
 
-            if (indent == 2 && trimmed.StartsWith("InstallerSwitches:", StringComparison.Ordinal))
+            if (indent >= 2 && trimmed.StartsWith("InstallerSwitches:", StringComparison.Ordinal))
             {
                 entrySection = ManifestSection.EntryInstallerSwitches;
                 continue;
             }
 
-            if (indent == 2 && trimmed.StartsWith("UnsupportedArguments:", StringComparison.Ordinal))
+            if (indent >= 2 && TrySplitKeyValue(trimmed, out entryKey, out entryValue) && entryKey == "UnsupportedArguments")
             {
+                AddYamlSequenceValues(currentEntry.UnsupportedArguments, entryValue);
                 entrySection = ManifestSection.EntryUnsupportedArguments;
                 continue;
             }
@@ -595,17 +608,75 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
 
     private static bool TrySplitKeyValue(string line, out string key, out string value)
     {
-        var parts = line.Split(':', 2, StringSplitOptions.TrimEntries);
+        var normalizedLine = StripInlineComment(line).Trim();
+        var parts = normalizedLine.Split(':', 2, StringSplitOptions.TrimEntries);
         if (parts.Length == 2)
         {
             key = parts[0];
-            value = parts[1];
+            value = NormalizeYamlScalar(parts[1]);
             return true;
         }
 
         key = string.Empty;
         value = string.Empty;
         return false;
+    }
+
+    private static bool IsInstallerEntryStart(string trimmedLine)
+    {
+        return trimmedLine.StartsWith("- ", StringComparison.Ordinal)
+            && TrySplitKeyValue(trimmedLine[2..], out _, out _);
+    }
+
+    private static void AddYamlSequenceValues(ICollection<string> target, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value[0] != '[' || value[^1] != ']')
+        {
+            return;
+        }
+
+        foreach (var item in value[1..^1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            target.Add(NormalizeYamlScalar(item));
+        }
+    }
+
+    private static string NormalizeYamlScalar(string value)
+    {
+        var trimmed = StripInlineComment(value).Trim();
+        if (trimmed.Length >= 2 &&
+            ((trimmed[0] == '"' && trimmed[^1] == '"') || (trimmed[0] == '\'' && trimmed[^1] == '\'')))
+        {
+            trimmed = trimmed[1..^1];
+        }
+
+        return trimmed
+            .Replace("\\\"", "\"", StringComparison.Ordinal)
+            .Replace("''", "'", StringComparison.Ordinal);
+    }
+
+    private static string StripInlineComment(string value)
+    {
+        var inSingleQuote = false;
+        var inDoubleQuote = false;
+        for (var index = 0; index < value.Length; index++)
+        {
+            var current = value[index];
+            if (current == '\'' && !inDoubleQuote)
+            {
+                inSingleQuote = !inSingleQuote;
+            }
+            else if (current == '"' && !inSingleQuote && (index == 0 || value[index - 1] != '\\'))
+            {
+                inDoubleQuote = !inDoubleQuote;
+            }
+            else if (current == '#' && !inSingleQuote && !inDoubleQuote && (index == 0 || char.IsWhiteSpace(value[index - 1])))
+            {
+                return value[..index];
+            }
+        }
+
+        return value;
     }
 
     private static string NormalizeOutput(string output)

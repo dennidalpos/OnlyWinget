@@ -26,6 +26,8 @@ OnlyWinget is a Windows desktop app for managing local `winget` package workflow
 - PowerShell 7+ (`pwsh`) for repository scripts.
 - WiX 3.14 is already bundled under `tools\wix314-binaries` for packaging.
 
+The generated setup is self-contained and does not require the .NET Desktop Runtime to be installed on end-user machines.
+
 ## Setup
 
 Fresh repository setup restores NuGet dependencies in locked mode:
@@ -58,7 +60,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Configuration Release
 # Run unit tests
 dotnet test .\tests\OnlyWinget.Tests\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\artifacts\test-results --logger "trx;LogFileName=unit-tests.trx"
 
-# Build setup EXE and internal MSIs
+# Build setup EXE and internal self-contained MSIs
 pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore
 
 # Validate real setup install, upgrade, repair, and uninstall lifecycle

@@ -30,6 +30,16 @@ public sealed class SourceAlignmentTests
     }
 
     [Fact]
+    public void PackagingScript_PublishesSelfContainedPayloads_ForCleanWindowsInstalls()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "scripts", "package.ps1"));
+
+        Assert.Contains("'--self-contained'", source, StringComparison.Ordinal);
+        Assert.Contains("'true'", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("'--self-contained'\r\n        'false'", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MsiSource_DoesNotCarryServiceCleanupCustomActions_ForDesktopAppPackaging()
     {
         var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget.Setup", "OnlyWinget.Setup.wxs"));

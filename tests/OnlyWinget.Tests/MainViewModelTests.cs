@@ -95,6 +95,31 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task ApplyCommand_BoundsOutputLogToRecentLines()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteDefaultAppsList(root);
+            var viewModel = CreateViewModel(root, CreateWingetService(), new VerboseApplyOperationRunner(1005), new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.ApplyCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.OutputText.Contains("line-1004", StringComparison.Ordinal));
+
+            var lines = viewModel.OutputText.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            Assert.Equal(1000, lines.Length);
+            Assert.DoesNotContain("line-0000", lines);
+            Assert.Contains("line-1004", lines);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+
+    [Fact]
     public void NewTabCommand_PersistsCreatedPresetToDisk()
     {
         var root = CreateTempDirectory();
@@ -817,13 +842,20 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             await WaitForConditionAsync(() => viewModel.IsUpdatesLoading);
 
             Assert.False(viewModel.IsUpdatesEmptyStateVisible);
-            Assert.True(viewModel.IsSearchWorkspaceButtonVisible);
+            Assert.False(viewModel.IsSearchWorkspaceButtonVisible);
             Assert.False(viewModel.IsUpdatesWorkspaceButtonVisible);
+            Assert.False(viewModel.IsPresetToolbarActionVisible);
 
             releaseList.Set();
             await WaitForConditionAsync(() => viewModel.Updates.Count == 1 && !viewModel.IsUpdatesLoading);
 
             Assert.False(viewModel.IsUpdatesEmptyStateVisible);
+
+            viewModel.CloseUpdatesCommand.Execute(null);
+
+            Assert.True(viewModel.IsSearchWorkspaceButtonVisible);
+            Assert.True(viewModel.IsUpdatesWorkspaceButtonVisible);
+            Assert.True(viewModel.IsPresetToolbarActionVisible);
         }
         finally
         {
@@ -1643,6 +1675,43 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             LocalizedStrings strings,
             Action<string, string, string>? setErrorById = null)
         {
+            return Task.CompletedTask;
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class VerboseApplyOperationRunner : IOperationRunner
+    {
+        private readonly int _lineCount;
+
+        public VerboseApplyOperationRunner(int lineCount)
+        {
+            _lineCount = lineCount;
+        }
+
+        public Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null)
+        {
+            for (var index = 0; index < _lineCount; index++)
+            {
+                appendOutput($"line-{index:0000}");
+            }
+
             return Task.CompletedTask;
         }
 

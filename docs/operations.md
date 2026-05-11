@@ -22,6 +22,7 @@ Required toolchain from the repository:
 - bundled WiX 3.14 binaries in `tools/wix314-binaries/` for packaging
 
 The setup script restores NuGet dependencies in locked mode. WiX is not installed by setup because the packaging flow resolves the bundled binaries first.
+End-user setup artifacts are self-contained; the installed app does not require a separate .NET Desktop Runtime installation.
 
 ## Canonical entrypoints
 
@@ -113,7 +114,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release
 What it does:
 
 - resolves WiX tools from `tools/wix314-binaries/` first, then from `PATH`
-- runs framework-dependent `dotnet publish` for `win-x86` and `win-x64`
+- runs self-contained `dotnet publish` for `win-x86` and `win-x64`
 - harvests each publish output with `heat.exe`
 - compiles and links internal architecture-specific MSIs with `candle.exe` and `light.exe`
 - compiles and links one WiX Burn setup EXE containing both MSIs

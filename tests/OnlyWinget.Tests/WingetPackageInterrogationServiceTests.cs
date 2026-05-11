@@ -106,6 +106,86 @@ ManifestType: installer
     }
 
     [Fact]
+    public async Task InterrogateAsync_ParsesIndentedWingetInstallerFixtures()
+    {
+        var service = CreateService(
+            showOutput: """
+Found Contoso Tool [Contoso.Tool]
+Version: 2.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Tool
+PackageVersion: 2.0.0
+InstallerType: "exe" # root default
+InstallModes: [silent, silentWithProgress]
+Installers:
+  - Architecture: x64
+    Scope: machine
+    InstallerLocale: "en-US"
+    InstallerSwitches:
+      Silent: "/quiet"
+      SilentWithProgress: "/passive"
+  - Architecture: x86
+    Scope: user
+    InstallerLocale: 'it-IT'
+    UnsupportedArguments: [log]
+ManifestType: installer
+""",
+            architectureProvider: () => "x64",
+            cultureProvider: () => CultureInfo.GetCultureInfo("en-US"));
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.False(result.IsReducedMode);
+        Assert.Equal(2, result.InstallerOptions.Count);
+        Assert.Equal("x64", result.DefaultSelection.Architecture);
+        Assert.Equal("machine", result.DefaultSelection.Scope);
+        Assert.Equal("en-US", result.DefaultSelection.Locale);
+        Assert.True(result.InstallerOptions[0].SupportsSilent);
+        Assert.True(result.InstallerOptions[0].SupportsSilentWithProgress);
+        Assert.Equal("exe", result.InstallerOptions[0].InstallerType);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_DoesNotTreatNextInstallerAsUnsupportedArgumentListItem()
+    {
+        var service = CreateService(
+            showOutput: """
+Found Contoso Tool [Contoso.Tool]
+Version: 2.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Tool
+PackageVersion: 2.0.0
+InstallerType: exe
+Installers:
+  - Architecture: x64
+    UnsupportedArguments:
+      - log
+  - Architecture: x86
+ManifestType: installer
+""");
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal(2, result.InstallerOptions.Count);
+        Assert.Contains(result.InstallerOptions, option => option.Architecture == "x64");
+        Assert.Contains(result.InstallerOptions, option => option.Architecture == "x86");
+    }
+
+    [Fact]
     public async Task InterrogateAsync_DoesNotWarn_WhenInstallerNodesExposeOneSelectableChoice()
     {
         var service = CreateService(

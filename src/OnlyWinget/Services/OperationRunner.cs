@@ -225,6 +225,18 @@ public sealed class OperationRunner : IOperationRunner
             }
         }
 
+        if (_wingetService.IsManifestNotFound(installResult) && TryBuildInstallArgumentsWithoutVersion(installArgs, out var latestVersionInstallArgs))
+        {
+            appendOutput($"event=install_retry_without_version id=\"{app.Id}\" version=\"{FormatLogValue(app.Version)}\"");
+            installResult = await RunInstallCommandAsync(app, latestVersionInstallArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress);
+            if (installResult.ExitCode == 0)
+            {
+                setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
+                reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
+                return;
+            }
+        }
+
         if (_wingetService.IsAlreadyInstalled(installResult))
         {
             setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.AlreadyInstalled));
@@ -325,6 +337,44 @@ public sealed class OperationRunner : IOperationRunner
 
         retryInstallArgs = retryArgs;
         return removedSelector;
+    }
+
+    private static bool TryBuildInstallArgumentsWithoutVersion(
+        IReadOnlyList<string> installArgs,
+        out IReadOnlyList<string> retryInstallArgs)
+    {
+        return TryBuildInstallArgumentsWithoutOptions(
+            installArgs,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "--version" },
+            out retryInstallArgs);
+    }
+
+    private static bool TryBuildInstallArgumentsWithoutOptions(
+        IReadOnlyList<string> installArgs,
+        IReadOnlySet<string> options,
+        out IReadOnlyList<string> retryInstallArgs)
+    {
+        var retryArgs = new List<string>(installArgs.Count);
+        var removedOption = false;
+        for (var index = 0; index < installArgs.Count; index++)
+        {
+            var arg = installArgs[index];
+            if (options.Contains(arg))
+            {
+                removedOption = true;
+                if (index + 1 < installArgs.Count)
+                {
+                    index++;
+                }
+
+                continue;
+            }
+
+            retryArgs.Add(arg);
+        }
+
+        retryInstallArgs = retryArgs;
+        return removedOption;
     }
 
     private async Task RunUninstallAsync(

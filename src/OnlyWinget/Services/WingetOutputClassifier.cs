@@ -58,6 +58,22 @@ public sealed class WingetOutputClassifier
             "nessun programma di installazione applicabile");
     }
 
+    public bool IsManifestNotFound(WingetCommandResult result)
+    {
+        if (result.ExitCode == -1978335209)
+        {
+            return true;
+        }
+
+        var output = NormalizeWingetOutput(result.Output);
+        return ContainsAny(output,
+            "no manifest found",
+            "manifest not found",
+            "no version found matching",
+            "non sono state trovate versioni corrispondenti",
+            "manifest non trovato");
+    }
+
     public bool IsAlreadyInstalled(WingetCommandResult result)
     {
         if (IsAlreadyInstalled(result.ExitCode))
@@ -183,6 +199,7 @@ public sealed class WingetOutputClassifier
             -1978334955 => "Consultare il log. Potrebbe richiedere installazione manuale.",
             -1978335212 => "Verificare l'ID del pacchetto e la sorgente configurata. Se il pacchetto appare nella lista aggiornamenti, OnlyWinget riprovera usando il nome installato.",
             -2147009295 => "Il pacchetto MSIX non risulta installato per l'utente corrente.",
+            -1978335209 => "Aggiornare le sorgenti winget e verificare che la versione salvata nel preset sia ancora disponibile.",
             -1978335231 => "Riprovare. Se l'errore persiste, aggiornare winget.",
             -1978335189 => "Già alla versione più recente.",
             -1978335135 => "Già installata. Nessuna azione necessaria.",
@@ -191,6 +208,8 @@ public sealed class WingetOutputClassifier
             -1978335216 => "Nessun installer compatibile. Verificare architettura e scope.",
             -1978335128 => "Pacchetto bloccato da pin winget. Rimuovere il pin per procedere.",
             -1978335230 => "Verificare la configurazione del pacchetto in OnlyWinget.",
+            9997 => "Operazione annullata.",
+            9998 => "L'operazione ha superato il tempo massimo consentito. Verificare il log e riprovare.",
             9999 => "Verificare che winget sia disponibile e riprovare.",
             _ => GetKnownWingetResolutionHint(exitCode, english: false, "Consultare il log per i dettagli.")
         };
@@ -226,6 +245,7 @@ public sealed class WingetOutputClassifier
             -1978334955 => "Check the log. Manual installation may be required.",
             -1978335212 => "Verify the package ID and configured source. If the package appears in the updates list, OnlyWinget will retry using the installed package name.",
             -2147009295 => "The MSIX package is not installed for the current user.",
+            -1978335209 => "Update winget sources and verify that the preset version is still available.",
             -1978335231 => "Retry. If the issue persists, update winget.",
             -1978335189 => "Already at the latest version.",
             -1978335135 => "Already installed. No action required.",
@@ -234,6 +254,8 @@ public sealed class WingetOutputClassifier
             -1978335216 => "No compatible installer found. Check architecture and scope.",
             -1978335128 => "Package is blocked by a winget pin. Remove the pin to proceed.",
             -1978335230 => "Check the package configuration in OnlyWinget.",
+            9997 => "Operation cancelled.",
+            9998 => "The operation exceeded the maximum allowed time. Check the log and retry.",
             9999 => "Check that winget is available and retry.",
             _ => GetKnownWingetResolutionHint(exitCode, english: true, "Check the log for details.")
         };
@@ -329,8 +351,10 @@ public sealed class WingetOutputClassifier
             -1978334955 => "Errore installer personalizzato",
             -2145844844 => "Errore installer",
             -2147023673 => "Operazione annullata dall'utente",
+            9997 => "Operazione annullata",
+            9998 => "Timeout esecuzione",
             9999 => "Errore esecuzione",
-            _ => GetKnownWingetErrorMessage(exitCode, english: false, $"Errore ({exitCode})")
+            _ => GetKnownWingetErrorMessage(exitCode, "it-IT", english: false, $"Errore ({exitCode})")
         };
     }
 
@@ -424,13 +448,20 @@ public sealed class WingetOutputClassifier
             -1978334955 => "Custom installer error",
             -2145844844 => "Installer error",
             -2147023673 => "Operation cancelled by user",
+            9997 => "Operation cancelled",
+            9998 => "Execution timeout",
             9999 => "Execution error",
-            _ => GetKnownWingetErrorMessage(exitCode, english: true, $"Error ({exitCode})")
+            _ => GetKnownWingetErrorMessage(exitCode, "en-US", english: true, $"Error ({exitCode})")
         };
     }
 
-    private static string GetKnownWingetErrorMessage(int exitCode, bool english, string fallback)
+    private static string GetKnownWingetErrorMessage(int exitCode, string localeCode, bool english, string fallback)
     {
+        if (WingetKnownErrorCatalog.TryGetDescription(exitCode, localeCode, out var description))
+        {
+            return description;
+        }
+
         if (!WingetKnownErrorCatalog.TryGetLabel(exitCode, out var label))
         {
             return fallback;

@@ -21,6 +21,8 @@ namespace OnlyWinget.ViewModels;
 
 public sealed class MainViewModel : ObservableObject
 {
+    private const int MaxOutputLogLines = 1000;
+
     private enum ShellStatusState
     {
         None,
@@ -54,6 +56,7 @@ public sealed class MainViewModel : ObservableObject
     private bool _areUpdatesActionsEnabled = true;
     private bool _isUpdatesLoading;
     private string _outputText = string.Empty;
+    private readonly Queue<string> _outputLines = new();
     private string _statusText = string.Empty;
     private string _operationProgressText = string.Empty;
     private int _operationProgressValue;
@@ -179,9 +182,11 @@ public sealed class MainViewModel : ObservableObject
             ? Strings.UpdatesWorkspaceDescription
             : Strings.WorkspacePresetDescription;
 
-    public bool IsSearchWorkspaceButtonVisible => !IsSearchVisible;
+    public bool IsSearchWorkspaceButtonVisible => !IsSearchVisible && !IsUpdatesVisible;
 
     public bool IsUpdatesWorkspaceButtonVisible => !IsUpdatesVisible;
+
+    public bool IsPresetToolbarActionVisible => !IsUpdatesVisible;
 
     public ObservableCollection<SearchResult> SearchResults
     {
@@ -309,6 +314,7 @@ public sealed class MainViewModel : ObservableObject
                 ApplyUpdatesCommand.RaiseCanExecuteChanged();
                 CloseUpdatesCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(IsUpdatesWorkspaceButtonVisible));
+                OnPropertyChanged(nameof(IsPresetToolbarActionVisible));
             }
         }
     }
@@ -582,7 +588,7 @@ public sealed class MainViewModel : ObservableObject
                     {
                         Updates = new ObservableCollection<UpdateEntry>();
                         var results = await Task.Run(() => _wingetService.LoadUpdates());
-                        ApplyPresetUpdateOptions(results);
+                        UpdateWorkflow.ApplyPresetOptions(results, PresetWorkspace.CurrentApps);
                         Updates = new ObservableCollection<UpdateEntry>(results);
                     });
             },
@@ -630,38 +636,16 @@ public sealed class MainViewModel : ObservableObject
                         {
                             await _operationRunner.RunUpdatesAsync(selected, TrackAndSetStatus, AppendOutput, ReportOperationProgress, Strings, TrackAndSetError);
                             var refreshedUpdates = await Task.Run(() => _wingetService.LoadUpdates());
-                            ApplyPresetUpdateOptions(refreshedUpdates);
-                            var attemptedUpdates = selected
-                                .GroupBy(update => update.Id, StringComparer.OrdinalIgnoreCase)
-                                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
-                            foreach (var entry in refreshedUpdates)
-                            {
-                                if (attemptedUpdates.TryGetValue(entry.Id, out var attemptedUpdate))
-                                {
-                                    if (finalErrors.TryGetValue(entry.Id, out var attemptedError))
-                                    {
-                                        entry.Status = attemptedError.ErrorMessage;
-                                        entry.ErrorMessage = attemptedError.ErrorMessage;
-                                        entry.Resolution = attemptedError.Resolution;
-                                        continue;
-                                    }
-
-                                    var stillAvailableStatus = FormatUpdateStillAvailableStatus(entry);
-                                    entry.Status = stillAvailableStatus;
-                                    entry.ErrorMessage = stillAvailableStatus;
-                                    entry.Resolution = FormatUpdateStillAvailableResolution(attemptedUpdate, entry);
-                                    AppendOutput(FormatUpdateStillAvailableLog(attemptedUpdate, entry));
-                                    continue;
-                                }
-
-                                if (finalStatuses.TryGetValue(entry.Id, out var status))
-                                    entry.ApplyStatus(status, Strings);
-                                if (finalErrors.TryGetValue(entry.Id, out var err))
-                                {
-                                    entry.ErrorMessage = err.ErrorMessage;
-                                    entry.Resolution = err.Resolution;
-                                }
-                            }
+                            UpdateWorkflow.ApplyPresetOptions(refreshedUpdates, PresetWorkspace.CurrentApps);
+                            UpdateWorkflow.ApplyAttemptResults(
+                                refreshedUpdates,
+                                selected,
+                                finalStatuses,
+                                finalErrors,
+                                Strings,
+                                FormatUpdateStillAvailableStatus,
+                                FormatUpdateStillAvailableResolution,
+                                AppendOutput);
                             Updates = new ObservableCollection<UpdateEntry>(refreshedUpdates);
                         });
                 },
@@ -683,7 +667,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        OutputText = string.Empty;
+        ClearOutput();
         SetShellStatus(ShellStatusState.Running);
         IsOperationProgressVisible = true;
         OperationProgressValue = 0;
@@ -788,17 +772,31 @@ public sealed class MainViewModel : ObservableObject
 
         RunOnUiThread(() =>
         {
-            if (OutputText.Length == 0)
+            foreach (var line in SplitOutputLines(text))
             {
-                OutputText = text;
-                return;
+                _outputLines.Enqueue(line);
+                while (_outputLines.Count > MaxOutputLogLines)
+                {
+                    _outputLines.Dequeue();
+                }
             }
 
-            var lastChar = OutputText[^1];
-            var firstChar = text[0];
-            var needsSeparator = lastChar != '\n' && lastChar != '\r' && firstChar != '\n' && firstChar != '\r';
-            OutputText += needsSeparator ? Environment.NewLine + text : text;
+            OutputText = string.Join(Environment.NewLine, _outputLines);
         });
+    }
+
+    private void ClearOutput()
+    {
+        _outputLines.Clear();
+        OutputText = string.Empty;
+    }
+
+    private static IEnumerable<string> SplitOutputLines(string text)
+    {
+        return text
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Split('\n');
     }
 
     private static async Task RunBusyAsync(Action<bool> setEnabled, Func<Task> operation)
@@ -884,6 +882,7 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CurrentWorkspaceDescription));
         OnPropertyChanged(nameof(IsSearchWorkspaceButtonVisible));
         OnPropertyChanged(nameof(IsUpdatesWorkspaceButtonVisible));
+        OnPropertyChanged(nameof(IsPresetToolbarActionVisible));
     }
 
     private void RaiseMainCommandCanExecute()
@@ -946,29 +945,6 @@ public sealed class MainViewModel : ObservableObject
         return PresetWorkspace.CurrentApps.Any(app => app.Enabled);
     }
 
-    private void ApplyPresetUpdateOptions(IEnumerable<UpdateEntry> updates)
-    {
-        var configuredApps = PresetWorkspace.CurrentApps
-            .Where(app => app.Enabled && !string.IsNullOrWhiteSpace(app.Id))
-            .GroupBy(app => app.Id, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
-
-        foreach (var update in updates)
-        {
-            if (!configuredApps.TryGetValue(update.Id, out var candidates))
-            {
-                continue;
-            }
-
-            var configured = candidates.FirstOrDefault(app => string.Equals(app.Source, update.Source, StringComparison.OrdinalIgnoreCase))
-                ?? candidates[0];
-            update.Scope = configured.Scope;
-            update.Architecture = configured.Architecture;
-            update.Locale = configured.Locale;
-            update.InstallerType = configured.InstallerType;
-        }
-    }
-
     private string FormatUpdateStillAvailableStatus(UpdateEntry update)
     {
         return Strings.LocaleCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)
@@ -988,21 +964,6 @@ public sealed class MainViewModel : ObservableObject
         return Strings.LocaleCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)
             ? $"winget still reports {currentVersion} -> {availableVersion}. Open the operation log folder for installer details."
             : $"winget segnala ancora {currentVersion} -> {availableVersion}. Apri la cartella log per i dettagli dell'installer.";
-    }
-
-    private static string FormatUpdateStillAvailableLog(UpdateEntry attemptedUpdate, UpdateEntry refreshedUpdate)
-    {
-        var currentVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Version)
-            ? attemptedUpdate.Version
-            : refreshedUpdate.Version;
-        var availableVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Available)
-            ? attemptedUpdate.Available
-            : refreshedUpdate.Available;
-        var source = string.IsNullOrWhiteSpace(refreshedUpdate.Source)
-            ? attemptedUpdate.Source
-            : refreshedUpdate.Source;
-
-        return $"event=update_still_available id=\"{EscapeLogValue(refreshedUpdate.Id)}\" name=\"{EscapeLogValue(refreshedUpdate.Name)}\" version=\"{EscapeLogValue(currentVersion)}\" available=\"{EscapeLogValue(availableVersion)}\" source=\"{EscapeLogValue(source)}\"";
     }
 
     private static string EscapeLogValue(string value)

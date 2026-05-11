@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
 
@@ -31,20 +32,31 @@ public sealed class WingetService
 {
     private const string WingetPackageId = "Microsoft.AppInstaller";
     private const int WideConsoleWidth = 500;
-    private readonly Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult> _wingetRunner;
+    private static readonly TimeSpan DefaultProcessTimeout = TimeSpan.FromHours(4);
+    private readonly Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult> _wingetRunner;
     private readonly WingetRuntimeEnvironment _runtimeEnvironment;
     private readonly WingetOutputClassifier _outputClassifier;
+    private readonly TimeSpan _processTimeout;
 
     public WingetService(
         Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult>? wingetRunner = null,
         string? localRuntimeRoot = null,
-        Func<DateTime>? utcNow = null)
+        Func<DateTime>? utcNow = null,
+        TimeSpan? processTimeout = null)
     {
         var runtimeRoot = localRuntimeRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OnlyWinget",
             "runtime");
-        _wingetRunner = wingetRunner ?? RunWingetProcess;
+        _processTimeout = processTimeout ?? DefaultProcessTimeout;
+        if (_processTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(processTimeout), "Process timeout must be greater than zero.");
+        }
+
+        _wingetRunner = wingetRunner == null
+            ? RunWingetProcess
+            : (singleArg, args, onOutputLine, _) => wingetRunner(singleArg, args, onOutputLine);
         _runtimeEnvironment = new WingetRuntimeEnvironment(runtimeRoot, utcNow ?? (() => DateTime.UtcNow));
         _outputClassifier = new WingetOutputClassifier();
     }
@@ -129,7 +141,12 @@ public sealed class WingetService
 
     public WingetCommandResult Invoke(IReadOnlyList<string> args, Action<string>? onOutputLine = null)
     {
-        return RunWinget(null, args, onOutputLine);
+        return Invoke(args, onOutputLine, CancellationToken.None);
+    }
+
+    public WingetCommandResult Invoke(IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
+    {
+        return RunWinget(null, args, onOutputLine, cancellationToken);
     }
 
     public bool TestAppExists(string id, string source = "winget")
@@ -340,6 +357,8 @@ public sealed class WingetService
 
     public bool IsNoApplicableInstaller(WingetCommandResult result) => _outputClassifier.IsNoApplicableInstaller(result);
 
+    public bool IsManifestNotFound(WingetCommandResult result) => _outputClassifier.IsManifestNotFound(result);
+
     public bool IsAlreadyInstalled(int exitCode) => _outputClassifier.IsAlreadyInstalled(exitCode);
 
     public bool IsAlreadyInstalled(WingetCommandResult result) => _outputClassifier.IsAlreadyInstalled(result);
@@ -349,13 +368,25 @@ public sealed class WingetService
     public string LogDirectory => _runtimeEnvironment.LogDirectory;
 
     private WingetCommandResult RunWinget(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine)
-        => _wingetRunner(singleArg, args, onOutputLine);
+        => RunWinget(singleArg, args, onOutputLine, CancellationToken.None);
 
-    private WingetCommandResult RunWingetProcess(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine)
+    private WingetCommandResult RunWinget(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
+        => _wingetRunner(singleArg, args, onOutputLine, cancellationToken);
+
+    private WingetCommandResult RunWingetProcess(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
+        => RunWingetProcessAsync(singleArg, args, onOutputLine, cancellationToken).GetAwaiter().GetResult();
+
+    private async Task<WingetCommandResult> RunWingetProcessAsync(
+        string? singleArg,
+        IReadOnlyList<string> args,
+        Action<string>? onOutputLine,
+        CancellationToken cancellationToken)
     {
         var runtimeDirectory = _runtimeEnvironment.EnsureLocalRuntimeDirectory();
         var commandArgs = BuildCommandArgs(singleArg, args);
         var processStartInfo = CreateProcessStartInfo(runtimeDirectory, commandArgs);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(_processTimeout);
 
         using var process = Process.Start(processStartInfo);
         if (process == null)
@@ -366,10 +397,31 @@ public sealed class WingetService
         var output = new List<string>();
         var error = new List<string>();
 
-        var outputTask = Task.Run(async () => await ReadStreamAsync(process.StandardOutput, output, onOutputLine));
-        var errorTask = Task.Run(async () => await ReadStreamAsync(process.StandardError, error, onOutputLine));
-        process.WaitForExit();
-        Task.WaitAll(outputTask, errorTask);
+        var outputTask = ReadStreamAsync(process.StandardOutput, output, onOutputLine, timeoutCts.Token);
+        var errorTask = ReadStreamAsync(process.StandardError, error, onOutputLine, timeoutCts.Token);
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+            await Task.WhenAll(outputTask, errorTask).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            KillProcessTree(process);
+            return new WingetCommandResult
+            {
+                ExitCode = 9997,
+                Output = "event=winget_process_cancelled reason=cancellation_requested"
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            KillProcessTree(process);
+            return new WingetCommandResult
+            {
+                ExitCode = 9998,
+                Output = $"event=winget_process_timeout timeout_seconds={(int)_processTimeout.TotalSeconds}"
+            };
+        }
 
         var outputText = string.Join(Environment.NewLine, output);
         var errorText = string.Join(Environment.NewLine, error);
@@ -379,6 +431,21 @@ public sealed class WingetService
                 ? errorText
                 : outputText + Environment.NewLine + errorText;
         return new WingetCommandResult { ExitCode = process.ExitCode, Output = combined };
+    }
+
+    private static void KillProcessTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // The process may have exited between cancellation and cleanup.
+        }
     }
 
     private static IReadOnlyList<string> BuildCommandArgs(string? singleArg, IReadOnlyList<string> args)
@@ -568,11 +635,11 @@ public sealed class WingetService
         return true;
     }
 
-    private static async Task ReadStreamAsync(StreamReader reader, ICollection<string> target, Action<string>? onOutputLine)
+    private static async Task ReadStreamAsync(StreamReader reader, ICollection<string> target, Action<string>? onOutputLine, CancellationToken cancellationToken)
     {
         while (true)
         {
-            var line = await reader.ReadLineAsync().ConfigureAwait(false);
+            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
             if (line == null)
             {
                 break;

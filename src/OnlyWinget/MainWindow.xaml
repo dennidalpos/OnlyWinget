@@ -284,7 +284,8 @@
                           Command="{Binding ApplyCommand}"
                           IsEnabled="{Binding IsApplyEnabled}"
                           ToolTip="{Binding Strings.ApplyTooltip}"
-                          Style="{StaticResource SuccessButtonStyle}"/>
+                          Style="{StaticResource SuccessButtonStyle}"
+                          Visibility="{Binding IsPresetToolbarActionVisible, Converter={StaticResource BoolToVisibility}}"/>
                 </StackPanel>
 
                 <StackPanel Margin="{StaticResource TopSpacing6}"
@@ -293,7 +294,8 @@
                           Margin="{StaticResource ButtonInlineSpacing}"
                           Command="{Binding PresetWorkspace.SaveCommand}"
                           ToolTip="{Binding Strings.SaveTooltip}"
-                          Style="{StaticResource NeutralButtonStyle}"/>
+                          Style="{StaticResource NeutralButtonStyle}"
+                          Visibility="{Binding IsPresetToolbarActionVisible, Converter={StaticResource BoolToVisibility}}"/>
                   <TextBlock Margin="{StaticResource InlineItemSpacing6}"
                              VerticalAlignment="Center"
                              Style="{StaticResource CaptionTextStyle}"

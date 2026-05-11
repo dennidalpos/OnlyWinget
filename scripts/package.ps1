@@ -168,7 +168,7 @@ function Invoke-ArchitectureMsi {
         '-r'
         $runtimeIdentifier
         '--self-contained'
-        'false'
+        'true'
         '--output'
         $publishDir
         '/p:UseAppHost=true'

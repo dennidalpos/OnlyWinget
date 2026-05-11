@@ -103,28 +103,45 @@ public sealed class ElevatedWingetLauncher
     /// Builds a single argument string suitable for <see cref="ProcessStartInfo.Arguments"/>.
     /// Each token is individually quoted if it contains spaces.
     /// </summary>
-    private static string BuildArgumentString(IReadOnlyList<string> args)
+    internal static string BuildArgumentString(IReadOnlyList<string> args)
     {
-        var sb = new StringBuilder();
-        foreach (var arg in args)
-        {
-            if (sb.Length > 0)
-            {
-                sb.Append(' ');
-            }
+        return string.Join(" ", args.Select(QuoteArgument));
+    }
 
-            if (arg.Contains(' ') || arg.Contains('"'))
-            {
-                sb.Append('"');
-                sb.Append(arg.Replace("\"", "\\\""));
-                sb.Append('"');
-            }
-            else
-            {
-                sb.Append(arg);
-            }
+    private static string QuoteArgument(string arg)
+    {
+        if (arg.Length > 0 && !arg.Any(static c => char.IsWhiteSpace(c) || c == '"'))
+        {
+            return arg;
         }
 
+        var sb = new StringBuilder();
+        sb.Append('"');
+        var backslashes = 0;
+
+        foreach (var c in arg)
+        {
+            if (c == '\\')
+            {
+                backslashes++;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                sb.Append('\\', backslashes * 2 + 1);
+                sb.Append('"');
+                backslashes = 0;
+                continue;
+            }
+
+            sb.Append('\\', backslashes);
+            backslashes = 0;
+            sb.Append(c);
+        }
+
+        sb.Append('\\', backslashes * 2);
+        sb.Append('"');
         return sb.ToString();
     }
 

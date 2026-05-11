@@ -74,9 +74,8 @@ public sealed class InstallCommandBuilderTests
     }
 
     [Fact]
-    public void BuildInstallArguments_PropagatesAllAppEntryFields()
+    public void BuildInstallArguments_PropagatesConfigurableInstallFields_WithoutPinningVersion()
     {
-        // Regression: ensure that every configurable field on AppEntry reaches the final arg list.
         var builder = CreateBuilder();
         var app = new AppEntry
         {
@@ -94,10 +93,9 @@ public sealed class InstallCommandBuilderTests
         };
 
         var args = builder.BuildInstallArguments(app);
-        var joined = string.Join(" ", args);
 
-        Assert.Contains("--version", args);
-        Assert.Contains("6.3.3", args);
+        Assert.DoesNotContain("--version", args);
+        Assert.DoesNotContain("6.3.3", args);
         Assert.Contains("--scope", args);
         Assert.Contains("machine", args);
         Assert.Contains("--architecture", args);

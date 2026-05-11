@@ -34,7 +34,7 @@ function Assert-Administrator {
     }
 }
 
-function Get-InstalledOnlyWingetProducts {
+function Get-InstalledOnlyWingetProduct {
     param(
         [switch]$VisibleOnly
     )
@@ -71,7 +71,7 @@ function Get-InstalledOnlyWingetProducts {
 }
 
 function Assert-CleanInstallState {
-    $installed = @(Get-InstalledOnlyWingetProducts)
+    $installed = @(Get-InstalledOnlyWingetProduct)
     if ($installed.Count -gt 0 -or (Test-Path -LiteralPath $installFolder)) {
         throw "OnlyWinget risulta gia' installato. Usa un host pulito o disinstalla manualmente prima della validazione."
     }
@@ -157,12 +157,12 @@ function Assert-SingleInstalledProduct {
         [string]$ExpectedVersion
     )
 
-    $installed = @(Get-InstalledOnlyWingetProducts -VisibleOnly)
+    $installed = @(Get-InstalledOnlyWingetProduct -VisibleOnly)
     if ($installed.Count -ne 1) {
         throw "Atteso 1 prodotto installato visibile, trovati $($installed.Count)."
     }
 
-    $internalProducts = @(Get-InstalledOnlyWingetProducts | Where-Object { $_.SystemComponent -eq 1 })
+    $internalProducts = @(Get-InstalledOnlyWingetProduct | Where-Object { $_.SystemComponent -eq 1 })
     if ($internalProducts.Count -gt 1) {
         throw "Atteso al massimo 1 MSI interno nascosto, trovati $($internalProducts.Count)."
     }
@@ -196,7 +196,7 @@ function Assert-DesktopShortcutDefault {
     }
 }
 
-function Assert-AppLaunches {
+function Assert-AppLaunch {
     $exePath = Join-Path $installFolder 'OnlyWinget.exe'
     $process = Start-Process -FilePath $exePath -PassThru -WindowStyle Minimized
     Start-Sleep -Seconds 3
@@ -260,7 +260,7 @@ try {
     Assert-SingleInstalledProduct -ExpectedVersion $currentVersion
     Assert-StartMenuShortcut
     Assert-DesktopShortcutDefault
-    Assert-AppLaunches
+    Assert-AppLaunch
     $reportLines.Add('CurrentInstallOrUpgrade: OK')
     $reportLines.Add('LaunchAfterInstallOrUpgrade: OK')
     $reportLines.Add("RepairLog: $(Invoke-Setup -SetupPath $CurrentSetupPath -Arguments @('/repair', '/quiet') -LogName 'repair.log')")
@@ -273,7 +273,7 @@ finally {
     }
 }
 
-$installedAfterUninstall = @(Get-InstalledOnlyWingetProducts -VisibleOnly)
+$installedAfterUninstall = @(Get-InstalledOnlyWingetProduct -VisibleOnly)
 if ($installedAfterUninstall.Count -gt 0) {
     throw "Disinstallazione incompleta: prodotti residui $($installedAfterUninstall.Count)."
 }

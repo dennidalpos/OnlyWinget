@@ -29,12 +29,6 @@ public sealed class InstallCommandBuilder : IInstallCommandBuilder
             string.IsNullOrWhiteSpace(app.Source) ? "winget" : app.Source
         };
 
-        if (!string.IsNullOrWhiteSpace(app.Version))
-        {
-            args.Add("--version");
-            args.Add(app.Version);
-        }
-
         AddOption(args, "--scope", app.Scope);
         AddOption(args, "--architecture", app.Architecture);
         AddOption(args, "--installer-type", app.InstallerType);

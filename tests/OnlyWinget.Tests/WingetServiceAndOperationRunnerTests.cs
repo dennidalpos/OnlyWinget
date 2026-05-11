@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
 using OnlyWinget.Services;
@@ -139,6 +140,13 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         Assert.Contains("retry using the installed package name", classifier.GetResolutionHint(-1978335212, "en-US"), StringComparison.Ordinal);
         Assert.Equal("MSIX package not found", classifier.GetErrorMessage(-2147009295, "en-US"));
         Assert.Equal("The MSIX package is not installed for the current user.", classifier.GetResolutionHint(-2147009295, "en-US"));
+        Assert.Equal("Manifest not found", classifier.GetErrorMessage(-1978335209, "en-US"));
+        Assert.Contains("preset version", classifier.GetResolutionHint(-1978335209, "en-US"), StringComparison.Ordinal);
+        Assert.True(classifier.IsManifestNotFound(new WingetCommandResult
+        {
+            ExitCode = -1978335209,
+            Output = "No version found matching: 9.7.1"
+        }));
     }
 
     [Fact]
@@ -149,15 +157,52 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         Assert.True(WingetKnownErrorCatalog.Count >= 200);
         Assert.False(WingetKnownErrorCatalog.ContainsDuplicateCodes);
         Assert.Equal(
-            "WinGet error: Update Install Technology Mismatch",
+            "An upgrade is available but uses a different install technology than the current installation",
             classifier.GetErrorMessage(unchecked((int)0x8A15008E), "en-US"));
         Assert.Contains(
             "winget error 0x8A15008E",
             classifier.GetResolutionHint(unchecked((int)0x8A15008E), "en-US"),
             StringComparison.Ordinal);
         Assert.Equal(
-            "Errore WinGet: Invalid Configuration File",
+            "Il file di configurazione non è valido.",
             classifier.GetErrorMessage(unchecked((int)0x8A15C001), "it-IT"));
+        Assert.True(WingetKnownErrorCatalog.TryGetDescription(unchecked((int)0x8A150017), "it-IT", out var description));
+        Assert.Equal("Nessun manifesto trovato corrispondente ai criteri", description);
+    }
+
+    [Fact]
+    public void Classifier_MapsLocalTimeoutAndCancellationResults()
+    {
+        var classifier = new WingetOutputClassifier();
+
+        Assert.Equal("Operation cancelled", classifier.GetErrorMessage(9997, "en-US"));
+        Assert.Equal("Execution timeout", classifier.GetErrorMessage(9998, "en-US"));
+        Assert.Equal("Operation cancelled.", classifier.GetResolutionHint(9997, "en-US"));
+        Assert.Equal("The operation exceeded the maximum allowed time. Check the log and retry.", classifier.GetResolutionHint(9998, "en-US"));
+    }
+
+    [Fact]
+    public void ElevatedWingetLauncher_BuildArgumentString_RoundTripsWindowsArguments()
+    {
+        var args = new[]
+        {
+            "install",
+            "--id",
+            "Contoso.Tool",
+            "--custom",
+            "/DIR=\"C:\\Program Files\\Contoso Tool\\\"",
+            "--override",
+            "PROPERTY=\"value with spaces\"",
+            "--log",
+            "C:\\Temp\\OnlyWinget Logs\\install.log",
+            "--empty",
+            string.Empty,
+            "C:\\Path With Trailing Slash\\"
+        };
+
+        var parsed = ParseWindowsCommandLine("winget " + ElevatedWingetLauncher.BuildArgumentString(args));
+
+        Assert.Equal(args, parsed.Skip(1));
     }
 
     [Fact]
@@ -1037,6 +1082,50 @@ A newer package version is available in a configured source, but it does not app
     }
 
     [Fact]
+    public async Task RunApplyAsync_DoesNotPinInstallToStoredPresetVersion()
+    {
+        var installInvocations = new List<IReadOnlyList<string>>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command != "install")
+                {
+                    return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+                }
+
+                installInvocations.Add(args.ToArray());
+                return new WingetCommandResult { ExitCode = 0, Output = "Successfully installed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var status = string.Empty;
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry
+                {
+                    Name = "AnyDesk",
+                    Id = "AnyDesk.AnyDesk",
+                    Source = "winget",
+                    Version = "9.7.1",
+                    Action = AppActions.Install
+                }
+            },
+            (_, value) => status = RenderStatus(value, LocalizedStrings.English),
+            _ => { },
+            (_, _) => { },
+            LocalizedStrings.English);
+
+        Assert.Equal("OK", status);
+        var installArgs = Assert.Single(installInvocations);
+        Assert.DoesNotContain("--version", installArgs);
+        Assert.DoesNotContain("9.7.1", installArgs);
+        Assert.Contains("--id", installArgs);
+        Assert.Contains("AnyDesk.AnyDesk", installArgs);
+    }
+
+    [Fact]
     public void UpgradeWinget_DoesNotConvertAlreadyInstalledIntoSuccess()
     {
         var invocations = 0;
@@ -1111,4 +1200,37 @@ A newer package version is available in a configured source, but it does not app
         entry.ApplyStatus(state, strings);
         return entry.Status;
     }
+
+    private static IReadOnlyList<string> ParseWindowsCommandLine(string commandLine)
+    {
+        var argv = CommandLineToArgvW(commandLine, out var argc);
+        if (argv == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("CommandLineToArgvW failed.");
+        }
+
+        try
+        {
+            var args = new string[argc];
+            for (var index = 0; index < argc; index++)
+            {
+                var pointer = Marshal.ReadIntPtr(argv, index * IntPtr.Size);
+                args[index] = Marshal.PtrToStringUni(pointer) ?? string.Empty;
+            }
+
+            return args;
+        }
+        finally
+        {
+            LocalFree(argv);
+        }
+    }
+
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern IntPtr CommandLineToArgvW(
+        [MarshalAs(UnmanagedType.LPWStr)] string lpCmdLine,
+        out int pNumArgs);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr LocalFree(IntPtr hMem);
 }

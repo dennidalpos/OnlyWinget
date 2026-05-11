@@ -17,4 +17,8 @@
     <Resource Include="Assets\OnlyWinget.ico" />
     <Resource Include="Assets\OnlyWinget-icon.png" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OnlyWinget.Tests" />
+  </ItemGroup>
 </Project>
