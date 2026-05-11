@@ -123,6 +123,33 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public void UpgradeApp_ReturnsAppInUse_WhenInstallerLogReportsMsixPackageInUse()
+    {
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var logIndex = args.ToList().IndexOf("--log");
+                Assert.True(logIndex >= 0 && logIndex + 1 < args.Count);
+                File.WriteAllText(
+                    args[logIndex + 1],
+                    "Deployment operation #1: Error 0x80073D02: Unable to install because the following apps need to be closed: Claude_1.5354.0.0_x64__pzs8sxrjxfjjc.");
+
+                return new WingetCommandResult
+                {
+                    ExitCode = 0,
+                    Output = "Installation completed. Restart the application to complete the update."
+                };
+            });
+
+        var result = service.UpgradeApp("Anthropic.Claude", "winget", "Claude", "1.6608.1");
+
+        Assert.Equal(-1978334975, result.ExitCode);
+        Assert.Contains("Installer log:", result.Output, StringComparison.Ordinal);
+        Assert.Contains("0x80073D02", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Claude_1.5354.0.0_x64__pzs8sxrjxfjjc", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Classifier_MapsPackagedServiceAdminRequirementToElevationHint()
     {
         var classifier = new WingetOutputClassifier();

@@ -31,6 +31,8 @@ public sealed class WingetCommandResult
 public sealed class WingetService
 {
     private const string WingetPackageId = "Microsoft.AppInstaller";
+    private const int AppInUseExitCode = -1978334975;
+    private const int MaxInstallerDiagnosticLines = 8;
     private const int WideConsoleWidth = 500;
     private static readonly TimeSpan DefaultProcessTimeout = TimeSpan.FromHours(4);
     private readonly Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult> _wingetRunner;
@@ -932,7 +934,93 @@ public sealed class WingetService
 
     private WingetCommandResult ToDisplayResult(string command, IReadOnlyDictionary<string, string?> parameters, WingetCommandResult result)
     {
-        return CombineResults(result, FormatCommandSummary(command, parameters, result).ToList());
+        var displayResult = CombineResults(result, FormatCommandSummary(command, parameters, result).ToList());
+        return TryCreateInstallerDiagnosticResult(parameters, displayResult, out var diagnosticResult)
+            ? diagnosticResult
+            : displayResult;
+    }
+
+    private static bool TryCreateInstallerDiagnosticResult(
+        IReadOnlyDictionary<string, string?> parameters,
+        WingetCommandResult result,
+        out WingetCommandResult diagnosticResult)
+    {
+        diagnosticResult = result;
+        if (!parameters.TryGetValue("--log", out var logPath) || string.IsNullOrWhiteSpace(logPath))
+        {
+            return false;
+        }
+
+        if (!TryReadPackageInUseDiagnostics(logPath, out var diagnosticLines))
+        {
+            return false;
+        }
+
+        diagnosticResult = new WingetCommandResult
+        {
+            ExitCode = AppInUseExitCode,
+            Output = AppendDiagnosticLines(result.Output, diagnosticLines)
+        };
+        return true;
+    }
+
+    private static bool TryReadPackageInUseDiagnostics(string logPath, out IReadOnlyList<string> diagnosticLines)
+    {
+        diagnosticLines = Array.Empty<string>();
+        try
+        {
+            if (!File.Exists(logPath))
+            {
+                return false;
+            }
+
+            var matches = File.ReadLines(logPath)
+                .Where(IsPackageInUseLogLine)
+                .Take(MaxInstallerDiagnosticLines)
+                .Select(line => $"  {TrimDiagnosticLine(line)}")
+                .ToList();
+            if (matches.Count == 0)
+            {
+                return false;
+            }
+
+            matches.Insert(0, $"Installer log: {logPath}");
+            diagnosticLines = matches;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsPackageInUseLogLine(string line)
+    {
+        return line.Contains("0x80073D02", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("close the following apps", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("chiudere le app seguenti", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string TrimDiagnosticLine(string line)
+    {
+        var trimmed = line.Trim();
+        const int maxLength = 500;
+        return trimmed.Length <= maxLength
+            ? trimmed
+            : trimmed[..maxLength] + "...";
+    }
+
+    private static string AppendDiagnosticLines(string output, IReadOnlyList<string> diagnosticLines)
+    {
+        if (diagnosticLines.Count == 0)
+        {
+            return output;
+        }
+
+        var diagnosticText = string.Join(Environment.NewLine, diagnosticLines);
+        return string.IsNullOrWhiteSpace(output)
+            ? diagnosticText
+            : output + Environment.NewLine + diagnosticText;
     }
 
     public bool ShouldFallbackToInstall(WingetCommandResult result) => _outputClassifier.ShouldFallbackToInstall(result);

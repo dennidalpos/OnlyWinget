@@ -1,3 +1,68 @@
 {
-  "tasks": []
+  "project_name": "OnlyWinget",
+  "status": "active",
+  "current_phase": "verification",
+  "last_updated": "2026-05-11T16:31:10+02:00",
+  "production_target": true,
+  "summary": "Windows WPF app for managing local winget package workflows.",
+  "active_objective": "Completed code fix for Anthropic.Claude update attempts where winget exits successfully but the installer log reports MSIX package-in-use error 0x80073D02.",
+  "assumptions": [
+    "The user is reporting a runtime update workflow result from OnlyWinget rather than asking only for manual log inspection."
+  ],
+  "decisions": [
+    "OnlyWinget now reads targeted diagnostics from the winget operation log and maps MSIX package-in-use error 0x80073D02 to the existing App in use status instead of leaving only the generic still-available result."
+  ],
+  "current_tasks": [],
+  "next_tasks": [
+    "Close running Claude processes and rerun the Claude update on the local machine when it is safe to interrupt the app."
+  ],
+  "blockers": [
+    "Local Claude 1.5354.0.0 processes are still running and must be closed before the MSIX registration can complete."
+  ],
+  "risks": [
+    "Stopping Claude automatically could interrupt active user work, so the running processes were not terminated."
+  ],
+  "dependencies": {
+    "runtime": [
+      ".NET 9 SDK",
+      "winget"
+    ],
+    "development": [
+      "xUnit",
+      "PowerShell 7+",
+      "WiX 3.14 bundled binaries"
+    ],
+    "external_services": [
+      "winget sources",
+      "microsoft/winget-pkgs manifest fetches"
+    ]
+  },
+  "quality_gates": {
+    "format": "passed",
+    "lint": "not_available",
+    "typecheck": "passed",
+    "tests": "passed",
+    "build": "not_run",
+    "security_review": "not_run"
+  },
+  "commands": {
+    "install": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
+    "dev": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release",
+    "test": "dotnet test .\\tests\\OnlyWinget.Tests\\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\\artifacts\\test-results --logger \"trx;LogFileName=unit-tests.trx\"",
+    "lint": "",
+    "typecheck": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -WarnAsError -NoRestore",
+    "build": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release",
+    "start": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release"
+  },
+  "environment": {
+    "os_target": "Windows",
+    "shell": "PowerShell",
+    "required_env_vars": [],
+    "env_files": []
+  },
+  "last_completed_work": "Mapped winget MSIX package-in-use installer log diagnostics to App in use and added regression coverage.",
+  "open_questions": [
+    "Should the local Claude processes be closed now so the update can be retried?"
+  ],
+  "handoff_notes": "Observed winget still reports Anthropic.Claude 1.5354.0.0 -> 1.6608.1. The latest diagnostic log reports 0x80073D02 and lists Claude_1.5354.0.0_x64__pzs8sxrjxfjjc as needing to be closed."
 }
