@@ -54,6 +54,8 @@ The main preset library is stored at:
 
 The app supports only the tabbed JSON store under `%LOCALAPPDATA%\OnlyWinget`.
 
+If the saved preset library is invalid, corrupted, legacy, or temporarily unreadable, the UI starts with an empty default preset and marks the original file as requiring recovery protection. Before the app writes a replacement `AppsList.json`, it first copies the original file to a timestamped `AppsList.json.recovery-*.bak` file in the same directory. If that recovery backup cannot be created, the save is blocked.
+
 Preset rows support install, uninstall, and pause actions. Paused rows are skipped during batch execution and marked as paused in the UI instead of invoking `winget`.
 
 UI preferences are stored at:
@@ -65,6 +67,8 @@ The current implementation persists the preferred UI language there.
 ### Import and export
 
 Presets can be exported and imported as readable JSON files using the `.onlywinget.json` extension. The import flow normalizes preset names and deduplicates package IDs.
+
+Imported preset rows that contain advanced installer arguments (`--custom` or `--override`) are treated as untrusted until reviewed in the package options dialog. Batch execution blocks those rows and does not pass their advanced arguments to `winget` until the user reviews and saves the row.
 
 ### Localization
 
@@ -91,6 +95,8 @@ The application depends on the system `winget` CLI being available. `AppStartupC
 - decoding `winget` process output as UTF-8 so localized and non-ASCII package names are preserved
 - writing per-operation logs under the local runtime directory
 
+Batch install, upgrade, and uninstall flows pass a cancellation token from the shell UI to `OperationRunner`, direct `winget` process execution, and elevated launch handling. Direct `winget` calls use command-specific timeouts: short query timeouts for `show`, `search`, and `list`; a medium timeout for source maintenance; and longer bounded timeouts for install, upgrade, and uninstall operations. Elevated launches are also bounded and return local cancellation or timeout result codes when the prompt or child process does not complete.
+
 Runtime process logs and temporary files are isolated under:
 
 - `%LOCALAPPDATA%\OnlyWinget\runtime`
@@ -105,6 +111,8 @@ Before a searched package is added to a preset, the app runs a package interroga
 2. For `winget` sources with a concrete version, the app tries to fetch the installer manifest from `microsoft/winget-pkgs`.
 3. Installer candidates are normalized into selectable options such as scope, architecture, locale, installer type, and install mode.
 4. If manifest data is unavailable, the dialog falls back to a reduced mode instead of blocking the workflow.
+
+The interrogation parser accepts the standard English and Italian `winget show` package header and also falls back to the stable `Package Name [Package.Id]` shape when `winget` localizes the leading word. Installer manifests are parsed conservatively for the fields the UI uses, including quoted YAML scalars, inline comments, indented installer entries, and quoted inline sequences.
 
 ## Installer architecture
 

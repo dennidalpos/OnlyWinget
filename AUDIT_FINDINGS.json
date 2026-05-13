@@ -1,0 +1,340 @@
+[
+  {
+    "id": "AUD-001",
+    "severity": "High",
+    "category": "Robustness/UX",
+    "title": "Operazioni winget senza cancellazione utente e con attesa elevata potenzialmente infinita",
+    "files": [
+      {
+        "path": "src/OnlyWinget/ViewModels/MainViewModel.cs",
+        "lines": "598-717"
+      },
+      {
+        "path": "src/OnlyWinget/Services/OperationRunner.cs",
+        "lines": "263-290"
+      },
+      {
+        "path": "src/OnlyWinget/Services/ElevatedWingetLauncher.cs",
+        "lines": "29-65"
+      },
+      {
+        "path": "src/OnlyWinget/Services/WingetService.cs",
+        "lines": "37-424"
+      }
+    ],
+    "description": "I flussi apply/update disabilitano la UI e attendono Task.Run su winget; il servizio diretto ha timeout predefinito di 4 ore, mentre il launcher elevato usa WaitForExit senza timeout e senza CancellationToken.",
+    "impact": "Un installer bloccato, una richiesta UAC lasciata aperta o winget appeso possono lasciare l'app in stato operativo bloccato per ore o indefinitamente, senza pulsante Annulla e senza recovery controllata.",
+    "evidence": "DefaultProcessTimeout = TimeSpan.FromHours(4); ElevatedWingetLauncher.Launch chiama process.WaitForExit(); MainViewModel mostra progress e disabilita azioni fino al termine.",
+    "recommendation": "Introdurre CancellationToken end-to-end, pulsante Annulla, timeout separati per show/search/list/install/update/elevated launch, stato 'cancelled/timeout' persistente e test su cancellazione/timeout.",
+    "open_questions": [
+      "Quale durata massima e' accettabile per install, upgrade, search e UAC elevato?",
+      "L'utente deve poter annullare un singolo pacchetto o l'intera coda?"
+    ]
+  },
+  {
+    "id": "AUD-002",
+    "severity": "High",
+    "category": "Security",
+    "title": "Preset importati possono persistere ed eseguire argomenti winget arbitrari",
+    "files": [
+      {
+        "path": "src/OnlyWinget/Dialogs/PackageInterrogationDialog.xaml",
+        "lines": "215-247"
+      },
+      {
+        "path": "src/OnlyWinget/Services/InstallCommandBuilder.cs",
+        "lines": "53-61"
+      },
+      {
+        "path": "src/OnlyWinget/Services/AppDataService.cs",
+        "lines": "372-393"
+      },
+      {
+        "path": "src/OnlyWinget/Services/AppDataService.cs",
+        "lines": "422-442"
+      }
+    ],
+    "description": "AdditionalCustomArgs e OverrideArgs sono accettati da UI/import JSON, salvati nei preset e passati a winget come --custom/--override. Esiste un warning per --override, ma non una policy di trust, validazione o conferma forte su preset importati.",
+    "impact": "Un file .onlywinget.json non fidato puo' alterare gli switch dell'installer. Non e' una injection di shell grazie ad ArgumentList, ma e' comunque esecuzione di opzioni arbitrarie verso installer esterni, con possibile modifica di scope, path, comportamento silent o payload dell'installer.",
+    "evidence": "InstallCommandBuilder aggiunge --override o --custom direttamente se i campi sono valorizzati; AppDataService importa e riesporta AdditionalCustomArgs/OverrideArgs.",
+    "recommendation": "Marcare preset importati con argomenti avanzati come non fidati, richiedere conferma esplicita per pacchetto, mostrare diff degli argomenti, limitare caratteri/flag consentiti dove possibile e aggiungere test su import malevolo.",
+    "open_questions": [
+      "I preset devono essere considerati file fidati o possono arrivare da terzi?",
+      "Quali argomenti avanzati sono realmente necessari per l'uso previsto?"
+    ]
+  },
+  {
+    "id": "AUD-003",
+    "severity": "High",
+    "category": "Data Integrity",
+    "title": "Un file dati invalido o legacy viene sostituito da uno stato default salvabile",
+    "files": [
+      {
+        "path": "src/OnlyWinget/Services/AppDataService.cs",
+        "lines": "64-122"
+      },
+      {
+        "path": "src/OnlyWinget/ViewModels/PresetWorkspaceViewModel.cs",
+        "lines": "151-169"
+      },
+      {
+        "path": "src/OnlyWinget/ViewModels/PresetWorkspaceViewModel.cs",
+        "lines": "405-435"
+      },
+      {
+        "path": "src/OnlyWinget/ViewModels/PresetWorkspaceViewModel.cs",
+        "lines": "548-569"
+      }
+    ],
+    "description": "Se AppsList.json e' vuoto, JSON invalido o nel formato legacy non piu' supportato, il servizio carica una scheda Default vuota. Il comando Save salva poi lo stato corrente sullo stesso path.",
+    "impact": "Dopo un warning, un salvataggio manuale puo' sovrascrivere l'unica copia di preset esistenti corrotti/legacy, rendendo piu' difficile recuperare dati utente.",
+    "evidence": "Load ritorna CreateFallbackLoadResult con Default; Save usa sempre _appDataService.GetJsonPath() e serializza lo stato in memoria.",
+    "recommendation": "Bloccare o separare il salvataggio dopo InvalidData/IoError finche' l'utente non esporta/recupera, creare backup permanente prima del primo save, offrire import/migrazione legacy e testare il percorso 'invalid load -> save'.",
+    "open_questions": [
+      "Esistono utenti con formato legacy ancora da migrare?",
+      "Il warning attuale e' sufficiente o serve un blocco operativo?"
+    ]
+  },
+  {
+    "id": "AUD-004",
+    "severity": "High",
+    "category": "Logic/Integration",
+    "title": "Parser manuali per output winget e YAML manifest fragili rispetto a localizzazione e schema",
+    "files": [
+      {
+        "path": "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
+        "lines": "238-452"
+      },
+      {
+        "path": "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
+        "lines": "684-719"
+      },
+      {
+        "path": "src/OnlyWinget/Services/WingetService.cs",
+        "lines": "516-545"
+      }
+    ],
+    "description": "La risoluzione pacchetto dipende da regex su testo localizzato di winget e da un parser YAML scritto a mano che gestisce solo un sottoinsieme dello schema manifest.",
+    "impact": "Un cambiamento di output winget, lingua UI, indentation YAML, sequenze multilinea, alias, nuovi campi o formati manifest puo' produrre reduced mode, selezioni errate o installazioni con opzioni sbagliate.",
+    "evidence": "FoundPattern riconosce solo Found/Trovato; ParseInstallerManifest analizza righe/indentazione manualmente; IsAmbiguousOutput riconosce poche frasi.",
+    "recommendation": "Usare API/JSON ufficiali se disponibili o un parser YAML reale; isolare parser con fixture reali da winget-pkgs; aggiungere snapshot test per manifest complessi e output in piu' lingue.",
+    "open_questions": [
+      "La UI deve supportare sistemi non italiani/inglesi?",
+      "Quali tipi di manifest winget devono essere garantiti?"
+    ]
+  },
+  {
+    "id": "AUD-005",
+    "severity": "Medium",
+    "category": "External Integrations",
+    "title": "Fetch manifest GitHub senza policy esplicita di timeout, retry, cache o pinning",
+    "files": [
+      {
+        "path": "src/OnlyWinget/App.xaml.cs",
+        "lines": "27-35"
+      },
+      {
+        "path": "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
+        "lines": "103-143"
+      },
+      {
+        "path": "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
+        "lines": "219-235"
+      }
+    ],
+    "description": "Il servizio costruisce URL raw.githubusercontent.com su branch master, usa HttpClient creato manualmente e in caso di errore degrada a reduced mode. Non ci sono retry controllati, cache, limite dimensione contenuto, cancellation token o pinning a commit/source metadata.",
+    "impact": "Rete lenta o GitHub non disponibile peggiorano la UX del dialog; un branch master cambiato rispetto al risultato winget show puo' dare opzioni non coerenti con la sorgente risolta; il fallback riduce sicurezza e accuratezza.",
+    "evidence": "BuildManifestUrl punta a /master/manifests/...; TryFetchManifestAsync fa GetAsync e ReadAsStringAsync senza parametri di cancellazione.",
+    "recommendation": "Definire HttpClient con timeout breve, cancellation, retry limitato, max response size, cache per package/version e validazione che il manifest corrisponda alla sorgente/versione interrogata.",
+    "open_questions": [
+      "Il prodotto deve funzionare correttamente offline?",
+      "Reduced mode e' accettabile per installazioni silent?"
+    ]
+  },
+  {
+    "id": "AUD-006",
+    "severity": "Medium",
+    "category": "Architecture/Maintainability",
+    "title": "ViewModel e servizi centrali troppo grandi e accoppiati",
+    "files": [
+      {
+        "path": "src/OnlyWinget/ViewModels/MainViewModel.cs",
+        "lines": "1-1222"
+      },
+      {
+        "path": "src/OnlyWinget/Services/WingetService.cs",
+        "lines": "1-1038"
+      },
+      {
+        "path": "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
+        "lines": "1-925"
+      },
+      {
+        "path": "src/OnlyWinget/App.xaml.cs",
+        "lines": "23-35"
+      }
+    ],
+    "description": "La composizione e' manuale in App.xaml.cs; MainViewModel contiene orchestrazione UI, stato, progress, search, updates e apply; WingetService copre invocazione processo, parsing, classificazione e fallback.",
+    "impact": "Ogni nuova funzione rischia regressioni trasversali. La testabilita' esiste ma dipende da molti stub e InternalsVisibleTo; il layering non separa nettamente UI orchestration, use case, gateway winget e policy retry/error.",
+    "evidence": "Metriche: MainViewModel 1222 righe, WingetService 1038, WingetPackageInterrogationService 925, MainWindow.xaml 951.",
+    "recommendation": "Estrarre use case applicativi (SearchPackages, ApplyQueue, RefreshUpdates, InterrogatePackage), gateway winget, parser e policy errori in classi piccole con interfacce stabili.",
+    "open_questions": [
+      "Quali flussi devono diventare API interne riusabili?",
+      "E' prevista crescita verso altri package manager o solo winget?"
+    ]
+  },
+  {
+    "id": "AUD-007",
+    "severity": "Medium",
+    "category": "Observability/Error Handling",
+    "title": "Errori importanti sono mostrati come testo grezzo o soppressi senza log diagnostico",
+    "files": [
+      {
+        "path": "src/OnlyWinget/App.xaml.cs",
+        "lines": "65-77"
+      },
+      {
+        "path": "src/OnlyWinget/ViewModels/MainViewModel.cs",
+        "lines": "1198-1208"
+      },
+      {
+        "path": "src/OnlyWinget/Services/AppStartupCoordinator.cs",
+        "lines": "49-111"
+      },
+      {
+        "path": "src/OnlyWinget/Services/DialogService.cs",
+        "lines": "113-140"
+      }
+    ],
+    "description": "Le eccezioni vengono spesso ridotte a ex.Message per utente/log; il controllo post-startup cattura tutto senza registrare nulla; l'handler globale mostra messaggio grezzo e chiude l'app.",
+    "impact": "Debug produzione difficile, messaggi potenzialmente sensibili visibili in UI, impossibilita' di distinguere bug app, rete, winget o permessi. In avvio, errori reali possono sparire.",
+    "evidence": "RunPostStartupChecksAsync ha catch vuoto; ExecuteSafelyAsync appende solo ex.Message; OnDispatcherUnhandledException mostra InnerException.Message.",
+    "recommendation": "Aggiungere logging strutturato locale con codici errore, stack trace in file diagnostico opt-in, messaggi utente normalizzati e policy esplicita per errori non bloccanti.",
+    "open_questions": [
+      "Serve un file log applicativo distinto dai log winget?",
+      "Quali dati non devono mai comparire nei log?"
+    ]
+  },
+  {
+    "id": "AUD-008",
+    "severity": "Medium",
+    "category": "Packaging/Operations",
+    "title": "Installer MSI nascosto in ARP e uninstall ricorsivo basato su registry",
+    "files": [
+      {
+        "path": "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs",
+        "lines": "20-35"
+      },
+      {
+        "path": "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs",
+        "lines": "53-59"
+      },
+      {
+        "path": "src/OnlyWinget.Setup/OnlyWinget.Setup.wxs",
+        "lines": "87-99"
+      }
+    ],
+    "description": "Il pacchetto imposta ARPSYSTEMCOMPONENT=1, quindi l'MSI e' nascosto dalle app installate. In uninstall, RemoveFolderEx elimina ricorsivamente il path letto da HKLM Software\\Danny Perondi\\OnlyWinget\\InstallFolder.",
+    "impact": "La rimozione manuale diventa meno trasparente e un valore registry errato/corrotto puo' ampliare il raggio della cancellazione. Il rischio e' mitigato dal path scritto dall'installer, ma il pattern e' fragile.",
+    "evidence": "ARPSYSTEMCOMPONENT Value=1; RegistrySearch RememberInstallFolder; util:RemoveFolderEx On=uninstall su ONLYWINGET_INSTALLFOLDER.",
+    "recommendation": "Rendere visibile almeno il bundle, validare che InstallFolder sia sotto ProgramFiles\\OnlyWinget prima di RemoveFolderEx, evitare cancellazioni ricorsive non strettamente necessarie.",
+    "open_questions": [
+      "Il bundle Burn e' l'unico canale di uninstall previsto?",
+      "Perche' l'MSI interno deve essere nascosto?"
+    ]
+  },
+  {
+    "id": "AUD-009",
+    "severity": "Medium",
+    "category": "DevEx/Scripts",
+    "title": "package.ps1 contiene una funzione di delete ricorsivo senza guardia di repository",
+    "files": [
+      {
+        "path": "scripts/package.ps1",
+        "lines": "112-122"
+      }
+    ],
+    "description": "Reset-Directory cancella ricorsivamente qualsiasi path passato, senza risolvere il path assoluto e senza verificare che sia sotto artifacts o repo. Oggi viene chiamata con variabili interne, ma la funzione e' pericolosa se riusata o se una variabile cambia.",
+    "impact": "Errore di path o refactor futuro possono causare cancellazione di directory non previste durante packaging.",
+    "evidence": "if (Test-Path $Path) { Remove-Item -Path $Path -Recurse -Force } senza controllo allowed-path; build-gate.ps1 invece implementa Remove-GateGeneratedPath con guardie.",
+    "recommendation": "Portare la logica safe di build-gate.ps1 anche in package.ps1 e accettare solo path sotto artifacts\\installer/dist.",
+    "open_questions": [
+      "package.ps1 viene usato manualmente da sviluppatori o solo da CI?"
+    ]
+  },
+  {
+    "id": "AUD-010",
+    "severity": "Medium",
+    "category": "Testing",
+    "title": "Smoke test winget disabilitati risultano passed invece che skipped",
+    "files": [
+      {
+        "path": "tests/OnlyWinget.Tests/WingetSmokeTests.cs",
+        "lines": "15-45"
+      },
+      {
+        "path": "scripts/internal/build-gate.ps1",
+        "lines": "103-117"
+      },
+      {
+        "path": ".github/workflows/build-gate.yml",
+        "lines": "10-16"
+      }
+    ],
+    "description": "Quando ONLYWINGET_RUN_WINGET_SMOKE non e' impostato, i test smoke fanno return e vengono conteggiati come successi. In CI il flag e' falso di default.",
+    "impact": "La pipeline puo' dare una falsa sensazione di copertura integrazione: winget reale, sorgenti e rete non sono verificati nella maggior parte delle esecuzioni.",
+    "evidence": "ShouldRunSmoke false porta a return; build-gate scrive 'Smoke test winget reali disabilitati' e ritorna; workflow_dispatch default false.",
+    "recommendation": "Usare skip esplicito supportato dal framework o separare progetto/test category; far fallire il gate se si richiede smoke e l'ambiente non e' adatto; programmare smoke periodici.",
+    "open_questions": [
+      "Smoke winget deve girare su ogni PR o solo nightly/manuale?",
+      "Quali package noti sono stabili per smoke?"
+    ]
+  },
+  {
+    "id": "AUD-011",
+    "severity": "Medium",
+    "category": "Testing/Coverage",
+    "title": "Copertura funzionale reale incompleta su install/update/uninstall/elevation",
+    "files": [
+      {
+        "path": "tests/OnlyWinget.Tests/WingetSmokeTests.cs",
+        "lines": "15-40"
+      },
+      {
+        "path": "tests/OnlyWinget.Tests/WingetServiceAndOperationRunnerTests.cs",
+        "lines": "236-1112"
+      },
+      {
+        "path": "scripts/internal/build-gate.ps1",
+        "lines": "97-117"
+      }
+    ],
+    "description": "I 173 unit test passano e coprono molta logica con stub, ma i test reali fanno solo availability e search. Non c'e' test automatico che installi/uninstalli in sandbox, eserciti UAC, blocchi file in uso, refresh update reale o rollback.",
+    "impact": "I regressi piu' costosi si manifestano solo su macchine reali degli utenti: permessi, installer interattivi, UAC, rete lenta, processi in uso, sorgenti winget corrotte.",
+    "evidence": "Smoke test reali: TestAvailable e Search Microsoft.PowerToys; OperationRunner test usa runner finto/stub.",
+    "recommendation": "Aggiungere test di integrazione controllati con pacchetti innocui/portable o fixture winget locale; includere UAC manual test checklist e test installer lifecycle in release gate.",
+    "open_questions": [
+      "E' disponibile una VM Windows pulita per test distruttivi controllati?",
+      "Quali pacchetti si possono installare/disinstallare senza impatto?"
+    ]
+  },
+  {
+    "id": "AUD-012",
+    "severity": "Low",
+    "category": "Dependencies",
+    "title": "Dipendenza test xunit 2.9.3 deprecata",
+    "files": [
+      {
+        "path": "tests/OnlyWinget.Tests/OnlyWinget.Tests.csproj",
+        "lines": "8-17"
+      }
+    ],
+    "description": "dotnet list package --deprecated segnala xunit 2.9.3 come Legacy e suggerisce xunit.v3.",
+    "impact": "Non e' un bug runtime, ma aumenta il debito test e puo' complicare aggiornamenti futuri del runner/framework.",
+    "evidence": "Comando audit: dotnet list .\\OnlyWinget.sln package --deprecated; output: OnlyWinget.Tests contiene xunit 2.9.3, motivo Legacy, alternativa xunit.v3 >= 0.0.0.",
+    "recommendation": "Pianificare migrazione xUnit v3 o fissare una decisione esplicita di mantenimento su v2 con data di revisione.",
+    "open_questions": [
+      "Il progetto vuole restare su xUnit v2 per compatibilita' tooling?"
+    ]
+  }
+]

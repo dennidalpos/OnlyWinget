@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -174,6 +175,38 @@ public sealed class AppDataService
         }
     }
 
+    public SaveResult CreateRecoveryBackup(string jsonPath)
+    {
+        try
+        {
+            if (!File.Exists(jsonPath))
+            {
+                return new SaveResult
+                {
+                    Success = true,
+                    Path = string.Empty
+                };
+            }
+
+            var backupPath = CreateRecoveryBackupPath(jsonPath);
+            File.Copy(jsonPath, backupPath, overwrite: false);
+            return new SaveResult
+            {
+                Success = true,
+                Path = backupPath
+            };
+        }
+        catch (Exception ex)
+        {
+            return new SaveResult
+            {
+                Success = false,
+                Path = jsonPath,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
     public string NormalizeAction(string? action)
     {
         if (string.IsNullOrWhiteSpace(action))
@@ -257,7 +290,7 @@ public sealed class AppDataService
             var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var app in payload.Apps ?? new List<AppDataItem>())
             {
-                var normalized = NormalizeApp(app, usedIds);
+                var normalized = NormalizeApp(app, usedIds, trustAdvancedArguments: false);
                 if (normalized != null)
                 {
                     apps.Add(normalized);
@@ -335,7 +368,7 @@ public sealed class AppDataService
                 var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var app in tab.Apps)
                 {
-                    var normalized = NormalizeApp(app, usedIds);
+                    var normalized = NormalizeApp(app, usedIds, trustAdvancedArguments: true);
                     if (normalized != null)
                     {
                         list.Add(normalized);
@@ -348,7 +381,7 @@ public sealed class AppDataService
         }
     }
 
-    private AppEntry? NormalizeApp(AppDataItem? app, HashSet<string> usedIds)
+    private AppEntry? NormalizeApp(AppDataItem? app, HashSet<string> usedIds, bool trustAdvancedArguments)
     {
         if (app == null)
         {
@@ -369,6 +402,10 @@ public sealed class AppDataService
             name = id;
         }
 
+        var additionalCustomArgs = NormalizeOptionalValue(app.AdditionalCustomArgs);
+        var overrideArgs = NormalizeOptionalValue(app.OverrideArgs);
+        var hasAdvancedArguments = HasAdvancedArguments(additionalCustomArgs, overrideArgs);
+
         return new AppEntry
         {
             Enabled = app.Enabled,
@@ -384,8 +421,11 @@ public sealed class AppDataService
             InstallerType = NormalizeOptionalValue(app.InstallerType),
             InstallLocation = NormalizeOptionalValue(app.InstallLocation),
             LogPath = NormalizeOptionalValue(app.LogPath),
-            AdditionalCustomArgs = NormalizeOptionalValue(app.AdditionalCustomArgs),
-            OverrideArgs = NormalizeOptionalValue(app.OverrideArgs),
+            AdditionalCustomArgs = additionalCustomArgs,
+            OverrideArgs = overrideArgs,
+            AdvancedArgumentsReviewed = trustAdvancedArguments
+                ? app.AdvancedArgumentsReviewed ?? true
+                : !hasAdvancedArguments,
             ManifestFingerprint = NormalizeOptionalValue(app.ManifestFingerprint),
             InterrogatedAtUtc = NormalizeOptionalValue(app.InterrogatedAtUtc),
             ElevationRequirement = NormalizeOptionalValue(app.ElevationRequirement),
@@ -436,6 +476,7 @@ public sealed class AppDataService
                 LogPath = NormalizeOptionalValue(app.LogPath),
                 AdditionalCustomArgs = NormalizeOptionalValue(app.AdditionalCustomArgs),
                 OverrideArgs = NormalizeOptionalValue(app.OverrideArgs),
+                AdvancedArgumentsReviewed = app.AdvancedArgumentsReviewed,
                 ManifestFingerprint = NormalizeOptionalValue(app.ManifestFingerprint),
                 InterrogatedAtUtc = NormalizeOptionalValue(app.InterrogatedAtUtc),
                 ElevationRequirement = NormalizeOptionalValue(app.ElevationRequirement)
@@ -458,6 +499,12 @@ public sealed class AppDataService
     }
 
     private static string NormalizeOptionalValue(string? value) => (value ?? string.Empty).Trim();
+
+    private static bool HasAdvancedArguments(string additionalCustomArgs, string overrideArgs)
+    {
+        return !string.IsNullOrWhiteSpace(additionalCustomArgs)
+            || !string.IsNullOrWhiteSpace(overrideArgs);
+    }
 
     private static PresetImportResult CreateImportError(string path, string message)
     {
@@ -526,6 +573,34 @@ public sealed class AppDataService
                 File.Delete(tempPath);
             }
         }
+    }
+
+    private static string CreateRecoveryBackupPath(string jsonPath)
+    {
+        var directory = Path.GetDirectoryName(jsonPath);
+        var fileName = Path.GetFileName(jsonPath);
+        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
+        var basePath = Path.Combine(
+            string.IsNullOrWhiteSpace(directory) ? "." : directory,
+            $"{fileName}.recovery-{timestamp}.bak");
+
+        if (!File.Exists(basePath))
+        {
+            return basePath;
+        }
+
+        for (var suffix = 2; suffix < int.MaxValue; suffix++)
+        {
+            var candidate = Path.Combine(
+                string.IsNullOrWhiteSpace(directory) ? "." : directory,
+                $"{fileName}.recovery-{timestamp}-{suffix}.bak");
+            if (!File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new IOException("Unable to create a unique recovery backup path.");
     }
 
     private static void CreateDefaultTab(Dictionary<string, List<AppEntry>> tabs, List<string> tabNames)

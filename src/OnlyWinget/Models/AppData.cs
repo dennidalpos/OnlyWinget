@@ -36,6 +36,7 @@ public sealed class AppDataItem
     public string LogPath { get; set; } = string.Empty;
     public string AdditionalCustomArgs { get; set; } = string.Empty;
     public string OverrideArgs { get; set; } = string.Empty;
+    public bool? AdvancedArgumentsReviewed { get; set; }
     public string ManifestFingerprint { get; set; } = string.Empty;
     public string InterrogatedAtUtc { get; set; } = string.Empty;
     public string ElevationRequirement { get; set; } = string.Empty;

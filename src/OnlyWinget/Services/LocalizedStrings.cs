@@ -62,12 +62,15 @@ public sealed partial class LocalizedStrings
     public string UpdatesEmptyBody { get; init; } = string.Empty;
     public string RefreshUpdates { get; init; } = string.Empty;
     public string ApplyUpdates { get; init; } = string.Empty;
+    public string CancelOperation { get; init; } = string.Empty;
     public string SaveSuccessTitle { get; init; } = string.Empty;
     public string SaveSuccessText { get; init; } = string.Empty;
     public string DataLoadMessageTitle { get; init; } = string.Empty;
     public string DataLoadMissingText { get; init; } = string.Empty;
     public string DataLoadInvalidText { get; init; } = string.Empty;
     public string DataLoadIoErrorText { get; init; } = string.Empty;
+    public string DataRecoveryBackupCreatedText { get; init; } = string.Empty;
+    public string DataRecoveryBackupFailedText { get; init; } = string.Empty;
     public string Tab { get; init; } = string.Empty;
     public string NewTab { get; init; } = string.Empty;
     public string RenameTab { get; init; } = string.Empty;
@@ -104,6 +107,8 @@ public sealed partial class LocalizedStrings
     public string StatusUninstallInProgress { get; init; } = string.Empty;
     public string OperationStartText { get; init; } = string.Empty;
     public string OperationEndText { get; init; } = string.Empty;
+    public string AdvancedArgumentsReviewRequiredText { get; init; } = string.Empty;
+    public string AdvancedArgumentsReviewRequiredResolution { get; init; } = string.Empty;
     public string UpdatesStartText { get; init; } = string.Empty;
     public string UpdatesEndText { get; init; } = string.Empty;
     public string SaveErrorTitle { get; init; } = string.Empty;

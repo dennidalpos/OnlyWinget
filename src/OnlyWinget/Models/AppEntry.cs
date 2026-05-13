@@ -22,6 +22,7 @@ public sealed class AppEntry : ObservableObject
     private string _logPath = string.Empty;
     private string _additionalCustomArgs = string.Empty;
     private string _overrideArgs = string.Empty;
+    private bool _advancedArgumentsReviewed = true;
     private string _manifestFingerprint = string.Empty;
     private string _interrogatedAtUtc = string.Empty;
     private string _elevationRequirement = string.Empty;
@@ -115,14 +116,44 @@ public sealed class AppEntry : ObservableObject
     public string AdditionalCustomArgs
     {
         get => _additionalCustomArgs;
-        set => SetProperty(ref _additionalCustomArgs, value);
+        set
+        {
+            if (SetProperty(ref _additionalCustomArgs, value))
+            {
+                RaiseAdvancedArgumentsStateChanged();
+            }
+        }
     }
 
     public string OverrideArgs
     {
         get => _overrideArgs;
-        set => SetProperty(ref _overrideArgs, value);
+        set
+        {
+            if (SetProperty(ref _overrideArgs, value))
+            {
+                RaiseAdvancedArgumentsStateChanged();
+            }
+        }
     }
+
+    public bool AdvancedArgumentsReviewed
+    {
+        get => _advancedArgumentsReviewed;
+        set
+        {
+            if (SetProperty(ref _advancedArgumentsReviewed, value))
+            {
+                OnPropertyChanged(nameof(RequiresAdvancedArgumentsReview));
+            }
+        }
+    }
+
+    public bool HasAdvancedArguments =>
+        !string.IsNullOrWhiteSpace(AdditionalCustomArgs)
+        || !string.IsNullOrWhiteSpace(OverrideArgs);
+
+    public bool RequiresAdvancedArgumentsReview => HasAdvancedArguments && !AdvancedArgumentsReviewed;
 
     public string ManifestFingerprint
     {
@@ -211,5 +242,11 @@ public sealed class AppEntry : ObservableObject
         return string.IsNullOrWhiteSpace(normalizedArchitecture)
             ? normalizedId
             : $"{normalizedId}|{normalizedArchitecture}";
+    }
+
+    private void RaiseAdvancedArgumentsStateChanged()
+    {
+        OnPropertyChanged(nameof(HasAdvancedArguments));
+        OnPropertyChanged(nameof(RequiresAdvancedArgumentsReview));
     }
 }

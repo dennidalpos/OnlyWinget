@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
 
@@ -18,7 +19,8 @@ public interface IOperationRunner
         Action<string> appendOutput,
         Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null);
+        Action<string, string, string>? setErrorById = null,
+        CancellationToken cancellationToken = default);
 
     Task RunUpdatesAsync(
         IReadOnlyList<UpdateEntry> updates,
@@ -26,5 +28,6 @@ public interface IOperationRunner
         Action<string> appendOutput,
         Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null);
+        Action<string, string, string>? setErrorById = null,
+        CancellationToken cancellationToken = default);
 }

@@ -1,26 +1,34 @@
 {
   "project_name": "OnlyWinget",
   "status": "active",
-  "current_phase": "verification",
-  "last_updated": "2026-05-11T16:31:10+02:00",
+  "current_phase": "verification_complete_with_environment_caveat",
+  "last_updated": "2026-05-13T19:35:59+02:00",
   "production_target": true,
   "summary": "Windows WPF app for managing local winget package workflows.",
-  "active_objective": "Completed code fix for Anthropic.Claude update attempts where winget exits successfully but the installer log reports MSIX package-in-use error 0x80073D02.",
+  "active_objective": "No active implementation task; installer lifecycle validation completed on the current elevated Windows host.",
   "assumptions": [
-    "The user is reporting a runtime update workflow result from OnlyWinget rather than asking only for manual log inspection."
+    "Audit smoke tests may call winget availability/search but must not install, uninstall, or upgrade packages.",
+    "Packaging may create or replace generated files under artifacts only.",
+    "GUI manual testing was not performed; UI findings are based on XAML, ViewModels, services, and tests.",
+    "Default winget timeout policy is conservative: 2 minutes for show/search/list, 5 minutes for source maintenance, 10 minutes for other commands, and 90 minutes for install/upgrade/uninstall/elevated launches.",
+    "Installer lifecycle validation was run in the current elevated Windows environment after confirming no existing OnlyWinget install state.",
+    "The current host reports ASUS hardware with a hypervisor present; dedicated VM isolation was not independently attestable from this workspace."
   ],
   "decisions": [
-    "OnlyWinget now reads targeted diagnostics from the winget operation log and maps MSIX package-in-use error 0x80073D02 to the existing App in use status instead of leaving only the generic still-available result."
+    "Application behavior was not changed during the audit.",
+    "Audit deliverables are kept at the repository root: AUDIT_CRITICO.md, APP_FLOW.md, AUDIT_FINDINGS.json, and AUDIT_ACTION_PLAN.md.",
+    "After invalid or unreadable AppsList.json load, the app must create a timestamped recovery backup before replacing the preset library; if backup creation fails, save is blocked.",
+    "Imported presets with advanced winget arguments are untrusted by default; --custom and --override are blocked during batch execution until the package row is reviewed and saved in the app.",
+    "Batch install/update flows expose user cancellation and pass cancellation tokens into OperationRunner, direct winget process execution, and elevated launch waits.",
+    "The package interrogation parser accepts localized winget show headers that preserve the Package Name [Package.Id] shape and handles quoted inline YAML sequences without splitting comma-containing quoted values."
   ],
   "current_tasks": [],
-  "next_tasks": [
-    "Close running Claude processes and rerun the Claude update on the local machine when it is safe to interrupt the app."
-  ],
-  "blockers": [
-    "Local Claude 1.5354.0.0 processes are still running and must be closed before the MSIX registration can complete."
-  ],
+  "next_tasks": [],
+  "blockers": [],
   "risks": [
-    "Stopping Claude automatically could interrupt active user work, so the running processes were not terminated."
+    "GUI cancellation was covered by ViewModel tests but not manually exercised in a live WPF session.",
+    "Strict release policy may still require rerunning installer lifecycle validation in a known disposable VM snapshot.",
+    "The audit identified other runtime failure modes outside the completed cancellation/timeout and parser hardening task."
   ],
   "dependencies": {
     "runtime": [
@@ -28,7 +36,7 @@
       "winget"
     ],
     "development": [
-      "xUnit",
+      "xUnit 2.9.3",
       "PowerShell 7+",
       "WiX 3.14 bundled binaries"
     ],
@@ -39,17 +47,17 @@
   },
   "quality_gates": {
     "format": "passed",
-    "lint": "not_available",
+    "lint": "passed",
     "typecheck": "passed",
     "tests": "passed",
-    "build": "not_run",
-    "security_review": "not_run"
+    "build": "passed",
+    "security_review": "completed_with_findings"
   },
   "commands": {
     "install": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
     "dev": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release",
-    "test": "dotnet test .\\tests\\OnlyWinget.Tests\\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\\artifacts\\test-results --logger \"trx;LogFileName=unit-tests.trx\"",
-    "lint": "",
+    "test": "dotnet test .\\tests\\OnlyWinget.Tests\\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\\artifacts\\test-results --logger \"trx;LogFileName=audit-unit-tests.trx\"",
+    "lint": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\agents\\analyze-scripts.ps1",
     "typecheck": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -WarnAsError -NoRestore",
     "build": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release",
     "start": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release"
@@ -60,9 +68,9 @@
     "required_env_vars": [],
     "env_files": []
   },
-  "last_completed_work": "Mapped winget MSIX package-in-use installer log diagnostics to App in use and added regression coverage.",
+  "last_completed_work": "Ran elevated installer lifecycle validation: previous install, current upgrade, launch, repair, uninstall, cleanup, and LocalAppData preservation all passed.",
   "open_questions": [
-    "Should the local Claude processes be closed now so the update can be retried?"
+    "Should reduced mode allow silent installations?"
   ],
-  "handoff_notes": "Observed winget still reports Anthropic.Claude 1.5354.0.0 -> 1.6608.1. The latest diagnostic log reports 0x80073D02 and lists Claude_1.5354.0.0_x64__pzs8sxrjxfjjc as needing to be closed."
+  "handoff_notes": "Data recovery overwrite risk from AUD-003 is mitigated. Imported advanced-argument preset risk from AUD-002 is mitigated for --custom/--override batch execution. Cancellation/timeout and parser hardening from the active next task are implemented and covered by unit tests. Installer lifecycle validation completed successfully; report: artifacts/installer-validation/Release/installer-lifecycle-report.txt."
 }

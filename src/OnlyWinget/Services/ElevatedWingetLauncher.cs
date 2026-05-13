@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using OnlyWinget.Models;
 
 namespace OnlyWinget.Services;
@@ -21,13 +22,25 @@ namespace OnlyWinget.Services;
 /// </summary>
 public sealed class ElevatedWingetLauncher
 {
+    private static readonly TimeSpan DefaultLaunchTimeout = TimeSpan.FromMinutes(90);
+
     /// <summary>
     /// Launches winget elevated with the supplied arguments and waits for it to exit.
     /// Returns the process exit code and a summary line. Live output is not available
     /// for elevated launches; use <paramref name="logFilePath"/> for diagnostics.
     /// </summary>
-    public WingetCommandResult Launch(IReadOnlyList<string> args, string? logFilePath)
+    public WingetCommandResult Launch(
+        IReadOnlyList<string> args,
+        string? logFilePath,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
     {
+        var effectiveTimeout = timeout ?? DefaultLaunchTimeout;
+        if (effectiveTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout), "Elevated launch timeout must be greater than zero.");
+        }
+
         // Ensure the --log argument is present so we can capture diagnostics.
         var effectiveArgs = EnsureLogArgument(args, logFilePath);
 
@@ -52,7 +65,32 @@ public sealed class ElevatedWingetLauncher
                 };
             }
 
-            process.WaitForExit();
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(effectiveTimeout);
+
+            try
+            {
+                process.WaitForExitAsync(timeoutCts.Token).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                TryKillProcessTree(process);
+                return new WingetCommandResult
+                {
+                    ExitCode = 9997,
+                    Output = "event=elevated_launch_cancelled reason=cancellation_requested"
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                TryKillProcessTree(process);
+                return new WingetCommandResult
+                {
+                    ExitCode = 9998,
+                    Output = $"event=elevated_launch_timeout timeout_seconds={(int)effectiveTimeout.TotalSeconds}"
+                };
+            }
+
             var exitCode = process.ExitCode;
             var logNote = !string.IsNullOrWhiteSpace(logFilePath)
                 ? $" log={Quote(logFilePath)}"
@@ -79,6 +117,21 @@ public sealed class ElevatedWingetLauncher
                 ExitCode = 9999,
                 Output = $"event=elevated_launch_failed reason={Quote(ex.Message)}"
             };
+        }
+    }
+
+    private static void TryKillProcessTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // Elevated child processes may have already exited or deny termination.
         }
     }
 

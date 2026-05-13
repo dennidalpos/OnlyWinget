@@ -93,6 +93,34 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
+    public void CreateRecoveryBackup_CopiesExistingLibraryWithoutReplacingIt()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var service = new AppDataService(appDataRoot: root);
+            var jsonPath = Path.Combine(root, "AppsList.json");
+            const string originalContent = "{ invalid json";
+            File.WriteAllText(jsonPath, originalContent);
+
+            var result = service.CreateRecoveryBackup(jsonPath);
+
+            Assert.True(result.Success);
+            Assert.Equal(originalContent, File.ReadAllText(jsonPath));
+            Assert.Equal(originalContent, File.ReadAllText(result.Path));
+            Assert.StartsWith(
+                Path.Combine(root, "AppsList.json.recovery-"),
+                result.Path,
+                StringComparison.Ordinal);
+            Assert.EndsWith(".bak", result.Path, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Load_ReturnsFileNotFoundStatus_WhenJsonDoesNotExist()
     {
         var root = CreateTempDirectory();
@@ -195,6 +223,7 @@ public sealed class AppDataServiceTests
             Assert.Equal("C:\\Logs\\powertoys.log", app.LogPath);
             Assert.Equal("/custom", app.AdditionalCustomArgs);
             Assert.Equal("/override", app.OverrideArgs);
+            Assert.True(app.AdvancedArgumentsReviewed);
             Assert.Equal("ABC123", app.ManifestFingerprint);
             Assert.Equal("2026-04-11T12:00:00.0000000Z", app.InterrogatedAtUtc);
             Assert.Equal("elevationRequired", app.ElevationRequirement);
@@ -341,6 +370,55 @@ public sealed class AppDataServiceTests
             Assert.Equal(AppActions.Install, result.Apps[0].Action);
             Assert.Equal("Git.Git", result.Apps[1].Name);
             Assert.Equal(AppActions.Install, result.Apps[1].Action);
+            Assert.True(result.Apps[1].AdvancedArgumentsReviewed);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ImportPreset_MarksAdvancedArgumentsAsUnreviewed()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var service = new AppDataService(appDataRoot: root);
+            var importPath = Path.Combine(root, "advanced.onlywinget.json");
+            File.WriteAllText(
+                importPath,
+                """
+                {
+                  "formatVersion": 1,
+                  "presetName": "Advanced",
+                  "apps": [
+                    {
+                      "name": "Internal Tool",
+                      "id": "Contoso.InternalTool",
+                      "action": "Install",
+                      "additionalCustomArgs": "/unsafe",
+                      "advancedArgumentsReviewed": true
+                    },
+                    {
+                      "name": "Plain Tool",
+                      "id": "Contoso.PlainTool",
+                      "action": "Install"
+                    }
+                  ]
+                }
+                """);
+
+            var result = service.ImportPreset(importPath, Array.Empty<string>());
+
+            Assert.True(result.Success);
+            var advanced = Assert.Single(result.Apps, app => app.Id == "Contoso.InternalTool");
+            Assert.Equal("/unsafe", advanced.AdditionalCustomArgs);
+            Assert.False(advanced.AdvancedArgumentsReviewed);
+            Assert.True(advanced.RequiresAdvancedArgumentsReview);
+            var plain = Assert.Single(result.Apps, app => app.Id == "Contoso.PlainTool");
+            Assert.True(plain.AdvancedArgumentsReviewed);
+            Assert.False(plain.RequiresAdvancedArgumentsReview);
         }
         finally
         {

@@ -45,6 +45,29 @@ Programma di installazione:
     }
 
     [Fact]
+    public async Task InterrogateAsync_ParsesLocalizedPackageHeaderFallback()
+    {
+        var service = CreateService(
+            showOutput: """
+Gefunden Contoso Tool [Contoso.Tool]
+Version: 2.0.0
+Installer Type: exe
+""",
+            manifestStatusCode: HttpStatusCode.NotFound);
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal("Contoso Tool", result.Name);
+        Assert.Equal("Contoso.Tool", result.Id);
+        Assert.True(result.IsReducedMode);
+    }
+
+    [Fact]
     public async Task InterrogateAsync_Fails_WhenPackageIsAmbiguous()
     {
         var service = CreateService(
@@ -150,6 +173,37 @@ ManifestType: installer
         Assert.True(result.InstallerOptions[0].SupportsSilent);
         Assert.True(result.InstallerOptions[0].SupportsSilentWithProgress);
         Assert.Equal("exe", result.InstallerOptions[0].InstallerType);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_ParsesQuotedInlineYamlSequences_WithCommas()
+    {
+        var service = CreateService(
+            showOutput: """
+Found Contoso Tool [Contoso.Tool]
+Version: 2.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Tool
+PackageVersion: 2.0.0
+InstallerType: exe
+Installers:
+  - Architecture: x64
+    UnsupportedArguments: ["log, path", override] # comment outside sequence
+ManifestType: installer
+""");
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        var option = Assert.Single(result.InstallerOptions);
+        Assert.Contains("log, path", option.UnsupportedArguments);
+        Assert.Contains("override", option.UnsupportedArguments);
     }
 
     [Fact]

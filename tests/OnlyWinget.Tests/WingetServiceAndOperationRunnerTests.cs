@@ -263,6 +263,37 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public async Task RunApplyAsync_StopsQueue_WhenCancellationIsRequested()
+    {
+        using var cancellation = new System.Threading.CancellationTokenSource();
+        var invocations = 0;
+        var output = new List<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invocations++;
+                cancellation.Cancel();
+                return new WingetCommandResult { ExitCode = 0, Output = "installed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "One", Id = "Contoso.One", Action = AppActions.Install },
+                new AppEntry { Name = "Two", Id = "Contoso.Two", Action = AppActions.Install }
+            },
+            (_, _) => { },
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.English,
+            cancellationToken: cancellation.Token);
+
+        Assert.Equal(1, invocations);
+        Assert.Contains(output, line => line.Contains("event=apply_cancelled", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task RunApplyAsync_RedactsCustomAndOverrideArguments_InDiagnosticLog()
     {
         IReadOnlyList<string> invokedArgs = Array.Empty<string>();
@@ -296,6 +327,53 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         var commandLog = Assert.Single(output, line => line.Contains("event=install_command_built", StringComparison.Ordinal));
         Assert.Contains("--override [redacted]", commandLog, StringComparison.Ordinal);
         Assert.DoesNotContain("super-secret-token", commandLog, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_BlocksUnreviewedAdvancedArguments()
+    {
+        var invokedCommands = new List<string>();
+        var output = new List<string>();
+        var errorMessage = string.Empty;
+        var resolution = string.Empty;
+        var status = string.Empty;
+        var strings = LocalizedStrings.English;
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invokedCommands.Add(singleArg ?? args[0]);
+                return new WingetCommandResult { ExitCode = 0, Output = "installed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry
+                {
+                    Name = "Internal Tool",
+                    Id = "Contoso.InternalTool",
+                    Action = AppActions.Install,
+                    OverrideArgs = "/unsafe",
+                    AdvancedArgumentsReviewed = false
+                }
+            },
+            (_, value) => status = RenderStatus(value, strings),
+            output.Add,
+            (_, _) => { },
+            strings,
+            (_, message, hint) =>
+            {
+                errorMessage = message;
+                resolution = hint;
+            });
+
+        Assert.Empty(invokedCommands);
+        Assert.Equal(strings.AdvancedArgumentsReviewRequiredText, status);
+        Assert.Equal(strings.AdvancedArgumentsReviewRequiredText, errorMessage);
+        Assert.Equal(strings.AdvancedArgumentsReviewRequiredResolution, resolution);
+        Assert.Contains(output, line => line.Contains("event=advanced_arguments_review_required", StringComparison.Ordinal));
+        Assert.DoesNotContain(output, line => line.Contains("/unsafe", StringComparison.Ordinal));
     }
 
     [Fact]

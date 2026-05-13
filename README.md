@@ -14,6 +14,7 @@ OnlyWinget is a Windows desktop app for managing local `winget` package workflow
 - Configure install options captured from package metadata, including version, scope, architecture, locale, installer type, install mode, and custom arguments when available.
 - Run install, uninstall, and pause actions from saved presets.
 - Review available package upgrades and run selected upgrades.
+- Cancel an in-progress batch or update operation; direct and elevated `winget` executions are bounded by timeouts.
 - Persist presets, runtime logs, and UI preferences under `%LOCALAPPDATA%\OnlyWinget`.
 - Use the runtime UI in English or Italian.
 - Build a Windows setup EXE that embeds x86 and x64 MSI payloads.

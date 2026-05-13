@@ -11,6 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using OnlyWinget.Commands;
@@ -64,6 +65,8 @@ public sealed class MainViewModel : ObservableObject
     private bool _areMainActionsEnabled = true;
     private bool _isApplyEnabled = true;
     private bool _isWingetUpdateInProgress;
+    private bool _isOperationCancellationAvailable;
+    private CancellationTokenSource? _operationCancellation;
     private UiLanguageOption? _selectedLanguage;
     private ShellStatusState _shellStatusState;
     private ProgressTextState _progressTextState;
@@ -109,6 +112,7 @@ public sealed class MainViewModel : ObservableObject
         RefreshUpdatesCommand = new AsyncRelayCommand(RefreshUpdatesAsync, () => IsWingetAvailable && AreUpdatesActionsEnabled);
         ApplyUpdatesCommand = new AsyncRelayCommand(ApplyUpdatesAsync, () => IsWingetAvailable && AreUpdatesActionsEnabled && IsUpdatesVisible && HasSelectedUpdates());
         CloseUpdatesCommand = new RelayCommand(CloseUpdates, () => AreUpdatesActionsEnabled && IsUpdatesVisible);
+        CancelOperationCommand = new RelayCommand(CancelOperation, () => IsOperationCancellationAvailable);
 
         PresetWorkspace.PropertyChanged += OnPresetWorkspacePropertyChanged;
         _localizationService.PropertyChanged += OnLocalizationServicePropertyChanged;
@@ -420,6 +424,18 @@ public sealed class MainViewModel : ObservableObject
         set => SetProperty(ref _isWingetUpdateInProgress, value);
     }
 
+    public bool IsOperationCancellationAvailable
+    {
+        get => _isOperationCancellationAvailable;
+        private set
+        {
+            if (SetProperty(ref _isOperationCancellationAvailable, value))
+            {
+                CancelOperationCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
     public RelayCommand AddCommand => PresetWorkspace.AddCommand;
     public RelayCommand OpenLogFolderCommand { get; }
     public RelayCommand OpenSearchCommand { get; }
@@ -437,6 +453,7 @@ public sealed class MainViewModel : ObservableObject
     public AsyncRelayCommand RefreshUpdatesCommand { get; }
     public AsyncRelayCommand ApplyUpdatesCommand { get; }
     public RelayCommand CloseUpdatesCommand { get; }
+    public RelayCommand CancelOperationCommand { get; }
 
     public void Initialize()
     {
@@ -607,6 +624,7 @@ public sealed class MainViewModel : ObservableObject
         IsOperationProgressVisible = true;
         OperationProgressValue = 0;
         SetProgressTextState(ProgressTextState.UpdatesStart);
+        using var cancellation = BeginCancellableOperation();
         var finalStatuses = new Dictionary<string, UiStatusState>(StringComparer.OrdinalIgnoreCase);
         var finalErrors = new Dictionary<string, (string ErrorMessage, string Resolution)>(StringComparer.OrdinalIgnoreCase);
 
@@ -634,8 +652,13 @@ public sealed class MainViewModel : ObservableObject
                         enabled => AreUpdatesActionsEnabled = enabled,
                         async () =>
                         {
-                            await _operationRunner.RunUpdatesAsync(selected, TrackAndSetStatus, AppendOutput, ReportOperationProgress, Strings, TrackAndSetError);
-                            var refreshedUpdates = await Task.Run(() => _wingetService.LoadUpdates());
+                            await _operationRunner.RunUpdatesAsync(selected, TrackAndSetStatus, AppendOutput, ReportOperationProgress, Strings, TrackAndSetError, cancellation.Token);
+                            if (cancellation.IsCancellationRequested)
+                            {
+                                return;
+                            }
+
+                            var refreshedUpdates = await Task.Run(() => _wingetService.LoadUpdates(cancellation.Token), cancellation.Token);
                             UpdateWorkflow.ApplyPresetOptions(refreshedUpdates, PresetWorkspace.CurrentApps);
                             UpdateWorkflow.ApplyAttemptResults(
                                 refreshedUpdates,
@@ -653,6 +676,7 @@ public sealed class MainViewModel : ObservableObject
         }
         finally
         {
+            EndCancellableOperation(cancellation);
             ClearShellStatus();
             ClearProgressText();
             OperationProgressValue = 0;
@@ -672,6 +696,7 @@ public sealed class MainViewModel : ObservableObject
         IsOperationProgressVisible = true;
         OperationProgressValue = 0;
         SetProgressTextState(ProgressTextState.OperationStart);
+        using var cancellation = BeginCancellableOperation();
         var snapshot = PresetWorkspace.CurrentApps
             .Where(app => app.Enabled)
             .Select(app => new AppEntry
@@ -704,12 +729,13 @@ public sealed class MainViewModel : ObservableObject
                 {
                     await RunBusyAsync(
                         SetApplyUiEnabled,
-                        () => _operationRunner.RunApplyAsync(snapshot, SetAppStatus, AppendOutput, ReportOperationProgress, Strings, SetAppError));
+                        () => _operationRunner.RunApplyAsync(snapshot, SetAppStatus, AppendOutput, ReportOperationProgress, Strings, SetAppError, cancellation.Token));
                 },
                 Strings.ApplyFailedText);
         }
         finally
         {
+            EndCancellableOperation(cancellation);
             ClearShellStatus();
             ClearProgressText();
             OperationProgressValue = 0;
@@ -750,6 +776,36 @@ public sealed class MainViewModel : ObservableObject
                 target.ApplyStatus(status, Strings);
             }
         });
+    }
+
+    private CancellationTokenSource BeginCancellableOperation()
+    {
+        var cancellation = new CancellationTokenSource();
+        _operationCancellation = cancellation;
+        IsOperationCancellationAvailable = true;
+        return cancellation;
+    }
+
+    private void EndCancellableOperation(CancellationTokenSource cancellation)
+    {
+        if (ReferenceEquals(_operationCancellation, cancellation))
+        {
+            _operationCancellation = null;
+            IsOperationCancellationAvailable = false;
+        }
+    }
+
+    private void CancelOperation()
+    {
+        var cancellation = _operationCancellation;
+        if (cancellation == null || cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        AppendOutput("event=operation_cancel_requested");
+        cancellation.Cancel();
+        IsOperationCancellationAvailable = false;
     }
 
     private void ReportOperationProgress(int percentage, string text)

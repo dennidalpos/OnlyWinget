@@ -29,6 +29,8 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     private ObservableCollection<AppEntry> _currentApps = new();
     private AppEntry? _selectedApp;
     private bool _areActionsEnabled = true;
+    private bool _requiresDataRecoveryBackup;
+    private string _dataRecoverySourcePath = string.Empty;
 
     public PresetWorkspaceViewModel(
         bool isWingetAvailable,
@@ -150,6 +152,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     public void Initialize()
     {
+        ClearRecoveryBackupRequirement();
         var loadResult = _appDataService.Load(_appDataService.GetJsonPath());
         TabNames.Clear();
         _tabs.Clear();
@@ -384,6 +387,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         app.LogPath = dialogResult.SelectedOptions.LogPath ?? string.Empty;
         app.AdditionalCustomArgs = dialogResult.SelectedOptions.AdditionalCustomArgs ?? string.Empty;
         app.OverrideArgs = dialogResult.SelectedOptions.OverrideArgs ?? string.Empty;
+        app.AdvancedArgumentsReviewed = true;
         app.ManifestFingerprint = dialogResult.Interrogation.ManifestFingerprint ?? string.Empty;
         app.InterrogatedAtUtc = dialogResult.Interrogation.InterrogatedAtUtc.ToString("O");
         app.ElevationRequirement = dialogResult.SelectedOptions.ElevationRequirement ?? string.Empty;
@@ -409,6 +413,11 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     private bool PersistPresetLibrary(bool showSuccessFeedback, bool appendSuccessOutput)
     {
+        if (!EnsureRecoveryBackupBeforeSave())
+        {
+            return false;
+        }
+
         var result = _appDataService.Save(
             _appDataService.GetJsonPath(),
             TabNames.ToList(),
@@ -433,6 +442,32 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
             Strings.SaveErrorTitle);
 
         return false;
+    }
+
+    private bool EnsureRecoveryBackupBeforeSave()
+    {
+        if (!_requiresDataRecoveryBackup)
+        {
+            return true;
+        }
+
+        var result = _appDataService.CreateRecoveryBackup(_dataRecoverySourcePath);
+        if (!result.Success)
+        {
+            _dialogService.ShowError(
+                string.Format(Strings.DataRecoveryBackupFailedText, result.Path, result.ErrorMessage),
+                Strings.SaveErrorTitle);
+            return false;
+        }
+
+        _requiresDataRecoveryBackup = false;
+        _dataRecoverySourcePath = string.Empty;
+        if (!string.IsNullOrWhiteSpace(result.Path))
+        {
+            _appendOutput(string.Format(Strings.DataRecoveryBackupCreatedText, result.Path));
+        }
+
+        return true;
     }
 
     private void CreateTab()
@@ -554,13 +589,27 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
                 break;
 
             case AppDataLoadStatus.InvalidData:
+                RequireRecoveryBackup(loadResult.Path);
                 ShowDataLoadWarning(string.Format(Strings.DataLoadInvalidText, loadResult.Path));
                 break;
 
             case AppDataLoadStatus.IoError:
+                RequireRecoveryBackup(loadResult.Path);
                 ShowDataLoadError(string.Format(Strings.DataLoadIoErrorText, loadResult.Path, loadResult.ErrorMessage));
                 break;
         }
+    }
+
+    private void RequireRecoveryBackup(string sourcePath)
+    {
+        _requiresDataRecoveryBackup = true;
+        _dataRecoverySourcePath = sourcePath;
+    }
+
+    private void ClearRecoveryBackupRequirement()
+    {
+        _requiresDataRecoveryBackup = false;
+        _dataRecoverySourcePath = string.Empty;
     }
 
     private void ShowDataLoadWarning(string message)

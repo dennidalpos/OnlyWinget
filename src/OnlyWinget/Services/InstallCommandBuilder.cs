@@ -3,6 +3,7 @@
 // Proprietary and confidential. Unauthorized copying, modification,
 // distribution, sublicensing, or commercial use is prohibited.
 
+using System;
 using System.Collections.Generic;
 using OnlyWinget.Models;
 
@@ -19,6 +20,11 @@ public sealed class InstallCommandBuilder : IInstallCommandBuilder
 
     public IReadOnlyList<string> BuildInstallArguments(AppEntry app)
     {
+        if (app.RequiresAdvancedArgumentsReview)
+        {
+            throw new InvalidOperationException("Advanced winget arguments must be reviewed before building install arguments.");
+        }
+
         var args = new List<string>
         {
             "install",

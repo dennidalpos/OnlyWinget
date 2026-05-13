@@ -298,7 +298,8 @@ public sealed class ScrollBarInteractionTests
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -309,7 +310,8 @@ public sealed class ScrollBarInteractionTests
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

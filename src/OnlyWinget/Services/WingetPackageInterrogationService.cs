@@ -23,6 +23,10 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         @"^(Found|Trovato)\s+(?<name>.+?)\s+\[(?<id>[^\]]+)\]\s*$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    private static readonly Regex PackageHeaderPattern = new(
+        @"^(?<prefix>\S+)\s+(?<name>.+?)\s+\[(?<id>[^\]]+)\]\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     private static readonly Regex KeyValuePattern = new(
         @"^(?<key>[^:]+):\s*(?<value>.*)$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -243,8 +247,10 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             .Where(line => !IsProgressLine(line))
             .ToList();
 
-        var foundLine = lines.FirstOrDefault(line => FoundPattern.IsMatch(line));
-        if (foundLine == null)
+        var foundMatch = lines
+            .Select(TryMatchPackageHeader)
+            .FirstOrDefault(match => match.Success) ?? Match.Empty;
+        if (!foundMatch.Success)
         {
             if (lines.Any(IsAmbiguousOutput))
             {
@@ -254,9 +260,8 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             return ShowMetadata.Failure("Unable to resolve package metadata from winget show.");
         }
 
-        var match = FoundPattern.Match(foundLine);
-        var name = match.Groups["name"].Value.Trim();
-        var id = match.Groups["id"].Value.Trim();
+        var name = foundMatch.Groups["name"].Value.Trim();
+        var id = foundMatch.Groups["id"].Value.Trim();
         var version = request.Version;
         var installerType = string.Empty;
 
@@ -290,6 +295,26 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             Source = string.IsNullOrWhiteSpace(request.Source) ? "winget" : request.Source,
             InstallerType = installerType
         };
+    }
+
+    private static Match TryMatchPackageHeader(string line)
+    {
+        var foundMatch = FoundPattern.Match(line);
+        if (foundMatch.Success)
+        {
+            return foundMatch;
+        }
+
+        var packageHeaderMatch = PackageHeaderPattern.Match(line);
+        if (!packageHeaderMatch.Success)
+        {
+            return Match.Empty;
+        }
+
+        var id = packageHeaderMatch.Groups["id"].Value.Trim();
+        return id.Contains('.', StringComparison.Ordinal) && !line.Contains(':', StringComparison.Ordinal)
+            ? packageHeaderMatch
+            : Match.Empty;
     }
 
     private static InstallerManifest ParseInstallerManifest(string content)
@@ -635,9 +660,46 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             return;
         }
 
-        foreach (var item in value[1..^1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        foreach (var item in SplitYamlFlowSequence(value[1..^1]))
         {
             target.Add(NormalizeYamlScalar(item));
+        }
+    }
+
+    private static IEnumerable<string> SplitYamlFlowSequence(string value)
+    {
+        var item = new StringBuilder();
+        var inSingleQuote = false;
+        var inDoubleQuote = false;
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            var current = value[index];
+            if (current == '\'' && !inDoubleQuote)
+            {
+                inSingleQuote = !inSingleQuote;
+            }
+            else if (current == '"' && !inSingleQuote && (index == 0 || value[index - 1] != '\\'))
+            {
+                inDoubleQuote = !inDoubleQuote;
+            }
+            else if (current == ',' && !inSingleQuote && !inDoubleQuote)
+            {
+                if (item.ToString().Trim().Length > 0)
+                {
+                    yield return item.ToString().Trim();
+                }
+
+                item.Clear();
+                continue;
+            }
+
+            item.Append(current);
+        }
+
+        if (item.ToString().Trim().Length > 0)
+        {
+            yield return item.ToString().Trim();
         }
     }
 

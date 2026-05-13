@@ -134,6 +134,23 @@ public sealed class InstallCommandBuilderTests
         Assert.DoesNotContain("/custom-should-not-appear", args);
     }
 
+    [Fact]
+    public void BuildInstallArguments_RejectsUnreviewedAdvancedArguments()
+    {
+        var builder = CreateBuilder();
+        var app = new AppEntry
+        {
+            Id = "Contoso.InternalTool",
+            Source = "winget",
+            AdditionalCustomArgs = "/unsafe",
+            AdvancedArgumentsReviewed = false
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => builder.BuildInstallArguments(app));
+
+        Assert.Contains("reviewed", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static InstallCommandBuilder CreateBuilder()
     {
         var wingetService = new WingetService(

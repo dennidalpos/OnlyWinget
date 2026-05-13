@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
 
@@ -35,7 +36,8 @@ public sealed class OperationRunner : IOperationRunner
         Action<string> appendOutput,
         Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null)
+        Action<string, string, string>? setErrorById = null,
+        CancellationToken cancellationToken = default)
     {
         _wingetService.CleanupOldLogs();
         try
@@ -45,6 +47,7 @@ public sealed class OperationRunner : IOperationRunner
 
             for (var index = 0; index < apps.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var app = apps[index];
                 var operationKey = app.OperationKey;
                 if (string.IsNullOrWhiteSpace(app.Id))
@@ -61,17 +64,21 @@ public sealed class OperationRunner : IOperationRunner
                         break;
 
                     case AppActions.Uninstall:
-                        await RunUninstallAsync(app, index, apps.Count, setStatusById, appendOutput, reportProgress, strings, setErrorById);
+                        await RunUninstallAsync(app, index, apps.Count, setStatusById, appendOutput, reportProgress, strings, setErrorById, cancellationToken);
                         break;
 
                     default:
-                        await RunInstallOrUpgradeAsync(app, index, apps.Count, setStatusById, appendOutput, reportProgress, strings, setErrorById);
+                        await RunInstallOrUpgradeAsync(app, index, apps.Count, setStatusById, appendOutput, reportProgress, strings, setErrorById, cancellationToken);
                         break;
                 }
             }
 
             reportProgress(100, strings.OperationEndText);
             appendOutput($"=== {strings.OperationEndText} ({DateTime.Now:yyyy-MM-dd HH:mm:ss}) ===");
+        }
+        catch (OperationCanceledException)
+        {
+            appendOutput("event=apply_cancelled reason=cancellation_requested");
         }
         catch (Exception ex)
         {
@@ -86,7 +93,8 @@ public sealed class OperationRunner : IOperationRunner
         Action<string> appendOutput,
         Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null)
+        Action<string, string, string>? setErrorById = null,
+        CancellationToken cancellationToken = default)
     {
         _wingetService.CleanupOldLogs();
         try
@@ -96,6 +104,7 @@ public sealed class OperationRunner : IOperationRunner
 
             for (var index = 0; index < updates.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var update = updates[index];
                 setStatusById(update.Id, UiStatusState.FromKey(UiStatusKey.UpgradeInProgress));
                 setErrorById?.Invoke(update.Id, string.Empty, string.Empty);
@@ -121,7 +130,7 @@ public sealed class OperationRunner : IOperationRunner
                         loggedOutputLines.Add(trimmedLine);
                         appendOutput(trimmedLine);
                     }
-                }));
+                }, cancellationToken), cancellationToken);
 
                 if (!receivedLiveOutput)
                 {
@@ -173,6 +182,10 @@ public sealed class OperationRunner : IOperationRunner
             reportProgress(100, strings.UpdatesEndText);
             appendOutput($"=== {strings.UpdatesEndText} ({DateTime.Now:yyyy-MM-dd HH:mm:ss}) ===");
         }
+        catch (OperationCanceledException)
+        {
+            appendOutput("event=updates_cancelled reason=cancellation_requested");
+        }
         catch (Exception ex)
         {
             appendOutput($"event=updates_error message=\"{ex.Message}\"");
@@ -188,8 +201,21 @@ public sealed class OperationRunner : IOperationRunner
         Action<string> appendOutput,
         Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null)
+        Action<string, string, string>? setErrorById = null,
+        CancellationToken cancellationToken = default)
     {
+        if (app.RequiresAdvancedArgumentsReview)
+        {
+            setStatusById(app.OperationKey, UiStatusState.FromRawText(strings.AdvancedArgumentsReviewRequiredText));
+            setErrorById?.Invoke(
+                app.OperationKey,
+                strings.AdvancedArgumentsReviewRequiredText,
+                strings.AdvancedArgumentsReviewRequiredResolution);
+            appendOutput($"event=advanced_arguments_review_required id=\"{FormatLogValue(app.Id)}\"");
+            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
+            return;
+        }
+
         var installArgs = _installCommandBuilder.BuildInstallArguments(app);
         var elevationMode = ElevationDecisionService.Decide(_isCurrentProcessElevated, app.Scope, app.ElevationRequirement);
 
@@ -204,7 +230,7 @@ public sealed class OperationRunner : IOperationRunner
             appendOutput($"event=elevated_launch_starting id=\"{app.Id}\"");
         }
 
-        var installResult = await RunInstallCommandAsync(app, installArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress);
+        var installResult = await RunInstallCommandAsync(app, installArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress, cancellationToken);
 
         if (installResult.ExitCode == 0)
         {
@@ -216,7 +242,7 @@ public sealed class OperationRunner : IOperationRunner
         if (_wingetService.IsNoApplicableInstaller(installResult) && TryBuildInstallArgumentsWithoutInstallerSelectors(installArgs, out var retryInstallArgs))
         {
             appendOutput($"event=install_retry_without_installer_selectors id=\"{app.Id}\"");
-            installResult = await RunInstallCommandAsync(app, retryInstallArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress);
+            installResult = await RunInstallCommandAsync(app, retryInstallArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress, cancellationToken);
             if (installResult.ExitCode == 0)
             {
                 setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
@@ -228,7 +254,7 @@ public sealed class OperationRunner : IOperationRunner
         if (_wingetService.IsManifestNotFound(installResult) && TryBuildInstallArgumentsWithoutVersion(installArgs, out var latestVersionInstallArgs))
         {
             appendOutput($"event=install_retry_without_version id=\"{app.Id}\" version=\"{FormatLogValue(app.Version)}\"");
-            installResult = await RunInstallCommandAsync(app, latestVersionInstallArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress);
+            installResult = await RunInstallCommandAsync(app, latestVersionInstallArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress, cancellationToken);
             if (installResult.ExitCode == 0)
             {
                 setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
@@ -268,12 +294,13 @@ public sealed class OperationRunner : IOperationRunner
         int totalCount,
         Action<string, UiStatusState> setStatusById,
         Action<string> appendOutput,
-        Action<int, string> reportProgress)
+        Action<int, string> reportProgress,
+        CancellationToken cancellationToken)
     {
         if (elevationMode == ElevationMode.ElevatedRequired)
         {
             var logPath = GetInstallLogPath(app);
-            var installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath));
+            var installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath, cancellationToken: cancellationToken), cancellationToken);
             appendOutput(installResult.Output);
             return installResult;
         }
@@ -287,7 +314,7 @@ public sealed class OperationRunner : IOperationRunner
             {
                 appendOutput(line.Trim());
             }
-        }));
+        }, cancellationToken), cancellationToken);
 
         if (!receivedLiveOutput)
         {
@@ -385,7 +412,8 @@ public sealed class OperationRunner : IOperationRunner
         Action<string> appendOutput,
         Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null)
+        Action<string, string, string>? setErrorById = null,
+        CancellationToken cancellationToken = default)
     {
         setErrorById?.Invoke(app.OperationKey, string.Empty, string.Empty);
         setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.UninstallInProgress));
@@ -399,7 +427,7 @@ public sealed class OperationRunner : IOperationRunner
             {
                 appendOutput(line.Trim());
             }
-        }));
+        }, cancellationToken), cancellationToken);
 
         if (!receivedLiveOutput)
         {

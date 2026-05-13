@@ -880,6 +880,7 @@
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*"/>
                   <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
@@ -904,7 +905,15 @@
                 </StackPanel>
 
                 <Button Grid.Column="1"
+                        Content="{Binding Strings.CancelOperation}"
+                        Command="{Binding CancelOperationCommand}"
+                        Style="{StaticResource DangerButtonStyle}"
+                        VerticalAlignment="Top"
+                        Visibility="{Binding IsOperationCancellationAvailable, Converter={StaticResource BoolToVisibility}}"/>
+
+                <Button Grid.Column="2"
                         Content="{Binding Strings.OpenLogFolder}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
                         Command="{Binding OpenLogFolderCommand}"
                         Style="{StaticResource NeutralButtonStyle}"
                         VerticalAlignment="Top"/>

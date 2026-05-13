@@ -38,7 +38,7 @@ public sealed class WingetService
     private readonly Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult> _wingetRunner;
     private readonly WingetRuntimeEnvironment _runtimeEnvironment;
     private readonly WingetOutputClassifier _outputClassifier;
-    private readonly TimeSpan _processTimeout;
+    private readonly TimeSpan? _processTimeoutOverride;
 
     public WingetService(
         Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult>? wingetRunner = null,
@@ -50,8 +50,8 @@ public sealed class WingetService
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OnlyWinget",
             "runtime");
-        _processTimeout = processTimeout ?? DefaultProcessTimeout;
-        if (_processTimeout <= TimeSpan.Zero)
+        _processTimeoutOverride = processTimeout;
+        if (_processTimeoutOverride.HasValue && _processTimeoutOverride.Value <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(processTimeout), "Process timeout must be greater than zero.");
         }
@@ -127,6 +127,13 @@ public sealed class WingetService
     }
 
     public WingetCommandResult Invoke(string command, Dictionary<string, string?> parameters, Action<string>? onOutputLine = null)
+        => Invoke(command, parameters, onOutputLine, CancellationToken.None);
+
+    public WingetCommandResult Invoke(
+        string command,
+        Dictionary<string, string?> parameters,
+        Action<string>? onOutputLine,
+        CancellationToken cancellationToken)
     {
         var args = new List<string> { command };
         foreach (var pair in parameters)
@@ -138,7 +145,7 @@ public sealed class WingetService
             }
         }
 
-        return RunWinget(null, args.ToArray(), onOutputLine);
+        return RunWinget(null, args.ToArray(), onOutputLine, cancellationToken);
     }
 
     public WingetCommandResult Invoke(IReadOnlyList<string> args, Action<string>? onOutputLine = null)
@@ -188,7 +195,7 @@ public sealed class WingetService
             .ToList();
     }
 
-    public IReadOnlyList<UpdateEntry> LoadUpdates()
+    public IReadOnlyList<UpdateEntry> LoadUpdates(CancellationToken cancellationToken = default)
     {
         var updatesResult = Invoke("list", new Dictionary<string, string?>
         {
@@ -196,7 +203,7 @@ public sealed class WingetService
             ["--include-unknown"] = null,
             ["--include-pinned"] = null,
             ["--accept-source-agreements"] = null
-        });
+        }, null, cancellationToken);
 
         var updates = WingetTableParser.ParseUpgradeEntries(updatesResult.Output);
         return updates
@@ -225,16 +232,17 @@ public sealed class WingetService
         string? configuredArchitecture = null,
         string? configuredLocale = null,
         string? configuredInstallerType = null,
-        Action<string>? onOutputLine = null)
+        Action<string>? onOutputLine = null,
+        CancellationToken cancellationToken = default)
     {
         var parameters = CreatePackageParameters("upgrade", id, source, includeLog: true);
         parameters["--include-pinned"] = null;
-        var result = Invoke("upgrade", parameters, onOutputLine);
+        var result = Invoke("upgrade", parameters, onOutputLine, cancellationToken);
         if (ShouldFallbackToInstall(result) && !string.IsNullOrWhiteSpace(name))
         {
             var nameParameters = CreatePackageNameParameters("upgrade-by-name", name, source, includeLog: true);
             nameParameters["--include-pinned"] = null;
-            var nameResult = Invoke("upgrade", nameParameters, onOutputLine);
+            var nameResult = Invoke("upgrade", nameParameters, onOutputLine, cancellationToken);
             var nameLog = new List<string>();
             nameLog.AddRange(FormatCommandSummary("upgrade", parameters, result));
             nameLog.Add("retrying with installed package name");
@@ -260,7 +268,7 @@ public sealed class WingetService
             return ToDisplayResult("upgrade", parameters, result);
         }
 
-        var retryResult = Invoke("upgrade", retryParameters, onOutputLine);
+        var retryResult = Invoke("upgrade", retryParameters, onOutputLine, cancellationToken);
         var log = new List<string>();
         log.AddRange(FormatCommandSummary("upgrade", parameters, result));
         log.Add("retrying with installed package requirements");
@@ -341,10 +349,10 @@ public sealed class WingetService
         return ToDisplayResult("install", parameters, result);
     }
 
-    public WingetCommandResult UninstallApp(string id, Action<string>? onOutputLine = null)
+    public WingetCommandResult UninstallApp(string id, Action<string>? onOutputLine = null, CancellationToken cancellationToken = default)
     {
         var parameters = CreatePackageParameters("uninstall", id, includeLog: true, includePackageAgreements: false);
-        var result = Invoke("uninstall", parameters, onOutputLine);
+        var result = Invoke("uninstall", parameters, onOutputLine, cancellationToken);
         return ToDisplayResult("uninstall", parameters, result);
     }
 
@@ -387,8 +395,9 @@ public sealed class WingetService
         var runtimeDirectory = _runtimeEnvironment.EnsureLocalRuntimeDirectory();
         var commandArgs = BuildCommandArgs(singleArg, args);
         var processStartInfo = CreateProcessStartInfo(runtimeDirectory, commandArgs);
+        var processTimeout = GetProcessTimeout(commandArgs);
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(_processTimeout);
+        timeoutCts.CancelAfter(processTimeout);
 
         using var process = Process.Start(processStartInfo);
         if (process == null)
@@ -421,7 +430,7 @@ public sealed class WingetService
             return new WingetCommandResult
             {
                 ExitCode = 9998,
-                Output = $"event=winget_process_timeout timeout_seconds={(int)_processTimeout.TotalSeconds}"
+                Output = $"event=winget_process_timeout timeout_seconds={(int)processTimeout.TotalSeconds}"
             };
         }
 
@@ -463,6 +472,27 @@ public sealed class WingetService
         };
         commandArgs.AddRange(args);
         return commandArgs;
+    }
+
+    private TimeSpan GetProcessTimeout(IReadOnlyList<string> commandArgs)
+    {
+        if (_processTimeoutOverride.HasValue)
+        {
+            return _processTimeoutOverride.Value;
+        }
+
+        if (commandArgs.Count == 0)
+        {
+            return DefaultProcessTimeout;
+        }
+
+        return commandArgs[0].ToLowerInvariant() switch
+        {
+            "install" or "upgrade" or "uninstall" => TimeSpan.FromMinutes(90),
+            "source" => TimeSpan.FromMinutes(5),
+            "show" or "search" or "list" => TimeSpan.FromMinutes(2),
+            _ => TimeSpan.FromMinutes(10)
+        };
     }
 
     private static ProcessStartInfo CreateProcessStartInfo(string runtimeDirectory, IReadOnlyList<string> commandArgs)

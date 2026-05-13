@@ -63,6 +63,37 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task CancelOperationCommand_CancelsRunningApply()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteDefaultAppsList(root);
+
+            var operationRunner = new CancellationAwareApplyOperationRunner();
+            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.ApplyCommand.Execute(null);
+            await operationRunner.Started.Task;
+
+            Assert.True(viewModel.IsOperationCancellationAvailable);
+            Assert.True(viewModel.CancelOperationCommand.CanExecute(null));
+
+            viewModel.CancelOperationCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.AreMainActionsEnabled && !viewModel.IsOperationProgressVisible);
+
+            Assert.False(viewModel.IsOperationCancellationAvailable);
+            Assert.Contains("event=operation_cancel_requested", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Contains("event=fake_apply_cancelled", viewModel.OutputText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void TabCommands_CreateRenameAndDeleteTabs()
     {
         var root = CreateTempDirectory();
@@ -670,6 +701,35 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
+    public void SaveCommand_CreatesRecoveryBackupBeforeReplacingMalformedLibrary()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var jsonPath = Path.Combine(root, "AppsList.json");
+            const string malformedContent = "{ invalid json";
+            File.WriteAllText(jsonPath, malformedContent);
+            var dialog = new FakeDialogService();
+            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+
+            viewModel.Initialize();
+            viewModel.SaveCommand.Execute(null);
+
+            var backupPath = Assert.Single(Directory.GetFiles(root, "AppsList.json.recovery-*.bak"));
+            Assert.Equal(malformedContent, File.ReadAllText(backupPath));
+            Assert.Contains("\"Tabs\"", File.ReadAllText(jsonPath), StringComparison.Ordinal);
+            Assert.Contains(backupPath, viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Single(dialog.WarningCalls);
+            Assert.Single(dialog.InfoCalls);
+            Assert.Empty(dialog.ErrorCalls);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Initialize_ShowsError_WhenSavedListCannotBeRead()
     {
         var root = CreateTempDirectory();
@@ -1079,6 +1139,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             // Select the only app
             viewModel.PresetWorkspace.SelectedApp = viewModel.CurrentApps[0];
             var originalEntry = viewModel.CurrentApps[0];
+            originalEntry.AdvancedArgumentsReviewed = false;
 
             viewModel.PresetWorkspace.EditCommand.Execute(null);
             await WaitForConditionAsync(() => originalEntry.Scope == "machine");
@@ -1095,6 +1156,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Assert.Equal(@"C:\tools\vscode", originalEntry.InstallLocation);
             Assert.Equal(@"C:\logs\vscode.log", originalEntry.LogPath);
             Assert.Equal("/norestart", originalEntry.AdditionalCustomArgs);
+            Assert.True(originalEntry.AdvancedArgumentsReviewed);
             Assert.Equal("elevationRequired", originalEntry.ElevationRequirement);
         }
         finally
@@ -1582,7 +1644,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             setStatusById(apps[0].Id, UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55));
             reportProgress(55, "VS Code: 55%");
@@ -1596,7 +1659,45 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CancellationAwareApplyOperationRunner : IOperationRunner
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            Started.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                appendOutput("event=fake_apply_cancelled");
+            }
+        }
+
+        public Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1613,7 +1714,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             var x64Entry = apps.Single(app => app.Architecture == "x64");
             setStatusById(x64Entry.OperationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55));
@@ -1628,7 +1730,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1645,7 +1748,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1656,7 +1760,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             setStatusById(updates[0].Id, UiStatusState.FromKey(UiStatusKey.UpgradeInProgress, 40));
             reportProgress(40, "Microsoft PowerToys: 40%");
@@ -1673,7 +1778,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1684,7 +1790,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1705,7 +1812,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             for (var index = 0; index < _lineCount; index++)
             {
@@ -1721,7 +1829,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1737,7 +1846,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             CapturedApps.AddRange(apps.Select(app => new AppEntry
             {
@@ -1757,7 +1867,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1771,7 +1882,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1782,7 +1894,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             setStatusById(updates[0].Id, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
             reportProgress(100, $"{updates[0].Name}: 100%");
@@ -1798,7 +1911,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1809,7 +1923,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             setStatusById(updates[0].Id, UiStatusState.FromRawText("Upgrade not applicable"));
             setErrorById?.Invoke(updates[0].Id, "Upgrade not applicable", "Manifest requirements do not match this system.");
@@ -1828,7 +1943,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -1839,7 +1955,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string> appendOutput,
             Action<int, string> reportProgress,
             LocalizedStrings strings,
-            Action<string, string, string>? setErrorById = null)
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             CapturedUpdates.AddRange(updates.Select(update => new UpdateEntry
             {
