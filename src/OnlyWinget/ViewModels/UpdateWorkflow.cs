@@ -66,6 +66,7 @@ internal static class UpdateWorkflow
                 entry.Status = stillAvailableStatus;
                 entry.ErrorMessage = stillAvailableStatus;
                 entry.Resolution = formatStillAvailableResolution(attemptedUpdate, entry);
+                entry.Selected = false;
                 appendOutput(FormatStillAvailableLog(attemptedUpdate, entry));
                 continue;
             }

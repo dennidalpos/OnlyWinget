@@ -13,6 +13,7 @@ namespace OnlyWinget.Services;
 
 public sealed class OperationRunner : IOperationRunner
 {
+    private const int IndeterminateProgress = -1;
     private readonly WingetService _wingetService;
     private readonly IInstallCommandBuilder _installCommandBuilder;
     private readonly ElevatedWingetLauncher _elevatedLauncher;
@@ -300,6 +301,8 @@ public sealed class OperationRunner : IOperationRunner
         if (elevationMode == ElevationMode.ElevatedRequired)
         {
             var logPath = GetInstallLogPath(app);
+            setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
+            reportProgress(IndeterminateProgress, $"{app.Name}: elevated installer running");
             var installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath, cancellationToken: cancellationToken), cancellationToken);
             appendOutput(installResult.Output);
             return installResult;
@@ -555,15 +558,26 @@ public sealed class OperationRunner : IOperationRunner
         Action<string, UiStatusState> setStatusById,
         Action<int, string> reportProgress)
     {
-        if (!_wingetService.TryGetProgressPercentage(line, out var currentPackagePercentage))
+        if (!WingetProgressParser.TryParse(line, out var progress))
         {
             return;
         }
 
-        setStatusById(packageId, UiStatusState.FromKey(progressStatusKey, currentPackagePercentage));
-        reportProgress(
-            CalculateOverallPercentage(currentIndex, totalCount, currentPackagePercentage),
-            $"{packageName}: {currentPackagePercentage}%");
+        if (progress.Percentage.HasValue)
+        {
+            var currentPackagePercentage = progress.Percentage.Value;
+            setStatusById(packageId, UiStatusState.FromKey(progressStatusKey, currentPackagePercentage));
+            reportProgress(
+                CalculateOverallPercentage(currentIndex, totalCount, currentPackagePercentage),
+                $"{packageName}: {currentPackagePercentage}%");
+            return;
+        }
+
+        if (progress.IsIndeterminate)
+        {
+            setStatusById(packageId, UiStatusState.FromKey(progressStatusKey));
+            reportProgress(IndeterminateProgress, $"{packageName}: {progress.PhaseText}");
+        }
     }
 
     private static int CalculateOverallPercentage(int completedPackages, int totalPackages)

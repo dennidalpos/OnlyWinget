@@ -159,6 +159,16 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public void Classifier_MapsShellExecuteInstallFailureToActionableHint()
+    {
+        var classifier = new WingetOutputClassifier();
+
+        Assert.Equal("ShellExecute failed", classifier.GetErrorMessage(unchecked((int)0x8A150006), "en-US"));
+        Assert.Contains("Administrator", classifier.GetResolutionHint(unchecked((int)0x8A150006), "en-US"), StringComparison.Ordinal);
+        Assert.Contains("Amministratore", classifier.GetResolutionHint(unchecked((int)0x8A150006), "it-IT"), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Classifier_MapsPackageMatchingAndMsixRollbackErrors()
     {
         var classifier = new WingetOutputClassifier();
@@ -440,6 +450,66 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public async Task RunApplyAsync_ReportsProgress_FromWingetDownloadSizes()
+    {
+        var reportedProgress = new List<int>();
+        var status = string.Empty;
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) =>
+            {
+                onOutputLine?.Invoke("  ███████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  5.00 MB / 10.0 MB");
+                return new WingetCommandResult { ExitCode = 0, Output = "completed" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "Google Play Games", Id = "Google.PlayGames", Action = AppActions.Install }
+            },
+            (_, value) => status = RenderStatus(value, LocalizedStrings.English),
+            _ => { },
+            (percentage, _) => reportedProgress.Add(percentage),
+            LocalizedStrings.English);
+
+        Assert.Contains(50, reportedProgress);
+        Assert.Contains(100, reportedProgress);
+        Assert.Equal("OK", status);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_ReportsIndeterminateProgress_ForInstallerPhaseWithoutPercentage()
+    {
+        var reportedProgress = new List<int>();
+        var reportedText = new List<string>();
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) =>
+            {
+                onOutputLine?.Invoke("Avvio installazione pacchetto in corso...");
+                return new WingetCommandResult { ExitCode = 0, Output = "Installazione riuscita" };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry { Name = "Google Play Games", Id = "Google.PlayGames", Action = AppActions.Install }
+            },
+            (_, _) => { },
+            _ => { },
+            (percentage, text) =>
+            {
+                reportedProgress.Add(percentage);
+                reportedText.Add(text);
+            },
+            LocalizedStrings.Italian);
+
+        Assert.Contains(-1, reportedProgress);
+        Assert.Contains(reportedText, text => text.Contains("Avvio installazione", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(100, reportedProgress);
+    }
+
+    [Fact]
     public void UiStatusFormatting_IsConsistentForPresetAndUpdateRows()
     {
         var appEntry = new AppEntry();
@@ -677,6 +747,25 @@ CapCut                    ByteDance.CapCut  8.3.0.3497     8.4.0.3562    winget
         Assert.Contains(updates, entry => entry.Id == "Adobe.Acrobat.Pro");
         Assert.Contains(updates, entry => entry.Id == "Microsoft.Edge");
         Assert.Contains(updates, entry => entry.Id == "ByteDance.CapCut");
+    }
+
+    [Fact]
+    public void LoadUpdates_PreservesGooglePlayGamesVersionTokens()
+    {
+        const string output = """
+Nome              Id               Versione  Disponibile  Origine
+-----------------------------------------------------------------
+Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
+""";
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
+
+        var update = Assert.Single(service.LoadUpdates());
+
+        Assert.Equal("Google Play Games", update.Name);
+        Assert.Equal("Google.PlayGames", update.Id);
+        Assert.Equal("26.5.27.1", update.Version);
+        Assert.Equal("149.0.7814.0", update.Available);
     }
 
     [Fact]

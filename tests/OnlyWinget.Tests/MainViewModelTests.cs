@@ -429,11 +429,64 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
 
             Assert.False(viewModel.AreUpdatesActionsEnabled);
             Assert.True(viewModel.IsOperationProgressVisible);
+            Assert.False(viewModel.IsOperationProgressIndeterminate);
             Assert.Equal(40, viewModel.OperationProgressValue);
             Assert.Equal("Microsoft PowerToys: 40%", viewModel.OperationProgressText);
 
             operationRunner.Release.TrySetResult();
             await WaitForConditionAsync(() => viewModel.AreUpdatesActionsEnabled && !viewModel.IsOperationProgressVisible);
+            Assert.False(viewModel.IsOperationProgressIndeterminate);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task UpdatesFlow_ShowsIndeterminateProgress_ForInstallerPhase()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var wingetService = new WingetService(
+                wingetRunner: static (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    return command switch
+                    {
+                        "--version" => new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" },
+                        "list" => new WingetCommandResult
+                        {
+                            ExitCode = 0,
+                            Output = """
+Name              Id               Version   Available      Source
+------------------------------------------------------------------
+Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0   winget
+"""
+                        },
+                        _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                    };
+                });
+            var operationRunner = new IndeterminateUpdatesOperationRunner();
+            var viewModel = CreateViewModel(root, wingetService, operationRunner, new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.OpenUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.Updates.Count == 1);
+
+            viewModel.ApplyUpdatesCommand.Execute(null);
+            await operationRunner.Started.Task;
+
+            Assert.True(viewModel.IsOperationProgressVisible);
+            Assert.True(viewModel.IsOperationProgressIndeterminate);
+            Assert.Equal(0, viewModel.OperationProgressValue);
+            Assert.Equal("Google Play Games: starting package install", viewModel.OperationProgressText);
+            Assert.Equal(viewModel.Strings.StatusUpgradeInProgress, viewModel.Updates[0].Status);
+
+            operationRunner.Release.TrySetResult();
+            await WaitForConditionAsync(() => viewModel.AreUpdatesActionsEnabled && !viewModel.IsOperationProgressVisible);
+            Assert.False(viewModel.IsOperationProgressIndeterminate);
         }
         finally
         {
@@ -620,6 +673,8 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Assert.Equal("Update still available", update.Status);
             Assert.Equal("Update still available", update.ErrorMessage);
             Assert.Contains("winget still reports 0.90.0 -> 0.90.1", update.Resolution, StringComparison.Ordinal);
+            Assert.Contains("row was deselected", update.Resolution, StringComparison.Ordinal);
+            Assert.False(update.Selected);
             Assert.Contains("event=update_still_available", viewModel.OutputText, StringComparison.Ordinal);
             Assert.DoesNotContain(viewModel.Strings.StatusAlreadyUpdated, update.Status, StringComparison.Ordinal);
         }
@@ -977,6 +1032,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
 
             viewModel.OpenUpdatesCommand.Execute(null);
             await WaitForConditionAsync(() => viewModel.Updates.Count == 1);
+            await WaitForConditionAsync(() => viewModel.ApplyUpdatesCommand.CanExecute(null));
 
             Assert.False(viewModel.OpenUpdatesCommand.CanExecute(null));
             Assert.True(viewModel.ApplyUpdatesCommand.CanExecute(null));
@@ -1765,6 +1821,39 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             setStatusById(updates[0].Id, UiStatusState.FromKey(UiStatusKey.UpgradeInProgress, 40));
             reportProgress(40, "Microsoft PowerToys: 40%");
+            Started.TrySetResult();
+            await Release.Task;
+        }
+    }
+
+    private sealed class IndeterminateUpdatesOperationRunner : IOperationRunner
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task RunApplyAsync(
+            IReadOnlyList<AppEntry> apps,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public async Task RunUpdatesAsync(
+            IReadOnlyList<UpdateEntry> updates,
+            Action<string, UiStatusState> setStatusById,
+            Action<string> appendOutput,
+            Action<int, string> reportProgress,
+            LocalizedStrings strings,
+            Action<string, string, string>? setErrorById = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            setStatusById(updates[0].Id, UiStatusState.FromKey(UiStatusKey.UpgradeInProgress));
+            reportProgress(-1, "Google Play Games: starting package install");
             Started.TrySetResult();
             await Release.Task;
         }

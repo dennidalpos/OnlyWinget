@@ -890,6 +890,7 @@
                     <ProgressBar Margin="0,4,0,0"
                                  Minimum="0"
                                  Maximum="100"
+                                 IsIndeterminate="{Binding IsOperationProgressIndeterminate}"
                                  Value="{Binding OperationProgressValue}"/>
                   </StackPanel>
 

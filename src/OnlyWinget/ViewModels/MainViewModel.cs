@@ -61,6 +61,7 @@ public sealed class MainViewModel : ObservableObject
     private string _statusText = string.Empty;
     private string _operationProgressText = string.Empty;
     private int _operationProgressValue;
+    private bool _isOperationProgressIndeterminate;
     private bool _isOperationProgressVisible;
     private bool _areMainActionsEnabled = true;
     private bool _isApplyEnabled = true;
@@ -388,6 +389,12 @@ public sealed class MainViewModel : ObservableObject
         set => SetProperty(ref _operationProgressValue, value);
     }
 
+    public bool IsOperationProgressIndeterminate
+    {
+        get => _isOperationProgressIndeterminate;
+        set => SetProperty(ref _isOperationProgressIndeterminate, value);
+    }
+
     public bool IsOperationProgressVisible
     {
         get => _isOperationProgressVisible;
@@ -622,6 +629,7 @@ public sealed class MainViewModel : ObservableObject
 
         SetShellStatus(ShellStatusState.Running);
         IsOperationProgressVisible = true;
+        IsOperationProgressIndeterminate = false;
         OperationProgressValue = 0;
         SetProgressTextState(ProgressTextState.UpdatesStart);
         using var cancellation = BeginCancellableOperation();
@@ -679,6 +687,7 @@ public sealed class MainViewModel : ObservableObject
             EndCancellableOperation(cancellation);
             ClearShellStatus();
             ClearProgressText();
+            IsOperationProgressIndeterminate = false;
             OperationProgressValue = 0;
             IsOperationProgressVisible = false;
         }
@@ -694,6 +703,7 @@ public sealed class MainViewModel : ObservableObject
         ClearOutput();
         SetShellStatus(ShellStatusState.Running);
         IsOperationProgressVisible = true;
+        IsOperationProgressIndeterminate = false;
         OperationProgressValue = 0;
         SetProgressTextState(ProgressTextState.OperationStart);
         using var cancellation = BeginCancellableOperation();
@@ -738,6 +748,7 @@ public sealed class MainViewModel : ObservableObject
             EndCancellableOperation(cancellation);
             ClearShellStatus();
             ClearProgressText();
+            IsOperationProgressIndeterminate = false;
             OperationProgressValue = 0;
             IsOperationProgressVisible = false;
         }
@@ -812,7 +823,12 @@ public sealed class MainViewModel : ObservableObject
     {
         RunOnUiThread(() =>
         {
-            OperationProgressValue = Math.Max(0, Math.Min(100, percentage));
+            IsOperationProgressIndeterminate = percentage < 0;
+            if (percentage >= 0)
+            {
+                OperationProgressValue = Math.Max(0, Math.Min(100, percentage));
+            }
+
             _progressTextState = ProgressTextState.Custom;
             _operationProgressText = text;
             OnPropertyChanged(nameof(OperationProgressText));
@@ -1018,8 +1034,8 @@ public sealed class MainViewModel : ObservableObject
             : refreshedUpdate.Available;
 
         return Strings.LocaleCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)
-            ? $"winget still reports {currentVersion} -> {availableVersion}. Open the operation log folder for installer details."
-            : $"winget segnala ancora {currentVersion} -> {availableVersion}. Apri la cartella log per i dettagli dell'installer.";
+            ? $"winget still reports {currentVersion} -> {availableVersion} after the update attempt. The row was deselected to avoid repeating the same installer; open the operation log folder for details."
+            : $"winget segnala ancora {currentVersion} -> {availableVersion} dopo il tentativo di aggiornamento. La riga e stata deselezionata per evitare di ripetere lo stesso installer; apri la cartella log per i dettagli.";
     }
 
     private static string EscapeLogValue(string value)

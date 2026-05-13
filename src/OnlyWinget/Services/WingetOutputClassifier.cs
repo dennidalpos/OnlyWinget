@@ -135,18 +135,12 @@ public sealed class WingetOutputClassifier
     public bool TryGetProgressPercentage(string line, out int percentage)
     {
         percentage = 0;
-        if (string.IsNullOrWhiteSpace(line))
+        if (!WingetProgressParser.TryParse(line, out var progress) || !progress.Percentage.HasValue)
         {
             return false;
         }
 
-        var match = Regex.Match(NormalizeWingetOutput(line), @"(?<!\d)(\d{1,3})%");
-        if (!match.Success || !int.TryParse(match.Groups[1].Value, out var parsed))
-        {
-            return false;
-        }
-
-        percentage = Math.Max(0, Math.Min(100, parsed));
+        percentage = progress.Percentage.Value;
         return true;
     }
 
@@ -195,6 +189,7 @@ public sealed class WingetOutputClassifier
             -1978335174 => "Contattare l'amministratore IT.",
             -1978334961 => "Contattare l'amministratore IT.",
             -1978335215 => "Riprovare. Se l'errore persiste, segnalare al manutentore del pacchetto.",
+            -1978335226 => "Rieseguire OnlyWinget come Amministratore. Se l'errore persiste, consultare il log operazione e provare l'installazione manuale del pacchetto.",
             -2145844844 => "Consultare il log. Potrebbe richiedere installazione manuale.",
             -1978334955 => "Consultare il log. Potrebbe richiedere installazione manuale.",
             -1978335212 => "Verificare l'ID del pacchetto e la sorgente configurata. Se il pacchetto appare nella lista aggiornamenti, OnlyWinget riprovera usando il nome installato.",
@@ -241,6 +236,7 @@ public sealed class WingetOutputClassifier
             -1978335174 => "Contact your IT administrator.",
             -1978334961 => "Contact your IT administrator.",
             -1978335215 => "Retry. If the issue persists, report to the package maintainer.",
+            -1978335226 => "Re-run OnlyWinget as Administrator. If the issue persists, check the operation log and try installing the package manually.",
             -2145844844 => "Check the log. Manual installation may be required.",
             -1978334955 => "Check the log. Manual installation may be required.",
             -1978335212 => "Verify the package ID and configured source. If the package appears in the updates list, OnlyWinget will retry using the installed package name.",
@@ -498,7 +494,7 @@ public sealed class WingetOutputClassifier
 
     private static bool IsRelevantOutputLine(string line)
     {
-        if (Regex.IsMatch(line, @"\b\d{1,3}%\b"))
+        if (WingetProgressParser.TryParse(line, out var progress) && (progress.Percentage.HasValue || progress.IsIndeterminate))
         {
             return true;
         }
