@@ -211,6 +211,33 @@ public sealed class WingetService
             .ToList();
     }
 
+    public UpdateEntry? FindAvailableUpdate(string id, string? source = "winget", CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        var matchingUpdates = LoadUpdates(cancellationToken)
+            .Where(update => string.Equals(update.Id, id, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (matchingUpdates.Count == 0)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            var sourceMatch = matchingUpdates.FirstOrDefault(update => string.Equals(update.Source, source, StringComparison.OrdinalIgnoreCase));
+            if (sourceMatch != null)
+            {
+                return sourceMatch;
+            }
+        }
+
+        return matchingUpdates[0];
+    }
+
     public WingetPackageDetails TryLoadInstalledPackageDetails(string id, string? source = "winget")
     {
         try

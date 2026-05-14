@@ -59,6 +59,14 @@ internal static class UpdateWorkflow
                     entry.Status = attemptedError.ErrorMessage;
                     entry.ErrorMessage = attemptedError.ErrorMessage;
                     entry.Resolution = attemptedError.Resolution;
+                    if (string.Equals(
+                        attemptedError.ErrorMessage,
+                        UpdateVerificationFormatter.FormatStillAvailableStatus(strings.LocaleCode),
+                        StringComparison.Ordinal))
+                    {
+                        entry.Selected = false;
+                    }
+
                     continue;
                 }
 
@@ -67,7 +75,7 @@ internal static class UpdateWorkflow
                 entry.ErrorMessage = stillAvailableStatus;
                 entry.Resolution = formatStillAvailableResolution(attemptedUpdate, entry);
                 entry.Selected = false;
-                appendOutput(FormatStillAvailableLog(attemptedUpdate, entry));
+                appendOutput(UpdateVerificationFormatter.FormatStillAvailableLog(attemptedUpdate, entry));
                 continue;
             }
 
@@ -82,25 +90,5 @@ internal static class UpdateWorkflow
                 entry.Resolution = error.Resolution;
             }
         }
-    }
-
-    private static string FormatStillAvailableLog(UpdateEntry attemptedUpdate, UpdateEntry refreshedUpdate)
-    {
-        var currentVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Version)
-            ? attemptedUpdate.Version
-            : refreshedUpdate.Version;
-        var availableVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Available)
-            ? attemptedUpdate.Available
-            : refreshedUpdate.Available;
-        var source = string.IsNullOrWhiteSpace(refreshedUpdate.Source)
-            ? attemptedUpdate.Source
-            : refreshedUpdate.Source;
-
-        return $"event=update_still_available id=\"{EscapeLogValue(refreshedUpdate.Id)}\" name=\"{EscapeLogValue(refreshedUpdate.Name)}\" version=\"{EscapeLogValue(currentVersion)}\" available=\"{EscapeLogValue(availableVersion)}\" source=\"{EscapeLogValue(source)}\"";
-    }
-
-    private static string EscapeLogValue(string value)
-    {
-        return value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
     }
 }

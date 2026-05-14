@@ -1019,23 +1019,12 @@ public sealed class MainViewModel : ObservableObject
 
     private string FormatUpdateStillAvailableStatus(UpdateEntry update)
     {
-        return Strings.LocaleCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)
-            ? "Update still available"
-            : "Aggiornamento ancora disponibile";
+        return UpdateVerificationFormatter.FormatStillAvailableStatus(Strings.LocaleCode);
     }
 
     private string FormatUpdateStillAvailableResolution(UpdateEntry attemptedUpdate, UpdateEntry refreshedUpdate)
     {
-        var currentVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Version)
-            ? attemptedUpdate.Version
-            : refreshedUpdate.Version;
-        var availableVersion = string.IsNullOrWhiteSpace(refreshedUpdate.Available)
-            ? attemptedUpdate.Available
-            : refreshedUpdate.Available;
-
-        return Strings.LocaleCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)
-            ? $"winget still reports {currentVersion} -> {availableVersion} after the update attempt. The row was deselected to avoid repeating the same installer; open the operation log folder for details."
-            : $"winget segnala ancora {currentVersion} -> {availableVersion} dopo il tentativo di aggiornamento. La riga e stata deselezionata per evitare di ripetere lo stesso installer; apri la cartella log per i dettagli.";
+        return UpdateVerificationFormatter.FormatStillAvailableResolution(Strings.LocaleCode, attemptedUpdate, refreshedUpdate);
     }
 
     private static string EscapeLogValue(string value)

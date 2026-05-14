@@ -775,7 +775,12 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
         var service = CreateWingetService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
-                invokedArgs = args;
+                var command = singleArg ?? args[0];
+                if (command == "upgrade")
+                {
+                    invokedArgs = args;
+                }
+
                 return new WingetCommandResult { ExitCode = 0, Output = "updated" };
             });
         var runner = new OperationRunner(service, new InstallCommandBuilder(service));
@@ -800,6 +805,68 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
         Assert.Contains("--source", invokedArgs);
         Assert.Contains("msstore", invokedArgs);
         Assert.Contains("--include-pinned", invokedArgs);
+    }
+
+    [Fact]
+    public async Task RunUpdatesAsync_VerifiesSuccessfulUpgradeAndReportsStillAvailable_ForAnyPackage()
+    {
+        var commands = new List<IReadOnlyList<string>>();
+        var output = new List<string>();
+        var status = string.Empty;
+        var error = string.Empty;
+        var resolution = string.Empty;
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                commands.Add(args.ToArray());
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "upgrade" => new WingetCommandResult { ExitCode = 0, Output = "Successfully installed" },
+                    "list" => new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Nome              Id               Versione  Disponibile  Origine
+-----------------------------------------------------------------
+Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
+"""
+                    },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "Google Play Games",
+                    Id = "Google.PlayGames",
+                    Version = "26.5.27.1",
+                    Available = "149.0.7814.0",
+                    Source = "winget",
+                    Selected = true
+                }
+            },
+            (_, value) => status = RenderStatus(value, LocalizedStrings.Italian),
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.Italian,
+            (_, errorMessage, resolutionHint) =>
+            {
+                error = errorMessage;
+                resolution = resolutionHint;
+            });
+
+        Assert.Contains(commands, args => string.Equals(args[0], "upgrade", StringComparison.Ordinal));
+        Assert.Contains(commands, args => string.Equals(args[0], "list", StringComparison.Ordinal) && args.Contains("--upgrade-available"));
+        Assert.Equal("Aggiornamento ancora disponibile", status);
+        Assert.Equal("Aggiornamento ancora disponibile", error);
+        Assert.Contains("26.5.27.1 -> 149.0.7814.0", resolution, StringComparison.Ordinal);
+        Assert.Contains("senza cambiare la versione installata registrata", resolution, StringComparison.Ordinal);
+        Assert.Contains(output, line => line.Contains("event=update_still_available id=\"Google.PlayGames\"", StringComparison.Ordinal));
     }
 
     [Fact]

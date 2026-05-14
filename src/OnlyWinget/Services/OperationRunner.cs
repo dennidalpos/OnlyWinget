@@ -140,7 +140,21 @@ public sealed class OperationRunner : IOperationRunner
 
                 if (result.ExitCode == 0)
                 {
-                    setStatusById(update.Id, UiStatusState.FromKey(UiStatusKey.Ok));
+                    var stillAvailableUpdate = await Task.Run(
+                        () => _wingetService.FindAvailableUpdate(update.Id, update.Source, cancellationToken),
+                        cancellationToken);
+                    if (stillAvailableUpdate != null)
+                    {
+                        var message = UpdateVerificationFormatter.FormatStillAvailableStatus(strings.LocaleCode);
+                        var resolution = UpdateVerificationFormatter.FormatStillAvailableResolution(strings.LocaleCode, update, stillAvailableUpdate);
+                        setStatusById(update.Id, UiStatusState.FromRawText(message));
+                        setErrorById?.Invoke(update.Id, message, resolution);
+                        appendOutput(UpdateVerificationFormatter.FormatStillAvailableLog(update, stillAvailableUpdate));
+                    }
+                    else
+                    {
+                        setStatusById(update.Id, UiStatusState.FromKey(UiStatusKey.Ok));
+                    }
                 }
                 else if (_wingetService.IsNoUpgradeNeeded(result.ExitCode))
                 {

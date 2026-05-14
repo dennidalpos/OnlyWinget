@@ -673,7 +673,9 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Assert.Equal("Update still available", update.Status);
             Assert.Equal("Update still available", update.ErrorMessage);
             Assert.Contains("winget still reports 0.90.0 -> 0.90.1", update.Resolution, StringComparison.Ordinal);
+            Assert.Contains("installer exited without changing the registered installed version", update.Resolution, StringComparison.Ordinal);
             Assert.Contains("row was deselected", update.Resolution, StringComparison.Ordinal);
+            Assert.Contains("if a package log was created", update.Resolution, StringComparison.Ordinal);
             Assert.False(update.Selected);
             Assert.Contains("event=update_still_available", viewModel.OutputText, StringComparison.Ordinal);
             Assert.DoesNotContain(viewModel.Strings.StatusAlreadyUpdated, update.Status, StringComparison.Ordinal);
@@ -723,6 +725,58 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Assert.Equal("Upgrade not applicable", update.ErrorMessage);
             Assert.Equal("Manifest requirements do not match this system.", update.Resolution);
             Assert.DoesNotContain("event=update_still_available", viewModel.OutputText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task UpdatesFlow_MarksMultiplePersistentUpdatesStillAvailable_InItalian()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var wingetService = new WingetService(
+                wingetRunner: static (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    return command switch
+                    {
+                        "--version" => new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" },
+                        "list" => new WingetCommandResult
+                        {
+                            ExitCode = 0,
+                            Output = """
+Nome              Id                Versione   Disponibile  Origine
+-------------------------------------------------------------------
+Claude            Anthropic.Claude  1.6608.2.0 1.7196.0     winget
+Google Play Games Google.PlayGames  26.5.27.1  149.0.7814.0 winget
+"""
+                        },
+                        _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                    };
+                });
+            var viewModel = CreateViewModel(root, wingetService, new OperationRunner(wingetService, new InstallCommandBuilder(wingetService)), new FakeDialogService(), systemCulture: "it-IT");
+            viewModel.Initialize();
+
+            viewModel.OpenUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.Updates.Count == 2);
+
+            viewModel.ApplyUpdatesCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.AreUpdatesActionsEnabled && !viewModel.IsOperationProgressVisible);
+
+            Assert.All(viewModel.Updates, update =>
+            {
+                Assert.Equal("Aggiornamento ancora disponibile", update.Status);
+                Assert.False(update.Selected);
+                Assert.Contains("dopo il tentativo di aggiornamento", update.Resolution, StringComparison.Ordinal);
+                Assert.Contains("senza cambiare la versione installata registrata", update.Resolution, StringComparison.Ordinal);
+                Assert.Contains("se e stato creato un log del pacchetto", update.Resolution, StringComparison.Ordinal);
+            });
+            Assert.Contains("event=update_still_available id=\"Anthropic.Claude\"", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Contains("event=update_still_available id=\"Google.PlayGames\"", viewModel.OutputText, StringComparison.Ordinal);
         }
         finally
         {
@@ -1986,8 +2040,13 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string, string, string>? setErrorById = null,
             System.Threading.CancellationToken cancellationToken = default)
         {
-            setStatusById(updates[0].Id, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
-            reportProgress(100, $"{updates[0].Name}: 100%");
+            for (var index = 0; index < updates.Count; index++)
+            {
+                var update = updates[index];
+                setStatusById(update.Id, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
+                reportProgress((index + 1) * 100 / updates.Count, $"{update.Name}: 100%");
+            }
+
             return Task.CompletedTask;
         }
     }
