@@ -16,7 +16,7 @@ public sealed class SmokeFactAttribute : FactAttribute
     {
         if (!string.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableName), "1", StringComparison.Ordinal))
         {
-            Skip = $"Live winget smoke test not_run. Set {EnvironmentVariableName}=1 or use scripts/gate.ps1 -RunWingetSmoke to execute it.";
+            Skip = $"Live winget smoke test not_run. Set {EnvironmentVariableName}=1 or use scripts/check.ps1 -RunWingetSmoke to execute it.";
         }
     }
 }
