@@ -22,6 +22,7 @@ namespace OnlyWinget.Services;
 /// </summary>
 public sealed class ElevatedWingetLauncher
 {
+    private const int StructuredLogValueMaxLength = 500;
     private static readonly TimeSpan DefaultLaunchTimeout = TimeSpan.FromMinutes(90);
 
     /// <summary>
@@ -198,5 +199,26 @@ public sealed class ElevatedWingetLauncher
         return sb.ToString();
     }
 
-    private static string Quote(string value) => $"\"{value.Replace("\"", "'")}\"";
+    private static string Quote(string value) => $"\"{SanitizeStructuredLogValue(value)}\"";
+
+    private static string SanitizeStructuredLogValue(string value)
+    {
+        var builder = new StringBuilder(Math.Min(value.Length, StructuredLogValueMaxLength));
+        foreach (var character in value)
+        {
+            if (builder.Length >= StructuredLogValueMaxLength)
+            {
+                break;
+            }
+
+            builder.Append(character switch
+            {
+                '"' => '\'',
+                _ when char.IsControl(character) => ' ',
+                _ => character
+            });
+        }
+
+        return builder.ToString().Trim();
+    }
 }

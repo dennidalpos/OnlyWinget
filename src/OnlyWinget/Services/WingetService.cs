@@ -45,6 +45,32 @@ public sealed class WingetService
         string? localRuntimeRoot = null,
         Func<DateTime>? utcNow = null,
         TimeSpan? processTimeout = null)
+        : this(
+            wingetRunner == null
+                ? null
+                : (singleArg, args, onOutputLine, _) => wingetRunner(singleArg, args, onOutputLine),
+            localRuntimeRoot,
+            utcNow,
+            processTimeout,
+            true)
+    {
+    }
+
+    public WingetService(
+        Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult> wingetRunner,
+        string? localRuntimeRoot = null,
+        Func<DateTime>? utcNow = null,
+        TimeSpan? processTimeout = null)
+        : this((Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult>?)wingetRunner, localRuntimeRoot, utcNow, processTimeout, true)
+    {
+    }
+
+    private WingetService(
+        Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult>? wingetRunner,
+        string? localRuntimeRoot,
+        Func<DateTime>? utcNow,
+        TimeSpan? processTimeout,
+        bool _)
     {
         var runtimeRoot = localRuntimeRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -58,7 +84,7 @@ public sealed class WingetService
 
         _wingetRunner = wingetRunner == null
             ? RunWingetProcess
-            : (singleArg, args, onOutputLine, _) => wingetRunner(singleArg, args, onOutputLine);
+            : wingetRunner;
         _runtimeEnvironment = new WingetRuntimeEnvironment(runtimeRoot, utcNow ?? (() => DateTime.UtcNow));
         _outputClassifier = new WingetOutputClassifier();
     }
@@ -176,13 +202,13 @@ public sealed class WingetService
         return result.ExitCode == 0;
     }
 
-    public IReadOnlyList<SearchResult> Search(string query)
+    public IReadOnlyList<SearchResult> Search(string query, CancellationToken cancellationToken = default)
     {
         var result = Invoke("search", new Dictionary<string, string?>
         {
             ["--query"] = query,
             ["--accept-source-agreements"] = null
-        });
+        }, null, cancellationToken);
 
         var parsedResults = WingetTableParser.ParseSearchResults(result.Output);
         if (!parsedResults.Any(NeedsSearchResultExpansion))
@@ -191,7 +217,7 @@ public sealed class WingetService
         }
 
         return parsedResults
-            .Select(ExpandSearchResult)
+            .Select(result => ExpandSearchResult(result, cancellationToken))
             .ToList();
     }
 
@@ -238,11 +264,15 @@ public sealed class WingetService
         return matchingUpdates[0];
     }
 
-    public WingetPackageDetails TryLoadInstalledPackageDetails(string id, string? source = "winget")
+    public WingetPackageDetails TryLoadInstalledPackageDetails(string id, string? source = "winget", CancellationToken cancellationToken = default)
     {
         try
         {
-            return LoadInstalledPackageDetails(id, source);
+            return LoadInstalledPackageDetails(id, source, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch
         {
@@ -605,7 +635,7 @@ public sealed class WingetService
     private static string EscapePowerShellLiteral(string value)
         => value.Replace("'", "''", StringComparison.Ordinal);
 
-    private SearchResult ExpandSearchResult(SearchResult result)
+    private SearchResult ExpandSearchResult(SearchResult result, CancellationToken cancellationToken)
     {
         if (!NeedsSearchResultExpansion(result))
         {
@@ -630,7 +660,7 @@ public sealed class WingetService
             parameters["--source"] = result.Source;
         }
 
-        var expandedResults = WingetTableParser.ParseSearchResults(Invoke("search", parameters).Output);
+        var expandedResults = WingetTableParser.ParseSearchResults(Invoke("search", parameters, null, cancellationToken).Output);
         var expandedResult = expandedResults.FirstOrDefault(candidate => MatchesExpandedSearchResult(result, candidate, idQuery));
         return expandedResult ?? result;
     }
@@ -821,7 +851,7 @@ public sealed class WingetService
         return addedConstraint ? parameters : null;
     }
 
-    private WingetPackageDetails LoadInstalledPackageDetails(string id, string? source)
+    private WingetPackageDetails LoadInstalledPackageDetails(string id, string? source, CancellationToken cancellationToken = default)
     {
         var parameters = new Dictionary<string, string?>
         {
@@ -836,7 +866,7 @@ public sealed class WingetService
             parameters["--source"] = source;
         }
 
-        var result = Invoke("list", parameters);
+        var result = Invoke("list", parameters, null, cancellationToken);
         return ParsePackageDetails(result.Output);
     }
 

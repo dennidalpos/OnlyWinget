@@ -170,13 +170,18 @@ public sealed class OperationRunner : IOperationRunner
                     }
 
                     var isNoApplicableUpgrade = _wingetService.IsNoApplicableUpgrade(result);
+                    var hasAdvertisedUpdate = HasAdvertisedUpdate(update);
                     var message = isNoApplicableUpgrade
                         ? GetNoApplicableUpgradeMessage(strings.LocaleCode)
+                        : hasAdvertisedUpdate
+                            ? GetAdvertisedUpdateNoopMessage(strings.LocaleCode)
                         : _wingetService.GetErrorMessage(result.ExitCode, strings.LocaleCode);
                     var resolution = isNoApplicableUpgrade
                         ? GetNoApplicableUpgradeResolution(strings.LocaleCode, update)
+                        : hasAdvertisedUpdate
+                            ? GetAdvertisedUpdateNoopResolution(strings.LocaleCode, update)
                         : _wingetService.GetResolutionHint(result.ExitCode, strings.LocaleCode);
-                    setStatusById(update.Id, isNoApplicableUpgrade
+                    setStatusById(update.Id, isNoApplicableUpgrade || hasAdvertisedUpdate
                         ? UiStatusState.FromRawText(message)
                         : UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
                     setErrorById?.Invoke(update.Id, message, resolution);
@@ -254,16 +259,15 @@ public sealed class OperationRunner : IOperationRunner
             return;
         }
 
-        if (_wingetService.IsNoApplicableInstaller(installResult) && TryBuildInstallArgumentsWithoutInstallerSelectors(installArgs, out var retryInstallArgs))
+        if (_wingetService.IsNoApplicableInstaller(installResult))
         {
-            appendOutput($"event=install_retry_without_installer_selectors id=\"{app.Id}\"");
-            installResult = await RunInstallCommandAsync(app, retryInstallArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress, cancellationToken);
-            if (installResult.ExitCode == 0)
-            {
-                setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
-                reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-                return;
-            }
+            appendOutput($"event=install_no_applicable_installer_preserved_selectors id=\"{app.Id}\"");
+            var noApplicableError = _wingetService.GetErrorMessage(installResult.ExitCode, strings.LocaleCode);
+            var noApplicableResolution = GetNoApplicableInstallResolution(strings.LocaleCode, app);
+            setStatusById(app.OperationKey, UiStatusState.FromRawText(noApplicableError));
+            setErrorById?.Invoke(app.OperationKey, noApplicableError, noApplicableResolution);
+            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
+            return;
         }
 
         if (_wingetService.IsManifestNotFound(installResult) && TryBuildInstallArgumentsWithoutVersion(installArgs, out var latestVersionInstallArgs))
@@ -314,7 +318,7 @@ public sealed class OperationRunner : IOperationRunner
     {
         if (elevationMode == ElevationMode.ElevatedRequired)
         {
-            var logPath = GetInstallLogPath(app);
+            var logPath = app.SupportsLog ? GetInstallLogPath(app) : null;
             setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
             reportProgress(IndeterminateProgress, $"{app.Name}: elevated installer running");
             var installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath, cancellationToken: cancellationToken), cancellationToken);
@@ -345,42 +349,7 @@ public sealed class OperationRunner : IOperationRunner
     {
         return string.IsNullOrWhiteSpace(app.LogPath)
             ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
-            : app.LogPath;
-    }
-
-    private static bool TryBuildInstallArgumentsWithoutInstallerSelectors(
-        IReadOnlyList<string> installArgs,
-        out IReadOnlyList<string> retryInstallArgs)
-    {
-        var selectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "--scope",
-            "--architecture",
-            "--installer-type",
-            "--locale"
-        };
-
-        var retryArgs = new List<string>(installArgs.Count);
-        var removedSelector = false;
-        for (var index = 0; index < installArgs.Count; index++)
-        {
-            var arg = installArgs[index];
-            if (selectors.Contains(arg))
-            {
-                removedSelector = true;
-                if (index + 1 < installArgs.Count)
-                {
-                    index++;
-                }
-
-                continue;
-            }
-
-            retryArgs.Add(arg);
-        }
-
-        retryInstallArgs = retryArgs;
-        return removedSelector;
+            : Environment.ExpandEnvironmentVariables(app.LogPath.Trim());
     }
 
     private static bool TryBuildInstallArgumentsWithoutVersion(
@@ -538,6 +507,53 @@ public sealed class OperationRunner : IOperationRunner
             : "winget ha trovato una versione piu recente nella sorgente, ma il manifest non si applica a questo sistema o ai suoi requisiti.";
     }
 
+    private static string GetAdvertisedUpdateNoopMessage(string localeCode)
+    {
+        return UseEnglish(localeCode)
+            ? "Advertised update not applied"
+            : "Aggiornamento segnalato non applicato";
+    }
+
+    private static string GetAdvertisedUpdateNoopResolution(string localeCode, UpdateEntry update)
+    {
+        var currentVersion = string.IsNullOrWhiteSpace(update.Version) ? "unknown" : update.Version.Trim();
+        var availableVersion = string.IsNullOrWhiteSpace(update.Available) ? "unknown" : update.Available.Trim();
+        return UseEnglish(localeCode)
+            ? $"winget listed {currentVersion} -> {availableVersion}, but upgrade returned already at the latest version. This usually means the installed major version or installer channel cannot be upgraded in place; review the package options or install the newer channel manually."
+            : $"winget ha elencato {currentVersion} -> {availableVersion}, ma upgrade ha risposto gia alla versione piu recente. Di solito significa che la major version o il canale installer installato non puo essere aggiornato in-place; verifica le opzioni del pacchetto o installa manualmente il canale piu recente.";
+    }
+
+    private static bool HasAdvertisedUpdate(UpdateEntry update)
+    {
+        return !string.IsNullOrWhiteSpace(update.Available)
+            && !IsNoUpdateMarker(update.Available)
+            && !string.Equals(update.Version?.Trim(), update.Available.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsNoUpdateMarker(string value)
+    {
+        var normalized = value.Trim();
+        return normalized.Equals("No update", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("No update available", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Nessun aggiornamento", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Gia alla versione piu recente", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetNoApplicableInstallResolution(string localeCode, AppEntry app)
+    {
+        var configuredOptions = FormatConfiguredInstallOptions(app);
+        if (!string.IsNullOrWhiteSpace(configuredOptions))
+        {
+            return UseEnglish(localeCode)
+                ? $"winget did not find an installer matching the configured package options ({configuredOptions}). OnlyWinget did not retry without these constraints. Edit the package options to a supported installer, or install the package manually if those constraints are required."
+                : $"winget non ha trovato un installer compatibile con le opzioni configurate nel pacchetto ({configuredOptions}). OnlyWinget non ha ritentato senza questi vincoli. Modifica le opzioni del pacchetto scegliendo un installer supportato oppure installa il pacchetto manualmente se quei vincoli sono necessari.";
+        }
+
+        return UseEnglish(localeCode)
+            ? "winget did not find an installer that applies to this system or its requirements. Edit the package options or install the package manually."
+            : "winget non ha trovato un installer applicabile a questo sistema o ai suoi requisiti. Modifica le opzioni del pacchetto oppure installa il pacchetto manualmente.";
+    }
+
     private static string FormatConfiguredUpdateOptions(UpdateEntry update)
     {
         var options = new List<string>();
@@ -545,6 +561,16 @@ public sealed class OperationRunner : IOperationRunner
         AddConfiguredOption(options, "architecture", update.Architecture);
         AddConfiguredOption(options, "locale", update.Locale);
         AddConfiguredOption(options, "installer-type", update.InstallerType);
+        return string.Join(", ", options);
+    }
+
+    private static string FormatConfiguredInstallOptions(AppEntry app)
+    {
+        var options = new List<string>();
+        AddConfiguredOption(options, "scope", app.Scope);
+        AddConfiguredOption(options, "architecture", app.Architecture);
+        AddConfiguredOption(options, "locale", app.Locale);
+        AddConfiguredOption(options, "installer-type", app.InstallerType);
         return string.Join(", ", options);
     }
 

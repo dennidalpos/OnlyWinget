@@ -3,16 +3,48 @@ param(
     [string]$Configuration = 'Release',
     [switch]$StopRunningInstance,
     [switch]$DryRun,
-    [switch]$All
+    [switch]$All,
+    [switch]$NuGetCache
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-. (Join-Path $PSScriptRoot 'internal/ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$artifactsPath = Join-Path $repoRoot 'artifacts'
-$tmpPath = Join-Path $repoRoot 'tmp'
+$generatedRootNames = @(
+    'artifacts',
+    'tmp',
+    'build',
+    'dist',
+    'out',
+    'publish',
+    'coverage',
+    'logs',
+    'reports'
+)
+$generatedDirectoryNames = @(
+    'bin',
+    'obj',
+    'TestResults'
+)
+$generatedFilePatterns = @(
+    '*.binlog',
+    '*.cache',
+    '*.coverage',
+    '*.log',
+    '*.tmp',
+    '*.trx'
+)
+$excludedTraversalRoots = @(
+    (Join-Path $repoRoot '.git'),
+    (Join-Path $repoRoot '.vs'),
+    (Join-Path $repoRoot 'artifacts'),
+    (Join-Path $repoRoot 'packages'),
+    (Join-Path $repoRoot 'tools')
+) | ForEach-Object {
+    Get-NormalizedFullPath -Path $_
+}
 
 function Get-SupportedProjectPath {
     @(
@@ -23,6 +55,20 @@ function Get-SupportedProjectPath {
             Sort-Object FullName |
             Select-Object -ExpandProperty FullName
     )
+}
+
+function Test-IsExcludedTraversalPath {
+    param(
+        [string]$Path
+    )
+
+    foreach ($excludedRoot in $excludedTraversalRoots) {
+        if (Test-IsSameOrChildPath -Path $Path -ParentPath $excludedRoot) {
+            return $true
+        }
+    }
+
+    return $false
 }
 
 function Invoke-ProjectClean {
@@ -43,6 +89,22 @@ function Invoke-ProjectClean {
     }
 }
 
+function Invoke-NuGetCacheClean {
+    if (-not ($NuGetCache -or $All)) {
+        return
+    }
+
+    if ($DryRun) {
+        Write-Host '[dry-run] dotnet nuget locals all --clear' -ForegroundColor Yellow
+        return
+    }
+
+    dotnet nuget locals all --clear
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Pulizia cache NuGet/.NET fallita.'
+    }
+}
+
 Assert-Command -Name 'dotnet'
 
 $projectPaths = Get-SupportedProjectPath
@@ -59,34 +121,49 @@ function Remove-GeneratedPath {
         [string]$Path
     )
 
-    if (-not (Test-Path $Path)) {
+    $fullPath = Assert-RepositoryPathInAllowedRoot `
+        -Path $Path `
+        -RepositoryRoot $repoRoot `
+        -AllowedRoots @($repoRoot) `
+        -Description 'Pulizia'
+
+    if (-not (Test-Path -LiteralPath $fullPath)) {
         return
     }
 
     if ($DryRun) {
-        Write-Host "[dry-run] remove $Path" -ForegroundColor Yellow
+        Write-Host "[dry-run] remove $fullPath" -ForegroundColor Yellow
         return
     }
 
-    Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+    Remove-Item -LiteralPath $fullPath -Recurse -Force -ErrorAction Stop
 
-    if (Test-Path $Path) {
-        [System.IO.Directory]::Delete($Path, $true)
+    if (Test-Path -LiteralPath $fullPath) {
+        $item = Get-Item -LiteralPath $fullPath -Force
+        if ($item.PSIsContainer) {
+            [System.IO.Directory]::Delete($fullPath, $true)
+        }
+        else {
+            [System.IO.File]::Delete($fullPath)
+        }
     }
 
-    if (Test-Path $Path) {
-        throw "Impossibile rimuovere il percorso generato '$Path'."
+    if (Test-Path -LiteralPath $fullPath) {
+        throw "Impossibile rimuovere il percorso generato '$fullPath'."
     }
 }
 
 Invoke-ProjectClean -ProjectPaths $projectPaths
 
 $safeTargets = @(
+    $generatedRootNames | ForEach-Object {
+        Join-Path $repoRoot $_
+    }
+
     Get-ChildItem -Path $repoRoot -Directory -Recurse -Force |
         Where-Object {
-            $_.FullName -notmatch '\\(\.git|\.vs)\\' -and
-            $_.FullName -notlike "$artifactsPath*" -and
-            $_.Name -in @('bin', 'obj', 'TestResults')
+            -not (Test-IsExcludedTraversalPath -Path $_.FullName) -and
+            $_.Name -in $generatedDirectoryNames
         } |
         Select-Object -ExpandProperty FullName
 )
@@ -95,8 +172,17 @@ foreach ($target in $safeTargets | Sort-Object -Unique) {
     Remove-GeneratedPath -Path $target
 }
 
-Remove-GeneratedPath -Path $artifactsPath
-Remove-GeneratedPath -Path $tmpPath
+$generatedFiles = foreach ($pattern in $generatedFilePatterns) {
+    Get-ChildItem -Path $repoRoot -Recurse -Force -File -Filter $pattern |
+        Where-Object {
+            -not (Test-IsExcludedTraversalPath -Path $_.FullName)
+        } |
+        Select-Object -ExpandProperty FullName
+}
+
+foreach ($target in $generatedFiles | Sort-Object -Unique) {
+    Remove-GeneratedPath -Path $target
+}
 
 if ($All) {
     $aggressiveTargets = @(
@@ -108,6 +194,8 @@ if ($All) {
         Remove-GeneratedPath -Path $target
     }
 }
+
+Invoke-NuGetCacheClean
 
 $modeLabel = if ($All) { 'clean:all' } else { 'clean' }
 Write-Host "Clean completata ($Configuration, $modeLabel)." -ForegroundColor Green

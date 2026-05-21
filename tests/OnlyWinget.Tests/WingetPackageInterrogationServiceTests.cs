@@ -7,6 +7,7 @@ using System;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
@@ -204,6 +205,142 @@ ManifestType: installer
         var option = Assert.Single(result.InstallerOptions);
         Assert.Contains("log, path", option.UnsupportedArguments);
         Assert.Contains("override", option.UnsupportedArguments);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_UsesReducedMode_WhenManifestUsesUnsupportedYamlScalar()
+    {
+        var logs = new List<string>();
+        var service = CreateService(
+            showOutput: """
+Found Contoso Tool [Contoso.Tool]
+Version: 2.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Tool
+PackageVersion: 2.0.0
+InstallerType: exe
+Installers:
+  - Architecture: x64
+    InstallerSwitches:
+      Silent: >
+        /quiet
+ManifestType: installer
+""");
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget",
+            Log = logs.Add
+        });
+
+        Assert.True(result.Success);
+        Assert.True(result.IsReducedMode);
+        Assert.Empty(result.InstallerOptions);
+        Assert.Contains(result.Warnings, warning => warning.Contains("unsupported YAML", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(logs, line => line.Contains("event=manifest_parse_failed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_UsesReducedMode_WhenManifestUsesYamlMergeKeys()
+    {
+        var service = CreateService(
+            showOutput: """
+Found Contoso Tool [Contoso.Tool]
+Version: 2.0.0
+Installer Type: exe
+""",
+            manifestContent: """
+PackageIdentifier: Contoso.Tool
+PackageVersion: 2.0.0
+InstallerType: exe
+Installers:
+  - Architecture: x64
+    <<: *installerDefaults
+ManifestType: installer
+""");
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.True(result.IsReducedMode);
+        Assert.Empty(result.InstallerOptions);
+        Assert.Contains(result.Warnings, warning => warning.Contains("unsupported YAML", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_SkipsManifestFetch_WhenManifestPathMetadataIsUnsafe()
+    {
+        var requestCount = 0;
+        var wingetService = new WingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "show" => new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Found Contoso Tool [Contoso/Tool]
+Version: 1.0.0
+Installer Type: exe
+"""
+                    },
+                    "list" => new WingetCommandResult { ExitCode = 0, Output = string.Empty },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+        var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+        {
+            requestCount++;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("PackageIdentifier: Contoso/Tool")
+            };
+        }));
+        var logs = new List<string>();
+        var service = new WingetPackageInterrogationService(wingetService, httpClient);
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso/Tool",
+            Source = "winget",
+            Log = logs.Add
+        });
+
+        Assert.True(result.Success);
+        Assert.True(result.IsReducedMode);
+        Assert.Equal(0, requestCount);
+        Assert.Contains(result.Warnings, warning => warning.Contains("skipped", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(logs, line => line.Contains("event=manifest_url_rejected", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_SanitizesStructuredLogValues()
+    {
+        var logs = new List<string>();
+        var service = CreateService(
+            showOutput: "Multiple packages found matching input criteria.",
+            manifestStatusCode: HttpStatusCode.NotFound);
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool\r\nevent=fake",
+            Source = "winget",
+            Log = logs.Add
+        });
+
+        Assert.False(result.Success);
+        Assert.NotEmpty(logs);
+        Assert.DoesNotContain(logs, line => line.Contains('\r') || line.Contains('\n'));
+        Assert.Contains(logs, line => line.Contains("Contoso.Tool  event=fake", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -505,6 +642,225 @@ ManifestType: installer
         Assert.Equal("x64", result.DefaultSelection.Architecture);
     }
 
+    [Fact]
+    public async Task InterrogateAsync_RetriesTransientManifestFetchFailure()
+    {
+        var requestCount = 0;
+        var wingetService = CreateSuccessfulShowWingetService();
+        var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+        {
+            requestCount++;
+            if (requestCount == 1)
+            {
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+PackageIdentifier: Contoso.Tool
+PackageVersion: 1.0.0
+InstallerType: exe
+Installers:
+- Architecture: x64
+ManifestType: installer
+""")
+            };
+        }));
+        var service = new WingetPackageInterrogationService(
+            wingetService,
+            httpClient,
+            manifestRetryBaseDelay: TimeSpan.Zero);
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.False(result.IsReducedMode);
+        Assert.Equal(2, requestCount);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_CachesSuccessfulManifestFetches()
+    {
+        var requestCount = 0;
+        var wingetService = CreateSuccessfulShowWingetService();
+        var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+        {
+            requestCount++;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+PackageIdentifier: Contoso.Tool
+PackageVersion: 1.0.0
+InstallerType: exe
+Installers:
+- Architecture: x64
+ManifestType: installer
+""")
+            };
+        }));
+        var service = new WingetPackageInterrogationService(wingetService, httpClient);
+        var request = new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        };
+
+        var firstResult = await service.InterrogateAsync(request);
+        var secondResult = await service.InterrogateAsync(request);
+
+        Assert.True(firstResult.Success);
+        Assert.True(secondResult.Success);
+        Assert.False(firstResult.IsReducedMode);
+        Assert.False(secondResult.IsReducedMode);
+        Assert.Equal(1, requestCount);
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_FallsBackWhenManifestResponseExceedsMaxSize()
+    {
+        var oversizedManifest = """
+PackageIdentifier: Contoso.Tool
+PackageVersion: 1.0.0
+InstallerType: exe
+Installers:
+- Architecture: x64
+ManifestType: installer
+""";
+        var wingetService = CreateSuccessfulShowWingetService();
+        var httpClient = new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(Encoding.UTF8.GetBytes(oversizedManifest))
+        }));
+        var service = new WingetPackageInterrogationService(
+            wingetService,
+            httpClient,
+            manifestMaxBytes: 32);
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.True(result.IsReducedMode);
+        Assert.Contains(result.Warnings, warning => warning.Contains("could not be retrieved", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_FallsBackWhenManifestFetchTimesOut()
+    {
+        var manifestStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var manifestCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var httpClient = new HttpClient(new BlockingHttpMessageHandler(manifestStarted, manifestCancelled));
+        var service = new WingetPackageInterrogationService(
+            CreateSuccessfulShowWingetService(),
+            httpClient,
+            manifestFetchTimeout: TimeSpan.FromMilliseconds(50),
+            manifestMaxAttempts: 1,
+            manifestRetryBaseDelay: TimeSpan.Zero);
+
+        var result = await service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        });
+
+        Assert.True(result.Success);
+        Assert.True(result.IsReducedMode);
+        await manifestStarted.Task;
+        await manifestCancelled.Task;
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_PropagatesCancellationToWingetShow()
+    {
+        var showStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var showCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var wingetService = new WingetService(
+            (singleArg, args, onOutputLine, cancellationToken) =>
+            {
+                var command = singleArg ?? args[0];
+                if (command == "show")
+                {
+                    showStarted.TrySetResult();
+                    try
+                    {
+                        Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).GetAwaiter().GetResult();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        showCancelled.TrySetResult();
+                        throw;
+                    }
+                }
+
+                return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+            });
+        var service = new WingetPackageInterrogationService(
+            wingetService,
+            new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound))));
+        using var cancellation = new CancellationTokenSource();
+
+        var interrogation = service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        }, cancellation.Token);
+        await showStarted.Task;
+
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => interrogation);
+        await showCancelled.Task;
+    }
+
+    [Fact]
+    public async Task InterrogateAsync_PropagatesCancellationToManifestFetch()
+    {
+        var manifestStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var manifestCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var wingetService = new WingetService(
+            (singleArg, args, onOutputLine, cancellationToken) =>
+            {
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "show" => new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Found Contoso Tool [Contoso.Tool]
+Version: 1.0.0
+Installer Type: exe
+"""
+                    },
+                    "list" => new WingetCommandResult { ExitCode = 0, Output = string.Empty },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+        var httpClient = new HttpClient(new BlockingHttpMessageHandler(manifestStarted, manifestCancelled));
+        var service = new WingetPackageInterrogationService(wingetService, httpClient);
+        using var cancellation = new CancellationTokenSource();
+
+        var interrogation = service.InterrogateAsync(new PackageInterrogationRequest
+        {
+            PackageId = "Contoso.Tool",
+            Source = "winget"
+        }, cancellation.Token);
+        await manifestStarted.Task;
+
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => interrogation);
+        await manifestCancelled.Task;
+    }
+
     private static WingetPackageInterrogationService CreateService(
         string showOutput,
         HttpStatusCode manifestStatusCode,
@@ -547,6 +903,29 @@ ManifestType: installer
             cultureProvider);
     }
 
+    private static WingetService CreateSuccessfulShowWingetService()
+    {
+        return new WingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                var command = singleArg ?? args[0];
+                return command switch
+                {
+                    "show" => new WingetCommandResult
+                    {
+                        ExitCode = 0,
+                        Output = """
+Found Contoso Tool [Contoso.Tool]
+Version: 1.0.0
+Installer Type: exe
+"""
+                    },
+                    "list" => new WingetCommandResult { ExitCode = 0, Output = string.Empty },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
+            });
+    }
+
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
@@ -559,6 +938,34 @@ ManifestType: installer
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             return Task.FromResult(_handler(request));
+        }
+    }
+
+    private sealed class BlockingHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly TaskCompletionSource _started;
+        private readonly TaskCompletionSource _cancelled;
+
+        public BlockingHttpMessageHandler(TaskCompletionSource started, TaskCompletionSource cancelled)
+        {
+            _started = started;
+            _cancelled = cancelled;
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _started.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _cancelled.TrySetResult();
+                throw;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK);
         }
     }
 }

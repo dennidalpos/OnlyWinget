@@ -16,7 +16,7 @@ public sealed class PackageInterrogationResult
     public string Name { get; init; } = string.Empty;
     public string Id { get; init; } = string.Empty;
     public string Version { get; init; } = string.Empty;
-    public string Source { get; init; } = "winget";
+    public string Source { get; init; } = AppEntry.DefaultSource;
     public string InstallerType { get; init; } = string.Empty;
     public string ManifestFingerprint { get; init; } = string.Empty;
     public DateTime InterrogatedAtUtc { get; init; } = DateTime.UtcNow;

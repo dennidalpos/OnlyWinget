@@ -48,6 +48,7 @@ public sealed class PresetImportResult
 
 public sealed class AppDataService
 {
+    private const long MaxJsonFileBytes = 5 * 1024 * 1024;
     private readonly string _appDataRoot;
 
     public AppDataService(string? appDataRoot = null)
@@ -75,6 +76,14 @@ public sealed class AppDataService
 
         try
         {
+            if (IsJsonFileTooLarge(jsonPath))
+            {
+                return CreateFallbackLoadResult(
+                    AppDataLoadStatus.InvalidData,
+                    jsonPath,
+                    "Il file dati supera la dimensione massima supportata.");
+            }
+
             var rawText = File.ReadAllText(jsonPath, Encoding.UTF8);
             if (string.IsNullOrWhiteSpace(rawText))
             {
@@ -272,6 +281,11 @@ public sealed class AppDataService
     {
         try
         {
+            if (IsJsonFileTooLarge(path))
+            {
+                return CreateImportError(path, "Il file preset supera la dimensione massima supportata.");
+            }
+
             var rawText = File.ReadAllText(path, Encoding.UTF8);
             if (string.IsNullOrWhiteSpace(rawText))
             {
@@ -284,8 +298,7 @@ public sealed class AppDataService
                 return CreateImportError(path, "Il file preset non contiene dati validi.");
             }
 
-            var baseName = NormalizeTabName(payload.PresetName, "Imported preset");
-            var importedName = CreateUniqueImportedPresetName(baseName, existingPresetNames);
+            var importedName = NormalizeTabName(payload.PresetName, "Imported preset");
             var apps = new List<AppEntry>();
             var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var app in payload.Apps ?? new List<AppDataItem>())
@@ -389,8 +402,9 @@ public sealed class AppDataService
         }
 
         var id = (app.Id ?? string.Empty).Trim();
+        var source = NormalizeSource(app.Source);
         var architecture = NormalizeOptionalValue(app.Architecture);
-        var operationKey = AppEntry.BuildOperationKey(id, architecture);
+        var operationKey = AppEntry.BuildOperationKey(id, source, architecture);
         if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
         {
             return null;
@@ -411,7 +425,7 @@ public sealed class AppDataService
             Enabled = app.Enabled,
             Name = name,
             Id = id,
-            Source = NormalizeSource(app.Source),
+            Source = source,
             Version = (app.Version ?? string.Empty).Trim(),
             Action = NormalizeAction(app.Action),
             Scope = NormalizeOptionalValue(app.Scope),
@@ -421,6 +435,8 @@ public sealed class AppDataService
             InstallerType = NormalizeOptionalValue(app.InstallerType),
             InstallLocation = NormalizeOptionalValue(app.InstallLocation),
             LogPath = NormalizeOptionalValue(app.LogPath),
+            SupportsInstallLocation = app.SupportsInstallLocation,
+            SupportsLog = app.SupportsLog,
             AdditionalCustomArgs = additionalCustomArgs,
             OverrideArgs = overrideArgs,
             AdvancedArgumentsReviewed = trustAdvancedArguments
@@ -446,8 +462,9 @@ public sealed class AppDataService
         foreach (var app in apps)
         {
             var id = (app.Id ?? string.Empty).Trim();
+            var source = NormalizeSource(app.Source);
             var architecture = NormalizeOptionalValue(app.Architecture);
-            var operationKey = AppEntry.BuildOperationKey(id, architecture);
+            var operationKey = AppEntry.BuildOperationKey(id, source, architecture);
             if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
             {
                 continue;
@@ -465,7 +482,7 @@ public sealed class AppDataService
                 Name = name,
                 Id = id,
                 Action = NormalizeAction(app.Action),
-                Source = NormalizeSource(app.Source),
+                Source = source,
                 Version = NormalizeOptionalValue(app.Version),
                 Scope = NormalizeOptionalValue(app.Scope),
                 InstallMode = NormalizeInstallMode(app.InstallMode),
@@ -474,6 +491,8 @@ public sealed class AppDataService
                 InstallerType = NormalizeOptionalValue(app.InstallerType),
                 InstallLocation = NormalizeOptionalValue(app.InstallLocation),
                 LogPath = NormalizeOptionalValue(app.LogPath),
+                SupportsInstallLocation = app.SupportsInstallLocation,
+                SupportsLog = app.SupportsLog,
                 AdditionalCustomArgs = NormalizeOptionalValue(app.AdditionalCustomArgs),
                 OverrideArgs = NormalizeOptionalValue(app.OverrideArgs),
                 AdvancedArgumentsReviewed = app.AdvancedArgumentsReviewed,
@@ -494,11 +513,16 @@ public sealed class AppDataService
 
     private static string NormalizeSource(string? source)
     {
-        var value = (source ?? string.Empty).Trim();
-        return string.IsNullOrWhiteSpace(value) ? "winget" : value;
+        return AppEntry.NormalizeSource(source);
     }
 
     private static string NormalizeOptionalValue(string? value) => (value ?? string.Empty).Trim();
+
+    private static bool IsJsonFileTooLarge(string path)
+    {
+        var fileInfo = new FileInfo(path);
+        return fileInfo.Exists && fileInfo.Length > MaxJsonFileBytes;
+    }
 
     private static bool HasAdvancedArguments(string additionalCustomArgs, string overrideArgs)
     {
@@ -514,29 +538,6 @@ public sealed class AppDataService
             Path = path,
             ErrorMessage = message
         };
-    }
-
-    private static string CreateUniqueImportedPresetName(string requestedName, IReadOnlyCollection<string> existingPresetNames)
-    {
-        var usedNames = new HashSet<string>(existingPresetNames ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
-        if (!usedNames.Contains(requestedName))
-        {
-            return requestedName;
-        }
-
-        var importedName = $"{requestedName} (imported)";
-        if (!usedNames.Contains(importedName))
-        {
-            return importedName;
-        }
-
-        var suffix = 2;
-        while (usedNames.Contains($"{requestedName} (imported {suffix})"))
-        {
-            suffix++;
-        }
-
-        return $"{requestedName} (imported {suffix})";
     }
 
     private static void WriteFileAtomically(string jsonPath, string json)

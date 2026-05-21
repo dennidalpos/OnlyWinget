@@ -258,7 +258,7 @@
                   <Button Content="{Binding Strings.Edit}"
                           Margin="{StaticResource ButtonInlineSpacing}"
                           Command="{Binding PresetWorkspace.EditCommand}"
-                          Style="{StaticResource NeutralButtonStyle}"/>
+                          Style="{StaticResource WarningButtonStyle}"/>
                   <Button Content="{Binding Strings.Remove}"
                           Command="{Binding PresetWorkspace.RemoveCommand}"
                           Style="{StaticResource DangerButtonStyle}"/>

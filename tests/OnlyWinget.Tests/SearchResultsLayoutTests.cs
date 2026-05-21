@@ -304,6 +304,132 @@ public sealed class SearchResultsLayoutTests
     }
 
     [Fact]
+    public void GridViewStarColumns_GrowWhenWindowWidthIncreases()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-GridResize-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1180,
+                    Height = 720,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    SeedPresetRows(viewModel);
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var presetAppsList = Assert.IsType<ListView>(window.FindName("PresetAppsList"));
+                    var gridView = Assert.IsType<GridView>(presetAppsList.View);
+                    var initialNameWidth = gridView.Columns[2].Width;
+                    var initialIdWidth = gridView.Columns[3].Width;
+
+                    window.Width = 1567;
+                    window.UpdateLayout();
+                    DoEvents();
+                    presetAppsList.UpdateLayout();
+                    DoEvents();
+
+                    Assert.True(
+                        gridView.Columns[2].Width > initialNameWidth + 20d,
+                        $"Name column should grow after widening the window. Initial: {initialNameWidth}, actual: {gridView.Columns[2].Width}.");
+                    Assert.True(
+                        gridView.Columns[3].Width > initialIdWidth + 20d,
+                        $"Id column should grow after widening the window. Initial: {initialIdWidth}, actual: {gridView.Columns[3].Width}.");
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void GridViewStarColumns_KeepUserExpandedColumnWidth()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-ManualGridResize-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1180,
+                    Height = 720,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    SeedPresetRows(viewModel);
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var presetAppsList = Assert.IsType<ListView>(window.FindName("PresetAppsList"));
+                    var gridView = Assert.IsType<GridView>(presetAppsList.View);
+                    var requestedNameWidth = gridView.Columns[2].Width + 120d;
+
+                    gridView.Columns[2].Width = requestedNameWidth;
+                    window.UpdateLayout();
+                    DoEvents();
+                    presetAppsList.UpdateLayout();
+                    DoEvents();
+
+                    Assert.True(
+                        gridView.Columns[2].Width >= requestedNameWidth - 1d,
+                        $"User-expanded star column width should be preserved. Requested: {requestedNameWidth}, actual: {gridView.Columns[2].Width}.");
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void UpdatesList_ScrollBarsRenderUsableThumbsAndTrackBindings()
     {
         var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-Scrollbars-{Guid.NewGuid():N}");
@@ -883,12 +1009,12 @@ public sealed class SearchResultsLayoutTests
             return null;
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request, System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.FromResult<PackageInterrogationDialogResult?>(null);
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry, System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.FromResult<PackageInterrogationDialogResult?>(null);
         }

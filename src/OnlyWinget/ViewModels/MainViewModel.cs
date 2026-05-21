@@ -517,19 +517,28 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        await ExecuteSafelyAsync(
-            async () =>
-            {
-                await RunBusyAsync(
-                    SetSearchUiEnabled,
-                    async () =>
-                    {
-                        SearchResults = new ObservableCollection<SearchResult>();
-                        var results = await Task.Run(() => _wingetService.Search(query));
-                        SearchResults = new ObservableCollection<SearchResult>(results);
-                    });
-            },
-            Strings.SearchFailedText);
+        using var cancellation = BeginCancellableOperation();
+        try
+        {
+            await ExecuteSafelyAsync(
+                async () =>
+                {
+                    await RunBusyAsync(
+                        SetSearchUiEnabled,
+                        async () =>
+                        {
+                            SearchResults = new ObservableCollection<SearchResult>();
+                            var results = await Task.Run(() => _wingetService.Search(query, cancellation.Token), cancellation.Token);
+                            cancellation.Token.ThrowIfCancellationRequested();
+                            SearchResults = new ObservableCollection<SearchResult>(results);
+                        });
+                },
+                Strings.SearchFailedText);
+        }
+        finally
+        {
+            EndCancellableOperation(cancellation);
+        }
     }
 
     private async Task UseSearchIdAsync()
@@ -603,20 +612,29 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task RefreshUpdatesAsync()
     {
-        await ExecuteSafelyAsync(
-            async () =>
-            {
-                await RunBusyAsync(
-                    SetUpdatesUiEnabled,
-                    async () =>
-                    {
-                        Updates = new ObservableCollection<UpdateEntry>();
-                        var results = await Task.Run(() => _wingetService.LoadUpdates());
-                        UpdateWorkflow.ApplyPresetOptions(results, PresetWorkspace.CurrentApps);
-                        Updates = new ObservableCollection<UpdateEntry>(results);
-                    });
-            },
-            Strings.UpdatesFailedText);
+        using var cancellation = BeginCancellableOperation();
+        try
+        {
+            await ExecuteSafelyAsync(
+                async () =>
+                {
+                    await RunBusyAsync(
+                        SetUpdatesUiEnabled,
+                        async () =>
+                        {
+                            Updates = new ObservableCollection<UpdateEntry>();
+                            var results = await Task.Run(() => _wingetService.LoadUpdates(cancellation.Token), cancellation.Token);
+                            cancellation.Token.ThrowIfCancellationRequested();
+                            UpdateWorkflow.ApplyPresetOptions(results, PresetWorkspace.CurrentApps);
+                            Updates = new ObservableCollection<UpdateEntry>(results);
+                        });
+                },
+                Strings.UpdatesFailedText);
+        }
+        finally
+        {
+            EndCancellableOperation(cancellation);
+        }
     }
 
     private async Task ApplyUpdatesAsync()
@@ -707,30 +725,7 @@ public sealed class MainViewModel : ObservableObject
         OperationProgressValue = 0;
         SetProgressTextState(ProgressTextState.OperationStart);
         using var cancellation = BeginCancellableOperation();
-        var snapshot = PresetWorkspace.CurrentApps
-            .Where(app => app.Enabled)
-            .Select(app => new AppEntry
-            {
-                Enabled = app.Enabled,
-                Name = app.Name,
-                Id = app.Id,
-                Source = app.Source,
-                Version = app.Version,
-                Action = app.Action,
-                Scope = app.Scope,
-                InstallMode = app.InstallMode,
-                Architecture = app.Architecture,
-                Locale = app.Locale,
-                InstallerType = app.InstallerType,
-                InstallLocation = app.InstallLocation,
-                LogPath = app.LogPath,
-                AdditionalCustomArgs = app.AdditionalCustomArgs,
-                OverrideArgs = app.OverrideArgs,
-                ManifestFingerprint = app.ManifestFingerprint,
-                InterrogatedAtUtc = app.InterrogatedAtUtc,
-                ElevationRequirement = app.ElevationRequirement
-            })
-            .ToList();
+        var snapshot = CreateEnabledAppSnapshot(PresetWorkspace.CurrentApps);
 
         try
         {
@@ -768,7 +763,7 @@ public sealed class MainViewModel : ObservableObject
     {
         RunOnUiThread(() =>
         {
-            var target = Updates.FirstOrDefault(update => string.Equals(update.Id, id, StringComparison.OrdinalIgnoreCase));
+            var target = FindUpdateById(id);
             if (target != null)
             {
                 target.ErrorMessage = errorMessage;
@@ -781,12 +776,51 @@ public sealed class MainViewModel : ObservableObject
     {
         RunOnUiThread(() =>
         {
-            var target = Updates.FirstOrDefault(update => string.Equals(update.Id, id, StringComparison.OrdinalIgnoreCase));
+            var target = FindUpdateById(id);
             if (target != null)
             {
                 target.ApplyStatus(status, Strings);
             }
         });
+    }
+
+    private UpdateEntry? FindUpdateById(string id)
+    {
+        return Updates.FirstOrDefault(update => string.Equals(update.Id, id, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyList<AppEntry> CreateEnabledAppSnapshot(IEnumerable<AppEntry> apps)
+    {
+        return apps
+            .Where(app => app.Enabled)
+            .Select(CloneAppEntryForOperation)
+            .ToList();
+    }
+
+    private static AppEntry CloneAppEntryForOperation(AppEntry app)
+    {
+        return new AppEntry
+        {
+            Enabled = app.Enabled,
+            Name = app.Name,
+            Id = app.Id,
+            Source = app.Source,
+            Version = app.Version,
+            Action = app.Action,
+            Scope = app.Scope,
+            InstallMode = app.InstallMode,
+            Architecture = app.Architecture,
+            Locale = app.Locale,
+            InstallerType = app.InstallerType,
+            InstallLocation = app.InstallLocation,
+            LogPath = app.LogPath,
+            AdditionalCustomArgs = app.AdditionalCustomArgs,
+            OverrideArgs = app.OverrideArgs,
+            AdvancedArgumentsReviewed = app.AdvancedArgumentsReviewed,
+            ManifestFingerprint = app.ManifestFingerprint,
+            InterrogatedAtUtc = app.InterrogatedAtUtc,
+            ElevationRequirement = app.ElevationRequirement
+        };
     }
 
     private CancellationTokenSource BeginCancellableOperation()
@@ -1001,7 +1035,7 @@ public sealed class MainViewModel : ObservableObject
                 PackageId = normalizedId,
                 PackageName = SelectedSearchResult?.Name ?? string.Empty,
                 Version = SelectedSearchResult?.Version ?? string.Empty,
-                Source = SelectedSearchResult?.Source ?? "winget",
+                Source = AppEntry.NormalizeSource(SelectedSearchResult?.Source),
                 Log = AppendOutput
             }
         };
@@ -1261,6 +1295,10 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             await operation();
+        }
+        catch (OperationCanceledException)
+        {
+            AppendOutput("event=operation_cancelled");
         }
         catch (Exception ex)
         {

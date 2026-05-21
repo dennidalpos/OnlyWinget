@@ -13,6 +13,7 @@ namespace OnlyWinget.Services;
 
 public sealed class AppPreferencesService
 {
+    private const long MaxSettingsFileBytes = 1024 * 1024;
     private readonly string _appDataRoot;
 
     public AppPreferencesService(string? appDataRoot = null)
@@ -37,6 +38,11 @@ public sealed class AppPreferencesService
 
         try
         {
+            if (IsSettingsFileTooLarge(path))
+            {
+                return new AppPreferences();
+            }
+
             var json = File.ReadAllText(path, Encoding.UTF8);
             if (string.IsNullOrWhiteSpace(json))
             {
@@ -84,6 +90,12 @@ public sealed class AppPreferencesService
         PropertyNameCaseInsensitive = true,
         WriteIndented = true
     };
+
+    private static bool IsSettingsFileTooLarge(string path)
+    {
+        var fileInfo = new FileInfo(path);
+        return fileInfo.Exists && fileInfo.Length > MaxSettingsFileBytes;
+    }
 
     private static void WriteFileAtomically(string path, string json)
     {

@@ -164,8 +164,21 @@
                   Style="{StaticResource DialogFieldPanelBorderStyle}"
                   Visibility="{Binding IsContentReady, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
-              <!-- Install location: disabled + explanation when unsupported -->
               <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="{StaticResource PackageDialogLabelColumnWidth}"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource CaptionTextStyle}" Text="{Binding InstallLocationPresetLabel}"/>
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding InstallLocationPresets}"
+                          SelectedItem="{Binding SelectedInstallLocationPreset, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          IsEnabled="{Binding IsLocationSupported}"
+                          AutomationProperties.Name="{Binding InstallLocationPresetLabel}"/>
+              </Grid>
+
+              <!-- Install location: disabled + explanation when unsupported -->
+              <Grid Margin="{StaticResource TopSpacing10}">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="{StaticResource PackageDialogLabelColumnWidth}"/>
                   <ColumnDefinition Width="*"/>
@@ -252,6 +265,14 @@
                       Visibility="{Binding ShowOverrideWarning, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Style="{StaticResource WarningTextStyle}"
                            Text="{Binding OverrideWarningText}"
+                           TextWrapping="Wrap"/>
+              </Border>
+
+              <Border Margin="{StaticResource TopSpacing8}"
+                      Style="{StaticResource WarningPanelBorderStyle}"
+                      Visibility="{Binding ShowAdvancedArgumentsWarning, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Style="{StaticResource WarningTextStyle}"
+                           Text="{Binding AdvancedArgumentsWarningText}"
                            TextWrapping="Wrap"/>
               </Border>
 

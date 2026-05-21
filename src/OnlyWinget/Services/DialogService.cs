@@ -3,6 +3,8 @@
 // Proprietary and confidential. Unauthorized copying, modification,
 // distribution, sublicensing, or commercial use is prohibited.
 
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
@@ -93,13 +95,13 @@ public sealed class DialogService : IDialogService
             : null;
     }
 
-    public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request)
-        => RunInterrogationDialogAsync(request, existingEntry: null);
+    public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request, CancellationToken cancellationToken = default)
+        => RunInterrogationDialogAsync(request, existingEntry: null, cancellationToken);
 
-    public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry)
-        => RunInterrogationDialogAsync(request, existingEntry);
+    public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry, CancellationToken cancellationToken = default)
+        => RunInterrogationDialogAsync(request, existingEntry, cancellationToken);
 
-    private Task<PackageInterrogationDialogResult?> RunInterrogationDialogAsync(PackageInterrogationRequest request, AppEntry? existingEntry)
+    private Task<PackageInterrogationDialogResult?> RunInterrogationDialogAsync(PackageInterrogationRequest request, AppEntry? existingEntry, CancellationToken cancellationToken)
     {
         var strings = _localizationService.Strings;
         var viewModel = new PackageInterrogationDialogViewModel(strings);
@@ -111,11 +113,56 @@ public sealed class DialogService : IDialogService
         };
 
         PackageInterrogationResult? interrogation = null;
+        var dialogCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var isClosed = false;
+        var isCancellationDisposed = false;
+
+        void CancelInterrogation()
+        {
+            if (isCancellationDisposed || dialogCancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                dialogCancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+
+        using var externalCancellationRegistration = cancellationToken.Register(() =>
+        {
+            window.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (isClosed)
+                {
+                    return;
+                }
+
+                window.DialogResult = false;
+                window.Close();
+            }));
+        });
+
+        window.Closed += (_, _) =>
+        {
+            isClosed = true;
+            CancelInterrogation();
+        };
+
         window.Loaded += async (_, _) =>
         {
             try
             {
-                interrogation = await _interrogationService.InterrogateAsync(request).ConfigureAwait(true);
+                interrogation = await _interrogationService.InterrogateAsync(request, dialogCancellation.Token).ConfigureAwait(true);
+                if (isClosed || dialogCancellation.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 if (!interrogation.Success)
                 {
                     ShowError(interrogation.ErrorMessage, strings.Title);
@@ -132,15 +179,38 @@ public sealed class DialogService : IDialogService
                     viewModel.ApplyExistingEntry(existingEntry);
                 }
             }
-            catch (System.Exception ex)
+            catch (OperationCanceledException) when (dialogCancellation.IsCancellationRequested)
             {
+                if (!isClosed)
+                {
+                    window.DialogResult = false;
+                    window.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                if (isClosed || dialogCancellation.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 ShowError(ex.Message, strings.Title);
                 window.DialogResult = false;
                 window.Close();
             }
+            finally
+            {
+                isCancellationDisposed = true;
+                dialogCancellation.Dispose();
+            }
         };
 
         var confirmed = window.ShowDialog() == true;
+        if (!confirmed)
+        {
+            CancelInterrogation();
+        }
+
         if (!confirmed || interrogation == null || !interrogation.Success)
         {
             return Task.FromResult<PackageInterrogationDialogResult?>(null);

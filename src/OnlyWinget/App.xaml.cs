@@ -14,6 +14,7 @@ namespace OnlyWinget;
 public partial class App : Application
 {
     private LocalizationService? _localizationService;
+    private SingleInstanceGuard? _singleInstanceGuard;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -23,6 +24,21 @@ public partial class App : Application
         var preferencesService = new AppPreferencesService();
         var localizationService = new LocalizationService(preferencesService);
         _localizationService = localizationService;
+        var singleInstanceGuard = new SingleInstanceGuard();
+        if (!singleInstanceGuard.TryAcquire())
+        {
+            MessageBox.Show(
+                localizationService.Strings.SingleInstanceText,
+                localizationService.Strings.SingleInstanceTitle,
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            singleInstanceGuard.Dispose();
+            Shutdown();
+            return;
+        }
+
+        _singleInstanceGuard = singleInstanceGuard;
+
         var operatingSystemInfo = new OperatingSystemInfoService().Detect();
         var wingetService = new WingetService();
         var installCommandBuilder = new InstallCommandBuilder(wingetService);
@@ -60,6 +76,13 @@ public partial class App : Application
         mainWindow.Show();
 
         _ = startupCoordinator.RunPostStartupChecksAsync(viewModel);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _singleInstanceGuard?.Dispose();
+        _singleInstanceGuard = null;
+        base.OnExit(e);
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

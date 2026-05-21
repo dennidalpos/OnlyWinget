@@ -33,6 +33,8 @@ public sealed partial class LocalizedStrings
     public string OperationInstallLabel { get; init; } = string.Empty;
     public string OperationUninstallLabel { get; init; } = string.Empty;
     public string UnhandledErrorTitle { get; init; } = string.Empty;
+    public string SingleInstanceTitle { get; init; } = string.Empty;
+    public string SingleInstanceText { get; init; } = string.Empty;
     public string InputNameTitle { get; init; } = string.Empty;
     public string InputNamePrompt { get; init; } = string.Empty;
     public string InputIdTitle { get; init; } = string.Empty;
@@ -177,10 +179,12 @@ public sealed partial class LocalizedStrings
     public string PackageDialogArchitectureLabel { get; init; } = string.Empty;
     public string PackageDialogLocaleLabel { get; init; } = string.Empty;
     public string PackageDialogInstallLocationLabel { get; init; } = string.Empty;
+    public string PackageDialogInstallLocationPresetLabel { get; init; } = string.Empty;
     public string PackageDialogLogPathLabel { get; init; } = string.Empty;
     public string PackageDialogAdditionalCustomArgsLabel { get; init; } = string.Empty;
     public string PackageDialogOverrideArgsLabel { get; init; } = string.Empty;
     public string PackageDialogAdvancedTitle { get; init; } = string.Empty;
+    public string PackageDialogAdvancedArgumentsWarningText { get; init; } = string.Empty;
     public string PackageDialogCommandPreviewLabel { get; init; } = string.Empty;
     public string PackageDialogOverrideWarningText { get; init; } = string.Empty;
     public string PackageDialogLocationUnsupportedText { get; init; } = string.Empty;

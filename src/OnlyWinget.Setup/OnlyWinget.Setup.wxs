@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
-     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <?define ProductName = "OnlyWinget" ?>
   <?define Manufacturer = "Danny Perondi" ?>
   <?if $(var.Platform) = x64 ?>
@@ -33,12 +32,23 @@
     <Icon Id="OnlyWingetProductIcon" SourceFile="$(var.AppIconPath)" />
     <Property Id="ARPPRODUCTICON" Value="OnlyWingetProductIcon" />
     <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
+    <Property Id="WINDOWSBUILDNUMBER" Secure="yes">
+      <RegistrySearch Id="WindowsBuildNumberSearch"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+                      Name="CurrentBuildNumber"
+                      Type="raw" />
+    </Property>
 
     <UIRef Id="WixUI_FeatureTree" />
     <UIRef Id="WixUI_ErrorProgressText" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtfPath)" />
     <WixVariable Id="WixUIDialogBmp" Value="$(var.InstallerDialogBmpPath)" />
     <WixVariable Id="WixUIBannerBmp" Value="$(var.InstallerBannerBmpPath)" />
+
+    <Condition Message="OnlyWinget richiede Windows 10 o Windows 11. Installa su un client Windows 10/11 aggiornato e riesegui il setup. Verifica con: winver">
+      Installed OR (WINDOWSBUILDNUMBER &gt;= 10240)
+    </Condition>
 
     <?if $(var.Platform) = x64 ?>
     <Condition Message="OnlyWinget x64 richiede un sistema operativo Windows a 64 bit.">
@@ -49,14 +59,6 @@
       NOT VersionNT64
     </Condition>
     <?endif ?>
-
-    <Property Id="ONLYWINGET_INSTALLFOLDER">
-      <RegistrySearch Id="RememberInstallFolder"
-                      Root="HKLM"
-                      Key="Software\Danny Perondi\OnlyWinget"
-                      Name="InstallFolder"
-                      Type="raw" />
-    </Property>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="DesktopFolder" />
@@ -92,9 +94,6 @@
           <RegistryValue Name="Version" Type="string" Value="[ProductVersion]" />
         </RegistryKey>
 
-        <util:RemoveFolderEx Id="RemoveInstalledFilesRecursively"
-                             Property="ONLYWINGET_INSTALLFOLDER"
-                             On="uninstall" />
         <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
       </Component>
     </DirectoryRef>

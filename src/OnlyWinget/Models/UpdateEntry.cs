@@ -11,7 +11,7 @@ public sealed class UpdateEntry : ObservableObject
     private string _id = string.Empty;
     private string _version = string.Empty;
     private string _available = string.Empty;
-    private string _source = "winget";
+    private string _source = AppEntry.DefaultSource;
     private string _scope = string.Empty;
     private string _architecture = string.Empty;
     private string _locale = string.Empty;

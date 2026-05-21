@@ -7,10 +7,12 @@ namespace OnlyWinget.Models;
 
 public sealed class AppEntry : ObservableObject
 {
+    internal const string DefaultSource = "winget";
+
     private bool _enabled = true;
     private string _name = string.Empty;
     private string _id = string.Empty;
-    private string _source = "winget";
+    private string _source = DefaultSource;
     private string _version = string.Empty;
     private string _action = AppActions.Install;
     private string _scope = string.Empty;
@@ -20,6 +22,8 @@ public sealed class AppEntry : ObservableObject
     private string _installerType = string.Empty;
     private string _installLocation = string.Empty;
     private string _logPath = string.Empty;
+    private bool _supportsInstallLocation = true;
+    private bool _supportsLog = true;
     private string _additionalCustomArgs = string.Empty;
     private string _overrideArgs = string.Empty;
     private bool _advancedArgumentsReviewed = true;
@@ -87,7 +91,7 @@ public sealed class AppEntry : ObservableObject
         set => SetProperty(ref _architecture, value);
     }
 
-    public string OperationKey => BuildOperationKey(Id, Architecture);
+    public string OperationKey => BuildOperationKey(Id, Source, Architecture);
 
     public string Locale
     {
@@ -111,6 +115,18 @@ public sealed class AppEntry : ObservableObject
     {
         get => _logPath;
         set => SetProperty(ref _logPath, value);
+    }
+
+    public bool SupportsInstallLocation
+    {
+        get => _supportsInstallLocation;
+        set => SetProperty(ref _supportsInstallLocation, value);
+    }
+
+    public bool SupportsLog
+    {
+        get => _supportsLog;
+        set => SetProperty(ref _supportsLog, value);
     }
 
     public string AdditionalCustomArgs
@@ -235,13 +251,21 @@ public sealed class AppEntry : ObservableObject
         return UiStatusTextFormatter.Format(_statusKey, _statusProgressPercentage, _statusRawText, strings);
     }
 
-    public static string BuildOperationKey(string? id, string? architecture)
+    public static string BuildOperationKey(string? id, string? source, string? architecture)
     {
         var normalizedId = (id ?? string.Empty).Trim();
+        var normalizedSource = NormalizeSource(source);
         var normalizedArchitecture = (architecture ?? string.Empty).Trim();
+        var idAndSource = $"{normalizedId}|{normalizedSource}";
         return string.IsNullOrWhiteSpace(normalizedArchitecture)
-            ? normalizedId
-            : $"{normalizedId}|{normalizedArchitecture}";
+            ? idAndSource
+            : $"{idAndSource}|{normalizedArchitecture}";
+    }
+
+    internal static string NormalizeSource(string? source)
+    {
+        var normalizedSource = (source ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(normalizedSource) ? DefaultSource : normalizedSource;
     }
 
     private void RaiseAdvancedArgumentsStateChanged()

@@ -351,12 +351,12 @@ public sealed class ScrollBarInteractionTests
             return null;
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request, System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.FromResult<PackageInterrogationDialogResult?>(null);
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry, System.Threading.CancellationToken cancellationToken = default)
         {
             return Task.FromResult<PackageInterrogationDialogResult?>(null);
         }

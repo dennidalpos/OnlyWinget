@@ -19,6 +19,54 @@ function Assert-Path {
     }
 }
 
+function Get-NormalizedFullPath {
+    param(
+        [string]$Path
+    )
+
+    return [System.IO.Path]::GetFullPath($Path).TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar)
+}
+
+function Test-IsSameOrChildPath {
+    param(
+        [string]$Path,
+        [string]$ParentPath
+    )
+
+    $fullPath = Get-NormalizedFullPath -Path $Path
+    $fullParentPath = Get-NormalizedFullPath -Path $ParentPath
+
+    return $fullPath.Equals($fullParentPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($fullParentPath + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-RepositoryPathInAllowedRoot {
+    param(
+        [string]$Path,
+        [string]$RepositoryRoot,
+        [string[]]$AllowedRoots,
+        [string]$Description = 'Percorso'
+    )
+
+    $fullPath = Get-NormalizedFullPath -Path $Path
+    $fullRepositoryRoot = Get-NormalizedFullPath -Path $RepositoryRoot
+
+    if ($fullPath.Equals($fullRepositoryRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-IsSameOrChildPath -Path $fullPath -ParentPath $fullRepositoryRoot)) {
+        throw "$Description rifiutato perche' fuori repository o coincidente con la radice repository: $Path"
+    }
+
+    foreach ($allowedRoot in $AllowedRoots) {
+        if (Test-IsSameOrChildPath -Path $fullPath -ParentPath $allowedRoot) {
+            return $fullPath
+        }
+    }
+
+    throw "$Description rifiutato perche' fuori dai percorsi generati consentiti: $Path"
+}
+
 function Get-OnlyWingetProcess {
     Get-Process -Name 'OnlyWinget' -ErrorAction SilentlyContinue
 }

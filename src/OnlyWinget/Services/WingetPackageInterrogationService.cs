@@ -6,12 +6,15 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
 
@@ -19,6 +22,13 @@ namespace OnlyWinget.Services;
 
 public sealed class WingetPackageInterrogationService : IWingetPackageInterrogationService
 {
+    private const int DefaultManifestMaxBytes = 1024 * 1024;
+    private const int DefaultManifestMaxAttempts = 3;
+    private const int StructuredLogValueMaxLength = 500;
+
+    private static readonly TimeSpan DefaultManifestFetchTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DefaultManifestRetryBaseDelay = TimeSpan.FromMilliseconds(250);
+
     private static readonly Regex FoundPattern = new(
         @"^(Found|Trovato)\s+(?<name>.+?)\s+\[(?<id>[^\]]+)\]\s*$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -36,16 +46,30 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
     private readonly Func<string> _architectureProvider;
     private readonly Func<CultureInfo> _cultureProvider;
     private readonly OperatingSystemInfo _operatingSystemInfo;
+    private readonly TimeSpan _manifestFetchTimeout;
+    private readonly int _manifestMaxBytes;
+    private readonly int _manifestMaxAttempts;
+    private readonly TimeSpan _manifestRetryBaseDelay;
+    private readonly object _manifestCacheLock = new();
+    private readonly Dictionary<string, string> _manifestCache = new(StringComparer.Ordinal);
 
     public WingetPackageInterrogationService(
         WingetService wingetService,
         HttpClient? httpClient = null,
         Func<string>? architectureProvider = null,
         Func<CultureInfo>? cultureProvider = null,
-        OperatingSystemInfo? operatingSystemInfo = null)
+        OperatingSystemInfo? operatingSystemInfo = null,
+        TimeSpan? manifestFetchTimeout = null,
+        int? manifestMaxBytes = null,
+        int? manifestMaxAttempts = null,
+        TimeSpan? manifestRetryBaseDelay = null)
     {
         _wingetService = wingetService;
         _httpClient = httpClient ?? new HttpClient();
+        _manifestFetchTimeout = ValidatePositive(manifestFetchTimeout ?? DefaultManifestFetchTimeout, nameof(manifestFetchTimeout));
+        _manifestMaxBytes = ValidatePositive(manifestMaxBytes ?? DefaultManifestMaxBytes, nameof(manifestMaxBytes));
+        _manifestMaxAttempts = ValidatePositive(manifestMaxAttempts ?? DefaultManifestMaxAttempts, nameof(manifestMaxAttempts));
+        _manifestRetryBaseDelay = ValidateNonNegative(manifestRetryBaseDelay ?? DefaultManifestRetryBaseDelay, nameof(manifestRetryBaseDelay));
         _operatingSystemInfo = operatingSystemInfo ?? new OperatingSystemInfoService(
             osArchitectureProvider: () => RuntimeInformation.OSArchitecture,
             processArchitectureProvider: () => RuntimeInformation.ProcessArchitecture,
@@ -54,11 +78,12 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         _cultureProvider = cultureProvider ?? (() => GetCultureFromOperatingSystemInfo(_operatingSystemInfo));
     }
 
-    public async Task<PackageInterrogationResult> InterrogateAsync(PackageInterrogationRequest request)
+    public async Task<PackageInterrogationResult> InterrogateAsync(PackageInterrogationRequest request, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         Log(request, $"event=package_interrogation_started id={Quote(request.PackageId)} source={Quote(request.Source)} version={Quote(request.Version)}");
 
-        var commandResult = await InvokeShowWithVersionFallbackAsync(request).ConfigureAwait(false);
+        var commandResult = await InvokeShowWithVersionFallbackAsync(request, cancellationToken).ConfigureAwait(false);
         if (commandResult.ExitCode != 0)
         {
             var failure = ExtractFailureMessage(commandResult.Output, _wingetService.GetErrorMessage(commandResult.ExitCode));
@@ -93,7 +118,8 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         var installerOptions = Array.Empty<ResolvedInstallerOption>();
         var manifestFingerprint = string.Empty;
         var isReducedMode = true;
-        var installedDetails = _wingetService.TryLoadInstalledPackageDetails(showMetadata.Id, showMetadata.Source);
+        cancellationToken.ThrowIfCancellationRequested();
+        var installedDetails = _wingetService.TryLoadInstalledPackageDetails(showMetadata.Id, showMetadata.Source, cancellationToken);
         var defaultSelection = new SelectedInstallOptions
         {
             LogPath = _wingetService.CreateOperationLogPath("install", showMetadata.Id),
@@ -104,46 +130,68 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             InstallerType = installedDetails.InstallerType
         };
 
-        if (string.Equals(showMetadata.Source, "winget", StringComparison.OrdinalIgnoreCase)
+        if (string.Equals(showMetadata.Source, AppEntry.DefaultSource, StringComparison.OrdinalIgnoreCase)
             && !string.IsNullOrWhiteSpace(showMetadata.Version))
         {
-            var manifestUrl = BuildManifestUrl(showMetadata.Id, showMetadata.Version);
-            try
+            if (!TryBuildManifestUrl(showMetadata.Id, showMetadata.Version, out var manifestUrl))
             {
-                var manifestContent = await TryFetchManifestAsync(manifestUrl).ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(manifestContent))
+                warnings.Add("Installer manifest lookup skipped because package metadata contains unsupported characters.");
+                Log(request, $"event=manifest_url_rejected id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} version={Quote(showMetadata.Version)}");
+            }
+            else
+            {
+                try
                 {
-                    warnings.Add("Installer manifest not available.");
-                    Log(request, $"event=manifest_fetch_failed id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} url={Quote(manifestUrl)}");
-                }
-                else
-                {
-                    var manifest = ParseInstallerManifest(manifestContent);
-                    manifestFingerprint = ComputeFingerprint(manifestContent);
-                    installerOptions = NormalizeInstallerOptions(manifest, _architectureProvider(), _cultureProvider(), installedDetails).ToArray();
-
-                    if (installerOptions.Length == 0)
+                    var manifestContent = await TryFetchManifestAsync(manifestUrl, cancellationToken).ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(manifestContent))
                     {
-                        warnings.Add("Installer manifest did not expose selectable installer candidates.");
-                        Log(request, $"event=manifest_fallback_mode id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} reason=no_candidates");
+                        warnings.Add("Installer manifest not available.");
+                        Log(request, $"event=manifest_fetch_failed id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} url={Quote(manifestUrl)}");
                     }
                     else
                     {
-                        isReducedMode = false;
-                        if (HasMultipleSelectableInstallerCandidates(installerOptions))
+                        InstallerManifest manifest;
+                        try
                         {
-                            warnings.Add("Multiple installer candidates available. Review the selections before confirming.");
+                            manifest = ParseInstallerManifest(manifestContent);
+                        }
+                        catch (ManifestParseException ex)
+                        {
+                            warnings.Add("Installer manifest contains unsupported YAML. Reduced mode enabled.");
+                            Log(request, $"event=manifest_parse_failed id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} reason={Quote(ex.Message)}");
+                            manifest = new InstallerManifest();
                         }
 
-                        defaultSelection = CreateDefaultSelection(showMetadata.Id, installerOptions);
-                        Log(request, $"event=manifest_fetch_succeeded id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} url={Quote(manifestUrl)} fingerprint={Quote(manifestFingerprint)} candidates={installerOptions.Length}");
+                        manifestFingerprint = ComputeFingerprint(manifestContent);
+                        installerOptions = NormalizeInstallerOptions(manifest, _architectureProvider(), _cultureProvider(), installedDetails).ToArray();
+
+                        if (installerOptions.Length == 0)
+                        {
+                            warnings.Add("Installer manifest did not expose selectable installer candidates.");
+                            Log(request, $"event=manifest_fallback_mode id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} reason=no_candidates");
+                        }
+                        else
+                        {
+                            isReducedMode = false;
+                            if (HasMultipleSelectableInstallerCandidates(installerOptions))
+                            {
+                                warnings.Add("Multiple installer candidates available. Review the selections before confirming.");
+                            }
+
+                            defaultSelection = CreateDefaultSelection(showMetadata.Id, installerOptions);
+                            Log(request, $"event=manifest_fetch_succeeded id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} url={Quote(manifestUrl)} fingerprint={Quote(manifestFingerprint)} candidates={installerOptions.Length}");
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                warnings.Add("Installer manifest could not be retrieved. Reduced mode enabled.");
-                Log(request, $"event=manifest_fetch_failed id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} url={Quote(manifestUrl)} message={Quote(ex.Message)}");
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    warnings.Add("Installer manifest could not be retrieved. Reduced mode enabled.");
+                    Log(request, $"event=manifest_fetch_failed id={Quote(showMetadata.Id)} source={Quote(showMetadata.Source)} url={Quote(manifestUrl)} message={Quote(ex.Message)}");
+                }
             }
         }
 
@@ -165,7 +213,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             InterrogatedAtUtc = DateTime.UtcNow,
             Warnings = warnings,
             InstallerOptions = installerOptions,
-            AvailableScopes = Unique(installerOptions.Select(option => option.Scope)),
+            AvailableScopes = GetAvailableScopes(installerOptions),
             AvailableArchitectures = Unique(installerOptions.Select(option => option.Architecture)),
             AvailableLocales = Unique(installerOptions.Select(option => option.Locale)),
             AvailableInstallerTypes = Unique(installerOptions.Select(option => option.InstallerType)),
@@ -183,7 +231,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             request.PackageId,
             "-e",
             "--source",
-            string.IsNullOrWhiteSpace(request.Source) ? "winget" : request.Source,
+            AppEntry.NormalizeSource(request.Source),
             "--accept-source-agreements",
             "--disable-interactivity"
         };
@@ -197,10 +245,10 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         return args;
     }
 
-    private async Task<WingetCommandResult> InvokeShowWithVersionFallbackAsync(PackageInterrogationRequest request)
+    private async Task<WingetCommandResult> InvokeShowWithVersionFallbackAsync(PackageInterrogationRequest request, CancellationToken cancellationToken)
     {
         var showArgs = BuildShowArguments(request);
-        var commandResult = await Task.Run(() => _wingetService.Invoke(showArgs)).ConfigureAwait(false);
+        var commandResult = await Task.Run(() => _wingetService.Invoke(showArgs, null, cancellationToken), cancellationToken).ConfigureAwait(false);
         if (commandResult.ExitCode == 0
             || string.IsNullOrWhiteSpace(request.Version)
             || !IsVersionResolutionFailure(commandResult.Output))
@@ -217,26 +265,173 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         };
         var fallbackArgs = BuildShowArguments(fallbackRequest);
         Log(request, $"event=package_resolution_version_fallback id={Quote(request.PackageId)} source={Quote(request.Source)} version={Quote(request.Version)}");
-        return await Task.Run(() => _wingetService.Invoke(fallbackArgs)).ConfigureAwait(false);
+        return await Task.Run(() => _wingetService.Invoke(fallbackArgs, null, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
-    private static string BuildManifestUrl(string packageId, string version)
+    private static bool TryBuildManifestUrl(string packageId, string version, out string url)
     {
-        var segments = packageId.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var first = segments.Length == 0 ? "x" : char.ToLowerInvariant(segments[0][0]).ToString(CultureInfo.InvariantCulture);
-        var path = string.Join("/", segments);
-        return $"https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests/{first}/{path}/{version}/{packageId}.installer.yaml";
-    }
-
-    private async Task<string?> TryFetchManifestAsync(string url)
-    {
-        using var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
+        url = string.Empty;
+        var normalizedPackageId = packageId.Trim();
+        var normalizedVersion = version.Trim();
+        var segments = normalizedPackageId.Split('.', StringSplitOptions.TrimEntries);
+        if (segments.Length == 0
+            || segments.Any(segment => !IsSafeManifestPathSegment(segment))
+            || !IsSafeManifestPathSegment(normalizedVersion))
         {
-            return null;
+            return false;
         }
 
-        return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var first = char.ToLowerInvariant(segments[0][0]).ToString(CultureInfo.InvariantCulture);
+        var path = string.Join("/", segments.Select(Uri.EscapeDataString));
+        url = "https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests/"
+            + $"{first}/{path}/{Uri.EscapeDataString(normalizedVersion)}/{Uri.EscapeDataString(normalizedPackageId)}.installer.yaml";
+        return true;
+    }
+
+    private static bool IsSafeManifestPathSegment(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+            && value != "."
+            && value != ".."
+            && value.All(static character =>
+                char.IsLetterOrDigit(character)
+                || character is '.' or '-' or '_' or '+');
+    }
+
+    private async Task<string?> TryFetchManifestAsync(string url, CancellationToken cancellationToken)
+    {
+        lock (_manifestCacheLock)
+        {
+            if (_manifestCache.TryGetValue(url, out var cachedManifest))
+            {
+                return cachedManifest;
+            }
+        }
+
+        for (var attempt = 1; attempt <= _manifestMaxAttempts; attempt++)
+        {
+            using var attemptCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            attemptCancellation.CancelAfter(_manifestFetchTimeout);
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                using var response = await _httpClient
+                    .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, attemptCancellation.Token)
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (attempt < _manifestMaxAttempts && IsTransientManifestStatus(response.StatusCode))
+                    {
+                        await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    return null;
+                }
+
+                var manifestContent = await ReadManifestContentAsync(response.Content, attemptCancellation.Token).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(manifestContent))
+                {
+                    lock (_manifestCacheLock)
+                    {
+                        _manifestCache[url] = manifestContent;
+                    }
+                }
+
+                return manifestContent;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException) when (attempt < _manifestMaxAttempts)
+            {
+                await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw new TimeoutException("Manifest fetch timed out.");
+            }
+            catch (Exception ex) when (IsTransientManifestException(ex) && attempt < _manifestMaxAttempts)
+            {
+                await DelayBeforeRetryAsync(attempt, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<string> ReadManifestContentAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        if (content.Headers.ContentLength is > 0 && content.Headers.ContentLength.Value > _manifestMaxBytes)
+        {
+            throw new InvalidOperationException("Manifest response exceeded the configured maximum size.");
+        }
+
+        var expectedLength = content.Headers.ContentLength is > 0
+            ? (int)Math.Min(content.Headers.ContentLength.Value, _manifestMaxBytes)
+            : 0;
+        using var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var buffer = expectedLength > 0 ? new MemoryStream(expectedLength) : new MemoryStream();
+        var chunk = new byte[8192];
+        var totalBytes = 0;
+
+        while (true)
+        {
+            var read = await stream.ReadAsync(chunk.AsMemory(0, chunk.Length), cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+            {
+                break;
+            }
+
+            totalBytes += read;
+            if (totalBytes > _manifestMaxBytes)
+            {
+                throw new InvalidOperationException("Manifest response exceeded the configured maximum size.");
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        return Encoding.UTF8.GetString(buffer.ToArray());
+    }
+
+    private static bool IsTransientManifestStatus(HttpStatusCode statusCode)
+    {
+        var numericStatusCode = (int)statusCode;
+        return statusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests
+            || numericStatusCode >= 500;
+    }
+
+    private static bool IsTransientManifestException(Exception exception)
+    {
+        return exception is HttpRequestException or IOException;
+    }
+
+    private async Task DelayBeforeRetryAsync(int attempt, CancellationToken cancellationToken)
+    {
+        var delay = TimeSpan.FromMilliseconds(_manifestRetryBaseDelay.TotalMilliseconds * attempt);
+        if (delay > TimeSpan.Zero)
+        {
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static int ValidatePositive(int value, string parameterName)
+    {
+        return value > 0 ? value : throw new ArgumentOutOfRangeException(parameterName, "Value must be greater than zero.");
+    }
+
+    private static TimeSpan ValidatePositive(TimeSpan value, string parameterName)
+    {
+        return value > TimeSpan.Zero ? value : throw new ArgumentOutOfRangeException(parameterName, "Value must be greater than zero.");
+    }
+
+    private static TimeSpan ValidateNonNegative(TimeSpan value, string parameterName)
+    {
+        return value >= TimeSpan.Zero ? value : throw new ArgumentOutOfRangeException(parameterName, "Value cannot be negative.");
     }
 
     private static ShowMetadata ParseShowMetadata(string output, PackageInterrogationRequest request)
@@ -292,7 +487,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             Name = string.IsNullOrWhiteSpace(name) ? request.PackageName : name,
             Id = string.IsNullOrWhiteSpace(id) ? request.PackageId : id,
             Version = version,
-            Source = string.IsNullOrWhiteSpace(request.Source) ? "winget" : request.Source,
+            Source = AppEntry.NormalizeSource(request.Source),
             InstallerType = installerType
         };
     }
@@ -338,6 +533,8 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             }
 
             var indent = rawLine.Length - rawLine.TrimStart(' ').Length;
+            EnsureSupportedYamlSyntax(trimmed);
+
             if (section == ManifestSection.Installers && IsInstallerEntryStart(trimmed))
             {
                 currentEntry = new InstallerManifestEntry();
@@ -536,7 +733,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         var selected = installerOptions[0];
         return new SelectedInstallOptions
         {
-            Scope = selected.Scope,
+            Scope = string.IsNullOrWhiteSpace(selected.Scope) && IsPortableArchiveOption(selected) ? "user" : selected.Scope,
             Architecture = selected.Architecture,
             Locale = selected.Locale,
             InstallerType = selected.InstallerType,
@@ -569,6 +766,32 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         }
 
         return results;
+    }
+
+    private static IReadOnlyList<string> GetAvailableScopes(IReadOnlyList<ResolvedInstallerOption> options)
+    {
+        var scopes = Unique(options.Select(option => option.Scope)).ToList();
+        if (options.Any(option => string.IsNullOrWhiteSpace(option.Scope) && IsPortableArchiveOption(option)))
+        {
+            AddScopeIfMissing(scopes, "user");
+            AddScopeIfMissing(scopes, "machine");
+        }
+
+        return scopes;
+    }
+
+    private static void AddScopeIfMissing(List<string> scopes, string scope)
+    {
+        if (!scopes.Contains(scope, StringComparer.OrdinalIgnoreCase))
+        {
+            scopes.Add(scope);
+        }
+    }
+
+    private static bool IsPortableArchiveOption(ResolvedInstallerOption option)
+    {
+        return string.Equals(option.InstallerType, "zip", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(option.InstallerType, "portable", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool HasMultipleSelectableInstallerCandidates(IReadOnlyList<ResolvedInstallerOption> installerOptions)
@@ -649,15 +872,35 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
 
     private static bool IsInstallerEntryStart(string trimmedLine)
     {
+        if (trimmedLine.StartsWith("- &", StringComparison.Ordinal) || trimmedLine.StartsWith("- *", StringComparison.Ordinal))
+        {
+            throw new ManifestParseException("YAML anchors and aliases are not supported.");
+        }
+
         return trimmedLine.StartsWith("- ", StringComparison.Ordinal)
             && TrySplitKeyValue(trimmedLine[2..], out _, out _);
     }
 
     private static void AddYamlSequenceValues(ICollection<string> target, string value)
     {
-        if (string.IsNullOrWhiteSpace(value) || value[0] != '[' || value[^1] != ']')
+        if (string.IsNullOrWhiteSpace(value))
         {
             return;
+        }
+
+        if (IsUnsupportedYamlScalar(value))
+        {
+            throw new ManifestParseException("Complex YAML scalar values are not supported.");
+        }
+
+        if (value[0] != '[')
+        {
+            throw new ManifestParseException("YAML sequence must use block list items or a flow sequence.");
+        }
+
+        if (value[^1] != ']')
+        {
+            throw new ManifestParseException("YAML flow sequence is not closed.");
         }
 
         foreach (var item in SplitYamlFlowSequence(value[1..^1]))
@@ -706,6 +949,11 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
     private static string NormalizeYamlScalar(string value)
     {
         var trimmed = StripInlineComment(value).Trim();
+        if (IsUnsupportedYamlScalar(trimmed))
+        {
+            throw new ManifestParseException("Complex YAML scalar values are not supported.");
+        }
+
         if (trimmed.Length >= 2 &&
             ((trimmed[0] == '"' && trimmed[^1] == '"') || (trimmed[0] == '\'' && trimmed[^1] == '\'')))
         {
@@ -715,6 +963,29 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         return trimmed
             .Replace("\\\"", "\"", StringComparison.Ordinal)
             .Replace("''", "'", StringComparison.Ordinal);
+    }
+
+    private static void EnsureSupportedYamlSyntax(string trimmedLine)
+    {
+        if (trimmedLine == "---" || trimmedLine == "...")
+        {
+            return;
+        }
+
+        var keyValueLine = trimmedLine.StartsWith("- ", StringComparison.Ordinal) ? trimmedLine[2..] : trimmedLine;
+        if (TrySplitKeyValue(keyValueLine, out var key, out var value)
+            && (key == "<<" || value.StartsWith('&') || value.StartsWith('*')))
+        {
+            throw new ManifestParseException("YAML anchors, aliases, and merge keys are not supported.");
+        }
+    }
+
+    private static bool IsUnsupportedYamlScalar(string value)
+    {
+        var trimmed = value.Trim();
+        return trimmed is "|" or ">" or "|-" or ">-" or "|+" or ">+"
+            || trimmed.StartsWith('&')
+            || trimmed.StartsWith('*');
     }
 
     private static string StripInlineComment(string value)
@@ -906,8 +1177,30 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
 
     private static string Quote(string? value)
     {
-        var normalized = (value ?? string.Empty).Replace("\"", "'");
+        var normalized = SanitizeStructuredLogValue(value);
         return $"\"{normalized}\"";
+    }
+
+    private static string SanitizeStructuredLogValue(string? value)
+    {
+        var source = value ?? string.Empty;
+        var builder = new StringBuilder(Math.Min(source.Length, StructuredLogValueMaxLength));
+        foreach (var character in source)
+        {
+            if (builder.Length >= StructuredLogValueMaxLength)
+            {
+                break;
+            }
+
+            builder.Append(character switch
+            {
+                '"' => '\'',
+                _ when char.IsControl(character) => ' ',
+                _ => character
+            });
+        }
+
+        return builder.ToString().Trim();
     }
 
     private static void Log(PackageInterrogationRequest request, string message)
@@ -970,6 +1263,14 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
                 Silent = FirstNonEmpty(node.Silent, root.Silent),
                 SilentWithProgress = FirstNonEmpty(node.SilentWithProgress, root.SilentWithProgress)
             };
+        }
+    }
+
+    private sealed class ManifestParseException : Exception
+    {
+        public ManifestParseException(string message)
+            : base(message)
+        {
         }
     }
 

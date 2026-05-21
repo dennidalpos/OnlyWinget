@@ -706,6 +706,38 @@ Microsoft Windows Desktop Runtime - 8.0.25 (arm64) Microsoft.DotNet.DesktopRunti
     }
 
     [Fact]
+    public void AppEntryValidation_AllowsSameIdAndArchitecture_WhenSourceDiffers()
+    {
+        var wingetService = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = "found" });
+        var service = new AppEntryService(wingetService);
+        var currentApps = new[]
+        {
+            new AppEntry { Id = "Contoso.Tool", Source = "winget", Architecture = "x64" }
+        };
+
+        var validation = service.ValidateForInsert("Contoso.Tool", currentApps, "msstore", "x64");
+
+        Assert.Equal(AppEntryValidationError.None, validation);
+    }
+
+    [Fact]
+    public void AppEntryValidation_BlocksSameIdSourceAndArchitecture()
+    {
+        var wingetService = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = "found" });
+        var service = new AppEntryService(wingetService);
+        var currentApps = new[]
+        {
+            new AppEntry { Id = "Contoso.Tool", Source = "msstore", Architecture = "x64" }
+        };
+
+        var validation = service.ValidateForInsert("Contoso.Tool", currentApps, "msstore", "x64");
+
+        Assert.Equal(AppEntryValidationError.DuplicateId, validation);
+    }
+
+    [Fact]
     public void LoadUpdates_ParsesLocalizedOutput_WithNoiseAndProgressLines()
     {
         const string output = """
@@ -758,7 +790,7 @@ Nome              Id               Versione  Disponibile  Origine
 Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
 """;
         var service = CreateWingetService(
-            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
+            wingetRunner: (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
 
         var update = Assert.Single(service.LoadUpdates());
 
@@ -767,6 +799,26 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
         Assert.Equal("26.5.27.1", update.Version);
         Assert.Equal("149.0.7814.0", update.Available);
     }
+
+    [Fact]
+    public void LoadUpdates_PreservesAdvertisedVersion_WhenLocalizedStatusColumnsReportNoUpdate()
+    {
+        var output = string.Join(
+            Environment.NewLine,
+            string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0,-25}{1,-18}{2,-14}{3,-13}{4,-20}{5}", "Nome", "Id", "Versione", "Disponibile", "Origine", "Stato"),
+            new string('-', 110),
+            string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0,-25}{1,-18}{2,-14}{3,-13}{4,-20}{5}", "AxCrypt 2.1.1693.0", "AxCrypt.AxCrypt", "2.1.1693.0", "3.0.94", "Nessun aggiornamento", "Gia alla versione piu recente."));
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
+
+        var update = Assert.Single(service.LoadUpdates());
+
+        Assert.Equal("AxCrypt.AxCrypt", update.Id);
+        Assert.Equal("2.1.1693.0", update.Version);
+        Assert.Equal("3.0.94", update.Available);
+        Assert.Equal("winget", update.Source);
+    }
+
 
     [Fact]
     public async Task RunUpdatesAsync_UsesUpdateSource_WhenInvokingUpgrade()
@@ -1093,6 +1145,50 @@ Installer:
     }
 
     [Fact]
+    public async Task RunUpdatesAsync_ReportsAdvertisedUpdateNotApplied_WhenWingetNoopsDespiteAvailableVersion()
+    {
+        var output = new List<string>();
+        var status = string.Empty;
+        var error = string.Empty;
+        var resolution = string.Empty;
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
+            {
+                ExitCode = -1978335189,
+                Output = "No available upgrade found."
+            });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+
+        await runner.RunUpdatesAsync(
+            new[]
+            {
+                new UpdateEntry
+                {
+                    Name = "AxCrypt 2.1.1693.0",
+                    Id = "AxCrypt.AxCrypt",
+                    Version = "2.1.1693.0",
+                    Available = "3.0.94",
+                    Source = "winget",
+                    Selected = true
+                }
+            },
+            (_, state) => status = state.RawText,
+            output.Add,
+            (_, _) => { },
+            LocalizedStrings.Italian,
+            (_, errorMessage, resolutionHint) =>
+            {
+                error = errorMessage;
+                resolution = resolutionHint;
+            });
+
+        Assert.Equal("Aggiornamento segnalato non applicato", status);
+        Assert.Equal("Aggiornamento segnalato non applicato", error);
+        Assert.Contains("2.1.1693.0 -> 3.0.94", resolution, StringComparison.Ordinal);
+        Assert.Contains(output, line => line.Contains("event=winget_upgrade_noop", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task RunUpdatesAsync_ReportsNoApplicableUpgrade_WhenWingetSaysNewerVersionDoesNotApply()
     {
         var output = new List<string>();
@@ -1281,10 +1377,12 @@ A newer package version is available in a configured source, but it does not app
     }
 
     [Fact]
-    public async Task RunApplyAsync_RetriesInstallWithoutInstallerSelectors_WhenWingetReportsNoApplicableInstaller()
+    public async Task RunApplyAsync_DoesNotRetryWithoutInstallerSelectors_WhenWingetReportsNoApplicableInstaller()
     {
         var installInvocations = new List<IReadOnlyList<string>>();
         var output = new List<string>();
+        var errorMessage = string.Empty;
+        var resolution = string.Empty;
         var service = CreateWingetService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
@@ -1304,10 +1402,11 @@ A newer package version is available in a configured source, but it does not app
                     };
                 }
 
-                return new WingetCommandResult { ExitCode = 0, Output = "Successfully installed" };
+                throw new InvalidOperationException("Install retry without installer selectors should not run.");
             });
         var runner = new OperationRunner(service, new InstallCommandBuilder(service));
         var status = string.Empty;
+        var strings = LocalizedStrings.English;
 
         await runner.RunApplyAsync(
             new[]
@@ -1320,26 +1419,35 @@ A newer package version is available in a configured source, but it does not app
                     Action = AppActions.Install,
                     Scope = "machine",
                     Architecture = "x64",
+                    Locale = "en-US",
                     InstallerType = "burn",
                     InstallMode = InstallModes.SilentWithProgress
                 }
             },
-            (_, value) => status = RenderStatus(value, LocalizedStrings.English),
+            (_, value) => status = RenderStatus(value, strings),
             output.Add,
             (_, _) => { },
-            LocalizedStrings.English);
+            strings,
+            (_, message, hint) =>
+            {
+                errorMessage = message;
+                resolution = hint;
+            });
 
-        Assert.Equal("OK", status);
-        Assert.Equal(2, installInvocations.Count);
+        Assert.Equal("No applicable installer", status);
+        Assert.Equal("No applicable installer", errorMessage);
+        Assert.Contains("OnlyWinget did not retry without these constraints", resolution, StringComparison.Ordinal);
+        Assert.Contains("scope=machine", resolution, StringComparison.Ordinal);
+        Assert.Contains("architecture=x64", resolution, StringComparison.Ordinal);
+        Assert.Contains("locale=en-US", resolution, StringComparison.Ordinal);
+        Assert.Contains("installer-type=burn", resolution, StringComparison.Ordinal);
+        Assert.Single(installInvocations);
         Assert.Contains("--scope", installInvocations[0]);
         Assert.Contains("--architecture", installInvocations[0]);
         Assert.Contains("--installer-type", installInvocations[0]);
-        Assert.DoesNotContain("--scope", installInvocations[1]);
-        Assert.DoesNotContain("--architecture", installInvocations[1]);
-        Assert.DoesNotContain("--installer-type", installInvocations[1]);
-        Assert.Contains("--source", installInvocations[1]);
-        Assert.Contains("winget", installInvocations[1]);
-        Assert.Contains(output, line => line.Contains("event=install_retry_without_installer_selectors", StringComparison.Ordinal));
+        Assert.Contains("--locale", installInvocations[0]);
+        Assert.DoesNotContain(output, line => line.Contains("event=install_retry_without_installer_selectors", StringComparison.Ordinal));
+        Assert.Contains(output, line => line.Contains("event=install_no_applicable_installer_preserved_selectors", StringComparison.Ordinal));
     }
 
     [Fact]

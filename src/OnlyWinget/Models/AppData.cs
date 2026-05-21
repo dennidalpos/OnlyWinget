@@ -25,7 +25,7 @@ public sealed class AppDataItem
     public string Name { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
-    public string Source { get; set; } = "winget";
+    public string Source { get; set; } = AppEntry.DefaultSource;
     public string Version { get; set; } = string.Empty;
     public string Scope { get; set; } = string.Empty;
     public string InstallMode { get; set; } = InstallModes.SilentWithProgress;
@@ -34,6 +34,8 @@ public sealed class AppDataItem
     public string InstallerType { get; set; } = string.Empty;
     public string InstallLocation { get; set; } = string.Empty;
     public string LogPath { get; set; } = string.Empty;
+    public bool SupportsInstallLocation { get; set; } = true;
+    public bool SupportsLog { get; set; } = true;
     public string AdditionalCustomArgs { get; set; } = string.Empty;
     public string OverrideArgs { get; set; } = string.Empty;
     public bool? AdvancedArgumentsReviewed { get; set; }

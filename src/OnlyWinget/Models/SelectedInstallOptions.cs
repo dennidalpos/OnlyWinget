@@ -15,6 +15,8 @@ public sealed class SelectedInstallOptions
     public string InstallerType { get; set; } = string.Empty;
     public string InstallLocation { get; set; } = string.Empty;
     public string LogPath { get; set; } = string.Empty;
+    public bool SupportsInstallLocation { get; set; } = true;
+    public bool SupportsLog { get; set; } = true;
     public string AdditionalCustomArgs { get; set; } = string.Empty;
     public string OverrideArgs { get; set; } = string.Empty;
     public string ElevationRequirement { get; set; } = string.Empty;

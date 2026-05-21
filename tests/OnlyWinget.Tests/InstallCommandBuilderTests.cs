@@ -151,6 +151,84 @@ public sealed class InstallCommandBuilderTests
         Assert.Contains("reviewed", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void BuildInstallArguments_ExpandsEnvironmentVariablePlaceholdersInAdvancedArguments()
+    {
+        var variableName = $"ONLYWINGET_TEST_TOKEN_{Guid.NewGuid():N}";
+        Environment.SetEnvironmentVariable(variableName, "expanded-token");
+        try
+        {
+            var builder = CreateBuilder();
+            var app = new AppEntry
+            {
+                Id = "Contoso.InternalTool",
+                Source = "winget",
+                AdditionalCustomArgs = $"/token %{variableName}%"
+            };
+
+            var args = builder.BuildInstallArguments(app);
+
+            Assert.Contains("--custom", args);
+            Assert.Contains("/token expanded-token", args);
+            Assert.DoesNotContain($"/token %{variableName}%", args);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variableName, null);
+        }
+    }
+
+    [Fact]
+    public void BuildInstallArguments_ExpandsEnvironmentVariablePlaceholdersInPaths()
+    {
+        var variableName = $"ONLYWINGET_TEST_ROOT_{Guid.NewGuid():N}";
+        Environment.SetEnvironmentVariable(variableName, @"C:\OnlyWingetTestRoot");
+        try
+        {
+            var builder = CreateBuilder();
+            var app = new AppEntry
+            {
+                Id = "Contoso.Portable",
+                Source = "winget",
+                InstallLocation = $@"%{variableName}%\Apps\Contoso",
+                LogPath = $@"%{variableName}%\Logs\contoso.log"
+            };
+
+            var args = builder.BuildInstallArguments(app);
+
+            Assert.Contains(@"C:\OnlyWingetTestRoot\Apps\Contoso", args);
+            Assert.Contains(@"C:\OnlyWingetTestRoot\Logs\contoso.log", args);
+            Assert.DoesNotContain($@"%{variableName}%\Apps\Contoso", args);
+            Assert.DoesNotContain($@"%{variableName}%\Logs\contoso.log", args);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variableName, null);
+        }
+    }
+
+    [Fact]
+    public void BuildInstallArguments_OmitsUnsupportedLocationAndLog()
+    {
+        var builder = CreateBuilder();
+        var app = new AppEntry
+        {
+            Id = "Contoso.Tool",
+            Source = "winget",
+            InstallLocation = @"C:\Tools\Contoso",
+            LogPath = @"C:\Logs\contoso.log",
+            SupportsInstallLocation = false,
+            SupportsLog = false
+        };
+
+        var args = builder.BuildInstallArguments(app);
+
+        Assert.DoesNotContain("--location", args);
+        Assert.DoesNotContain(@"C:\Tools\Contoso", args);
+        Assert.DoesNotContain("--log", args);
+        Assert.DoesNotContain(@"C:\Logs\contoso.log", args);
+    }
+
     private static InstallCommandBuilder CreateBuilder()
     {
         var wingetService = new WingetService(

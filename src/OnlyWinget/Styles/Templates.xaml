@@ -100,7 +100,7 @@
               <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.80"/>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
-              <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.50"/>
+              <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
               <Setter Property="Cursor" Value="Arrow"/>
             </Trigger>
           </ControlTemplate.Triggers>
@@ -114,7 +114,7 @@
       </Trigger>
       <Trigger Property="IsEnabled" Value="False">
         <Setter Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
       </Trigger>
     </Style.Triggers>

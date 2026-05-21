@@ -193,7 +193,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     public bool TryAddEntry(string? name, string? id)
     {
-        return TryAddEntry(name, id, "winget", out _, showDialog: true);
+        return TryAddEntry(name, id, AppEntry.DefaultSource, out _, showDialog: true);
     }
 
     public bool TryAddEntry(PackageInterrogationResult interrogation, SelectedInstallOptions selectedOptions, out string warning, bool showDialog)
@@ -210,10 +210,11 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         foreach (var option in options)
         {
             var architecture = option.Architecture?.Trim() ?? string.Empty;
-            var validation = _appEntryService.ValidateResolvedForInsert(interrogation.Id, CurrentApps, architecture);
+            var source = AppEntry.NormalizeSource(interrogation.Source);
+            var validation = _appEntryService.ValidateResolvedForInsert(interrogation.Id, CurrentApps, source, architecture);
             if (validation != AppEntryValidationError.None)
             {
-                warning = GetValidationWarning(validation, interrogation.Id, architecture);
+                warning = GetValidationWarning(validation, interrogation.Id, source, architecture);
                 if (showDialog && !string.IsNullOrWhiteSpace(warning))
                 {
                     _dialogService.ShowWarning(warning, validation == AppEntryValidationError.DuplicateId ? Strings.DuplicateIdTitle : Strings.InvalidIdTitle);
@@ -222,10 +223,10 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
                 return false;
             }
 
-            var pendingKey = AppEntry.BuildOperationKey(interrogation.Id, architecture);
+            var pendingKey = AppEntry.BuildOperationKey(interrogation.Id, source, architecture);
             if (!pendingKeys.Add(pendingKey))
             {
-                warning = GetValidationWarning(AppEntryValidationError.DuplicateId, interrogation.Id, architecture);
+                warning = GetValidationWarning(AppEntryValidationError.DuplicateId, interrogation.Id, source, architecture);
                 if (showDialog && !string.IsNullOrWhiteSpace(warning))
                 {
                     _dialogService.ShowWarning(warning, Strings.DuplicateIdTitle);
@@ -245,7 +246,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
     public bool TryAddEntry(string? name, string? id, out string warning, bool showDialog)
     {
-        return TryAddEntry(name, id, "winget", out warning, showDialog);
+        return TryAddEntry(name, id, AppEntry.DefaultSource, out warning, showDialog);
     }
 
     public bool TryAddEntry(string? name, string? id, string? source, out string warning, bool showDialog)
@@ -260,7 +261,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         var validation = _appEntryService.ValidateForInsert(normalizedId, CurrentApps, source);
         if (validation != AppEntryValidationError.None)
         {
-            warning = GetValidationWarning(validation, normalizedId);
+            warning = GetValidationWarning(validation, normalizedId, source);
             if (showDialog && !string.IsNullOrWhiteSpace(warning))
             {
                 _dialogService.ShowWarning(warning, validation == AppEntryValidationError.DuplicateId ? Strings.DuplicateIdTitle : Strings.InvalidIdTitle);
@@ -309,8 +310,8 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
                 return;
             }
 
-            var source = _dialogService.Prompt(Strings.InputSourcePrompt, Strings.InputSourceTitle, "winget");
-            var effectiveSource = string.IsNullOrWhiteSpace(source) ? "winget" : source.Trim();
+            var source = _dialogService.Prompt(Strings.InputSourcePrompt, Strings.InputSourceTitle, AppEntry.DefaultSource);
+            var effectiveSource = AppEntry.NormalizeSource(source);
 
             if (TryAddEntry(name, id, effectiveSource, out _, showDialog: true))
             {
@@ -332,7 +333,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
             PackageId = app.Id,
             PackageName = app.Name,
             Version = app.Version,
-            Source = string.IsNullOrWhiteSpace(app.Source) ? "winget" : app.Source,
+            Source = AppEntry.NormalizeSource(app.Source),
             Log = _appendOutput
         };
 
@@ -355,13 +356,13 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         var editedName = string.IsNullOrWhiteSpace(dialogResult.Interrogation.Name) ? app.Name : dialogResult.Interrogation.Name.Trim();
         var editedId = string.IsNullOrWhiteSpace(dialogResult.Interrogation.Id) ? app.Id : dialogResult.Interrogation.Id.Trim();
         var editedSource = string.IsNullOrWhiteSpace(dialogResult.Interrogation.Source)
-            ? (string.IsNullOrWhiteSpace(app.Source) ? "winget" : app.Source)
+            ? AppEntry.NormalizeSource(app.Source)
             : dialogResult.Interrogation.Source.Trim();
         var editedArchitecture = dialogResult.SelectedOptions.Architecture?.Trim() ?? string.Empty;
-        var validation = _appEntryService.ValidateForEdit(editedId, app.Id, CurrentApps, editedSource, editedArchitecture, app.Architecture);
+        var validation = _appEntryService.ValidateForEdit(editedId, app.Id, CurrentApps, editedSource, editedArchitecture, app.Source, app.Architecture);
         if (validation != AppEntryValidationError.None)
         {
-            var warning = GetValidationWarning(validation, editedId, editedArchitecture);
+            var warning = GetValidationWarning(validation, editedId, editedSource, editedArchitecture);
             if (!string.IsNullOrWhiteSpace(warning))
             {
                 _dialogService.ShowWarning(warning, validation == AppEntryValidationError.DuplicateId ? Strings.DuplicateIdTitle : Strings.InvalidIdTitle);
@@ -385,6 +386,8 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         app.InstallerType = dialogResult.SelectedOptions.InstallerType ?? string.Empty;
         app.InstallLocation = dialogResult.SelectedOptions.InstallLocation ?? string.Empty;
         app.LogPath = dialogResult.SelectedOptions.LogPath ?? string.Empty;
+        app.SupportsInstallLocation = dialogResult.SelectedOptions.SupportsInstallLocation;
+        app.SupportsLog = dialogResult.SelectedOptions.SupportsLog;
         app.AdditionalCustomArgs = dialogResult.SelectedOptions.AdditionalCustomArgs ?? string.Empty;
         app.OverrideArgs = dialogResult.SelectedOptions.OverrideArgs ?? string.Empty;
         app.AdvancedArgumentsReviewed = true;
@@ -542,12 +545,24 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
             return;
         }
 
-        TabNames.Add(result.ImportedPresetName);
-        _tabs[result.ImportedPresetName] = new ObservableCollection<AppEntry>(result.Apps);
-        SelectedTabName = result.ImportedPresetName;
+        var importedPresetName = result.ImportedPresetName;
+        var existingPresetName = TabNames.FirstOrDefault(
+            name => string.Equals(name, importedPresetName, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(existingPresetName))
+        {
+            TabNames.Add(importedPresetName);
+        }
+        else
+        {
+            importedPresetName = existingPresetName;
+        }
+
+        _tabs[importedPresetName] = new ObservableCollection<AppEntry>(result.Apps);
+        SelectedTabName = importedPresetName;
+        UpdateCurrentTab(importedPresetName);
         PersistPresetLibrary(showSuccessFeedback: false, appendSuccessOutput: false);
 
-        var successText = string.Format(Strings.ImportPresetSuccessText, result.ImportedPresetName);
+        var successText = string.Format(Strings.ImportPresetSuccessText, importedPresetName);
         _appendOutput(successText);
         _dialogService.ShowInfo(successText, Strings.ImportPresetSuccessTitle);
     }
@@ -624,9 +639,9 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         _dialogService.ShowError(message, Strings.DataLoadMessageTitle);
     }
 
-    private string GetValidationWarning(AppEntryValidationError validation, string id, string? architecture = null)
+    private string GetValidationWarning(AppEntryValidationError validation, string id, string? source = null, string? architecture = null)
     {
-        var reference = BuildEntryReference(id, architecture);
+        var reference = BuildEntryReference(id, source, architecture);
         return validation switch
         {
             AppEntryValidationError.DuplicateId => string.Format(Strings.DuplicateIdText, reference),
@@ -635,12 +650,14 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         };
     }
 
-    private static string BuildEntryReference(string id, string? architecture)
+    private static string BuildEntryReference(string id, string? source, string? architecture)
     {
+        var normalizedSource = AppEntry.NormalizeSource(source);
         var normalizedArchitecture = (architecture ?? string.Empty).Trim();
-        return string.IsNullOrWhiteSpace(normalizedArchitecture)
-            ? id
-            : $"{id} [{normalizedArchitecture}]";
+        var details = string.IsNullOrWhiteSpace(normalizedArchitecture)
+            ? normalizedSource
+            : $"{normalizedSource}, {normalizedArchitecture}";
+        return $"{id} [{details}]";
     }
 
     private void RefreshLocalizedState()

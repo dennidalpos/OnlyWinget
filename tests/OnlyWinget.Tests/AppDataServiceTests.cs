@@ -61,6 +61,29 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
+    public void Load_ReturnsInvalidData_WhenJsonFileIsTooLarge()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var jsonPath = Path.Combine(root, "AppsList.json");
+            WriteOversizedJsonFile(jsonPath);
+            var service = new AppDataService(appDataRoot: root);
+
+            var result = service.Load(jsonPath);
+
+            Assert.Equal(AppDataLoadStatus.InvalidData, result.Status);
+            Assert.Contains("dimensione", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.Single(result.TabNames);
+            Assert.Equal("Default", result.TabNames[0]);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Save_NormalizesDuplicateIds_AndReportsTargetPath()
     {
         var root = CreateTempDirectory();
@@ -269,6 +292,40 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
+    public void Save_AndLoad_PreservesSamePackageIdAndArchitectureAcrossSources()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var service = new AppDataService(appDataRoot: root);
+            var jsonPath = Path.Combine(root, "AppsList.json");
+
+            var result = service.Save(
+                jsonPath,
+                new[] { "Default" },
+                new()
+                {
+                    ["Default"] =
+                    [
+                        new AppEntry { Name = "Contoso Tool", Id = "Contoso.Tool", Source = "winget", Action = AppActions.Install, Architecture = "x64" },
+                        new AppEntry { Name = "Contoso Tool", Id = "Contoso.Tool", Source = "msstore", Action = AppActions.Install, Architecture = "x64" }
+                    ]
+                });
+
+            Assert.True(result.Success);
+
+            var loaded = service.Load(jsonPath);
+            Assert.Equal(2, loaded.Tabs["Default"].Count);
+            Assert.Contains(loaded.Tabs["Default"], app => app.Source == "winget" && app.Architecture == "x64");
+            Assert.Contains(loaded.Tabs["Default"], app => app.Source == "msstore" && app.Architecture == "x64");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Load_BackwardCompatible_WhenExtendedInstallFieldsAreMissing()
     {
         var root = CreateTempDirectory();
@@ -340,7 +397,7 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void ImportPreset_AddsPresetWithCollisionSafeName_AndNormalizedApps()
+    public void ImportPreset_ReturnsExistingPresetNameForOverwrite_AndNormalizedApps()
     {
         var root = CreateTempDirectory();
         try
@@ -364,7 +421,7 @@ public sealed class AppDataServiceTests
             var result = service.ImportPreset(importPath, new[] { "Default", "Default (imported)" });
 
             Assert.True(result.Success);
-            Assert.Equal("Default (imported 2)", result.ImportedPresetName);
+            Assert.Equal("Default", result.ImportedPresetName);
             Assert.Equal(2, result.Apps.Count);
             Assert.Equal("VS Code", result.Apps[0].Name);
             Assert.Equal(AppActions.Install, result.Apps[0].Action);
@@ -448,10 +505,37 @@ public sealed class AppDataServiceTests
         }
     }
 
+    [Fact]
+    public void ImportPreset_ReturnsError_WhenJsonFileIsTooLarge()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var service = new AppDataService(appDataRoot: root);
+            var importPath = Path.Combine(root, "oversized.onlywinget.json");
+            WriteOversizedJsonFile(importPath);
+
+            var result = service.ImportPreset(importPath, Array.Empty<string>());
+
+            Assert.False(result.Success);
+            Assert.Equal(importPath, result.Path);
+            Assert.Contains("dimensione", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "OnlyWinget.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    private static void WriteOversizedJsonFile(string path)
+    {
+        File.WriteAllText(path, new string(' ', (5 * 1024 * 1024) + 1));
     }
 }

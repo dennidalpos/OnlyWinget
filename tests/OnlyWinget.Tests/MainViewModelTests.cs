@@ -94,6 +94,128 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task CancelOperationCommand_CancelsRunningSearch()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var searchStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var searchCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var wingetService = new WingetService(
+                (singleArg, args, onOutputLine, cancellationToken) =>
+                {
+                    var command = singleArg ?? args[0];
+                    if (command == "--version")
+                    {
+                        return new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" };
+                    }
+
+                    if (command == "search")
+                    {
+                        searchStarted.TrySetResult();
+                        try
+                        {
+                            Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).GetAwaiter().GetResult();
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            searchCancelled.TrySetResult();
+                            throw;
+                        }
+                    }
+
+                    return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+                });
+            var viewModel = CreateViewModel(root, wingetService, new PassiveOperationRunner(), new FakeDialogService());
+            viewModel.Initialize();
+            viewModel.OpenSearchCommand.Execute(null);
+            viewModel.SearchQuery = "code";
+
+            viewModel.RunSearchCommand.Execute(null);
+            await searchStarted.Task;
+
+            Assert.True(viewModel.IsOperationCancellationAvailable);
+            Assert.True(viewModel.CancelOperationCommand.CanExecute(null));
+
+            viewModel.CancelOperationCommand.Execute(null);
+            await searchCancelled.Task;
+            await WaitForConditionAsync(() =>
+                !viewModel.IsSearchInProgress
+                && !viewModel.IsOperationCancellationAvailable
+                && viewModel.OutputText.Contains("event=operation_cancelled", StringComparison.Ordinal));
+
+            Assert.Empty(viewModel.SearchResults);
+            Assert.Contains("event=operation_cancel_requested", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Contains("event=operation_cancelled", viewModel.OutputText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CancelOperationCommand_CancelsRunningUpdateRefresh()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var refreshStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var refreshCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var wingetService = new WingetService(
+                (singleArg, args, onOutputLine, cancellationToken) =>
+                {
+                    var command = singleArg ?? args[0];
+                    if (command == "--version")
+                    {
+                        return new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" };
+                    }
+
+                    if (command == "list" && args.Contains("--upgrade-available"))
+                    {
+                        refreshStarted.TrySetResult();
+                        try
+                        {
+                            Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).GetAwaiter().GetResult();
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            refreshCancelled.TrySetResult();
+                            throw;
+                        }
+                    }
+
+                    return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+                });
+            var viewModel = CreateViewModel(root, wingetService, new PassiveOperationRunner(), new FakeDialogService());
+            viewModel.Initialize();
+
+            viewModel.OpenUpdatesCommand.Execute(null);
+            await refreshStarted.Task;
+
+            Assert.True(viewModel.IsOperationCancellationAvailable);
+            Assert.True(viewModel.CancelOperationCommand.CanExecute(null));
+
+            viewModel.CancelOperationCommand.Execute(null);
+            await refreshCancelled.Task;
+            await WaitForConditionAsync(() =>
+                !viewModel.IsUpdatesLoading
+                && !viewModel.IsOperationCancellationAvailable
+                && viewModel.OutputText.Contains("event=operation_cancelled", StringComparison.Ordinal));
+
+            Assert.Empty(viewModel.Updates);
+            Assert.Contains("event=operation_cancel_requested", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Contains("event=operation_cancelled", viewModel.OutputText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void TabCommands_CreateRenameAndDeleteTabs()
     {
         var root = CreateTempDirectory();
@@ -1132,7 +1254,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
-    public void ImportPresetCommand_AddsNewPresetWithoutReplacingExistingOne()
+    public void ImportPresetCommand_ReplacesExistingPresetWithSameName()
     {
         var root = CreateTempDirectory();
         try
@@ -1162,16 +1284,18 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             viewModel.ImportPresetCommand.Execute(null);
 
             Assert.Contains("Default", viewModel.TabNames);
-            Assert.Contains("Default (imported)", viewModel.TabNames);
-            Assert.Equal("Default (imported)", viewModel.SelectedTabName);
+            Assert.DoesNotContain("Default (imported)", viewModel.TabNames);
+            Assert.Single(viewModel.TabNames);
+            Assert.Equal("Default", viewModel.SelectedTabName);
             Assert.Single(viewModel.CurrentApps);
             Assert.Equal("Git.Git", viewModel.CurrentApps[0].Id);
             Assert.Single(dialog.InfoCalls);
-            Assert.Equal(string.Format(viewModel.Strings.ImportPresetSuccessText, "Default (imported)"), dialog.InfoCalls[0].Message);
+            Assert.Equal(string.Format(viewModel.Strings.ImportPresetSuccessText, "Default"), dialog.InfoCalls[0].Message);
 
             var json = File.ReadAllText(Path.Combine(root, "AppsList.json"));
-            Assert.Contains("\"Name\": \"Default (imported)\"", json, StringComparison.Ordinal);
+            Assert.Contains("\"Name\": \"Default\"", json, StringComparison.Ordinal);
             Assert.Contains("Git.Git", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("Microsoft.VisualStudioCode", json, StringComparison.Ordinal);
         }
         finally
         {
@@ -1342,6 +1466,91 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
+    public async Task ApplyCommand_PreservesUnreviewedAdvancedArgumentsInSnapshot()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var operationRunner = new CapturingApplyOperationRunner();
+            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            viewModel.Initialize();
+            viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
+            {
+                Enabled = true,
+                Name = "Internal Tool",
+                Id = "Contoso.InternalTool",
+                Action = AppActions.Install,
+                OverrideArgs = "/unsafe",
+                AdvancedArgumentsReviewed = false
+            });
+
+            viewModel.ApplyCommand.Execute(null);
+            await WaitForConditionAsync(() => operationRunner.CapturedApps.Count == 1);
+
+            var app = Assert.Single(operationRunner.CapturedApps);
+            Assert.Equal("/unsafe", app.OverrideArgs);
+            Assert.False(app.AdvancedArgumentsReviewed);
+            Assert.True(app.RequiresAdvancedArgumentsReview);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyCommand_BlocksImportedUnreviewedAdvancedArgumentsWithoutInvokingWinget()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var invokedCommands = new List<string>();
+            var wingetService = new WingetService(
+                wingetRunner: (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    if (!string.Equals(command, "--version", StringComparison.Ordinal))
+                    {
+                        invokedCommands.Add(command);
+                    }
+
+                    return new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" };
+                });
+            var viewModel = CreateViewModel(
+                root,
+                wingetService,
+                new OperationRunner(wingetService, new InstallCommandBuilder(wingetService)),
+                new FakeDialogService(),
+                systemCulture: "en-US");
+            viewModel.Initialize();
+            viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
+            {
+                Enabled = true,
+                Name = "Internal Tool",
+                Id = "Contoso.InternalTool",
+                Action = AppActions.Install,
+                OverrideArgs = "/unsafe",
+                AdvancedArgumentsReviewed = false
+            });
+
+            viewModel.ApplyCommand.Execute(null);
+            await WaitForConditionAsync(() => viewModel.OutputText.Contains("event=advanced_arguments_review_required", StringComparison.Ordinal));
+
+            Assert.Empty(invokedCommands);
+            var app = Assert.Single(viewModel.CurrentApps);
+            Assert.Equal(viewModel.Strings.AdvancedArgumentsReviewRequiredText, app.ErrorMessage);
+            Assert.Equal(viewModel.Strings.AdvancedArgumentsReviewRequiredResolution, app.Resolution);
+            Assert.DoesNotContain("/unsafe", viewModel.OutputText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task SearchFlow_QueuesSeparateEntriesForEachSelectedArchitecture()
     {
         var root = CreateTempDirectory();
@@ -1428,7 +1637,66 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Assert.True(firstAdd);
             Assert.True(string.IsNullOrWhiteSpace(initialWarning));
             Assert.False(duplicateAdd);
-            Assert.Contains("[x64]", duplicateWarning, StringComparison.Ordinal);
+            Assert.Contains("[winget, x64]", duplicateWarning, StringComparison.Ordinal);
+            Assert.Equal(2, viewModel.CurrentApps.Count);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PresetWorkspace_AllowsSameIdAndArchitectureAcrossSources_AndBlocksExactSourceDuplicate()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            WriteEmptyAppsList(root);
+            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            viewModel.Initialize();
+
+            var wingetInterrogation = new PackageInterrogationResult
+            {
+                Success = true,
+                Id = "Contoso.Tool",
+                Name = "Contoso Tool",
+                Version = "1.0.0",
+                Source = "winget",
+                InstallerType = "exe"
+            };
+            var storeInterrogation = new PackageInterrogationResult
+            {
+                Success = true,
+                Id = "Contoso.Tool",
+                Name = "Contoso Tool",
+                Version = "1.0.0",
+                Source = "msstore",
+                InstallerType = "exe"
+            };
+
+            var wingetAdd = viewModel.PresetWorkspace.TryAddEntries(
+                wingetInterrogation,
+                [new SelectedInstallOptions { Architecture = "x64" }],
+                out var wingetWarning,
+                showDialog: false);
+            var storeAdd = viewModel.PresetWorkspace.TryAddEntries(
+                storeInterrogation,
+                [new SelectedInstallOptions { Architecture = "x64" }],
+                out var storeWarning,
+                showDialog: false);
+            var duplicateStoreAdd = viewModel.PresetWorkspace.TryAddEntries(
+                storeInterrogation,
+                [new SelectedInstallOptions { Architecture = "x64" }],
+                out var duplicateWarning,
+                showDialog: false);
+
+            Assert.True(wingetAdd);
+            Assert.True(storeAdd);
+            Assert.True(string.IsNullOrWhiteSpace(wingetWarning));
+            Assert.True(string.IsNullOrWhiteSpace(storeWarning));
+            Assert.False(duplicateStoreAdd);
+            Assert.Contains("[msstore, x64]", duplicateWarning, StringComparison.Ordinal);
             Assert.Equal(2, viewModel.CurrentApps.Count);
         }
         finally
@@ -1757,7 +2025,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Action<string, string, string>? setErrorById = null,
             System.Threading.CancellationToken cancellationToken = default)
         {
-            setStatusById(apps[0].Id, UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55));
+            setStatusById(apps[0].OperationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress, 55));
             reportProgress(55, "VS Code: 55%");
             Started.TrySetResult();
             await Release.Task;
@@ -1999,7 +2267,10 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
                 Id = app.Id,
                 Action = app.Action,
                 Source = app.Source,
-                Architecture = app.Architecture
+                Architecture = app.Architecture,
+                AdditionalCustomArgs = app.AdditionalCustomArgs,
+                OverrideArgs = app.OverrideArgs,
+                AdvancedArgumentsReviewed = app.AdvancedArgumentsReviewed
             }));
             return Task.CompletedTask;
         }
@@ -2183,13 +2454,13 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             return LastSaveFilePath;
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request, CancellationToken cancellationToken = default)
         {
             PackageInterrogationRequests.Add(request);
             return Task.FromResult(_interrogationResponses.Count > 0 ? _interrogationResponses.Dequeue() : null);
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry, CancellationToken cancellationToken = default)
         {
             PackageInterrogationRequests.Add(request);
             return Task.FromResult(_interrogationResponses.Count > 0 ? _interrogationResponses.Dequeue() : null);

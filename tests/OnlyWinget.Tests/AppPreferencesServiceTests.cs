@@ -43,6 +43,17 @@ public sealed class AppPreferencesServiceTests : IDisposable
     }
 
     [Fact]
+    public void Load_ReturnsDefaultPreferences_WhenSettingsFileIsTooLarge()
+    {
+        var service = new AppPreferencesService(_root);
+        File.WriteAllText(service.GetSettingsPath(), new string(' ', (1024 * 1024) + 1));
+
+        var result = service.Load();
+
+        Assert.Equal(string.Empty, result.PreferredUiLanguage);
+    }
+
+    [Fact]
     public void Save_AndLoad_PreservePreferredUiLanguage()
     {
         var service = new AppPreferencesService(_root);

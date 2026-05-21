@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
 using OnlyWinget.Services;
@@ -39,6 +40,9 @@ public sealed class AppStartupCoordinatorTests
         Assert.Equal(AppStartupCoordinator.AppInstallerDownloadUrl, openedUrl);
         Assert.Single(dialog.ConfirmCalls);
         Assert.Contains(viewModel.Strings.WingetInstallPromptText, dialog.ConfirmCalls[0].Message, StringComparison.Ordinal);
+        Assert.Contains("Microsoft App Installer", dialog.ConfirmCalls[0].Message, StringComparison.Ordinal);
+        Assert.Contains("winget 1.x", dialog.ConfirmCalls[0].Message, StringComparison.Ordinal);
+        Assert.Contains("winget --version", dialog.ConfirmCalls[0].Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -194,6 +198,51 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         }
     }
 
+    [Fact]
+    public async Task RunPostStartupChecksAsync_LogsStructuredFailureWithoutExceptionMessage()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var dialog = new RecordingDialogService();
+            var wingetService = new WingetService(
+                wingetRunner: static (singleArg, args, onOutputLine) =>
+                {
+                    var command = singleArg ?? args[0];
+                    if (command == "--version")
+                    {
+                        return new WingetCommandResult { ExitCode = 0, Output = "v1.12.470" };
+                    }
+
+                    if (args.SequenceEqual(new[] { "source", "update" }))
+                    {
+                        throw new InvalidOperationException("source update failed with super-secret-token");
+                    }
+
+                    return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+                });
+            var viewModel = CreateViewModel(root, wingetService, dialog);
+            var coordinator = new AppStartupCoordinator(wingetService, dialog);
+
+            await coordinator.RunPostStartupChecksAsync(viewModel);
+
+            Assert.Contains("event=startup_check_failed", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Contains("stage=\"source_update\"", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Contains("exception_type=\"InvalidOperationException\"", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Contains("hresult=", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.DoesNotContain("super-secret-token", viewModel.OutputText, StringComparison.Ordinal);
+            Assert.Empty(dialog.InfoCalls);
+            Assert.Empty(dialog.WarningCalls);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     private static MainViewModel CreateViewModel(string root, WingetService wingetService, RecordingDialogService dialogService)
     {
         var dataService = new AppDataService(appDataRoot: root);
@@ -252,12 +301,12 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
             return null;
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<PackageInterrogationDialogResult?>(null);
         }
 
-        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry)
+        public Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<PackageInterrogationDialogResult?>(null);
         }

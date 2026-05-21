@@ -27,17 +27,18 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.EmptyId;
         }
 
-        if (ContainsEntry(currentApps, normalizedId, architecture))
+        var normalizedSource = NormalizeSource(source);
+        if (ContainsEntry(currentApps, normalizedId, normalizedSource, architecture))
         {
             return AppEntryValidationError.DuplicateId;
         }
 
-        return _wingetService.TestAppExists(normalizedId, NormalizeSource(source))
+        return _wingetService.TestAppExists(normalizedId, normalizedSource)
             ? AppEntryValidationError.None
             : AppEntryValidationError.InvalidId;
     }
 
-    public AppEntryValidationError ValidateResolvedForInsert(string? id, IEnumerable<AppEntry> currentApps, string? architecture = null)
+    public AppEntryValidationError ValidateResolvedForInsert(string? id, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null)
     {
         var normalizedId = NormalizeId(id);
         if (string.IsNullOrWhiteSpace(normalizedId))
@@ -45,12 +46,12 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.EmptyId;
         }
 
-        return ContainsEntry(currentApps, normalizedId, architecture)
+        return ContainsEntry(currentApps, normalizedId, NormalizeSource(source), architecture)
             ? AppEntryValidationError.DuplicateId
             : AppEntryValidationError.None;
     }
 
-    public AppEntryValidationError ValidateForEdit(string? id, string? originalId, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null, string? originalArchitecture = null)
+    public AppEntryValidationError ValidateForEdit(string? id, string? originalId, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null, string? originalSource = "winget", string? originalArchitecture = null)
     {
         var normalizedId = NormalizeId(id);
         if (string.IsNullOrWhiteSpace(normalizedId))
@@ -58,18 +59,21 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.EmptyId;
         }
 
+        var normalizedSource = NormalizeSource(source);
+        var normalizedOriginalSource = NormalizeSource(originalSource);
         var normalizedArchitecture = NormalizeArchitecture(architecture);
         var normalizedOriginalArchitecture = NormalizeArchitecture(originalArchitecture);
         var isSameEntry =
             string.Equals(normalizedId, NormalizeId(originalId), StringComparison.OrdinalIgnoreCase)
+            && string.Equals(normalizedSource, normalizedOriginalSource, StringComparison.OrdinalIgnoreCase)
             && string.Equals(normalizedArchitecture, normalizedOriginalArchitecture, StringComparison.OrdinalIgnoreCase);
 
-        if (!isSameEntry && ContainsEntry(currentApps, normalizedId, normalizedArchitecture))
+        if (!isSameEntry && ContainsEntry(currentApps, normalizedId, normalizedSource, normalizedArchitecture))
         {
             return AppEntryValidationError.DuplicateId;
         }
 
-        return _wingetService.TestAppExists(normalizedId, NormalizeSource(source))
+        return _wingetService.TestAppExists(normalizedId, normalizedSource)
             ? AppEntryValidationError.None
             : AppEntryValidationError.InvalidId;
     }
@@ -99,7 +103,7 @@ public sealed class AppEntryService : IAppEntryService
         {
             Name = string.IsNullOrWhiteSpace(interrogation.Name) ? interrogation.Id : interrogation.Name.Trim(),
             Id = NormalizeId(interrogation.Id),
-            Source = string.IsNullOrWhiteSpace(interrogation.Source) ? "winget" : interrogation.Source.Trim(),
+            Source = AppEntry.NormalizeSource(interrogation.Source),
             Version = (interrogation.Version ?? string.Empty).Trim(),
             Action = action ?? AppActions.Install,
             Scope = (selectedOptions.Scope ?? string.Empty).Trim(),
@@ -109,6 +113,8 @@ public sealed class AppEntryService : IAppEntryService
             InstallerType = (selectedOptions.InstallerType ?? string.Empty).Trim(),
             InstallLocation = (selectedOptions.InstallLocation ?? string.Empty).Trim(),
             LogPath = (selectedOptions.LogPath ?? string.Empty).Trim(),
+            SupportsInstallLocation = selectedOptions.SupportsInstallLocation,
+            SupportsLog = selectedOptions.SupportsLog,
             AdditionalCustomArgs = (selectedOptions.AdditionalCustomArgs ?? string.Empty).Trim(),
             OverrideArgs = (selectedOptions.OverrideArgs ?? string.Empty).Trim(),
             ManifestFingerprint = (interrogation.ManifestFingerprint ?? string.Empty).Trim(),
@@ -122,15 +128,11 @@ public sealed class AppEntryService : IAppEntryService
 
     private static string NormalizeArchitecture(string? architecture) => (architecture ?? string.Empty).Trim();
 
-    private static string NormalizeSource(string? source)
-    {
-        var value = (source ?? string.Empty).Trim();
-        return string.IsNullOrWhiteSpace(value) ? "winget" : value;
-    }
+    private static string NormalizeSource(string? source) => AppEntry.NormalizeSource(source);
 
-    private static bool ContainsEntry(IEnumerable<AppEntry> currentApps, string id, string? architecture)
+    private static bool ContainsEntry(IEnumerable<AppEntry> currentApps, string id, string? source, string? architecture)
     {
-        var operationKey = AppEntry.BuildOperationKey(id, architecture);
+        var operationKey = AppEntry.BuildOperationKey(id, NormalizeSource(source), architecture);
         return currentApps.Any(app => string.Equals(app.OperationKey, operationKey, StringComparison.OrdinalIgnoreCase));
     }
 }

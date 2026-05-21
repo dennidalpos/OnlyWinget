@@ -5,6 +5,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -48,15 +49,18 @@ public sealed class AppStartupCoordinator
 
     public async Task RunPostStartupChecksAsync(MainViewModel viewModel)
     {
+        var startupCheckStage = "initialization";
         try
         {
             var strings = viewModel.Strings;
+            startupCheckStage = "source_update";
             var sourceUpdate = await Task.Run(_wingetService.UpdateSources).ConfigureAwait(true);
             if (sourceUpdate.ExitCode != 0)
             {
                 viewModel.AppendLog(sourceUpdate.Output);
             }
 
+            startupCheckStage = "winget_update_check";
             var versionCheck = await _wingetService.CheckForWingetUpdateAsync().ConfigureAwait(true);
 
             if (!versionCheck.IsUpdateAvailable)
@@ -69,6 +73,7 @@ public sealed class AppStartupCoordinator
             promptBuilder.AppendLine();
             promptBuilder.Append(strings.WingetUpdatePromptText);
 
+            startupCheckStage = "winget_update_prompt";
             if (!_dialogService.Confirm(promptBuilder.ToString(), strings.PrerequisitesWarningTitle))
             {
                 return;
@@ -78,8 +83,10 @@ public sealed class AppStartupCoordinator
             viewModel.IsWingetUpdateInProgress = true;
             try
             {
+                startupCheckStage = "winget_update_apply";
                 var result = await Task.Run(_wingetService.UpgradeWinget).ConfigureAwait(true);
                 viewModel.AppendLog(result.Output);
+                startupCheckStage = "winget_update_verify";
                 var installedAfterUpdate = _wingetService.GetInstalledWingetVersion();
                 var isUpdatedToExpectedVersion =
                     !string.IsNullOrWhiteSpace(versionCheck.LatestVersion) &&
@@ -100,15 +107,37 @@ public sealed class AppStartupCoordinator
             }
             finally
             {
-                _wingetService.CleanupOldLogs();
-                viewModel.IsWingetUpdateInProgress = false;
-                viewModel.ClearShellStatus();
+                try
+                {
+                    startupCheckStage = "cleanup_old_logs";
+                    _wingetService.CleanupOldLogs();
+                }
+                finally
+                {
+                    viewModel.IsWingetUpdateInProgress = false;
+                    viewModel.ClearShellStatus();
+                }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Check non bloccante: in caso di errore non deve bloccare l'apertura UI.
+            viewModel.AppendLog(FormatStartupCheckFailureLog(startupCheckStage, ex));
         }
+    }
+
+    private static string FormatStartupCheckFailureLog(string stage, Exception exception)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "event=startup_check_failed stage=\"{0}\" exception_type=\"{1}\" hresult={2}",
+            EscapeLogValue(stage),
+            EscapeLogValue(exception.GetType().Name),
+            exception.HResult);
+    }
+
+    private static string EscapeLogValue(string value)
+    {
+        return (value ?? string.Empty).Replace("\"", "'", StringComparison.Ordinal);
     }
 
     private static bool TryParseVersion(string raw, out Version version)

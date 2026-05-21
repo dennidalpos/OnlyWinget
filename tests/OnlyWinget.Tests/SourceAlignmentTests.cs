@@ -40,12 +40,43 @@ public sealed class SourceAlignmentTests
     }
 
     [Fact]
+    public void BundleSource_BlocksUnsupportedWindowsBeforeInstallingPayload()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget.Setup", "OnlyWinget.Bundle.wxs"));
+
+        Assert.Contains("<bal:Condition", source, StringComparison.Ordinal);
+        Assert.Contains("OnlyWinget requires Windows 10 or Windows 11", source, StringComparison.Ordinal);
+        Assert.Contains("VersionNT >= v10.0", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MsiSource_BlocksUnsupportedWindowsForDirectMsiExecution()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget.Setup", "OnlyWinget.Setup.wxs"));
+
+        Assert.Contains("WindowsBuildNumberSearch", source, StringComparison.Ordinal);
+        Assert.Contains("CurrentBuildNumber", source, StringComparison.Ordinal);
+        Assert.Contains("WINDOWSBUILDNUMBER &gt;= 10240", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MsiSource_DoesNotCarryServiceCleanupCustomActions_ForDesktopAppPackaging()
     {
         var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget.Setup", "OnlyWinget.Setup.wxs"));
 
         Assert.DoesNotContain("ServiceCleanupScriptComponent", source, StringComparison.Ordinal);
         Assert.DoesNotContain("CleanupProjectServicesForUninstall", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MsiSource_DoesNotRecursivelyDeleteMutableRegistryInstallFolder()
+    {
+        var source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "OnlyWinget.Setup", "OnlyWinget.Setup.wxs"));
+
+        Assert.DoesNotContain("RemoveFolderEx", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ONLYWINGET_INSTALLFOLDER", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("WixUtilExtension", source, StringComparison.Ordinal);
+        Assert.Contains("<RemoveFolder Id=\"RemoveInstallFolder\" On=\"uninstall\" />", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -193,7 +224,7 @@ public sealed class SourceAlignmentTests
         Assert.Contains("x:Key=\"PackageDialogLabelColumnWidth\">180</GridLength>", tokens, StringComparison.Ordinal);
         Assert.DoesNotContain("ColumnDefinition Width=\"180\"", dialog, StringComparison.Ordinal);
         Assert.Equal(
-            11,
+            12,
             Regex.Matches(dialog, "ColumnDefinition Width=\"\\{StaticResource PackageDialogLabelColumnWidth\\}\"").Count);
     }
 

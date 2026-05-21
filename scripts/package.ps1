@@ -11,7 +11,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-. (Join-Path $PSScriptRoot 'internal/ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
@@ -33,14 +33,81 @@ $bundleUpgradeCode = '{A34AF980-F5F1-4E4D-8124-8DC5E889C74D}'
 $builtMsiPaths = @{}
 $suppressedValidationIces = @('ICE61')
 
-function Resolve-WixTool {
+function Add-UniquePath {
     param(
-        [string]$ToolName
+        [System.Collections.Generic.List[string]]$Paths,
+        [string]$Path
     )
 
-    $localCandidate = Join-Path $repoRoot "tools/wix314-binaries/$ToolName"
-    if (Test-Path $localCandidate) {
-        return $localCandidate
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return
+    }
+
+    $normalizedPath = [System.IO.Path]::GetFullPath($Path)
+    if (-not $Paths.Contains($normalizedPath)) {
+        $Paths.Add($normalizedPath)
+    }
+}
+
+function Get-WixToolSearchRoot {
+    $roots = [System.Collections.Generic.List[string]]::new()
+
+    Add-UniquePath -Paths $roots -Path (Join-Path $repoRoot 'tools/wix314-binaries')
+
+    if (-not [string]::IsNullOrWhiteSpace($env:ONLYWINGET_WIX_BIN)) {
+        Add-UniquePath -Paths $roots -Path $env:ONLYWINGET_WIX_BIN
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:WIX)) {
+        Add-UniquePath -Paths $roots -Path (Join-Path $env:WIX 'bin')
+    }
+
+    $programRoots = @(
+        ${env:ProgramFiles(x86)}
+        $env:ProgramFiles
+    )
+
+    foreach ($programRoot in $programRoots) {
+        if ([string]::IsNullOrWhiteSpace($programRoot)) {
+            continue
+        }
+
+        $toolsetRootPattern = Join-Path $programRoot 'WiX Toolset v3*'
+        $toolsetRoots = @(Get-ChildItem -Path $toolsetRootPattern -Directory -ErrorAction SilentlyContinue |
+            Sort-Object -Property @{
+                Expression = {
+                    if ($_.Name -match 'v(?<Version>\d+(?:\.\d+)*)$') {
+                        return [Version]$Matches.Version
+                    }
+
+                    return [Version]'0.0'
+                }
+                Descending = $true
+            })
+
+        foreach ($toolsetRoot in $toolsetRoots) {
+            Add-UniquePath -Paths $roots -Path (Join-Path $toolsetRoot.FullName 'bin')
+        }
+    }
+
+    return $roots.ToArray()
+}
+
+function Resolve-WixTool {
+    param(
+        [string]$ToolName,
+        [string[]]$SearchRoots
+    )
+
+    foreach ($root in $SearchRoots) {
+        if ([string]::IsNullOrWhiteSpace($root)) {
+            continue
+        }
+
+        $candidate = Join-Path $root $ToolName
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
     }
 
     $command = Get-Command $ToolName -ErrorAction SilentlyContinue
@@ -48,7 +115,7 @@ function Resolve-WixTool {
         return $command.Source
     }
 
-    throw "Tool WiX non trovato: $ToolName. Installa WiX Toolset 3.x o aggiungi i binari in 'tools/wix314-binaries'."
+    throw "Tool WiX non trovato: $ToolName. Installa WiX Toolset 3.x, imposta ONLYWINGET_WIX_BIN alla cartella bin di WiX, aggiungi WiX al PATH, oppure aggiungi i binari in 'tools/wix314-binaries'."
 }
 
 function Resolve-WixExtension {
@@ -114,11 +181,17 @@ function Reset-Directory {
         [string]$Path
     )
 
-    if (Test-Path $Path) {
-        Remove-Item -Path $Path -Recurse -Force
+    $fullPath = Assert-RepositoryPathInAllowedRoot `
+        -Path $Path `
+        -RepositoryRoot $repoRoot `
+        -AllowedRoots @($stagingRoot) `
+        -Description 'Reset directory installer'
+
+    if (Test-Path -LiteralPath $fullPath) {
+        Remove-Item -LiteralPath $fullPath -Recurse -Force -ErrorAction Stop
     }
 
-    New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
 }
 
 function Get-RuntimeIdentifier {
@@ -215,7 +288,6 @@ function Invoke-ArchitectureMsi {
     & $candleExe `
         -nologo `
         -arch $MsiArchitecture `
-        -ext $utilExtension `
         -ext $uiExtension `
         "-dPublishDir=$publishDir" `
         "-dProductVersion=$installerVersion" `
@@ -236,7 +308,6 @@ function Invoke-ArchitectureMsi {
     & $lightExe `
         -nologo `
         "-sice:$($suppressedValidationIces -join ';')" `
-        -ext $utilExtension `
         -ext $uiExtension `
         -out $msiFilePath `
         $setupObjectPath `
@@ -306,16 +377,16 @@ Assert-Path -Path $bundleSourcePath -Description 'WiX bundle source'
 Assert-Path -Path $bundleThemePath -Description 'WiX Burn theme'
 Assert-Path -Path $bundleThemeLocalizationPath -Description 'WiX Burn theme localization'
 
-$heatExe = Resolve-WixTool -ToolName 'heat.exe'
-$candleExe = Resolve-WixTool -ToolName 'candle.exe'
-$lightExe = Resolve-WixTool -ToolName 'light.exe'
+$configuredWixSearchRoots = Get-WixToolSearchRoot
+$heatExe = Resolve-WixTool -ToolName 'heat.exe' -SearchRoots $configuredWixSearchRoots
+$candleExe = Resolve-WixTool -ToolName 'candle.exe' -SearchRoots $configuredWixSearchRoots
+$lightExe = Resolve-WixTool -ToolName 'light.exe' -SearchRoots $configuredWixSearchRoots
 $wixSearchRoots = @(
-    (Join-Path $repoRoot 'tools/wix314-binaries')
+    $configuredWixSearchRoots
     (Split-Path $heatExe -Parent)
     (Split-Path $candleExe -Parent)
     (Split-Path $lightExe -Parent)
 )
-$utilExtension = Resolve-WixExtension -ExtensionName 'WixUtilExtension.dll' -SearchRoots $wixSearchRoots
 $uiExtension = Resolve-WixExtension -ExtensionName 'WixUIExtension.dll' -SearchRoots $wixSearchRoots
 $balExtension = Resolve-WixExtension -ExtensionName 'WixBalExtension.dll' -SearchRoots $wixSearchRoots
 

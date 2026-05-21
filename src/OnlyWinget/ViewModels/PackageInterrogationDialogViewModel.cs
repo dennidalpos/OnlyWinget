@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using OnlyWinget.Models;
@@ -33,6 +34,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     private string _selectedInstallerType = string.Empty;
     private string _selectedInstallMode = InstallModes.SilentWithProgress;
     private string _installLocation = string.Empty;
+    private string _selectedInstallLocationPreset = string.Empty;
     private string _logPath = string.Empty;
     private string _additionalCustomArgs = string.Empty;
     private string _overrideArgs = string.Empty;
@@ -42,6 +44,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     private string _unsupportedArgumentsText = string.Empty;
     private string _commandPreview = string.Empty;
     private bool _isUpdatingArchitectureSelections;
+    private bool _isApplyingInstallLocationPreset;
 
     public PackageInterrogationDialogViewModel(LocalizedStrings strings)
     {
@@ -52,6 +55,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         AvailableLocales = new ObservableCollection<string>();
         AvailableInstallerTypes = new ObservableCollection<string>();
         AvailableInstallModes = new ObservableCollection<string>();
+        InstallLocationPresets = new ObservableCollection<string>();
     }
 
     public string Title => _strings.PackageDialogTitle;
@@ -68,10 +72,12 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     public string ArchitectureLabel => _strings.PackageDialogArchitectureLabel;
     public string LocaleLabel => _strings.PackageDialogLocaleLabel;
     public string InstallLocationLabel => _strings.PackageDialogInstallLocationLabel;
+    public string InstallLocationPresetLabel => _strings.PackageDialogInstallLocationPresetLabel;
     public string LogPathLabel => _strings.PackageDialogLogPathLabel;
     public string AdditionalCustomArgsLabel => _strings.PackageDialogAdditionalCustomArgsLabel;
     public string OverrideArgsLabel => _strings.PackageDialogOverrideArgsLabel;
     public string AdvancedTitle => _strings.PackageDialogAdvancedTitle;
+    public string AdvancedArgumentsWarningText => _strings.PackageDialogAdvancedArgumentsWarningText;
     public string CommandPreviewLabel => _strings.PackageDialogCommandPreviewLabel;
     public string OverrideWarningText => _strings.PackageDialogOverrideWarningText;
     public string LocationUnsupportedText => _strings.PackageDialogLocationUnsupportedText;
@@ -182,6 +188,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     public ObservableCollection<string> AvailableLocales { get; }
     public ObservableCollection<string> AvailableInstallerTypes { get; }
     public ObservableCollection<string> AvailableInstallModes { get; }
+    public ObservableCollection<string> InstallLocationPresets { get; }
 
     public bool HasScopes => AvailableScopes.Count > 0;
     public bool HasArchitectures => AvailableArchitectures.Count > 0;
@@ -248,6 +255,10 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     public bool HasUnsupportedArguments => !string.IsNullOrWhiteSpace(UnsupportedArgumentsText);
 
     public bool ShowOverrideWarning => !string.IsNullOrWhiteSpace(OverrideArgs);
+
+    public bool ShowAdvancedArgumentsWarning =>
+        !string.IsNullOrWhiteSpace(AdditionalCustomArgs)
+        || !string.IsNullOrWhiteSpace(OverrideArgs);
 
     public string CommandPreview
     {
@@ -323,7 +334,32 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         {
             if (SetProperty(ref _installLocation, value))
             {
+                if (!_isApplyingInstallLocationPreset)
+                {
+                    SetInstallLocationPresetFromCurrentValue(value);
+                }
+
                 RefreshCommandPreview();
+            }
+        }
+    }
+
+    public string SelectedInstallLocationPreset
+    {
+        get => _selectedInstallLocationPreset;
+        set
+        {
+            if (SetProperty(ref _selectedInstallLocationPreset, value) && !string.IsNullOrWhiteSpace(value))
+            {
+                _isApplyingInstallLocationPreset = true;
+                try
+                {
+                    InstallLocation = value;
+                }
+                finally
+                {
+                    _isApplyingInstallLocationPreset = false;
+                }
             }
         }
     }
@@ -347,6 +383,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         {
             if (SetProperty(ref _additionalCustomArgs, value))
             {
+                OnPropertyChanged(nameof(ShowAdvancedArgumentsWarning));
                 RefreshCommandPreview();
             }
         }
@@ -360,6 +397,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
             if (SetProperty(ref _overrideArgs, value))
             {
                 OnPropertyChanged(nameof(ShowOverrideWarning));
+                OnPropertyChanged(nameof(ShowAdvancedArgumentsWarning));
                 RefreshCommandPreview();
             }
         }
@@ -388,6 +426,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         Replace(AvailableArchitectures, result.AvailableArchitectures);
         Replace(AvailableLocales, result.AvailableLocales);
         Replace(AvailableInstallerTypes, result.AvailableInstallerTypes);
+        Replace(InstallLocationPresets, BuildInstallLocationPresets(result.Id));
 
         var defaultArchitectures = result.DefaultSelection.SelectedArchitectures.Count > 0
             ? result.DefaultSelection.SelectedArchitectures
@@ -402,6 +441,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         SelectedLocale = result.DefaultSelection.Locale;
         SelectedInstallerType = result.DefaultSelection.InstallerType;
         InstallLocation = result.DefaultSelection.InstallLocation;
+        SetInstallLocationPresetFromCurrentValue(InstallLocation);
         LogPath = result.DefaultSelection.LogPath;
         AdditionalCustomArgs = result.DefaultSelection.AdditionalCustomArgs;
         OverrideArgs = result.DefaultSelection.OverrideArgs;
@@ -446,6 +486,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(entry.InstallLocation))
         {
             InstallLocation = entry.InstallLocation;
+            SetInstallLocationPresetFromCurrentValue(entry.InstallLocation);
         }
 
         if (!string.IsNullOrWhiteSpace(entry.LogPath))
@@ -614,7 +655,7 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         var sb = new StringBuilder("winget install --id ");
         sb.Append(_packageId);
         sb.Append(" -e --source ");
-        sb.Append(string.IsNullOrWhiteSpace(_source) ? "winget" : _source);
+        sb.Append(AppEntry.NormalizeSource(_source));
 
         if (!string.IsNullOrWhiteSpace(selection.Scope))
         {
@@ -666,15 +707,11 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
 
         if (!string.IsNullOrWhiteSpace(selection.OverrideArgs))
         {
-            sb.Append(" --override \"");
-            sb.Append(selection.OverrideArgs.Replace("\"", "\\\""));
-            sb.Append('"');
+            sb.Append(" --override [redacted]");
         }
         else if (!string.IsNullOrWhiteSpace(selection.AdditionalCustomArgs))
         {
-            sb.Append(" --custom \"");
-            sb.Append(selection.AdditionalCustomArgs.Replace("\"", "\\\""));
-            sb.Append('"');
+            sb.Append(" --custom [redacted]");
         }
 
         sb.Append(" --accept-package-agreements --accept-source-agreements");
@@ -694,8 +731,10 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
             Locale = SelectedLocale?.Trim() ?? string.Empty,
             InstallerType = SelectedInstallerType?.Trim() ?? string.Empty,
             InstallMode = string.IsNullOrWhiteSpace(SelectedInstallMode) ? InstallModes.SilentWithProgress : SelectedInstallMode.Trim(),
-            InstallLocation = InstallLocation?.Trim() ?? string.Empty,
-            LogPath = LogPath?.Trim() ?? string.Empty,
+            InstallLocation = IsLocationSupported ? InstallLocation?.Trim() ?? string.Empty : string.Empty,
+            LogPath = IsLogSupported ? LogPath?.Trim() ?? string.Empty : string.Empty,
+            SupportsInstallLocation = IsLocationSupported,
+            SupportsLog = IsLogSupported,
             AdditionalCustomArgs = AdditionalCustomArgs?.Trim() ?? string.Empty,
             OverrideArgs = OverrideArgs?.Trim() ?? string.Empty,
             ElevationRequirement = _elevationRequirement?.Trim() ?? string.Empty
@@ -723,8 +762,8 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
     private List<ResolvedInstallerOption> GetMatchingOptionsForArchitecture(string architecture)
     {
         return _installerOptions.Where(option =>
-            Matches(option.Scope, SelectedScope)
-            && Matches(option.Locale, SelectedLocale)
+            MatchesOptionalDimension(option.Scope, SelectedScope)
+            && MatchesOptionalDimension(option.Locale, SelectedLocale)
             && Matches(option.InstallerType, SelectedInstallerType)
             && MatchesArchitecture(option.Architecture, architecture))
             .ToList();
@@ -848,9 +887,45 @@ public sealed class PackageInterrogationDialogViewModel : ObservableObject
         }
     }
 
+    private static IReadOnlyList<string> BuildInstallLocationPresets(string packageId)
+    {
+        var safePackageId = ToSafePathSegment(packageId);
+        return new[]
+        {
+            $@"%USERPROFILE%\Desktop\OnlyWinget Apps\{safePackageId}",
+            $@"%LOCALAPPDATA%\Microsoft\WinGet\Packages\{safePackageId}",
+            $@"%ProgramFiles%\WinGet\Packages\{safePackageId}",
+            $@"\\server\share\OnlyWinget\{safePackageId}"
+        };
+    }
+
+    private static string ToSafePathSegment(string value)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(value) ? "Package" : value.Trim();
+        foreach (var invalid in Path.GetInvalidFileNameChars())
+        {
+            trimmed = trimmed.Replace(invalid, '_');
+        }
+
+        return trimmed;
+    }
+
+    private void SetInstallLocationPresetFromCurrentValue(string value)
+    {
+        var preset = InstallLocationPresets.FirstOrDefault(candidate => string.Equals(candidate, value, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+        SetProperty(ref _selectedInstallLocationPreset, preset, nameof(SelectedInstallLocationPreset));
+    }
+
     private static bool Matches(string available, string selected)
     {
         return string.IsNullOrWhiteSpace(selected)
+            || string.Equals(available, selected, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool MatchesOptionalDimension(string available, string selected)
+    {
+        return string.IsNullOrWhiteSpace(available)
+            || string.IsNullOrWhiteSpace(selected)
             || string.Equals(available, selected, StringComparison.OrdinalIgnoreCase);
     }
 

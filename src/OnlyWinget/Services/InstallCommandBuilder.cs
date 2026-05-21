@@ -32,19 +32,25 @@ public sealed class InstallCommandBuilder : IInstallCommandBuilder
             app.Id,
             "-e",
             "--source",
-            string.IsNullOrWhiteSpace(app.Source) ? "winget" : app.Source
+            AppEntry.NormalizeSource(app.Source)
         };
 
         AddOption(args, "--scope", app.Scope);
         AddOption(args, "--architecture", app.Architecture);
         AddOption(args, "--installer-type", app.InstallerType);
         AddOption(args, "--locale", app.Locale);
-        AddOption(args, "--location", app.InstallLocation);
+        if (app.SupportsInstallLocation)
+        {
+            AddOption(args, "--location", ExpandPathPlaceholders(app.InstallLocation));
+        }
 
-        var logPath = string.IsNullOrWhiteSpace(app.LogPath)
-            ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
-            : app.LogPath.Trim();
-        AddOption(args, "--log", logPath);
+        if (app.SupportsLog)
+        {
+            var logPath = string.IsNullOrWhiteSpace(app.LogPath)
+                ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
+                : ExpandPathPlaceholders(app.LogPath);
+            AddOption(args, "--log", logPath);
+        }
 
         switch (app.InstallMode)
         {
@@ -59,12 +65,12 @@ public sealed class InstallCommandBuilder : IInstallCommandBuilder
         if (!string.IsNullOrWhiteSpace(app.OverrideArgs))
         {
             args.Add("--override");
-            args.Add(app.OverrideArgs.Trim());
+            args.Add(ExpandAdvancedArguments(app.OverrideArgs));
         }
         else if (!string.IsNullOrWhiteSpace(app.AdditionalCustomArgs))
         {
             args.Add("--custom");
-            args.Add(app.AdditionalCustomArgs.Trim());
+            args.Add(ExpandAdvancedArguments(app.AdditionalCustomArgs));
         }
 
         args.Add("--accept-package-agreements");
@@ -86,5 +92,17 @@ public sealed class InstallCommandBuilder : IInstallCommandBuilder
 
         args.Add(option);
         args.Add(value.Trim());
+    }
+
+    private static string ExpandAdvancedArguments(string value)
+    {
+        return Environment.ExpandEnvironmentVariables(value.Trim());
+    }
+
+    private static string ExpandPathPlaceholders(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : Environment.ExpandEnvironmentVariables(value.Trim());
     }
 }

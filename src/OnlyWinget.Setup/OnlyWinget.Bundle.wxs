@@ -14,6 +14,10 @@
           DisableRemove="yes">
     <Variable Name="InstallDesktopShortcut" Type="numeric" Value="0" />
 
+    <bal:Condition Message="OnlyWinget requires Windows 10 or Windows 11. Install on an updated Windows 10/11 client and rerun setup. Verify with: winver">
+      VersionNT >= v10.0
+    </bal:Condition>
+
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
       <bal:WixStandardBootstrapperApplication LicenseFile="$(var.LicenseRtfPath)"
                                               LogoFile="$(var.BundleLogoPath)"

@@ -6,20 +6,22 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-. (Join-Path $PSScriptRoot 'ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
-$repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$repoRoot = Split-Path $PSScriptRoot -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
 $testProjectPath = Join-Path $repoRoot 'tests/OnlyWinget.Tests/OnlyWinget.Tests.csproj'
 $artifactsPath = Join-Path $repoRoot 'artifacts'
 $tmpPath = Join-Path $repoRoot 'tmp'
 $reportPath = Join-Path $artifactsPath 'build-report.txt'
 $testResultsPath = Join-Path $artifactsPath 'test-results'
-$scriptsRoot = Split-Path $PSScriptRoot -Parent
+$scriptsRoot = $PSScriptRoot
 $buildScriptPath = Join-Path $scriptsRoot 'build.ps1'
 $packageScriptPath = Join-Path $scriptsRoot 'package.ps1'
+$scriptLintPath = Join-Path $scriptsRoot 'lint-scripts.ps1'
 $targetFramework = 'net8.0-windows'
 $steps = [System.Collections.Generic.List[string]]::new()
+$smokeTestStatus = 'not_run'
 
 function Invoke-Step {
     param(
@@ -47,16 +49,11 @@ function Remove-GateGeneratedPath {
         [string]$Path
     )
 
-    $fullRepoRoot = [System.IO.Path]::GetFullPath($repoRoot)
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $allowedPaths = @(
-        [System.IO.Path]::GetFullPath($artifactsPath),
-        [System.IO.Path]::GetFullPath($tmpPath)
-    )
-
-    if ($allowedPaths -notcontains $fullPath -or -not $fullPath.StartsWith($fullRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Pulizia gate rifiutata per percorso non consentito: $Path"
-    }
+    $fullPath = Assert-RepositoryPathInAllowedRoot `
+        -Path $Path `
+        -RepositoryRoot $repoRoot `
+        -AllowedRoots @($artifactsPath, $tmpPath) `
+        -Description 'Pulizia gate'
 
     if (-not (Test-Path -LiteralPath $fullPath)) {
         return
@@ -70,6 +67,7 @@ Assert-Path -Path $solutionPath -Description 'Solution'
 Assert-Path -Path $testProjectPath -Description 'Test project'
 Assert-Path -Path $buildScriptPath -Description 'Build script'
 Assert-Path -Path $packageScriptPath -Description 'Packaging script'
+Assert-Path -Path $scriptLintPath -Description 'PowerShell script lint script'
 
 Invoke-Step 'clean generated outputs' {
     Remove-GateGeneratedPath -Path $artifactsPath
@@ -86,7 +84,11 @@ Invoke-Step 'format' {
     Assert-LastExitCode 'dotnet format fallito.'
 }
 
-Invoke-Step 'lint' {
+Invoke-Step 'script lint' {
+    & $scriptLintPath
+}
+
+Invoke-Step 'build warnings as errors' {
     & $buildScriptPath -Configuration $Configuration -WarnAsError -NoRestore
 }
 
@@ -102,7 +104,8 @@ Invoke-Step 'unit test' {
 
 Invoke-Step 'integration/e2e test' {
     if (-not $RunWingetSmoke) {
-        Write-Host 'Smoke test winget reali disabilitati. Usa -RunWingetSmoke per abilitarli.' -ForegroundColor DarkGray
+        $script:smokeTestStatus = 'not_run'
+        Write-Host 'Smoke test winget reali: not_run. Usa -RunWingetSmoke per abilitarli.' -ForegroundColor DarkGray
         return
     }
 
@@ -110,6 +113,7 @@ Invoke-Step 'integration/e2e test' {
     try {
         dotnet test $testProjectPath -c $Configuration --no-build --no-restore --filter "Category=Smoke" --results-directory $testResultsPath --logger "trx;LogFileName=winget-smoke-tests.trx"
         Assert-LastExitCode 'dotnet test smoke fallito.'
+        $script:smokeTestStatus = 'passed'
     }
     finally {
         Remove-Item Env:\ONLYWINGET_RUN_WINGET_SMOKE -ErrorAction SilentlyContinue
@@ -151,6 +155,7 @@ Invoke-Step 'artifact analysis' {
         "UnifiedSetupSizeBytes: $($setup.Length)"
         "InternalMsiArtifacts: $($msis.FullName -join '; ')"
         "InternalMsiSizeBytes: $(($msis | ForEach-Object { $_.Length }) -join '; ')"
+        "SmokeTests: $smokeTestStatus"
         "GeneratedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     ) | Set-Content -Path $reportPath -Encoding UTF8
 }

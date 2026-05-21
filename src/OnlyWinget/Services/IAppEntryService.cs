@@ -19,8 +19,8 @@ public enum AppEntryValidationError
 public interface IAppEntryService
 {
     AppEntryValidationError ValidateForInsert(string? id, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null);
-    AppEntryValidationError ValidateResolvedForInsert(string? id, IEnumerable<AppEntry> currentApps, string? architecture = null);
-    AppEntryValidationError ValidateForEdit(string? id, string? originalId, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null, string? originalArchitecture = null);
+    AppEntryValidationError ValidateResolvedForInsert(string? id, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null);
+    AppEntryValidationError ValidateForEdit(string? id, string? originalId, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null, string? originalSource = "winget", string? originalArchitecture = null);
     AppEntry Create(string? name, string id, string? source = "winget", string? action = null);
     AppEntry Create(PackageInterrogationResult interrogation, SelectedInstallOptions selectedOptions, string? action = null);
 }

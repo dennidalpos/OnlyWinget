@@ -8,7 +8,7 @@ Use the adjacent repository documents for the other concerns:
 
 - [`../README.md`](../README.md): product-facing overview
 - [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
-- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current audit snapshot and any residual open work when present
+- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current operational status and any residual open work when present
 
 ## Purpose
 
@@ -20,8 +20,9 @@ OnlyWinget is a Windows desktop client for managing `winget` packages from a loc
 - `src/OnlyWinget.Setup/`: WiX source for internal MSIs and the unified setup bundle
 - `tests/OnlyWinget.Tests/`: xUnit test project
 - `scripts/`: PowerShell entrypoints used for install, build, run, cleanup, verification, and unified setup/MSI generation
-- `.github/workflows/build-gate.yml`: CI workflow that runs the repository verification gate through `scripts/internal/build-gate.ps1`
-- `tools/wix314-binaries/`: bundled WiX 3.14 toolset used by the MSI packaging script
+- `.github/workflows/build-gate.yml`: CI workflow that runs the repository verification gate through `scripts/check.ps1`
+- `tools/`: repository-owned tooling inputs; `tools/wix314-binaries/` is an optional local WiX toolset location when present
+- `media/` and `tools/Default.onlywinget.json`: sample preset JSON files
 - `artifacts/`: normalized build, test, publish, and packaging output root configured by `Directory.Build.props`
 
 ## Solution structure
@@ -52,7 +53,7 @@ The main preset library is stored at:
 
 - `%LOCALAPPDATA%\OnlyWinget\AppsList.json`
 
-The app supports only the tabbed JSON store under `%LOCALAPPDATA%\OnlyWinget`.
+The app supports only the tabbed JSON store under `%LOCALAPPDATA%\OnlyWinget`. The local preset library and imported preset JSON files are rejected before full deserialization when they exceed the current 5 MiB application data limit.
 
 If the saved preset library is invalid, corrupted, legacy, or temporarily unreadable, the UI starts with an empty default preset and marks the original file as requiring recovery protection. Before the app writes a replacement `AppsList.json`, it first copies the original file to a timestamped `AppsList.json.recovery-*.bak` file in the same directory. If that recovery backup cannot be created, the save is blocked.
 
@@ -62,13 +63,15 @@ UI preferences are stored at:
 
 - `%LOCALAPPDATA%\OnlyWinget\settings.json`
 
-The current implementation persists the preferred UI language there.
+The current implementation persists the preferred UI language there. Settings JSON is rejected before full deserialization when it exceeds the current 1 MiB settings limit.
 
 ### Import and export
 
-Presets can be exported and imported as readable JSON files using the `.onlywinget.json` extension. The import flow normalizes preset names and deduplicates package IDs.
+Presets can be exported and imported as readable JSON files using the `.onlywinget.json` extension. The import flow normalizes preset names and deduplicates exact package entries by package ID, source, and architecture.
 
 Imported preset rows that contain advanced installer arguments (`--custom` or `--override`) are treated as untrusted until reviewed in the package options dialog. Batch execution blocks those rows and does not pass their advanced arguments to `winget` until the user reviews and saves the row.
+
+Advanced installer arguments are persisted in `AppsList.json` and included in exported preset files, so users should not type tokens, license keys, passwords, or other secrets directly into those fields. The package options dialog warns about this storage model and redacts `--custom` and `--override` values in the command preview. When a secret-like value is required, the supported pattern is an environment-variable placeholder such as `%ONLYWINGET_LICENSE_KEY%`; the placeholder is saved in the preset and expanded only while building the final `winget install` command.
 
 ### Localization
 
@@ -83,7 +86,7 @@ The runtime localization catalog applies to the WPF shell. MSI installer UI text
 
 ### `winget` integration
 
-The application depends on the system `winget` CLI being available. `AppStartupCoordinator` blocks normal startup when `winget` is unavailable and can open the Microsoft App Installer page.
+The application depends on the system `winget` CLI being available. `AppStartupCoordinator` blocks before the main window is shown when `winget` is unavailable, explains that Microsoft App Installer with `winget` 1.x is required, gives `winget --version` as the verification command, and can open the official Microsoft App Installer page. Non-blocking post-startup checks log unexpected failures as structured `startup_check_failed` events with the failing stage, exception type, and HResult, without copying raw exception messages into the user-facing log.
 
 `WingetService` is responsible for:
 
@@ -108,26 +111,31 @@ Runtime cleanup prunes `.log` files older than 30 days. It preserves the runtime
 Before a searched package is added to a preset, the app runs a package interrogation flow using the source reported by search, defaulting to `winget` when no source is reported:
 
 1. `winget show` resolves package metadata.
-2. For `winget` sources with a concrete version, the app tries to fetch the installer manifest from `microsoft/winget-pkgs`.
+2. For `winget` sources with a concrete version and safe package/version path segments, the app tries to fetch the installer manifest from `microsoft/winget-pkgs` with a bounded timeout, cancellation, transient retry, response-size limit, and in-memory cache.
 3. Installer candidates are normalized into selectable options such as scope, architecture, locale, installer type, and install mode.
 4. If manifest data is unavailable, the dialog falls back to a reduced mode instead of blocking the workflow.
 
-The interrogation parser accepts the standard English and Italian `winget show` package header and also falls back to the stable `Package Name [Package.Id]` shape when `winget` localizes the leading word. Installer manifests are parsed conservatively for the fields the UI uses, including quoted YAML scalars, inline comments, indented installer entries, and quoted inline sequences.
+The manifest URL builder accepts only non-empty path segments made of letters, digits, `.`, `-`, `_`, or `+`; unsupported metadata skips the external manifest fetch and degrades to reduced mode. The interrogation parser accepts the standard English and Italian `winget show` package header and also falls back to the stable `Package Name [Package.Id]` shape when `winget` localizes the leading word. Installer manifests are parsed conservatively for the fields the UI uses, including quoted YAML scalars, inline comments, indented installer entries, and quoted inline sequences. Rejected, failed, oversized, unavailable, or timed-out manifest fetches degrade to reduced mode without blocking the package workflow.
+
+### Logging and diagnostics
+
+Operation output is user-visible and intentionally focused on actionable `winget` status. Structured log values produced by package interrogation and elevated launch handling are quoted after control-character and newline sanitization so package metadata or exception text cannot forge additional log events.
 
 ## Installer architecture
 
 `src/OnlyWinget.Setup/OnlyWinget.Setup.wxs` defines parameterized x86 and x64 internal MSIs with these observable characteristics:
 
 - `InstallScope="perMachine"`
+- a direct-execution launch condition requiring Windows 10 build 10240 or newer
 - major upgrade support through `MajorUpgrade`, including same-version reinstall handling
 - install root under `ProgramFilesFolder\OnlyWinget` for x86 and `ProgramFiles64Folder\OnlyWinget` for x64
 - a Start Menu shortcut using the application icon
 - optional desktop shortcut feature
-- uninstall cleanup for the install directory
+- uninstall cleanup for MSI-tracked files and empty installer-owned directories
 
-The MSIs are built from framework-dependent `dotnet publish` outputs for `win-x86` and `win-x64`; the default packaging flow does not produce self-contained app payloads.
+The MSIs are built from self-contained `dotnet publish` outputs for `win-x86` and `win-x64`; the default packaging flow embeds the .NET desktop runtime in the setup payload.
 
-`src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs` defines the primary end-user setup. It is a WiX Burn EXE that embeds both internal MSIs and selects the x64 MSI when `VersionNT64` is true, otherwise selecting the x86 MSI. This avoids presenting separate x86 and x64 installers as the primary distribution workflow while preserving architecture-specific payloads internally.
+`src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs` defines the primary end-user setup. It is a WiX Burn EXE that blocks unsupported Windows versions before the MSI chain runs, embeds both internal MSIs, and selects the x64 MSI when `VersionNT64` is true, otherwise selecting the x86 MSI. This avoids presenting separate x86 and x64 installers as the primary distribution workflow while preserving architecture-specific payloads internally.
 
 ## Verification boundaries
 

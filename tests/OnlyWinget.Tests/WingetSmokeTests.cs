@@ -12,36 +12,21 @@ namespace OnlyWinget.Tests;
 
 public sealed class WingetSmokeTests
 {
-    [Fact]
+    [SmokeFact]
     [Trait("Category", "Smoke")]
     public void TestAvailable_ReturnsTrue_WhenSmokeModeIsEnabled()
     {
-        if (!ShouldRunSmoke())
-        {
-            return;
-        }
-
         var service = new WingetService();
         Assert.True(service.TestAvailable());
     }
 
-    [Fact]
+    [SmokeFact]
     [Trait("Category", "Smoke")]
     public void Search_ReturnsKnownPackage_WhenSmokeModeIsEnabled()
     {
-        if (!ShouldRunSmoke())
-        {
-            return;
-        }
-
         var service = new WingetService();
         var results = service.Search("Microsoft.PowerToys");
 
         Assert.Contains(results, result => string.Equals(result.Id, "Microsoft.PowerToys", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool ShouldRunSmoke()
-    {
-        return string.Equals(Environment.GetEnvironmentVariable("ONLYWINGET_RUN_WINGET_SMOKE"), "1", StringComparison.Ordinal);
     }
 }

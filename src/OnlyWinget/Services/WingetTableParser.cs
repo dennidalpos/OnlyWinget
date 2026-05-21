@@ -223,7 +223,18 @@ internal static class WingetTableParser
 
     private static string NormalizeSource(string value)
     {
-        return string.IsNullOrWhiteSpace(value) ? "winget" : value.Trim();
+        var firstToken = FirstToken(value);
+        return IsNoUpdateMarker(firstToken)
+            ? AppEntry.DefaultSource
+            : AppEntry.NormalizeSource(firstToken);
+    }
+
+    private static bool IsNoUpdateMarker(string value)
+    {
+        var normalized = value.Trim();
+        return normalized.Equals("No", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Nessun", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Nessuno", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record TableColumn(string Key, params string[] Headers);

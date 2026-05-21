@@ -3,6 +3,7 @@
 // Proprietary and confidential. Unauthorized copying, modification,
 // distribution, sublicensing, or commercial use is prohibited.
 
+using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
 
@@ -17,6 +18,6 @@ public interface IDialogService
     bool Confirm(string message, string title);
     string? OpenFile(string title, string filter, string defaultExtension = "json");
     string? SaveFile(string title, string filter, string defaultFileName, string defaultExtension = "json");
-    Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request);
-    Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry);
+    Task<PackageInterrogationDialogResult?> ShowPackageInterrogationAsync(PackageInterrogationRequest request, CancellationToken cancellationToken = default);
+    Task<PackageInterrogationDialogResult?> ShowPackageInterrogationEditAsync(PackageInterrogationRequest request, AppEntry existingEntry, CancellationToken cancellationToken = default);
 }

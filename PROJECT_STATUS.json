@@ -1,91 +1,36 @@
 {
   "project_name": "OnlyWinget",
   "status": "active",
-  "current_phase": "residual_plan_documented",
-  "last_updated": "2026-05-13T22:31:34+02:00",
-  "production_target": true,
-  "summary": "Windows WPF app for managing local winget package workflows.",
-  "active_objective": "No active implementation task; continue residual work from next_tasks in priority order.",
-  "assumptions": [
-    "Audit smoke tests may call winget availability/search but must not install, uninstall, or upgrade packages.",
-    "Packaging may create or replace generated files under artifacts only.",
-    "GUI manual testing was not performed; UI findings are based on XAML, ViewModels, services, and tests.",
-    "Default winget timeout policy is conservative: 2 minutes for show/search/list, 5 minutes for source maintenance, 10 minutes for other commands, and 90 minutes for install/upgrade/uninstall/elevated launches.",
-    "Installer lifecycle validation was run in the current elevated Windows environment after confirming no existing OnlyWinget install state.",
-    "The current host reports ASUS hardware with a hypervisor present; dedicated VM isolation was not independently attestable from this workspace.",
-    "Google Play Games may report a newer winget manifest version while the installed application registration remains on 26.5.27.1 after the installer completes.",
-    "Claude may report a newer winget manifest version while the installed application registration remains on 1.6608.2.0 after the installer completes."
+  "last_updated": "2026-05-21T12:50:38+02:00",
+  "current_tasks": [
+    {
+      "task": "Review the existing working tree changes and stage or commit only the intended release changes.",
+      "reason": "The repository currently has pending modifications, deletions, and untracked files."
+    },
+    {
+      "task": "Run the hosted GitHub Actions build-gate workflow before release tagging.",
+      "reason": "Hosted CI parity still needs confirmation from GitHub UI or an authenticated GitHub CLI."
+    },
+    {
+      "task": "Run installer lifecycle validation from elevated PowerShell on a clean or disposable Windows host before release tagging.",
+      "command": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore"
+    },
+    {
+      "task": "Define and document the release publishing and versioning flow before publishing a release.",
+      "reason": "Release publishing is not versioned in this repository."
+    }
   ],
-  "decisions": [
-    "Application behavior was not changed during the audit.",
-    "Audit deliverables are kept at the repository root: AUDIT_CRITICO.md, APP_FLOW.md, AUDIT_FINDINGS.json, and AUDIT_ACTION_PLAN.md.",
-    "After invalid or unreadable AppsList.json load, the app must create a timestamped recovery backup before replacing the preset library; if backup creation fails, save is blocked.",
-    "Imported presets with advanced winget arguments are untrusted by default; --custom and --override are blocked during batch execution until the package row is reviewed and saved in the app.",
-    "Batch install/update flows expose user cancellation and pass cancellation tokens into OperationRunner, direct winget process execution, and elevated launch waits.",
-    "The package interrogation parser accepts localized winget show headers that preserve the Package Name [Package.Id] shape and handles quoted inline YAML sequences without splitting comma-containing quoted values."
+  "last_completed_work": "Improved portable/zip installer selection, added editable install-location presets with environment-variable expansion, preserved unsupported installer argument flags, updated disabled/button warning styling, and handled advertised updates that winget later reports as no-op.",
+  "oversized_files": [
+    "src/OnlyWinget/Services/OperationRunner.cs",
+    "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
+    "src/OnlyWinget/ViewModels/PackageInterrogationDialogViewModel.cs",
+    "src/OnlyWinget/MainWindow.xaml",
+    "tests/OnlyWinget.Tests/WingetServiceAndOperationRunnerTests.cs"
   ],
-  "current_tasks": [],
-  "next_tasks": [
-    "P0-03 Manually verify live cancellation from the WPF UI for direct winget install/update, elevated launch, and update refresh; confirm the UI recovers, logs cancellation, and does not leave actions permanently disabled.",
-    "P1-01 Harden package interrogation fetches from microsoft/winget-pkgs with cancellation tokens, short timeout, max response size, one bounded retry, and package/version cache.",
-    "P1-02 Replace or further isolate the manual YAML/output parsers with structured parsing or a larger fixture-backed parser suite covering real winget manifests, multiline YAML, localized output beyond IT/EN, and reduced-mode fallback.",
-    "P1-03 Add a local application diagnostic log separate from winget logs, with structured event IDs, stack traces for developer diagnostics, and user-facing messages that do not expose secrets or raw exception details.",
-    "P2-01 Harden packaging cleanup: port safe path validation from build-gate.ps1 into scripts\\package.ps1 before any recursive delete, limiting deletion to known artifacts subdirectories.",
-    "P2-02 Review WiX uninstall behavior: validate RemoveFolderEx paths under ProgramFiles\\OnlyWinget, document the intended uninstall channel, and decide whether the internal MSI should remain hidden from Apps & Features.",
-    "P2-03 Convert disabled winget smoke tests from passed-by-return to explicit skipped/trait-separated behavior, and define when real smoke tests must run for release.",
-    "P3-01 Decide whether to migrate xUnit 2.9.3 to xUnit v3 or document a temporary hold with a review date.",
-    "P3-02 Decide whether reduced mode may allow silent installations; if not, constrain reduced mode to interactive/default-safe installs and document the behavior."
-  ],
-  "blockers": [],
-  "risks": [
-    "GUI cancellation was covered by ViewModel tests but not manually exercised in a live WPF session.",
-    "Strict release policy may still require rerunning installer lifecycle validation in a known disposable VM snapshot.",
-    "The audit identified other runtime failure modes outside the completed cancellation/timeout and parser hardening task.",
-    "A real clean-profile Google.PlayGames upgrade was not executed from this workspace because it would mutate the current Windows environment; the behavior is covered by automated ViewModel/runner tests and a non-mutating winget list confirmed 26.5.27.1 -> 149.0.7814.0 is present on this host.",
-    "A real Claude upgrade was not executed from this workspace because it would mutate the current Windows environment; a non-mutating winget list confirmed 1.6608.2.0 -> 1.7196.0 is present on this host.",
-    "A real Adobe Acrobat upgrade was not executed from this workspace because it would mutate the current Windows environment; a non-mutating winget list confirmed 22.001.20085 -> 26.001.21529 is present on this host."
-  ],
-  "dependencies": {
-    "runtime": [
-      ".NET 9 SDK",
-      "winget"
-    ],
-    "development": [
-      "xUnit 2.9.3",
-      "PowerShell 7+",
-      "WiX 3.14 bundled binaries"
-    ],
-    "external_services": [
-      "winget sources",
-      "microsoft/winget-pkgs manifest fetches"
-    ]
-  },
   "quality_gates": {
-    "format": "passed",
-    "lint": "passed",
-    "typecheck": "passed",
     "tests": "passed",
-    "build": "passed",
-    "security_review": "completed_with_findings"
+    "structure_review": "passed_with_notes"
   },
-  "commands": {
-    "install": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
-    "dev": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release",
-    "test": "dotnet test .\\tests\\OnlyWinget.Tests\\OnlyWinget.Tests.csproj -c Release --no-restore --results-directory .\\artifacts\\test-results --logger \"trx;LogFileName=audit-unit-tests.trx\"",
-    "lint": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\agents\\analyze-scripts.ps1",
-    "typecheck": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release -WarnAsError -NoRestore",
-    "build": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\build.ps1 -Configuration Release",
-    "start": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\run.ps1 -Configuration Release"
-  },
-  "environment": {
-    "os_target": "Windows",
-    "shell": "PowerShell",
-    "required_env_vars": [],
-    "env_files": []
-  },
-  "last_completed_work": "Implemented standard post-upgrade verification: every successful winget upgrade is followed by a non-mutating update-list check, and packages still reported as upgradable are marked as failed/still available with localized guidance and deselection.",
-  "open_questions": [
-    "Should reduced mode allow silent installations?"
-  ],
-  "handoff_notes": "Data recovery overwrite risk from AUD-003 is mitigated. Imported advanced-argument preset risk from AUD-002 is mitigated for --custom/--override batch execution. Cancellation/timeout and parser hardening are implemented and covered by unit tests. Progress reporting parses winget percentage and byte-count output; installer phases without measurable progress are shown as indeterminate in the WPF progress bar. Update runner now verifies every exit-code-0 upgrade by rechecking the non-mutating winget update list; rows still reported as upgradable are marked as update_still_available, receive localized guidance, and are deselected to avoid repeating the same installer. Local non-mutating winget list currently confirms Claude 1.6608.2.0 -> 1.7196.0, Google Play Games 26.5.27.1 -> 149.0.7814.0, and Adobe Acrobat DC 22.001.20085 -> 26.001.21529 remain available on this host. Installer lifecycle validation completed successfully; report: artifacts/installer-validation/Release/installer-lifecycle-report.txt. Official Release build gate passed; report: artifacts/build-report.txt. Execute residual work strictly in next_tasks order unless a higher-priority production issue appears."
+  "handoff_notes": "dotnet test OnlyWinget.sln --no-restore passed. Several touched files were already above the repository size thresholds; they were not split because this task required focused behavior/UI fixes."
 }

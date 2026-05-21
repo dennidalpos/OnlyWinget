@@ -153,7 +153,9 @@ public static class GridViewAutoSizeBehavior
         state.ColumnWidthDescriptor = DependencyPropertyDescriptor.FromProperty(GridViewColumn.WidthProperty, typeof(GridViewColumn));
         foreach (var column in gridView.Columns)
         {
-            state.ColumnWidthDescriptor?.AddValueChanged(column, state.ColumnWidthChangedHandler);
+            EventHandler handler = (_, _) => state.HandleColumnWidthChanged(column);
+            state.ColumnWidthHandlers[column] = handler;
+            state.ColumnWidthDescriptor?.AddValueChanged(column, handler);
         }
     }
 
@@ -166,9 +168,15 @@ public static class GridViewAutoSizeBehavior
 
         foreach (var column in gridView.Columns)
         {
-            state.ColumnWidthDescriptor?.RemoveValueChanged(column, state.ColumnWidthChangedHandler);
+            if (state.ColumnWidthHandlers.TryGetValue(column, out var handler))
+            {
+                state.ColumnWidthDescriptor?.RemoveValueChanged(column, handler);
+            }
         }
 
+        state.ColumnWidthHandlers.Clear();
+        state.LastAutoWidths.Clear();
+        state.UserMinWidths.Clear();
         state.ColumnWidthDescriptor = null;
     }
 
@@ -273,6 +281,13 @@ public static class GridViewAutoSizeBehavior
             return;
         }
 
+        var ownerWidthChanged = !state.LastOwnerWidth.HasValue
+            || Math.Abs(listView.ActualWidth - state.LastOwnerWidth.Value) >= 0.5;
+        if (!ownerWidthChanged)
+        {
+            CaptureExternalStarWidths(state, gridView);
+        }
+
         var totalStars = 0.0;
         var fixedWidth = 0.0;
         var starMinWidth = 0.0;
@@ -280,7 +295,7 @@ public static class GridViewAutoSizeBehavior
         foreach (var column in gridView.Columns)
         {
             var star = GetStarWidth(column);
-            var minWidth = GetMinWidth(column);
+            var minWidth = GetEffectiveMinWidth(state, column);
             if (star > 0)
             {
                 totalStars += star;
@@ -316,15 +331,73 @@ public static class GridViewAutoSizeBehavior
                 continue;
             }
 
-            var minWidth = GetMinWidth(column);
+            var minWidth = GetEffectiveMinWidth(state, column);
             SetColumnWidth(state, column, minWidth + (distributableWidth * (star / totalStars)));
         }
+
+        state.LastOwnerWidth = listView.ActualWidth;
+    }
+
+    private static void CaptureExternalStarWidths(SubscriptionState state, GridView gridView)
+    {
+        foreach (var column in gridView.Columns)
+        {
+            if (GetStarWidth(column) <= 0)
+            {
+                continue;
+            }
+
+            var width = double.IsNaN(column.Width) ? column.ActualWidth : column.Width;
+            if (width <= 0)
+            {
+                continue;
+            }
+
+            if (state.LastAutoWidths.TryGetValue(column, out var lastAutoWidth)
+                && Math.Abs(width - lastAutoWidth) < 0.5)
+            {
+                continue;
+            }
+
+            TrackUserColumnResize(state, column);
+        }
+    }
+
+    private static double GetEffectiveMinWidth(SubscriptionState state, GridViewColumn column)
+    {
+        var minWidth = GetMinWidth(column);
+        return state.UserMinWidths.TryGetValue(column, out var userMinWidth)
+            ? Math.Max(minWidth, userMinWidth)
+            : minWidth;
+    }
+
+    private static void TrackUserColumnResize(SubscriptionState state, GridViewColumn column)
+    {
+        if (GetStarWidth(column) <= 0)
+        {
+            return;
+        }
+
+        var width = double.IsNaN(column.Width) ? column.ActualWidth : column.Width;
+        if (width <= 0)
+        {
+            return;
+        }
+
+        if (state.LastAutoWidths.TryGetValue(column, out var lastAutoWidth)
+            && Math.Abs(width - lastAutoWidth) < 0.5)
+        {
+            return;
+        }
+
+        state.UserMinWidths[column] = Math.Max(GetMinWidth(column), width);
     }
 
     private static void SetColumnWidth(SubscriptionState state, GridViewColumn column, double width)
     {
         if (Math.Abs(column.Width - width) < 0.5)
         {
+            state.LastAutoWidths[column] = width;
             return;
         }
 
@@ -332,6 +405,7 @@ public static class GridViewAutoSizeBehavior
         try
         {
             column.Width = width;
+            state.LastAutoWidths[column] = width;
         }
         finally
         {
@@ -343,14 +417,6 @@ public static class GridViewAutoSizeBehavior
     {
         public SubscriptionState()
         {
-            ColumnWidthChangedHandler = (_, _) =>
-            {
-                if (Owner != null && !IsResizing)
-                {
-                    ScheduleResize(Owner);
-                }
-            };
-
             CollectionChangedHandler = (_, e) =>
             {
                 if (Owner != null)
@@ -376,13 +442,27 @@ public static class GridViewAutoSizeBehavior
             };
         }
 
+        public void HandleColumnWidthChanged(GridViewColumn column)
+        {
+            if (Owner == null || IsResizing)
+            {
+                return;
+            }
+
+            TrackUserColumnResize(this, column);
+            ScheduleResize(Owner);
+        }
+
         public bool IsAttached { get; set; }
         public bool ResizeScheduled { get; set; }
         public bool IsResizing { get; set; }
+        public double? LastOwnerWidth { get; set; }
         public DependencyPropertyDescriptor? ColumnWidthDescriptor { get; set; }
         public INotifyCollectionChanged? ObservedCollection { get; set; }
         public HashSet<INotifyPropertyChanged> ObservedItems { get; } = new();
-        public EventHandler ColumnWidthChangedHandler { get; }
+        public Dictionary<GridViewColumn, EventHandler> ColumnWidthHandlers { get; } = new();
+        public Dictionary<GridViewColumn, double> LastAutoWidths { get; } = new();
+        public Dictionary<GridViewColumn, double> UserMinWidths { get; } = new();
         public NotifyCollectionChangedEventHandler CollectionChangedHandler { get; }
         public PropertyChangedEventHandler ItemPropertyChangedHandler { get; }
         public EventHandler ItemContainerStatusChangedHandler { get; }
