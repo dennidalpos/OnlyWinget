@@ -17,8 +17,10 @@ $reportPath = Join-Path $artifactsPath 'build-report.txt'
 $testResultsPath = Join-Path $artifactsPath 'test-results'
 $scriptsRoot = $PSScriptRoot
 $buildScriptPath = Join-Path $scriptsRoot 'build.ps1'
+$formatScriptPath = Join-Path $scriptsRoot 'format.ps1'
 $packageScriptPath = Join-Path $scriptsRoot 'package.ps1'
 $scriptLintPath = Join-Path $scriptsRoot 'lint.ps1'
+$typecheckScriptPath = Join-Path $scriptsRoot 'typecheck.ps1'
 $targetFramework = 'net8.0-windows'
 $steps = [System.Collections.Generic.List[string]]::new()
 $smokeTestStatus = 'not_run'
@@ -66,8 +68,10 @@ Assert-Command -Name 'dotnet'
 Assert-Path -Path $solutionPath -Description 'Solution'
 Assert-Path -Path $testProjectPath -Description 'Test project'
 Assert-Path -Path $buildScriptPath -Description 'Build script'
+Assert-Path -Path $formatScriptPath -Description 'Format script'
 Assert-Path -Path $packageScriptPath -Description 'Packaging script'
 Assert-Path -Path $scriptLintPath -Description 'PowerShell script lint script'
+Assert-Path -Path $typecheckScriptPath -Description 'Typecheck script'
 
 Invoke-Step 'clean generated outputs' {
     Remove-CheckGeneratedPath -Path $artifactsPath
@@ -80,20 +84,15 @@ Invoke-Step 'restore' {
 }
 
 Invoke-Step 'format' {
-    dotnet format $solutionPath --verify-no-changes --no-restore
-    Assert-LastExitCode 'dotnet format fallito.'
+    & $formatScriptPath -NoRestore
 }
 
 Invoke-Step 'script lint' {
     & $scriptLintPath
 }
 
-Invoke-Step 'build warnings as errors' {
-    & $buildScriptPath -Configuration $Configuration -WarnAsError -NoRestore
-}
-
 Invoke-Step 'typecheck' {
-    Write-Host 'Typecheck coperto dalla compilazione C#.' -ForegroundColor DarkGray
+    & $typecheckScriptPath -Configuration $Configuration -NoRestore
 }
 
 Invoke-Step 'unit test' {

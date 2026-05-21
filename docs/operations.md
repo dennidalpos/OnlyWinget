@@ -139,9 +139,9 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\check.ps1 -Configuration Release
 What it does:
 
 1. restores the solution in locked mode
-2. runs `dotnet format --verify-no-changes`
-3. runs PowerShell script lint when PSScriptAnalyzer is installed
-4. runs the app build with warnings treated as errors
+2. runs `scripts/format.ps1 -NoRestore`
+3. runs `scripts/lint.ps1`, which checks PowerShell scripts when PSScriptAnalyzer is installed
+4. runs `scripts/typecheck.ps1 -NoRestore`, which builds with warnings treated as errors
 5. runs the test project
 6. records real `winget` smoke tests as `not_run` by default, or runs them when `-RunWingetSmoke` is supplied
 7. rebuilds the app
@@ -264,7 +264,7 @@ Scripts present in `scripts/` are intentionally split between root entrypoints a
 | --- | --- | --- | --- | --- | --- | --- |
 | `scripts/setup.ps1` | canonical root entrypoint | Restore repository dependencies in locked mode. | `-ForceEvaluate` optional restore refresh. | NuGet restore state under the configured package cache and `artifacts/obj`. | `dotnet`, `OnlyWinget.sln`, `scripts/support/ScriptHelpers.ps1`. | README, operations docs. |
 | `scripts/dev.ps1` | canonical root entrypoint | Launch the built WPF app, optionally building first. | `-Configuration`, `-Build`, `-NoRestore`, `-StopRunningInstance`. | Running `OnlyWinget.exe` process. | Built app output, optional `scripts/build.ps1`, `scripts/support/ScriptHelpers.ps1`. | README, operations docs. |
-| `scripts/check.ps1` | canonical root verification gate | Reproduce CI locally through the supported sequential checks. | `-Configuration`, `-RunWingetSmoke`. | Build report, test results, app build output, setup EXE, internal MSIs. | `dotnet`, `scripts/build.ps1`, `scripts/package.ps1`, `scripts/lint.ps1`, tests, WiX tools, `scripts/support/ScriptHelpers.ps1`. | GitHub Actions, README, operations docs. |
+| `scripts/check.ps1` | canonical root verification gate | Reproduce CI locally through the supported sequential checks. | `-Configuration`, `-RunWingetSmoke`. | Build report, test results, app build output, setup EXE, internal MSIs. | `dotnet`, `scripts/format.ps1`, `scripts/lint.ps1`, `scripts/typecheck.ps1`, `scripts/build.ps1`, `scripts/package.ps1`, tests, WiX tools, `scripts/support/ScriptHelpers.ps1`. | GitHub Actions, README, operations docs. |
 | `scripts/format.ps1` | canonical root entrypoint | Verify repository formatting, or apply formatting with `-Fix`. | `-Fix`, `-NoRestore`. | Console format report; source edits only with `-Fix`. | `dotnet`, `OnlyWinget.sln`, `scripts/support/ScriptHelpers.ps1`. | README, operations docs. |
 | `scripts/lint.ps1` | canonical root entrypoint | Run PowerShell script lint. | `-Required` fails when PSScriptAnalyzer is missing. | Console analyzer report or not_available warning. | Optional `PSScriptAnalyzer`, `scripts/support/PSScriptAnalyzerSettings.psd1`. | README, operations docs. |
 | `scripts/typecheck.ps1` | canonical root entrypoint | Compile C# with warnings as errors. | `-Configuration`, `-NoRestore`, `-StopRunningInstance`. | App build output under `artifacts/bin/OnlyWinget/<Configuration>/net8.0-windows/`. | `scripts/build.ps1`, `dotnet`, restored packages. | README, operations docs. |

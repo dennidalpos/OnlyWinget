@@ -4,11 +4,11 @@ Only PowerShell entrypoints are versioned in this repository. Run commands from 
 
 Canonical operational commands use the repository-wide names from `AGENTS.md`: `setup`, `dev`, `check`, `format`, `lint`, `typecheck`, `test`, `build`, `package`, and `clean`. The installer lifecycle validator is the only extra root script because it performs elevated release validation and mutates machine install state.
 
-| Script | Path | Purpose | When to use | Called by | Prerequisites | Outputs | Notes |
+| Script | Path | Purpose | When to use | Called by | Prerequisites | Outputs | Compatibility / migration notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | setup | `scripts/setup.ps1` | Restore NuGet packages in locked mode. | Fresh checkout setup or lock-file validation. | README, docs, manual use. | `dotnet`, `OnlyWinget.sln`. | NuGet restore state. | Supports `-ForceEvaluate`. |
 | dev | `scripts/dev.ps1` | Start the built WPF app, optionally building first. | Manual desktop smoke checks. | README, docs, manual use. | Built app output; `dotnet` when `-Build` is used. | Running `OnlyWinget.exe` process. | Use `-Build` to compile before launch. |
-| check | `scripts/check.ps1` | Run the full repository verification gate. | Default local or CI verification. | GitHub Actions, README, docs. | `dotnet`, WiX Toolset 3.x, optional PSScriptAnalyzer. | Build report, test results, setup EXE, internal MSIs. | Supports `-RunWingetSmoke`. |
+| check | `scripts/check.ps1` | Run the full repository verification gate. | Default local or CI verification. | GitHub Actions, README, docs. | `dotnet`, WiX Toolset 3.x, optional PSScriptAnalyzer. | Build report, test results, setup EXE, internal MSIs. | Orchestrates `format`, `lint`, `typecheck`, `test`, `build`, and `package`; supports `-RunWingetSmoke`. |
 | format | `scripts/format.ps1` | Verify repository formatting, or apply formatting with `-Fix`. | Before review, CI parity checks, or local formatting. | README, docs, manual use. | `dotnet`, `OnlyWinget.sln`. | Console format report; source edits only with `-Fix`. | Uses `dotnet format`; `-NoRestore` is supported. |
 | lint | `scripts/lint.ps1` | Run PowerShell script lint. | Script maintenance or local checks. | README, docs, manual use. | Optional `PSScriptAnalyzer`. | Analyzer console report. | `-Required` fails when analyzer is missing. |
 | typecheck | `scripts/typecheck.ps1` | Compile C# with warnings as errors. | Static verification before tests or review. | README, docs, manual use. | `dotnet`, restored packages. | App build output. | Thin wrapper around `scripts/build.ps1 -WarnAsError`. |
@@ -26,7 +26,7 @@ Canonical operational commands use the repository-wide names from `AGENTS.md`: `
 | --- | --- | --- | --- | --- | --- |
 | `scripts/setup.ps1` | active canonical | `-ForceEvaluate` | NuGet restore state | Writes restore artifacts/package cache | `dotnet` |
 | `scripts/dev.ps1` | active canonical | `-Configuration`, `-Build`, `-NoRestore`, `-StopRunningInstance` | Running app process | Starts WPF app | Built executable |
-| `scripts/check.ps1` | active canonical | `-Configuration`, `-RunWingetSmoke` | build report, test results, setup/MSI artifacts | Cleans generated outputs; optional live `winget` smoke tests | `dotnet`, WiX |
+| `scripts/check.ps1` | active canonical | `-Configuration`, `-RunWingetSmoke` | build report, test results, setup/MSI artifacts | Cleans generated outputs; optional live `winget` smoke tests | `dotnet`, WiX, canonical script entrypoints |
 | `scripts/format.ps1` | active canonical | `-Fix`, `-NoRestore` | format report; optional source formatting | Edits source only with `-Fix` | `dotnet` |
 | `scripts/lint.ps1` | active canonical | `-Required` | analyzer console report | None beyond module import | optional PSScriptAnalyzer |
 | `scripts/typecheck.ps1` | active canonical | `-Configuration`, `-NoRestore`, `-StopRunningInstance` | app build output | Compiles app with warnings as errors | `dotnet` |

@@ -1,14 +1,14 @@
 {
   "project_name": "OnlyWinget",
   "status": "active",
-  "last_updated": "2026-05-21T13:52:27+02:00",
+  "last_updated": "2026-05-21T14:48:24+02:00",
   "current_tasks": [
     {
       "task": "Run the hosted GitHub Actions build-gate workflow before release tagging.",
       "reason": "Hosted CI parity still needs confirmation from GitHub UI or an authenticated GitHub CLI after the exact release commit is pushed. The local GitHub CLI is not installed, and no workflow run exists for HEAD 79853c5abaf04999da712dc4648826cf8d06f8f0."
     }
   ],
-  "last_completed_work": "Consolidated duplicate script aliases into the canonical AGENTS.md entrypoints, removed install/run/gate/lint-scripts compatibility scripts, updated script documentation, and reran the full local build gate.",
+  "last_completed_work": "Mapped the local script and automation surface, updated the canonical check gate to orchestrate format, lint, typecheck, test, build, and package entrypoints, refreshed script documentation, and reran the full local build gate.",
   "oversized_files": [
     "src/OnlyWinget/Services/OperationRunner.cs",
     "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
@@ -27,5 +27,5 @@
     "hosted_ci": "not_run",
     "structure_review": "passed_with_notes"
   },
-  "handoff_notes": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\lint.ps1 passed. pwsh -ExecutionPolicy Bypass -File .\\scripts\\setup.ps1 passed. pwsh -ExecutionPolicy Bypass -File .\\scripts\\typecheck.ps1 -Configuration Release -NoRestore passed. pwsh -ExecutionPolicy Bypass -File .\\scripts\\check.ps1 -Configuration Release passed with 228 tests passed, 2 smoke tests skipped, and package artifacts generated. GitHub connector previously reported no workflow runs for HEAD 79853c5abaf04999da712dc4648826cf8d06f8f0; run the hosted build-gate workflow before tagging."
+  "handoff_notes": "PowerShell parse check passed for all scripts. pwsh -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\lint.ps1 -Required passed. pwsh -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\setup.ps1 passed. pwsh -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\check.ps1 -Configuration Release passed with 228 tests passed, 2 smoke tests skipped, and package artifacts generated. GitHub connector previously reported no workflow runs for HEAD 79853c5abaf04999da712dc4648826cf8d06f8f0; run the hosted build-gate workflow before tagging."
 }

@@ -105,7 +105,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -C
 pwsh -ExecutionPolicy Bypass -File .\scripts\check.ps1 -Configuration Release
 ```
 
-Typecheck is covered by C# compilation in the build and check scripts. The default check restores, verifies formatting, lints PowerShell scripts when PSScriptAnalyzer is installed, builds with warnings as errors, runs tests, rebuilds the app, generates the setup packages, and writes `artifacts\build-report.txt`.
+Typecheck is covered by C# compilation in the build and check scripts. The default check restores, runs the canonical format, script lint, typecheck, test, build, and package entrypoints, generates the setup packages, and writes `artifacts\build-report.txt`.
 
 Release versioning, tagging, artifact selection, and GitHub release publishing are documented in [`docs\release.md`](docs/release.md). Release candidates must pass the local gate, elevated installer lifecycle validation on a clean or disposable Windows host, and the hosted GitHub Actions `build-gate` workflow before tagging.
 
