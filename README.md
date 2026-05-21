@@ -107,7 +107,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\check.ps1 -Configuration Release
 
 Typecheck is covered by C# compilation in the build and check scripts. The default check restores, verifies formatting, lints PowerShell scripts when PSScriptAnalyzer is installed, builds with warnings as errors, runs tests, rebuilds the app, generates the setup packages, and writes `artifacts\build-report.txt`.
 
-There is no versioned deploy or release publishing command in this repository. Release preparation currently stops at build, tests, packaging, and installer lifecycle validation.
+Release versioning, tagging, artifact selection, and GitHub release publishing are documented in [`docs\release.md`](docs/release.md). Release candidates must pass the local gate, elevated installer lifecycle validation on a clean or disposable Windows host, and the hosted GitHub Actions `build-gate` workflow before tagging.
 
 ## Assets And Samples
 
@@ -134,6 +134,7 @@ Current operational state, quality gates, residual risks, and handoff notes are 
 
 - [Architecture](docs/architecture.md)
 - [Build, Test, and Delivery](docs/operations.md)
+- [Release and Versioning](docs/release.md)
 - [Script Inventory](scripts/README.md)
 - [Project Status](PROJECT_STATUS.json)
 

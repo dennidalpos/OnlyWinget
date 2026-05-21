@@ -1,26 +1,14 @@
 {
   "project_name": "OnlyWinget",
   "status": "active",
-  "last_updated": "2026-05-21T12:50:38+02:00",
+  "last_updated": "2026-05-21T13:08:17+02:00",
   "current_tasks": [
     {
-      "task": "Review the existing working tree changes and stage or commit only the intended release changes.",
-      "reason": "The repository currently has pending modifications, deletions, and untracked files."
-    },
-    {
       "task": "Run the hosted GitHub Actions build-gate workflow before release tagging.",
-      "reason": "Hosted CI parity still needs confirmation from GitHub UI or an authenticated GitHub CLI."
-    },
-    {
-      "task": "Run installer lifecycle validation from elevated PowerShell on a clean or disposable Windows host before release tagging.",
-      "command": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore"
-    },
-    {
-      "task": "Define and document the release publishing and versioning flow before publishing a release.",
-      "reason": "Release publishing is not versioned in this repository."
+      "reason": "Hosted CI parity still needs confirmation from GitHub UI or an authenticated GitHub CLI after the exact release commit is pushed. The local GitHub CLI is not installed, and no workflow run exists for HEAD 79853c5abaf04999da712dc4648826cf8d06f8f0."
     }
   ],
-  "last_completed_work": "Improved portable/zip installer selection, added editable install-location presets with environment-variable expansion, preserved unsupported installer argument flags, updated disabled/button warning styling, and handled advertised updates that winget later reports as no-op.",
+  "last_completed_work": "Documented the release publishing and versioning flow, linked it from README and operations docs, ran the full local build gate, and completed elevated installer lifecycle validation.",
   "oversized_files": [
     "src/OnlyWinget/Services/OperationRunner.cs",
     "src/OnlyWinget/Services/WingetPackageInterrogationService.cs",
@@ -29,8 +17,15 @@
     "tests/OnlyWinget.Tests/WingetServiceAndOperationRunnerTests.cs"
   ],
   "quality_gates": {
+    "format": "passed",
+    "lint": "passed",
+    "typecheck": "passed",
     "tests": "passed",
+    "build": "passed",
+    "package": "passed",
+    "installer_lifecycle": "passed",
+    "hosted_ci": "not_run",
     "structure_review": "passed_with_notes"
   },
-  "handoff_notes": "dotnet test OnlyWinget.sln --no-restore passed. Several touched files were already above the repository size thresholds; they were not split because this task required focused behavior/UI fixes."
+  "handoff_notes": "pwsh -ExecutionPolicy Bypass -File .\\scripts\\check.ps1 -Configuration Release passed. pwsh -ExecutionPolicy Bypass -File .\\scripts\\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore passed and wrote artifacts\\installer-validation\\Release\\installer-lifecycle-report.txt. GitHub connector reported no workflow runs for HEAD 79853c5abaf04999da712dc4648826cf8d06f8f0; run the hosted build-gate workflow before tagging."
 }

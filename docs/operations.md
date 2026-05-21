@@ -7,6 +7,7 @@ Use the repository documents with this split:
 - [`../README.md`](../README.md): product-facing overview for GitHub
 - [`architecture.md`](architecture.md): application structure, runtime behavior, and packaging model
 - [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
+- [`release.md`](release.md): versioning, release candidate verification, tagging, and GitHub release publishing
 - [`../scripts/README.md`](../scripts/README.md): script inventory, invocation map, and migration notes
 - [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current operational status and residual open work when present
 
@@ -68,7 +69,7 @@ This sequence restores locked NuGet dependencies, verifies formatting, compiles 
 - installer lifecycle: `pwsh -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore`
 - CI reproduction locally: `pwsh -ExecutionPolicy Bypass -File .\scripts\check.ps1 -Configuration Release`
 - deploy: no repository command or documented workflow is versioned for deploy
-- release: no repository command or documented workflow is versioned for release
+- release: follow [`release.md`](release.md) for version changes, local and hosted verification, tagging, and GitHub release publishing
 
 ### Restore
 
@@ -224,6 +225,22 @@ Relevant parameters:
 - `-PreviousVersion`: generate the previous setup baseline with an explicit MSI-compatible version
 - `-SkipPackage`: skip setup generation and use existing artifacts
 
+### Release publishing
+
+Release publishing is documented in [`release.md`](release.md).
+
+The release flow is intentionally gated:
+
+1. Update the version in `src/OnlyWinget/OnlyWinget.csproj`.
+2. Run the local `scripts/check.ps1` gate.
+3. Run elevated installer lifecycle validation on a clean or disposable Windows host.
+4. Run the hosted GitHub Actions `build-gate` workflow for the exact release commit.
+5. Tag the verified commit as `vMAJOR.MINOR.PATCH`.
+6. Publish a GitHub release from that tag and attach the unified setup EXE.
+
+The unified setup EXE is the supported end-user release artifact. Internal MSI files are generated
+for the setup bundle and maintainer diagnostics.
+
 ### Cleanup
 
 ```powershell
@@ -350,15 +367,15 @@ Action:
 - run installer lifecycle validation only on a clean or dedicated Windows host
 - pass `-PreviousSetupPath` when validating upgrade from an official historical release artifact
 
-### Deploy and release commands are not versioned here
+### Deploy command is not versioned here
 
 Observed behavior:
 
-- the repository contains build and packaging entrypoints, but no versioned deploy or release workflow
+- the repository contains build, packaging, and release-publishing documentation, but no versioned deploy command
 
 Action:
 
-- stop local release work at setup, build, test, run, packaging, and installer lifecycle validation unless a separate repository-owned deploy or release workflow is added
+- stop deploy work at release artifact publication unless a separate repository-owned deploy workflow is added
 
 ## CI
 
@@ -410,6 +427,7 @@ The canonical maintained documents are:
 - [`../README.md`](../README.md)
 - [`architecture.md`](architecture.md)
 - [`operations.md`](operations.md)
+- [`release.md`](release.md)
 - [`../scripts/README.md`](../scripts/README.md)
 - [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json)
 
