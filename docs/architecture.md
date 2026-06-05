@@ -8,7 +8,7 @@ Use the adjacent repository documents for the other concerns:
 
 - [`../README.md`](../README.md): product-facing overview
 - [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
-- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current operational status and any residual open work when present
+- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current incomplete and actionable repository todos when present
 
 ## Purpose
 
@@ -139,4 +139,4 @@ The MSIs are built from self-contained `dotnet publish` outputs for `win-x86` an
 
 ## Verification boundaries
 
-This document describes repository structure and observable runtime behavior from source, tests, and packaging definitions. It does not assert real install, upgrade, or uninstall execution unless that evidence is tracked separately in repository-owned artifacts or status tracking.
+This document describes repository structure and observable runtime behavior from source, tests, and packaging definitions. It does not assert real install, upgrade, or uninstall execution unless that evidence is tracked separately in repository-owned artifacts.

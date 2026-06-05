@@ -9,7 +9,7 @@ Use the repository documents with this split:
 - [`operations.md`](operations.md): setup, canonical commands, CI reproduction, and troubleshooting
 - [`release.md`](release.md): versioning, release candidate verification, tagging, and GitHub release publishing
 - [`../scripts/README.md`](../scripts/README.md): script inventory, invocation map, and migration notes
-- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current operational status and residual open work when present
+- [`../PROJECT_STATUS.json`](../PROJECT_STATUS.json): current incomplete and actionable repository todos when present
 
 ## Environment baseline
 
@@ -412,7 +412,7 @@ Repository-evidenced state:
 - Internal x86 and x64 MSI generation is scripted and versioned.
 - The installer is per-machine and therefore requires administrative privileges for real install, upgrade, repair, and uninstall validation.
 - `scripts\validate-installer-lifecycle.ps1` can generate a previous-version setup baseline or consume an official previous setup with `-PreviousSetupPath`.
-- `PROJECT_STATUS.json` records the current operational status and keeps active task arrays empty when no concrete residual backlog is open.
+- `PROJECT_STATUS.json` records only the current incomplete and actionable repository todos, using a top-level `todos` array.
 
 Installer lifecycle results are written to `artifacts\installer-validation\<Configuration>\installer-lifecycle-report.txt`.
 
@@ -431,4 +431,4 @@ Historical root audit notes and standalone flow notes were removed after verifyi
 
 ## Tracking
 
-`PROJECT_STATUS.json` is the active repository tracking file for residual verification drift that is still open, blocked, risky, or not verifiable from the current workspace alone. If no such work is present, its active task arrays remain empty.
+`PROJECT_STATUS.json` is the active repository tracking file for residual verification drift that is still open, blocked, risky, or not verifiable from the current workspace alone. It uses only a top-level `todos` array; if no such work is present, the array remains empty.

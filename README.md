@@ -121,7 +121,7 @@ The repository contains the WPF app, xUnit tests, Windows PowerShell entrypoints
 
 Live `winget` smoke tests are opt-in through `-RunWingetSmoke`; when disabled, the test report marks them skipped and the build report records `SmokeTests: not_run`. Installer lifecycle validation requires an elevated clean or dedicated Windows host and writes its report under `artifacts\installer-validation\`.
 
-Current operational state, quality gates, residual risks, and handoff notes are tracked in [`PROJECT_STATUS.json`](PROJECT_STATUS.json).
+Current incomplete and actionable repository todos are tracked in [`PROJECT_STATUS.json`](PROJECT_STATUS.json). The file intentionally stores only the `todos` array, not completed work, check results, or handoff notes.
 
 ## Troubleshooting
 

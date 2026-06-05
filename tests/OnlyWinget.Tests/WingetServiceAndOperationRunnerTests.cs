@@ -1404,7 +1404,7 @@ A newer package version is available in a configured source, but it does not app
 
                 throw new InvalidOperationException("Install retry without installer selectors should not run.");
             });
-        var runner = new OperationRunner(service, new InstallCommandBuilder(service));
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service), isCurrentProcessElevated: true);
         var status = string.Empty;
         var strings = LocalizedStrings.English;
 
