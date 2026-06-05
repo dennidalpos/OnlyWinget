@@ -243,6 +243,22 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     }
 
     [Fact]
+    public void ElevatedWingetLauncher_ReadNewLogLines_EmitsOnlyNewLines()
+    {
+        var root = CreateTempDirectory();
+        var logPath = Path.Combine(root, "install.log");
+        var lines = new List<string>();
+        File.WriteAllText(logPath, "25%" + Environment.NewLine);
+
+        var position = ElevatedWingetLauncher.ReadNewLogLines(logPath, 0, lines.Add);
+        File.AppendAllText(logPath, "50%" + Environment.NewLine);
+        position = ElevatedWingetLauncher.ReadNewLogLines(logPath, position, lines.Add);
+        ElevatedWingetLauncher.ReadNewLogLines(logPath, position, lines.Add);
+
+        Assert.Equal(new[] { "25%", "50%" }, lines);
+    }
+
+    [Fact]
     public async Task RunApplyAsync_UsesInstallCommand_ForInstallAction()
     {
         var invokedCommands = new List<string>();
@@ -445,6 +461,44 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
             LocalizedStrings.English);
 
         Assert.Contains(0, reportedProgress);
+        Assert.Contains(50, reportedProgress);
+        Assert.Contains(100, reportedProgress);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_ReportsProgress_FromElevatedWingetLogOutput()
+    {
+        var reportedProgress = new List<int>();
+        var receivedLogPath = string.Empty;
+        var service = CreateWingetService(
+            wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = string.Empty });
+        var elevatedLauncher = new FakeElevatedWingetLauncher((args, logPath, onOutputLine, cancellationToken) =>
+        {
+            receivedLogPath = logPath ?? string.Empty;
+            onOutputLine?.Invoke("50%");
+            return new WingetCommandResult { ExitCode = 0, Output = "event=elevated_launch_completed exit_code=0" };
+        });
+        var runner = new OperationRunner(service, new InstallCommandBuilder(service), elevatedLauncher, isCurrentProcessElevated: false);
+
+        await runner.RunApplyAsync(
+            new[]
+            {
+                new AppEntry
+                {
+                    Name = "Machine Tool",
+                    Id = "Contoso.MachineTool",
+                    Source = "winget",
+                    Action = AppActions.Install,
+                    Scope = "machine"
+                }
+            },
+            (_, _) => { },
+            _ => { },
+            (percentage, _) => reportedProgress.Add(percentage),
+            LocalizedStrings.English);
+
+        Assert.False(string.IsNullOrWhiteSpace(receivedLogPath));
+        Assert.Contains(-1, reportedProgress);
         Assert.Contains(50, reportedProgress);
         Assert.Contains(100, reportedProgress);
     }
@@ -1595,6 +1649,26 @@ A newer package version is available in a configured source, but it does not app
         finally
         {
             LocalFree(argv);
+        }
+    }
+
+    private sealed class FakeElevatedWingetLauncher : IElevatedWingetLauncher
+    {
+        private readonly Func<IReadOnlyList<string>, string?, Action<string>?, System.Threading.CancellationToken, WingetCommandResult> _launch;
+
+        public FakeElevatedWingetLauncher(Func<IReadOnlyList<string>, string?, Action<string>?, System.Threading.CancellationToken, WingetCommandResult> launch)
+        {
+            _launch = launch;
+        }
+
+        public WingetCommandResult Launch(
+            IReadOnlyList<string> args,
+            string? logFilePath,
+            Action<string>? onOutputLine = null,
+            TimeSpan? timeout = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            return _launch(args, logFilePath, onOutputLine, cancellationToken);
         }
     }
 

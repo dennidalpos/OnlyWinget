@@ -101,11 +101,11 @@
   <SolidColorBrush x:Key="ChromeBackgroundBrush" Color="#1B3050"/>
   <SolidColorBrush x:Key="ChromeBorderBrush" Color="#233B62"/>
   <SolidColorBrush x:Key="ChromeTextBrush" Color="#F0F4F9"/>
-  <SolidColorBrush x:Key="ChromeCaptionBrush" Color="#93B4D8"/>
+  <SolidColorBrush x:Key="ChromeCaptionBrush" Color="#E2E8F0"/>
   <SolidColorBrush x:Key="ChromeBadgeBackgroundBrush" Color="#1E293B"/>
   <SolidColorBrush x:Key="ChromeBadgeBorderBrush" Color="#334155"/>
-  <SolidColorBrush x:Key="ChromeCommandHoverBrush" Color="#334155"/>
-  <SolidColorBrush x:Key="ChromeCommandPressedBrush" Color="#475569"/>
+  <SolidColorBrush x:Key="ChromeCommandHoverBrush" Color="#475569"/>
+  <SolidColorBrush x:Key="ChromeCommandPressedBrush" Color="#64748B"/>
 
   <!-- Sidebar accent tint -->
   <SolidColorBrush x:Key="SurfaceAccentTintBrush" Color="#EBF2FC"/>

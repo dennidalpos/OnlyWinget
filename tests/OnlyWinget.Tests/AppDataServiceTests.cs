@@ -367,7 +367,7 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void ExportPreset_WritesReadableJsonIncludingPresetName()
+    public void ExportPreset_WritesPortableJsonWithoutInstallerSpecificFields()
     {
         var root = CreateTempDirectory();
         try
@@ -380,14 +380,41 @@ public sealed class AppDataServiceTests
                 "Dev Tools",
                 new[]
                 {
-                    new AppEntry { Name = "VS Code", Id = "Microsoft.VisualStudioCode", Action = AppActions.Install }
+                    new AppEntry
+                    {
+                        Name = "VS Code",
+                        Id = "Microsoft.VisualStudioCode",
+                        Source = "winget",
+                        Action = AppActions.Install,
+                        Scope = "machine",
+                        InstallMode = InstallModes.Silent,
+                        Architecture = "x64",
+                        Locale = "en-US",
+                        InstallerType = "inno",
+                        InstallLocation = @"C:\Apps\VSCode",
+                        LogPath = @"C:\Logs\vscode.log",
+                        AdditionalCustomArgs = "/custom",
+                        OverrideArgs = "/override",
+                        ElevationRequirement = "elevationRequired"
+                    }
                 });
 
             Assert.True(result.Success);
             var json = File.ReadAllText(exportPath);
             Assert.Contains("\"presetName\": \"Dev Tools\"", json, StringComparison.Ordinal);
             Assert.Contains("\"apps\"", json, StringComparison.Ordinal);
-            Assert.Contains("Microsoft.VisualStudioCode", json, StringComparison.Ordinal);
+            Assert.Contains("\"id\": \"Microsoft.VisualStudioCode\"", json, StringComparison.Ordinal);
+            Assert.Contains("\"source\": \"winget\"", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("scope", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("installMode", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("architecture", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("locale", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("installerType", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("installLocation", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("logPath", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("additionalCustomArgs", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("overrideArgs", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("elevationRequirement", json, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -435,7 +462,7 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void ImportPreset_MarksAdvancedArgumentsAsUnreviewed()
+    public void ImportPreset_IgnoresInstallerSpecificAndAdvancedFields()
     {
         var root = CreateTempDirectory();
         try
@@ -453,7 +480,15 @@ public sealed class AppDataServiceTests
                       "name": "Internal Tool",
                       "id": "Contoso.InternalTool",
                       "action": "Install",
+                      "scope": "machine",
+                      "installMode": "silent",
+                      "architecture": "x64",
+                      "locale": "en-US",
+                      "installerType": "wix",
+                      "installLocation": "C:\\Tools\\Internal",
+                      "logPath": "C:\\Logs\\internal.log",
                       "additionalCustomArgs": "/unsafe",
+                      "overrideArgs": "/override",
                       "advancedArgumentsReviewed": true
                     },
                     {
@@ -469,12 +504,55 @@ public sealed class AppDataServiceTests
 
             Assert.True(result.Success);
             var advanced = Assert.Single(result.Apps, app => app.Id == "Contoso.InternalTool");
-            Assert.Equal("/unsafe", advanced.AdditionalCustomArgs);
-            Assert.False(advanced.AdvancedArgumentsReviewed);
-            Assert.True(advanced.RequiresAdvancedArgumentsReview);
+            Assert.Equal(string.Empty, advanced.Scope);
+            Assert.Equal(InstallModes.SilentWithProgress, advanced.InstallMode);
+            Assert.Equal(string.Empty, advanced.Architecture);
+            Assert.Equal(string.Empty, advanced.Locale);
+            Assert.Equal(string.Empty, advanced.InstallerType);
+            Assert.Equal(string.Empty, advanced.InstallLocation);
+            Assert.Equal(string.Empty, advanced.LogPath);
+            Assert.Equal(string.Empty, advanced.AdditionalCustomArgs);
+            Assert.Equal(string.Empty, advanced.OverrideArgs);
+            Assert.True(advanced.AdvancedArgumentsReviewed);
+            Assert.False(advanced.RequiresAdvancedArgumentsReview);
             var plain = Assert.Single(result.Apps, app => app.Id == "Contoso.PlainTool");
             Assert.True(plain.AdvancedArgumentsReviewed);
             Assert.False(plain.RequiresAdvancedArgumentsReview);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ImportPreset_DeduplicatesPortableIdsWithoutInstallerConstraints()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var service = new AppDataService(appDataRoot: root);
+            var importPath = Path.Combine(root, "portable.onlywinget.json");
+            File.WriteAllText(
+                importPath,
+                """
+                {
+                  "formatVersion": 1,
+                  "presetName": "Portable",
+                  "apps": [
+                    { "name": ".NET Runtime x64", "id": "Microsoft.DotNet.Runtime.8", "source": "winget", "architecture": "x64" },
+                    { "name": ".NET Runtime x86", "id": "Microsoft.DotNet.Runtime.8", "source": "winget", "architecture": "x86" },
+                    { "name": ".NET Runtime Store", "id": "Microsoft.DotNet.Runtime.8", "source": "msstore", "architecture": "x64" }
+                  ]
+                }
+                """);
+
+            var result = service.ImportPreset(importPath, Array.Empty<string>());
+
+            Assert.True(result.Success);
+            Assert.Equal(2, result.Apps.Count);
+            Assert.Contains(result.Apps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Source == "winget" && app.Architecture == string.Empty);
+            Assert.Contains(result.Apps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Source == "msstore" && app.Architecture == string.Empty);
         }
         finally
         {

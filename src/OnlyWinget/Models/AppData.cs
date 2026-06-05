@@ -50,5 +50,23 @@ public sealed class PresetFileRoot
     public string PresetName { get; set; } = string.Empty;
 
     [JsonPropertyName("apps")]
-    public List<AppDataItem> Apps { get; set; } = new();
+    public List<PresetAppItem> Apps { get; set; } = new();
+}
+
+public sealed class PresetAppItem
+{
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; } = true;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = AppEntry.DefaultSource;
+
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = AppActions.Install;
 }

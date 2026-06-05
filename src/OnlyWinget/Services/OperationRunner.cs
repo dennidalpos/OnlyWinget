@@ -16,13 +16,13 @@ public sealed class OperationRunner : IOperationRunner
     private const int IndeterminateProgress = -1;
     private readonly WingetService _wingetService;
     private readonly IInstallCommandBuilder _installCommandBuilder;
-    private readonly ElevatedWingetLauncher _elevatedLauncher;
+    private readonly IElevatedWingetLauncher _elevatedLauncher;
     private readonly bool _isCurrentProcessElevated;
 
     public OperationRunner(
         WingetService wingetService,
         IInstallCommandBuilder installCommandBuilder,
-        ElevatedWingetLauncher? elevatedLauncher = null,
+        IElevatedWingetLauncher? elevatedLauncher = null,
         bool? isCurrentProcessElevated = null)
     {
         _wingetService = wingetService;
@@ -325,7 +325,26 @@ public sealed class OperationRunner : IOperationRunner
             var logPath = app.SupportsLog ? GetInstallLogPath(app) : null;
             setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
             reportProgress(IndeterminateProgress, $"{app.Name}: elevated installer running");
-            var installResult = await Task.Run(() => _elevatedLauncher.Launch(installArgs, logPath, cancellationToken: cancellationToken), cancellationToken);
+            var elevatedReceivedLiveOutput = false;
+            var installResult = await Task.Run(() => _elevatedLauncher.Launch(
+                installArgs,
+                logPath,
+                line =>
+                {
+                    elevatedReceivedLiveOutput = true;
+                    HandleProgressLine(line, operationKey, app.Name, UiStatusKey.InstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
+                    if (_wingetService.ShouldLogOutputLine(line))
+                    {
+                        appendOutput(line.Trim());
+                    }
+                },
+                cancellationToken: cancellationToken), cancellationToken);
+            if (elevatedReceivedLiveOutput)
+            {
+                appendOutput(installResult.Output);
+                return installResult;
+            }
+
             appendOutput(installResult.Output);
             return installResult;
         }

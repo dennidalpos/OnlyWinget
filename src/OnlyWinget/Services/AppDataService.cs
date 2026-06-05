@@ -255,7 +255,7 @@ public sealed class AppDataService
             var payload = new PresetFileRoot
             {
                 PresetName = NormalizeTabName(presetName, "Preset"),
-                Apps = NormalizeApps(apps)
+                Apps = NormalizePresetApps(apps)
             };
 
             var json = JsonSerializer.Serialize(payload, JsonOptions());
@@ -301,9 +301,9 @@ public sealed class AppDataService
             var importedName = NormalizeTabName(payload.PresetName, "Imported preset");
             var apps = new List<AppEntry>();
             var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var app in payload.Apps ?? new List<AppDataItem>())
+            foreach (var app in payload.Apps ?? new List<PresetAppItem>())
             {
-                var normalized = NormalizeApp(app, usedIds, trustAdvancedArguments: false);
+                var normalized = NormalizePresetApp(app, usedIds);
                 if (normalized != null)
                 {
                     apps.Add(normalized);
@@ -497,6 +497,90 @@ public sealed class AppDataService
         }
 
         return result;
+    }
+
+    private List<PresetAppItem> NormalizePresetApps(IEnumerable<AppEntry>? apps)
+    {
+        var result = new List<PresetAppItem>();
+        var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (apps == null)
+        {
+            return result;
+        }
+
+        foreach (var app in apps)
+        {
+            var id = (app.Id ?? string.Empty).Trim();
+            var source = NormalizeSource(app.Source);
+            var operationKey = AppEntry.BuildOperationKey(id, source, string.Empty);
+            if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
+            {
+                continue;
+            }
+
+            var name = (app.Name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = id;
+            }
+
+            result.Add(new PresetAppItem
+            {
+                Enabled = app.Enabled,
+                Name = name,
+                Id = id,
+                Source = source,
+                Action = NormalizeAction(app.Action)
+            });
+        }
+
+        return result;
+    }
+
+    private AppEntry? NormalizePresetApp(PresetAppItem? app, HashSet<string> usedIds)
+    {
+        if (app == null)
+        {
+            return null;
+        }
+
+        var id = (app.Id ?? string.Empty).Trim();
+        var source = NormalizeSource(app.Source);
+        var operationKey = AppEntry.BuildOperationKey(id, source, string.Empty);
+        if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
+        {
+            return null;
+        }
+
+        var name = (app.Name ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = id;
+        }
+
+        return new AppEntry
+        {
+            Enabled = app.Enabled,
+            Name = name,
+            Id = id,
+            Source = source,
+            Action = NormalizeAction(app.Action),
+            Scope = string.Empty,
+            InstallMode = InstallModes.SilentWithProgress,
+            Architecture = string.Empty,
+            Locale = string.Empty,
+            InstallerType = string.Empty,
+            InstallLocation = string.Empty,
+            LogPath = string.Empty,
+            SupportsInstallLocation = true,
+            SupportsLog = true,
+            AdditionalCustomArgs = string.Empty,
+            OverrideArgs = string.Empty,
+            AdvancedArgumentsReviewed = true,
+            ElevationRequirement = string.Empty,
+            Status = string.Empty
+        };
     }
 
     private static string NormalizeTabName(string? tabName, string fallback)

@@ -418,9 +418,10 @@
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSm}"/>
     <Setter Property="Padding" Value="{DynamicResource TableHeaderPadding}"/>
+    <Setter Property="MinHeight" Value="32"/>
     <Setter Property="BorderBrush" Value="{DynamicResource ColumnSeparatorBrush}"/>
     <Setter Property="BorderThickness" Value="0,0,0,1"/>
-    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="GridViewColumnHeader">
@@ -471,21 +472,22 @@
 
   <!-- ProgressBar — slim, rounded, gradient fill + indeterminate pulse -->
   <Style TargetType="ProgressBar">
-    <Setter Property="Height" Value="6"/>
+    <Setter Property="Height" Value="8"/>
+    <Setter Property="MinWidth" Value="160"/>
     <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ProgressBar">
           <Border x:Name="Track"
                   Background="{TemplateBinding Background}"
-                  CornerRadius="3"
+                  CornerRadius="4"
                   ClipToBounds="True"
                   SnapsToDevicePixels="True">
             <Grid>
               <!-- Determinate fill — WPF sizes this via PART_Indicator -->
               <Border x:Name="PART_Indicator"
                       HorizontalAlignment="Left"
-                      CornerRadius="3">
+                      CornerRadius="4">
                 <Border.Background>
                   <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                     <GradientStop Color="{DynamicResource AccentColor}" Offset="0"/>
@@ -496,7 +498,7 @@
               <!-- Indeterminate pulse fills the current track width. -->
               <Border x:Name="IndeterminateBar"
                       HorizontalAlignment="Stretch"
-                      CornerRadius="3"
+                      CornerRadius="4"
                       Opacity="0"
                       Visibility="Collapsed"
                       RenderTransformOrigin="0,0.5">

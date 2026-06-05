@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using OnlyWinget.Models;
 
 namespace OnlyWinget.Services;
@@ -20,19 +21,21 @@ namespace OnlyWinget.Services;
 /// be redirected directly. Instead a log file is always written and the launcher
 /// returns its path so the caller can read diagnostics after completion.
 /// </summary>
-public sealed class ElevatedWingetLauncher
+public sealed class ElevatedWingetLauncher : IElevatedWingetLauncher
 {
     private const int StructuredLogValueMaxLength = 500;
     private static readonly TimeSpan DefaultLaunchTimeout = TimeSpan.FromMinutes(90);
+    private static readonly TimeSpan LogPollInterval = TimeSpan.FromMilliseconds(250);
 
     /// <summary>
     /// Launches winget elevated with the supplied arguments and waits for it to exit.
-    /// Returns the process exit code and a summary line. Live output is not available
-    /// for elevated launches; use <paramref name="logFilePath"/> for diagnostics.
+    /// Returns the process exit code and a summary line. When a log path is available,
+    /// new log lines are reported while the elevated process is running.
     /// </summary>
     public WingetCommandResult Launch(
         IReadOnlyList<string> args,
         string? logFilePath,
+        Action<string>? onOutputLine = null,
         TimeSpan? timeout = null,
         CancellationToken cancellationToken = default)
     {
@@ -68,14 +71,17 @@ public sealed class ElevatedWingetLauncher
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(effectiveTimeout);
+            var logTailTask = StartLogTail(logFilePath, onOutputLine, timeoutCts.Token);
 
             try
             {
                 process.WaitForExitAsync(timeoutCts.Token).GetAwaiter().GetResult();
+                StopLogTail(logTailTask, timeoutCts);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 TryKillProcessTree(process);
+                StopLogTail(logTailTask, timeoutCts);
                 return new WingetCommandResult
                 {
                     ExitCode = 9997,
@@ -85,6 +91,7 @@ public sealed class ElevatedWingetLauncher
             catch (OperationCanceledException)
             {
                 TryKillProcessTree(process);
+                StopLogTail(logTailTask, timeoutCts);
                 return new WingetCommandResult
                 {
                     ExitCode = 9998,
@@ -118,6 +125,89 @@ public sealed class ElevatedWingetLauncher
                 ExitCode = 9999,
                 Output = $"event=elevated_launch_failed reason={Quote(ex.Message)}"
             };
+        }
+    }
+
+    private static Task? StartLogTail(string? logFilePath, Action<string>? onOutputLine, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(logFilePath) || onOutputLine == null)
+        {
+            return null;
+        }
+
+        return Task.Run(() => TailLogFileAsync(logFilePath, onOutputLine, cancellationToken), CancellationToken.None);
+    }
+
+    private static void StopLogTail(Task? logTailTask, CancellationTokenSource timeoutCts)
+    {
+        if (logTailTask == null)
+        {
+            return;
+        }
+
+        if (!timeoutCts.IsCancellationRequested)
+        {
+            timeoutCts.Cancel();
+        }
+
+        try
+        {
+            logTailTask.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static async Task TailLogFileAsync(string logFilePath, Action<string> onOutputLine, CancellationToken cancellationToken)
+    {
+        var position = 0L;
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                position = ReadNewLogLines(logFilePath, position, onOutputLine);
+                await Task.Delay(LogPollInterval, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+
+        ReadNewLogLines(logFilePath, position, onOutputLine);
+    }
+
+    internal static long ReadNewLogLines(string logFilePath, long position, Action<string> onOutputLine)
+    {
+        try
+        {
+            if (!File.Exists(logFilePath))
+            {
+                return position;
+            }
+
+            using var stream = new FileStream(logFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (position > stream.Length)
+            {
+                position = 0;
+            }
+
+            stream.Seek(position, SeekOrigin.Begin);
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+            while (reader.ReadLine() is { } line)
+            {
+                onOutputLine(line);
+            }
+
+            return stream.Position;
+        }
+        catch (IOException)
+        {
+            return position;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return position;
         }
     }
 
