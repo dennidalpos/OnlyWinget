@@ -1,4 +1,4 @@
-{
+﻿{
   "formatVersion": 1,
   "presetName": "Default (imported)",
   "apps": [
@@ -204,8 +204,8 @@
     },
     {
       "Enabled": true,
-      "Name": "Notepad++",
-      "Id": "Notepad++.Notepad++",
+      "Name": "Notepad\u002B\u002B",
+      "Id": "Notepad\u002B\u002B.Notepad\u002B\u002B",
       "Action": "Install",
       "Source": "winget",
       "Scope": "machine",
@@ -214,7 +214,7 @@
       "Locale": "",
       "InstallerType": "nullsoft",
       "InstallLocation": "",
-      "LogPath": "C:\\Users\\Utente\\AppData\\Local\\OnlyWinget\\runtime\\install-Notepad++.Notepad++-20260414094811778.log",
+      "LogPath": "C:\\Users\\Utente\\AppData\\Local\\OnlyWinget\\runtime\\install-Notepad\u002B\u002B.Notepad\u002B\u002B-20260414094811778.log",
       "SupportsInstallLocation": true,
       "SupportsLog": true,
       "AdditionalCustomArgs": "",

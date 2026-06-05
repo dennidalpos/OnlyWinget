@@ -1,6 +1,5 @@
 {
   "todos": [
-    "Run UI/accessibility manual verification for title bar controls, modified grids, and language switching.",
     "Run elevated installer lifecycle validation on a clean or dedicated Windows host before tagging.",
     "Run the hosted GitHub Actions build-gate workflow for the exact release commit before tagging."
   ]

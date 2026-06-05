@@ -343,7 +343,7 @@
                             </MultiBinding>
                           </Setter.Value>
                         </Setter>
-                        <Setter Property="AutomationProperties.HelpText" Value="{Binding DataContext.Strings.AppRowAutomationHelpText, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                        <Setter Property="AutomationProperties.HelpText" Value="{Binding DataContext.Strings.AppRowAutomationHelpText, ElementName=PresetAppsList}"/>
                       </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.View>
@@ -698,7 +698,7 @@
                             </MultiBinding>
                           </Setter.Value>
                         </Setter>
-                        <Setter Property="AutomationProperties.HelpText" Value="{Binding DataContext.Strings.UpdateRowAutomationHelpText, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                        <Setter Property="AutomationProperties.HelpText" Value="{Binding DataContext.Strings.UpdateRowAutomationHelpText, ElementName=UpdatesList}"/>
                       </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.View>
