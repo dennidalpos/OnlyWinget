@@ -104,6 +104,22 @@ public sealed class LocalizationServiceTests
         Assert.False(string.IsNullOrWhiteSpace(LocalizedStrings.English.PromptConfirmLabel));
         Assert.False(string.IsNullOrWhiteSpace(LocalizedStrings.Italian.OutputLogAutomationName));
         Assert.False(string.IsNullOrWhiteSpace(LocalizedStrings.English.OutputLogAutomationName));
+        Assert.False(string.IsNullOrWhiteSpace(LocalizedStrings.Italian.AppRowAutomationHelpText));
+        Assert.False(string.IsNullOrWhiteSpace(LocalizedStrings.English.AppRowAutomationHelpText));
+        Assert.False(string.IsNullOrWhiteSpace(LocalizedStrings.Italian.UpdateRowAutomationHelpText));
+        Assert.False(string.IsNullOrWhiteSpace(LocalizedStrings.English.UpdateRowAutomationHelpText));
+    }
+
+    [Fact]
+    public void ItalianCatalog_UsesAccentedCopy_ForCommonUiText()
+    {
+        Assert.Equal("OnlyWinget è già in esecuzione", LocalizedStrings.Italian.SingleInstanceTitle);
+        Assert.Contains("più pacchetti", LocalizedStrings.Italian.SearchWorkspaceDescription, StringComparison.Ordinal);
+        Assert.Contains("aggiornamento controllato", LocalizedStrings.Italian.UpdatesWorkspaceDescription, StringComparison.Ordinal);
+        Assert.Equal("Versione più recente", LocalizedStrings.Italian.StatusAlreadyUpdated);
+        Assert.Equal("Già installata", LocalizedStrings.Italian.StatusAlreadyInstalled);
+        Assert.Equal("Importazione non riuscita", LocalizedStrings.Italian.ImportPresetErrorTitle);
+        Assert.Equal("Esportazione non riuscita", LocalizedStrings.Italian.ExportPresetErrorTitle);
     }
 
     private sealed class TempSettingsScope : IDisposable

@@ -95,7 +95,8 @@
                       Orientation="Horizontal"
                       VerticalAlignment="Center"
                       shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <Button Style="{StaticResource WindowCommandButtonStyle}"
+            <Button x:Name="MinimizeWindowButton"
+                    Style="{StaticResource WindowCommandButtonStyle}"
                     AutomationProperties.Name="{Binding Strings.MinimizeWindowTooltip}"
                     ToolTip="{Binding Strings.MinimizeWindowTooltip}"
                     Click="OnMinimizeClick">
@@ -113,7 +114,8 @@
                          FontSize="{StaticResource FontSizeMd}"
                          Text="&#xE922;"/>
             </Button>
-            <Button Style="{StaticResource CloseWindowCommandButtonStyle}"
+            <Button x:Name="CloseWindowButton"
+                    Style="{StaticResource CloseWindowCommandButtonStyle}"
                     AutomationProperties.Name="{Binding Strings.CloseWindowTooltip}"
                     ToolTip="{Binding Strings.CloseWindowTooltip}"
                     Click="OnCloseClick">
@@ -331,6 +333,19 @@
                             PreviewKeyDown="OnListViewPreviewKeyDown"
                             helpers:GridViewAutoSizeBehavior.Enabled="True"
                             AutomationProperties.Name="{Binding Strings.AppListAutomationName}">
+                    <ListView.ItemContainerStyle>
+                      <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                        <Setter Property="AutomationProperties.Name">
+                          <Setter.Value>
+                            <MultiBinding StringFormat="{}{0} ({1})">
+                              <Binding Path="Name"/>
+                              <Binding Path="Id"/>
+                            </MultiBinding>
+                          </Setter.Value>
+                        </Setter>
+                        <Setter Property="AutomationProperties.HelpText" Value="{Binding DataContext.Strings.AppRowAutomationHelpText, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                      </Style>
+                    </ListView.ItemContainerStyle>
                     <ListView.View>
                       <GridView>
                         <GridViewColumn Width="{StaticResource SelectColumnWidth}"
@@ -673,6 +688,19 @@
                             PreviewKeyDown="OnListViewPreviewKeyDown"
                             helpers:GridViewAutoSizeBehavior.Enabled="True"
                             AutomationProperties.Name="{Binding Strings.UpdatesListAutomationName}">
+                    <ListView.ItemContainerStyle>
+                      <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                        <Setter Property="AutomationProperties.Name">
+                          <Setter.Value>
+                            <MultiBinding StringFormat="{}{0} ({1})">
+                              <Binding Path="Name"/>
+                              <Binding Path="Id"/>
+                            </MultiBinding>
+                          </Setter.Value>
+                        </Setter>
+                        <Setter Property="AutomationProperties.HelpText" Value="{Binding DataContext.Strings.UpdateRowAutomationHelpText, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                      </Style>
+                    </ListView.ItemContainerStyle>
                     <ListView.View>
                       <GridView>
                         <GridViewColumn Width="{StaticResource SelectColumnWidth}"

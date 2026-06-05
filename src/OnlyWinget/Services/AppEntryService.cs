@@ -78,6 +78,11 @@ public sealed class AppEntryService : IAppEntryService
             : AppEntryValidationError.InvalidId;
     }
 
+    public SavedPackageResolutionResult ResolveSavedPackage(AppEntry app)
+    {
+        return _wingetService.ResolveSavedPackage(app.Id, app.Name, app.Source);
+    }
+
     public AppEntry Create(string? name, string id, string? source = "winget", string? action = null)
     {
         var normalizedId = NormalizeId(id);
@@ -104,7 +109,6 @@ public sealed class AppEntryService : IAppEntryService
             Name = string.IsNullOrWhiteSpace(interrogation.Name) ? interrogation.Id : interrogation.Name.Trim(),
             Id = NormalizeId(interrogation.Id),
             Source = AppEntry.NormalizeSource(interrogation.Source),
-            Version = (interrogation.Version ?? string.Empty).Trim(),
             Action = action ?? AppActions.Install,
             Scope = (selectedOptions.Scope ?? string.Empty).Trim(),
             InstallMode = string.IsNullOrWhiteSpace(selectedOptions.InstallMode) ? InstallModes.SilentWithProgress : selectedOptions.InstallMode.Trim(),
@@ -117,8 +121,6 @@ public sealed class AppEntryService : IAppEntryService
             SupportsLog = selectedOptions.SupportsLog,
             AdditionalCustomArgs = (selectedOptions.AdditionalCustomArgs ?? string.Empty).Trim(),
             OverrideArgs = (selectedOptions.OverrideArgs ?? string.Empty).Trim(),
-            ManifestFingerprint = (interrogation.ManifestFingerprint ?? string.Empty).Trim(),
-            InterrogatedAtUtc = interrogation.InterrogatedAtUtc.ToString("O"),
             ElevationRequirement = (selectedOptions.ElevationRequirement ?? string.Empty).Trim(),
             Status = string.Empty
         };

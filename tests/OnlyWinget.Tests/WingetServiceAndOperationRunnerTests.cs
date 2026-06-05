@@ -267,8 +267,8 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
             (_, _) => { },
             strings);
 
-        Assert.Single(invokedCommands);
-        Assert.Equal("install", invokedCommands[0]);
+        Assert.Contains("show", invokedCommands);
+        Assert.Single(invokedCommands, command => command == "install");
         Assert.Equal("OK", status);
     }
 
@@ -1286,7 +1286,12 @@ A newer package version is available in a configured source, but it does not app
             {
                 var command = singleArg ?? args[0];
                 invokedCommands.Add(command);
-                return new WingetCommandResult { ExitCode = -1978335224, Output = "download failed" };
+                return command switch
+                {
+                    "show" => new WingetCommandResult { ExitCode = 0, Output = "Found VS Code [Microsoft.VisualStudioCode]" },
+                    "install" => new WingetCommandResult { ExitCode = -1978335224, Output = "download failed" },
+                    _ => new WingetCommandResult { ExitCode = 0, Output = string.Empty }
+                };
             });
         var runner = new OperationRunner(service, new InstallCommandBuilder(service));
         var status = string.Empty;
@@ -1302,8 +1307,8 @@ A newer package version is available in a configured source, but it does not app
             (_, _) => { },
             strings);
 
-        Assert.Single(invokedCommands);
-        Assert.Equal("install", invokedCommands[0]);
+        Assert.Contains("show", invokedCommands);
+        Assert.Single(invokedCommands, command => command == "install");
         Assert.Equal("Download failed", status);
     }
 
@@ -1451,7 +1456,7 @@ A newer package version is available in a configured source, but it does not app
     }
 
     [Fact]
-    public async Task RunApplyAsync_DoesNotPinInstallToStoredPresetVersion()
+    public async Task RunApplyAsync_DoesNotPinInstallToVersion()
     {
         var installInvocations = new List<IReadOnlyList<string>>();
         var service = CreateWingetService(
@@ -1477,7 +1482,6 @@ A newer package version is available in a configured source, but it does not app
                     Name = "AnyDesk",
                     Id = "AnyDesk.AnyDesk",
                     Source = "winget",
-                    Version = "9.7.1",
                     Action = AppActions.Install
                 }
             },
@@ -1489,7 +1493,6 @@ A newer package version is available in a configured source, but it does not app
         Assert.Equal("OK", status);
         var installArgs = Assert.Single(installInvocations);
         Assert.DoesNotContain("--version", installArgs);
-        Assert.DoesNotContain("9.7.1", installArgs);
         Assert.Contains("--id", installArgs);
         Assert.Contains("AnyDesk.AnyDesk", installArgs);
     }

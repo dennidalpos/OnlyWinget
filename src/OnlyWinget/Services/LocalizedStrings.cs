@@ -111,6 +111,10 @@ public sealed partial class LocalizedStrings
     public string OperationEndText { get; init; } = string.Empty;
     public string AdvancedArgumentsReviewRequiredText { get; init; } = string.Empty;
     public string AdvancedArgumentsReviewRequiredResolution { get; init; } = string.Empty;
+    public string SavedPackageUnresolvedText { get; init; } = string.Empty;
+    public string SavedPackageUnresolvedResolution { get; init; } = string.Empty;
+    public string SavedPackageAmbiguousText { get; init; } = string.Empty;
+    public string SavedPackageAmbiguousResolution { get; init; } = string.Empty;
     public string UpdatesStartText { get; init; } = string.Empty;
     public string UpdatesEndText { get; init; } = string.Empty;
     public string SaveErrorTitle { get; init; } = string.Empty;
@@ -196,11 +200,13 @@ public sealed partial class LocalizedStrings
     public string PackageDialogPackageVersionLabel { get; init; } = string.Empty;
     public string PresetSelectorAutomationName { get; init; } = string.Empty;
     public string AppListAutomationName { get; init; } = string.Empty;
+    public string AppRowAutomationHelpText { get; init; } = string.Empty;
     public string ActionSelectorAutomationName { get; init; } = string.Empty;
     public string SearchQueryAutomationName { get; init; } = string.Empty;
     public string SearchResultsAutomationName { get; init; } = string.Empty;
     public string SearchSelectedIdAutomationName { get; init; } = string.Empty;
     public string UpdatesListAutomationName { get; init; } = string.Empty;
+    public string UpdateRowAutomationHelpText { get; init; } = string.Empty;
     public string SelectAppAutomationName { get; init; } = string.Empty;
     public string SelectUpdateAutomationName { get; init; } = string.Empty;
     public string OutputLogAutomationName { get; init; } = string.Empty;

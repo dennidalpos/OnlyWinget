@@ -328,12 +328,19 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         }
 
         var app = SelectedApp;
+        var resolution = _appEntryService.ResolveSavedPackage(app);
+        if (!resolution.IsResolved)
+        {
+            ApplySavedPackageResolutionError(app, resolution);
+            _appendOutput($"event=edit_blocked_package_resolution id=\"{app.Id}\" source=\"{app.Source}\" status=\"{resolution.Status}\"");
+            return;
+        }
+
         var request = new PackageInterrogationRequest
         {
-            PackageId = app.Id,
-            PackageName = app.Name,
-            Version = app.Version,
-            Source = AppEntry.NormalizeSource(app.Source),
+            PackageId = resolution.Id,
+            PackageName = string.IsNullOrWhiteSpace(resolution.Name) ? app.Name : resolution.Name,
+            Source = AppEntry.NormalizeSource(resolution.Source),
             Log = _appendOutput
         };
 
@@ -374,9 +381,6 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         app.Name = editedName;
         app.Id = editedId;
         app.Source = editedSource;
-        app.Version = string.IsNullOrWhiteSpace(dialogResult.Interrogation.Version)
-            ? app.Version
-            : dialogResult.Interrogation.Version.Trim();
         app.Scope = dialogResult.SelectedOptions.Scope ?? string.Empty;
         app.InstallMode = string.IsNullOrWhiteSpace(dialogResult.SelectedOptions.InstallMode)
             ? InstallModes.SilentWithProgress
@@ -391,11 +395,23 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         app.AdditionalCustomArgs = dialogResult.SelectedOptions.AdditionalCustomArgs ?? string.Empty;
         app.OverrideArgs = dialogResult.SelectedOptions.OverrideArgs ?? string.Empty;
         app.AdvancedArgumentsReviewed = true;
-        app.ManifestFingerprint = dialogResult.Interrogation.ManifestFingerprint ?? string.Empty;
-        app.InterrogatedAtUtc = dialogResult.Interrogation.InterrogatedAtUtc.ToString("O");
         app.ElevationRequirement = dialogResult.SelectedOptions.ElevationRequirement ?? string.Empty;
 
         _appendOutput($"event=queue_item_updated id=\"{app.Id}\" scope=\"{app.Scope}\" mode=\"{app.InstallMode}\" arch=\"{app.Architecture}\"");
+    }
+
+    private void ApplySavedPackageResolutionError(AppEntry app, SavedPackageResolutionResult resolution)
+    {
+        var isAmbiguous = resolution.Status == SavedPackageResolutionStatus.Ambiguous;
+        var message = isAmbiguous
+            ? Strings.SavedPackageAmbiguousText
+            : Strings.SavedPackageUnresolvedText;
+        var hint = isAmbiguous
+            ? Strings.SavedPackageAmbiguousResolution
+            : Strings.SavedPackageUnresolvedResolution;
+        app.ApplyStatus(UiStatusState.FromRawText(message), Strings);
+        app.ErrorMessage = message;
+        app.Resolution = hint;
     }
 
     private void RemoveApp()

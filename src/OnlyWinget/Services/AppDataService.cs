@@ -426,7 +426,6 @@ public sealed class AppDataService
             Name = name,
             Id = id,
             Source = source,
-            Version = (app.Version ?? string.Empty).Trim(),
             Action = NormalizeAction(app.Action),
             Scope = NormalizeOptionalValue(app.Scope),
             InstallMode = NormalizeInstallMode(app.InstallMode),
@@ -442,8 +441,6 @@ public sealed class AppDataService
             AdvancedArgumentsReviewed = trustAdvancedArguments
                 ? app.AdvancedArgumentsReviewed ?? true
                 : !hasAdvancedArguments,
-            ManifestFingerprint = NormalizeOptionalValue(app.ManifestFingerprint),
-            InterrogatedAtUtc = NormalizeOptionalValue(app.InterrogatedAtUtc),
             ElevationRequirement = NormalizeOptionalValue(app.ElevationRequirement),
             Status = string.Empty
         };
@@ -483,7 +480,6 @@ public sealed class AppDataService
                 Id = id,
                 Action = NormalizeAction(app.Action),
                 Source = source,
-                Version = NormalizeOptionalValue(app.Version),
                 Scope = NormalizeOptionalValue(app.Scope),
                 InstallMode = NormalizeInstallMode(app.InstallMode),
                 Architecture = architecture,
@@ -496,8 +492,6 @@ public sealed class AppDataService
                 AdditionalCustomArgs = NormalizeOptionalValue(app.AdditionalCustomArgs),
                 OverrideArgs = NormalizeOptionalValue(app.OverrideArgs),
                 AdvancedArgumentsReviewed = app.AdvancedArgumentsReviewed,
-                ManifestFingerprint = NormalizeOptionalValue(app.ManifestFingerprint),
-                InterrogatedAtUtc = NormalizeOptionalValue(app.InterrogatedAtUtc),
                 ElevationRequirement = NormalizeOptionalValue(app.ElevationRequirement)
             });
         }

@@ -1,4 +1,4 @@
-﻿{
+{
   "formatVersion": 1,
   "presetName": "Default",
   "apps": [
@@ -7,7 +7,6 @@
       "Id": "Microsoft.DotNet.SDK.10",
       "Action": "Install",
       "Source": "winget",
-      "Version": "10.0.202",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -17,8 +16,6 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "8BB7B2709E0F6929DDA7725205691366CE07E3060DF24544F3F963F824409B47",
-      "InterrogatedAtUtc": "2026-04-19T15:30:03.6216836Z",
       "ElevationRequirement": ""
     },
     {
@@ -26,7 +23,6 @@
       "Id": "Microsoft.DotNet.SDK.8",
       "Action": "Install",
       "Source": "winget",
-      "Version": "8.0.420",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -36,8 +32,6 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "FFCE51BB00C25A57690FD9B48A6B58DAD2308401FBAFD3FB9E1EE2382DF5099A",
-      "InterrogatedAtUtc": "2026-04-19T15:30:12.0957694Z",
       "ElevationRequirement": ""
     },
     {
@@ -45,7 +39,6 @@
       "Id": "Microsoft.DotNet.SDK.9",
       "Action": "Install",
       "Source": "winget",
-      "Version": "9.0.313",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -55,8 +48,6 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "58A627E46778C063DB544CA311EE6CE7A9BB458A7F235CD64CE1A1F9B753D786",
-      "InterrogatedAtUtc": "2026-04-19T15:30:15.5965029Z",
       "ElevationRequirement": ""
     },
     {
@@ -64,7 +55,6 @@
       "Id": "Piriform.CCleaner.Slim",
       "Action": "Install",
       "Source": "winget",
-      "Version": "6.39.0.11548",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -74,16 +64,13 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "F2BDED73AFFE16EB407DB564247FC399FD38A0DCC872F7EFD359AEC160063707",
-      "InterrogatedAtUtc": "2026-04-19T15:31:39.0519032Z",
       "ElevationRequirement": "elevatesSelf"
     },
     {
-      "Name": "Microsoft Visual C\u002B\u002B v14 Redistributable (x64)",
-      "Id": "Microsoft.VCRedist.2015\u002B.x64",
+      "Name": "Microsoft Visual C++ v14 Redistributable (x64)",
+      "Id": "Microsoft.VCRedist.2015+.x64",
       "Action": "Install",
       "Source": "winget",
-      "Version": "14.50.35719.0",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -93,16 +80,13 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "E7CBA297104F31159EF7C0CB8D3A75F12910433A8EFE5FDB2DF9E722B6948072",
-      "InterrogatedAtUtc": "2026-04-19T15:32:25.4675534Z",
       "ElevationRequirement": "elevatesSelf"
     },
     {
-      "Name": "Microsoft Visual C\u002B\u002B v14 Redistributable (x86)",
-      "Id": "Microsoft.VCRedist.2015\u002B.x86",
+      "Name": "Microsoft Visual C++ v14 Redistributable (x86)",
+      "Id": "Microsoft.VCRedist.2015+.x86",
       "Action": "Install",
       "Source": "winget",
-      "Version": "14.50.35719.0",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "",
@@ -112,8 +96,6 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "510A98427EF049B451C8F9301E8B71FC3E932ABBE02944A9B1C58EEFF45F900A",
-      "InterrogatedAtUtc": "2026-04-19T15:32:28.7462728Z",
       "ElevationRequirement": ""
     },
     {
@@ -121,7 +103,6 @@
       "Id": "AnyDesk.AnyDesk",
       "Action": "Install",
       "Source": "winget",
-      "Version": "9.7.0",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "",
@@ -131,8 +112,6 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "531FC7838F7CD4873C6E8E0B4C3687A29C66BDFAC0696A2F3E632E95364DC1CA",
-      "InterrogatedAtUtc": "2026-04-19T15:35:14.0249476Z",
       "ElevationRequirement": "elevationRequired"
     },
     {
@@ -140,7 +119,6 @@
       "Id": "9NKSQGP7F2NH",
       "Action": "Install",
       "Source": "msstore",
-      "Version": "Unknown",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "",
@@ -150,8 +128,6 @@
       "LogPath": "",
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
-      "ManifestFingerprint": "",
-      "InterrogatedAtUtc": "2026-04-19T15:36:47.3039385Z",
       "ElevationRequirement": ""
     }
   ]

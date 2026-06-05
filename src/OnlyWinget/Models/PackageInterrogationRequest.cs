@@ -11,7 +11,6 @@ public sealed class PackageInterrogationRequest
 {
     public string PackageId { get; init; } = string.Empty;
     public string PackageName { get; init; } = string.Empty;
-    public string Version { get; init; } = string.Empty;
     public string Source { get; init; } = AppEntry.DefaultSource;
     public Action<string>? Log { get; init; }
 }

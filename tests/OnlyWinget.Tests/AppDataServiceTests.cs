@@ -192,7 +192,7 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void Save_AndLoad_PreservesExtendedInstallOptions()
+    public void Save_AndLoad_PreservesExtendedInstallOptions_WithoutPersistingVersionMetadata()
     {
         var root = CreateTempDirectory();
         try
@@ -212,7 +212,6 @@ public sealed class AppDataServiceTests
                             Name = "PowerToys",
                             Id = "Microsoft.PowerToys",
                             Source = "winget",
-                            Version = "0.98.1",
                             Action = AppActions.Install,
                             Scope = "machine",
                             InstallMode = InstallModes.Silent,
@@ -223,8 +222,6 @@ public sealed class AppDataServiceTests
                             LogPath = "C:\\Logs\\powertoys.log",
                             AdditionalCustomArgs = "/custom",
                             OverrideArgs = "/override",
-                            ManifestFingerprint = "ABC123",
-                            InterrogatedAtUtc = "2026-04-11T12:00:00.0000000Z",
                             ElevationRequirement = "elevationRequired"
                         }
                     ]
@@ -236,7 +233,6 @@ public sealed class AppDataServiceTests
             var app = Assert.Single(loaded.Tabs["Default"]);
             Assert.False(app.Enabled);
             Assert.Equal("winget", app.Source);
-            Assert.Equal("0.98.1", app.Version);
             Assert.Equal("machine", app.Scope);
             Assert.Equal(InstallModes.Silent, app.InstallMode);
             Assert.Equal("x64", app.Architecture);
@@ -247,9 +243,12 @@ public sealed class AppDataServiceTests
             Assert.Equal("/custom", app.AdditionalCustomArgs);
             Assert.Equal("/override", app.OverrideArgs);
             Assert.True(app.AdvancedArgumentsReviewed);
-            Assert.Equal("ABC123", app.ManifestFingerprint);
-            Assert.Equal("2026-04-11T12:00:00.0000000Z", app.InterrogatedAtUtc);
             Assert.Equal("elevationRequired", app.ElevationRequirement);
+
+            var json = File.ReadAllText(jsonPath);
+            Assert.DoesNotContain("\"Version\"", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"ManifestFingerprint\"", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"InterrogatedAtUtc\"", json, StringComparison.Ordinal);
         }
         finally
         {

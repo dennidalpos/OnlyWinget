@@ -227,6 +227,139 @@ public sealed class SearchResultsLayoutTests
     }
 
     [Fact]
+    public void MainShell_TitleBarButtonsExposeVisibleKeyboardFocus()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-TitleBarFocus-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1180,
+                    Height = 720,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+
+                    window.Show();
+                    DoEvents();
+
+                    var buttons = new[]
+                    {
+                        Assert.IsType<Button>(window.FindName("MinimizeWindowButton")),
+                        Assert.IsType<Button>(window.FindName("MaximizeRestoreButton")),
+                        Assert.IsType<Button>(window.FindName("CloseWindowButton"))
+                    };
+
+                    foreach (var button in buttons)
+                    {
+                        Assert.True(button.Focus());
+                        DoEvents();
+                        button.ApplyTemplate();
+                        var focusBorder = Assert.IsType<Border>(button.Template.FindName("ChromeButtonBorder", button));
+                        Assert.Equal(new Thickness(2), focusBorder.BorderThickness);
+                        Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(button)));
+                    }
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void MainShell_PresetAndUpdateRowsExposeAccessibleNamesAndHelpText()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-RowA11y-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            RunOnStaThread(() =>
+            {
+                EnsureApplicationResourcesLoaded();
+
+                var window = new MainWindow
+                {
+                    Width = 1366,
+                    Height = 900,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                    Left = -2000,
+                    Top = 0,
+                    ShowInTaskbar = false
+                };
+
+                try
+                {
+                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    window.DataContext = viewModel;
+                    viewModel.Initialize();
+                    SeedPresetRows(viewModel);
+                    SetUpdates(
+                        viewModel,
+                        new UpdateEntry
+                        {
+                            Name = "Microsoft PowerToys",
+                            Id = "Microsoft.PowerToys",
+                            Version = "0.90.0",
+                            Available = "0.91.0",
+                            Source = "winget"
+                        });
+
+                    window.Show();
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var presetList = Assert.IsType<ListView>(window.FindName("PresetAppsList"));
+                    var presetRow = GetListViewItem(presetList, 0);
+                    Assert.Contains(viewModel.CurrentApps[0].Id, AutomationProperties.GetName(presetRow), StringComparison.Ordinal);
+                    Assert.Equal(viewModel.Strings.AppRowAutomationHelpText, AutomationProperties.GetHelpText(presetRow));
+
+                    viewModel.IsUpdatesVisible = true;
+                    DoEvents();
+                    window.UpdateLayout();
+                    DoEvents();
+
+                    var updatesList = Assert.IsType<ListView>(window.FindName("UpdatesList"));
+                    var updateRow = GetListViewItem(updatesList, 0);
+                    Assert.Contains("Microsoft.PowerToys", AutomationProperties.GetName(updateRow), StringComparison.Ordinal);
+                    Assert.Equal(viewModel.Strings.UpdateRowAutomationHelpText, AutomationProperties.GetHelpText(updateRow));
+                }
+                finally
+                {
+                    window.Close();
+                    DoEvents();
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void SearchResultsLayout_RendersRegressionSamplesWithoutTruncationAtReportedWidth()
     {
         var root = Path.Combine(Path.GetTempPath(), $"OnlyWinget-Layout-{Guid.NewGuid():N}");
@@ -808,6 +941,16 @@ public sealed class SearchResultsLayoutTests
                 queue.Enqueue(child);
             }
         }
+    }
+
+    private static ListViewItem GetListViewItem(ListView listView, int index)
+    {
+        listView.UpdateLayout();
+        DoEvents();
+        var item = listView.ItemContainerGenerator.ContainerFromIndex(index) as ListViewItem;
+        Assert.NotNull(item);
+        item!.ApplyTemplate();
+        return item;
     }
 
     private static void SetSearchResults(MainViewModel viewModel, params SearchResult[] results)

@@ -81,9 +81,9 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
     public async Task<PackageInterrogationResult> InterrogateAsync(PackageInterrogationRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Log(request, $"event=package_interrogation_started id={Quote(request.PackageId)} source={Quote(request.Source)} version={Quote(request.Version)}");
+        Log(request, $"event=package_interrogation_started id={Quote(request.PackageId)} source={Quote(request.Source)}");
 
-        var commandResult = await InvokeShowWithVersionFallbackAsync(request, cancellationToken).ConfigureAwait(false);
+        var commandResult = await InvokeShowAsync(request, cancellationToken).ConfigureAwait(false);
         if (commandResult.ExitCode != 0)
         {
             var failure = ExtractFailureMessage(commandResult.Output, _wingetService.GetErrorMessage(commandResult.ExitCode));
@@ -236,36 +236,13 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             "--disable-interactivity"
         };
 
-        if (!string.IsNullOrWhiteSpace(request.Version))
-        {
-            args.Add("--version");
-            args.Add(request.Version.Trim());
-        }
-
         return args;
     }
 
-    private async Task<WingetCommandResult> InvokeShowWithVersionFallbackAsync(PackageInterrogationRequest request, CancellationToken cancellationToken)
+    private async Task<WingetCommandResult> InvokeShowAsync(PackageInterrogationRequest request, CancellationToken cancellationToken)
     {
         var showArgs = BuildShowArguments(request);
-        var commandResult = await Task.Run(() => _wingetService.Invoke(showArgs, null, cancellationToken), cancellationToken).ConfigureAwait(false);
-        if (commandResult.ExitCode == 0
-            || string.IsNullOrWhiteSpace(request.Version)
-            || !IsVersionResolutionFailure(commandResult.Output))
-        {
-            return commandResult;
-        }
-
-        var fallbackRequest = new PackageInterrogationRequest
-        {
-            PackageId = request.PackageId,
-            PackageName = request.PackageName,
-            Source = request.Source,
-            Log = request.Log
-        };
-        var fallbackArgs = BuildShowArguments(fallbackRequest);
-        Log(request, $"event=package_resolution_version_fallback id={Quote(request.PackageId)} source={Quote(request.Source)} version={Quote(request.Version)}");
-        return await Task.Run(() => _wingetService.Invoke(fallbackArgs, null, cancellationToken), cancellationToken).ConfigureAwait(false);
+        return await Task.Run(() => _wingetService.Invoke(showArgs, null, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
     private static bool TryBuildManifestUrl(string packageId, string version, out string url)
@@ -457,7 +434,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
 
         var name = foundMatch.Groups["name"].Value.Trim();
         var id = foundMatch.Groups["id"].Value.Trim();
-        var version = request.Version;
+        var version = string.Empty;
         var installerType = string.Empty;
 
         foreach (var line in lines)
@@ -1040,15 +1017,6 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
             .Select(line => line.Trim())
             .FirstOrDefault(line => !IsProgressLine(line) && !string.IsNullOrWhiteSpace(line));
         return string.IsNullOrWhiteSpace(relevant) ? fallback : relevant;
-    }
-
-    private static bool IsVersionResolutionFailure(string output)
-    {
-        var normalized = NormalizeOutput(output);
-        return normalized.Contains("No version found matching", StringComparison.OrdinalIgnoreCase)
-            || (normalized.Contains("versione", StringComparison.OrdinalIgnoreCase)
-                && normalized.Contains("trovata", StringComparison.OrdinalIgnoreCase)
-                && normalized.Contains("corrispondente", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool MatchesAny(string value, params string[] candidates)

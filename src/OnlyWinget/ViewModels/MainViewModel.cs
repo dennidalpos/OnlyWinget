@@ -805,7 +805,6 @@ public sealed class MainViewModel : ObservableObject
             Name = app.Name,
             Id = app.Id,
             Source = app.Source,
-            Version = app.Version,
             Action = app.Action,
             Scope = app.Scope,
             InstallMode = app.InstallMode,
@@ -817,8 +816,8 @@ public sealed class MainViewModel : ObservableObject
             AdditionalCustomArgs = app.AdditionalCustomArgs,
             OverrideArgs = app.OverrideArgs,
             AdvancedArgumentsReviewed = app.AdvancedArgumentsReviewed,
-            ManifestFingerprint = app.ManifestFingerprint,
-            InterrogatedAtUtc = app.InterrogatedAtUtc,
+            SupportsInstallLocation = app.SupportsInstallLocation,
+            SupportsLog = app.SupportsLog,
             ElevationRequirement = app.ElevationRequirement
         };
     }
@@ -1015,7 +1014,6 @@ public sealed class MainViewModel : ObservableObject
                 {
                     PackageId = result.Id,
                     PackageName = result.Name,
-                    Version = result.Version,
                     Source = result.Source,
                     Log = AppendOutput
                 })
@@ -1034,7 +1032,6 @@ public sealed class MainViewModel : ObservableObject
             {
                 PackageId = normalizedId,
                 PackageName = SelectedSearchResult?.Name ?? string.Empty,
-                Version = SelectedSearchResult?.Version ?? string.Empty,
                 Source = AppEntry.NormalizeSource(SelectedSearchResult?.Source),
                 Log = AppendOutput
             }

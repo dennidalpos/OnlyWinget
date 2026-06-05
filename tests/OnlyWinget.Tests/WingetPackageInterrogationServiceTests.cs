@@ -439,24 +439,22 @@ ManifestType: installer
     }
 
     [Fact]
-    public async Task InterrogateAsync_RetriesWithoutVersion_WhenPinnedVersionIsNoLongerAvailable()
+    public async Task InterrogateAsync_DoesNotPassSavedVersion()
     {
         var invocations = new List<IReadOnlyList<string>>();
         var wingetService = new WingetService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invocations.Add(args.ToArray());
-                return args.Contains("--version")
-                    ? new WingetCommandResult { ExitCode = -1978335212, Output = "No version found matching: 9.7.0" }
-                    : new WingetCommandResult
-                    {
-                        ExitCode = 0,
-                        Output = """
+                return new WingetCommandResult
+                {
+                    ExitCode = 0,
+                    Output = """
 Found AnyDesk [AnyDesk.AnyDesk]
 Version: 9.7.1
 Installer Type: exe
 """
-                    };
+                };
             });
         var httpClient = new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound)));
         var service = new WingetPackageInterrogationService(wingetService, httpClient);
@@ -464,16 +462,14 @@ Installer Type: exe
         var result = await service.InterrogateAsync(new PackageInterrogationRequest
         {
             PackageId = "AnyDesk.AnyDesk",
-            Source = "winget",
-            Version = "9.7.0"
+            Source = "winget"
         });
 
         Assert.True(result.Success);
         Assert.Equal("9.7.1", result.Version);
         var showInvocations = invocations.Where(args => args.Count > 0 && args[0] == "show").ToList();
-        Assert.Equal(2, showInvocations.Count);
-        Assert.Contains("--version", showInvocations[0]);
-        Assert.DoesNotContain("--version", showInvocations[1]);
+        var showInvocation = Assert.Single(showInvocations);
+        Assert.DoesNotContain("--version", showInvocation);
     }
 
     [Fact]

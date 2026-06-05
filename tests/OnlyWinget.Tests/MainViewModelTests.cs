@@ -1765,7 +1765,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
-    public async Task EditCommand_ShowsWarning_AndDoesNotMutate_WhenEditedIdIsInvalidForSource()
+    public async Task EditCommand_BlocksAndDoesNotMutate_WhenSavedPackageCannotBeResolved()
     {
         var root = CreateTempDirectory();
         try
@@ -1795,8 +1795,9 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
 
             Assert.Equal("Microsoft.VisualStudioCode", originalEntry.Id);
             Assert.Equal("VS Code", originalEntry.Name);
-            Assert.Single(dialog.WarningCalls);
-            Assert.Equal(viewModel.Strings.InvalidIdTitle, dialog.WarningCalls[0].Title);
+            Assert.Empty(dialog.WarningCalls);
+            Assert.Equal(viewModel.Strings.SavedPackageUnresolvedText, originalEntry.ErrorMessage);
+            Assert.Equal(viewModel.Strings.SavedPackageUnresolvedResolution, originalEntry.Resolution);
         }
         finally
         {

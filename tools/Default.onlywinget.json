@@ -1,4 +1,4 @@
-﻿{
+{
   "formatVersion": 1,
   "presetName": "Default (imported)",
   "apps": [
@@ -8,7 +8,6 @@
       "Id": "WiXToolset.WiXCLI",
       "Action": "Install",
       "Source": "winget",
-      "Version": "7.0.0.0",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -21,8 +20,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "E76404718D053FCEA9B4174BB77D2E5E6DD270952AE3CE35BCAC5300929D36D8",
-      "InterrogatedAtUtc": "2026-04-14T07:24:51.1950329Z",
       "ElevationRequirement": ""
     },
     {
@@ -31,7 +28,6 @@
       "Id": "WiXToolset.WiXAdditionalTools",
       "Action": "Install",
       "Source": "winget",
-      "Version": "7.0.0",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x86",
@@ -44,8 +40,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "2AFB27C115D7CF45F90FA10A12194CCB6CB655BF74FAFF0A4AC4022559B4FD9A",
-      "InterrogatedAtUtc": "2026-04-21T23:14:27.4514491Z",
       "ElevationRequirement": ""
     },
     {
@@ -54,7 +48,6 @@
       "Id": "WiXToolset.WiXToolset",
       "Action": "Install",
       "Source": "winget",
-      "Version": "3.14.1.8722",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x86",
@@ -67,8 +60,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "C35CBF0C92DF837E28AEC527C9C2A586C1881628F88E03B9061F19211DFBAA26",
-      "InterrogatedAtUtc": "2026-04-21T23:14:34.5037016Z",
       "ElevationRequirement": ""
     },
     {
@@ -77,7 +68,6 @@
       "Id": "Microsoft.DotNet.SDK.8",
       "Action": "Install",
       "Source": "winget",
-      "Version": "8.0.419",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -90,8 +80,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "AB8ABE6C417053C26F0625A21BA5630F37D8D56976D0B48102EAE7984B053CDA",
-      "InterrogatedAtUtc": "2026-04-14T07:26:09.7992559Z",
       "ElevationRequirement": ""
     },
     {
@@ -100,7 +88,6 @@
       "Id": "Microsoft.DotNet.SDK.9",
       "Action": "Install",
       "Source": "winget",
-      "Version": "9.0.312",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -113,8 +100,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "73A84D403B996E3DB894ADB13D2ADAF1BB1F487CD580B9691EF969648AA1CF34",
-      "InterrogatedAtUtc": "2026-04-14T07:26:19.9550330Z",
       "ElevationRequirement": ""
     },
     {
@@ -123,7 +108,6 @@
       "Id": "Microsoft.DotNet.SDK.10",
       "Action": "Install",
       "Source": "winget",
-      "Version": "10.0.201",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -136,8 +120,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "81ACB165B6A646BF0E181541B1F154ED5B46F1D641BFB6A3B0A35565F3447BEC",
-      "InterrogatedAtUtc": "2026-04-14T07:26:22.6850764Z",
       "ElevationRequirement": ""
     },
     {
@@ -146,7 +128,6 @@
       "Id": "Microsoft.VisualStudio.Community",
       "Action": "Pause",
       "Source": "winget",
-      "Version": "18.4.3",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -159,8 +140,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "06A0204E3D284803DD60A205B8A2CF08948454C05EBC124F60AC3C6C4DED984F",
-      "InterrogatedAtUtc": "2026-04-14T07:38:52.6176615Z",
       "ElevationRequirement": ""
     },
     {
@@ -169,7 +148,6 @@
       "Id": "NSIS.NSIS",
       "Action": "Install",
       "Source": "winget",
-      "Version": "3.11",
       "Scope": "machine",
       "InstallMode": "silent",
       "Architecture": "x86",
@@ -182,8 +160,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "4654C9983A49746B75AE00A82DC437866E13C343FCF2B39F6D7E6693E7BA307D",
-      "InterrogatedAtUtc": "2026-04-14T07:39:56.6185704Z",
       "ElevationRequirement": ""
     },
     {
@@ -192,7 +168,6 @@
       "Id": "Microsoft.VisualStudioCode",
       "Action": "Pause",
       "Source": "winget",
-      "Version": "1.115.0",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -205,8 +180,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "F378A80B8B2AE6489AEF42072A872F6F2FA6098BAA7A3919D2729A947890131D",
-      "InterrogatedAtUtc": "2026-04-14T07:41:31.9871077Z",
       "ElevationRequirement": ""
     },
     {
@@ -215,7 +188,6 @@
       "Id": "Adobe.Acrobat.Reader.64-bit",
       "Action": "Pause",
       "Source": "winget",
-      "Version": "26.001.21411",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -228,31 +200,26 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "0C7E7AEB578F7A15E2A6F738B281E14558431FF4697CAB17A6960F57CC8C724F",
-      "InterrogatedAtUtc": "2026-04-14T07:42:46.4363140Z",
       "ElevationRequirement": ""
     },
     {
       "Enabled": true,
-      "Name": "Notepad\u002B\u002B",
-      "Id": "Notepad\u002B\u002B.Notepad\u002B\u002B",
+      "Name": "Notepad++",
+      "Id": "Notepad++.Notepad++",
       "Action": "Install",
       "Source": "winget",
-      "Version": "8.9.3",
       "Scope": "machine",
       "InstallMode": "silent",
       "Architecture": "x64",
       "Locale": "",
       "InstallerType": "nullsoft",
       "InstallLocation": "",
-      "LogPath": "C:\\Users\\Utente\\AppData\\Local\\OnlyWinget\\runtime\\install-Notepad\u002B\u002B.Notepad\u002B\u002B-20260414094811778.log",
+      "LogPath": "C:\\Users\\Utente\\AppData\\Local\\OnlyWinget\\runtime\\install-Notepad++.Notepad++-20260414094811778.log",
       "SupportsInstallLocation": true,
       "SupportsLog": true,
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "83ABADA0659E4A170FCDFDF33BE0046A76FF2DA9DB5FFB4A9C0C6DF352022DE5",
-      "InterrogatedAtUtc": "2026-04-14T09:48:11.7802740Z",
       "ElevationRequirement": ""
     },
     {
@@ -261,7 +228,6 @@
       "Id": "AnyDesk.AnyDesk",
       "Action": "Install",
       "Source": "winget",
-      "Version": "9.7.1",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x86",
@@ -274,8 +240,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "33A1B37833C2F740A8184743DCFB4E2AE5656BBD7C2AD23229D4BB029CC73309",
-      "InterrogatedAtUtc": "2026-04-28T23:14:11.6767806Z",
       "ElevationRequirement": "elevationRequired"
     },
     {
@@ -284,7 +248,6 @@
       "Id": "VideoLAN.VLC",
       "Action": "Install",
       "Source": "winget",
-      "Version": "3.0.23",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -297,8 +260,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "BF35451E64EB6890A9BAAF22834430BC34B2302BACAB773D6714CB60541361CF",
-      "InterrogatedAtUtc": "2026-04-22T23:30:38.8219228Z",
       "ElevationRequirement": "elevatesSelf"
     },
     {
@@ -307,7 +268,6 @@
       "Id": "Microsoft.EdgeWebView2Runtime",
       "Action": "Install",
       "Source": "winget",
-      "Version": "147.0.3912.86",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -320,8 +280,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "321E671F000EDA743D25E6347BAFB9F60BAD10931D4E9FA37D1738E3B93A94ED",
-      "InterrogatedAtUtc": "2026-04-25T13:29:43.9323724Z",
       "ElevationRequirement": "elevationRequired"
     },
     {
@@ -330,7 +288,6 @@
       "Id": "RARLab.WinRAR",
       "Action": "Install",
       "Source": "winget",
-      "Version": "7.20.0",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -343,8 +300,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "EECB06826224DC7D8DF392291FB4724582616DBEA861D597DEDB260A18E0B2C5",
-      "InterrogatedAtUtc": "2026-04-28T21:54:10.0107750Z",
       "ElevationRequirement": "elevatesSelf"
     },
     {
@@ -353,7 +308,6 @@
       "Id": "JRSoftware.InnoSetup",
       "Action": "Install",
       "Source": "winget",
-      "Version": "6.7.1",
       "Scope": "machine",
       "InstallMode": "silentWithProgress",
       "Architecture": "x86",
@@ -366,8 +320,6 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "8CBF44D6D3F2876560B7D97BD7EA86DE1051D62CB2AAE329CAB5765C81B0E125",
-      "InterrogatedAtUtc": "2026-05-04T14:22:57.8697248Z",
       "ElevationRequirement": ""
     },
     {
@@ -376,7 +328,6 @@
       "Id": "Microsoft.DotNet.Framework.DeveloperPack.4.6",
       "Action": "Install",
       "Source": "winget",
-      "Version": "4.6.2",
       "Scope": "",
       "InstallMode": "silentWithProgress",
       "Architecture": "x64",
@@ -389,8 +340,26 @@
       "AdditionalCustomArgs": "",
       "OverrideArgs": "",
       "AdvancedArgumentsReviewed": true,
-      "ManifestFingerprint": "57DA65DAEA9D55A6A6070A1EAD1822798332FD055214A9BBA6BF67A49D7FCEB7",
-      "InterrogatedAtUtc": "2026-05-05T15:17:02.4415727Z",
+      "ElevationRequirement": ""
+    },
+    {
+      "Enabled": true,
+      "Name": "Java(TM) SE Development Kit 26",
+      "Id": "Oracle.JDK.26",
+      "Action": "Install",
+      "Source": "winget",
+      "Scope": "machine",
+      "InstallMode": "silentWithProgress",
+      "Architecture": "x64",
+      "Locale": "",
+      "InstallerType": "wix",
+      "InstallLocation": "",
+      "LogPath": "C:\\Users\\Utente\\AppData\\Local\\OnlyWinget\\runtime\\install-Oracle.JDK.26-20260602155553273.log",
+      "SupportsInstallLocation": true,
+      "SupportsLog": true,
+      "AdditionalCustomArgs": "",
+      "OverrideArgs": "",
+      "AdvancedArgumentsReviewed": true,
       "ElevationRequirement": ""
     }
   ]

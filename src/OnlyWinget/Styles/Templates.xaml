@@ -228,6 +228,7 @@
     <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource TransparentBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource ChromeCaptionBrush}"/>
+    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
@@ -248,6 +249,11 @@
             <Trigger Property="IsPressed" Value="True">
               <Setter TargetName="ChromeButtonBorder" Property="Background" Value="{DynamicResource ChromeCommandPressedBrush}"/>
             </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="ChromeButtonBorder" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/>
+              <Setter TargetName="ChromeButtonBorder" Property="BorderThickness" Value="2"/>
+              <Setter Property="Foreground" Value="{DynamicResource ChromeTextBrush}"/>
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="ChromeButtonBorder" Property="Opacity" Value="0.45"/>
             </Trigger>
@@ -263,6 +269,8 @@
         <ControlTemplate TargetType="Button">
           <Border x:Name="ChromeButtonBorder"
                   Background="{DynamicResource TransparentBrush}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{DynamicResource RadiusSm}">
             <ContentPresenter HorizontalAlignment="Center"
                               VerticalAlignment="Center"
@@ -275,6 +283,11 @@
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
               <Setter TargetName="ChromeButtonBorder" Property="Background" Value="{DynamicResource ChromeCommandPressedBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource ChromeTextBrush}"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="ChromeButtonBorder" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/>
+              <Setter TargetName="ChromeButtonBorder" Property="BorderThickness" Value="2"/>
               <Setter Property="Foreground" Value="{DynamicResource ChromeTextBrush}"/>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">

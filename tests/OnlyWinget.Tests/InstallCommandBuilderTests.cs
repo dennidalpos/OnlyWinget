@@ -81,7 +81,6 @@ public sealed class InstallCommandBuilderTests
         {
             Id = "JRSoftware.InnoSetup",
             Source = "winget",
-            Version = "6.3.3",
             Scope = "machine",
             Architecture = "x64",
             Locale = "en-US",
@@ -95,7 +94,6 @@ public sealed class InstallCommandBuilderTests
         var args = builder.BuildInstallArguments(app);
 
         Assert.DoesNotContain("--version", args);
-        Assert.DoesNotContain("6.3.3", args);
         Assert.Contains("--scope", args);
         Assert.Contains("machine", args);
         Assert.Contains("--architecture", args);

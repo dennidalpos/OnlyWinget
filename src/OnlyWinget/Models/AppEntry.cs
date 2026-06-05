@@ -13,7 +13,6 @@ public sealed class AppEntry : ObservableObject
     private string _name = string.Empty;
     private string _id = string.Empty;
     private string _source = DefaultSource;
-    private string _version = string.Empty;
     private string _action = AppActions.Install;
     private string _scope = string.Empty;
     private string _installMode = InstallModes.SilentWithProgress;
@@ -27,8 +26,6 @@ public sealed class AppEntry : ObservableObject
     private string _additionalCustomArgs = string.Empty;
     private string _overrideArgs = string.Empty;
     private bool _advancedArgumentsReviewed = true;
-    private string _manifestFingerprint = string.Empty;
-    private string _interrogatedAtUtc = string.Empty;
     private string _elevationRequirement = string.Empty;
     private string _errorMessage = string.Empty;
     private string _resolution = string.Empty;
@@ -59,12 +56,6 @@ public sealed class AppEntry : ObservableObject
     {
         get => _source;
         set => SetProperty(ref _source, value);
-    }
-
-    public string Version
-    {
-        get => _version;
-        set => SetProperty(ref _version, value);
     }
 
     public string Action
@@ -170,18 +161,6 @@ public sealed class AppEntry : ObservableObject
         || !string.IsNullOrWhiteSpace(OverrideArgs);
 
     public bool RequiresAdvancedArgumentsReview => HasAdvancedArguments && !AdvancedArgumentsReviewed;
-
-    public string ManifestFingerprint
-    {
-        get => _manifestFingerprint;
-        set => SetProperty(ref _manifestFingerprint, value);
-    }
-
-    public string InterrogatedAtUtc
-    {
-        get => _interrogatedAtUtc;
-        set => SetProperty(ref _interrogatedAtUtc, value);
-    }
 
     public string ElevationRequirement
     {

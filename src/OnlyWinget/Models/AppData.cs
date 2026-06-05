@@ -26,7 +26,6 @@ public sealed class AppDataItem
     public string Id { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
     public string Source { get; set; } = AppEntry.DefaultSource;
-    public string Version { get; set; } = string.Empty;
     public string Scope { get; set; } = string.Empty;
     public string InstallMode { get; set; } = InstallModes.SilentWithProgress;
     public string Architecture { get; set; } = string.Empty;
@@ -39,8 +38,6 @@ public sealed class AppDataItem
     public string AdditionalCustomArgs { get; set; } = string.Empty;
     public string OverrideArgs { get; set; } = string.Empty;
     public bool? AdvancedArgumentsReviewed { get; set; }
-    public string ManifestFingerprint { get; set; } = string.Empty;
-    public string InterrogatedAtUtc { get; set; } = string.Empty;
     public string ElevationRequirement { get; set; } = string.Empty;
 }
 

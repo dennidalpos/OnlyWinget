@@ -202,6 +202,55 @@ public sealed class WingetService
         return result.ExitCode == 0;
     }
 
+    public SavedPackageResolutionResult ResolveSavedPackage(
+        string id,
+        string name,
+        string? source = "winget",
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedId = (id ?? string.Empty).Trim();
+        var normalizedName = (name ?? string.Empty).Trim();
+        var normalizedSource = AppEntry.NormalizeSource(source);
+        if (string.IsNullOrWhiteSpace(normalizedId))
+        {
+            return SavedPackageResolutionResult.Unresolved(normalizedId, normalizedName, normalizedSource);
+        }
+
+        var exactIdResult = Invoke("show", CreatePackageLookupParameters("--id", normalizedId, normalizedSource, exact: true), null, cancellationToken);
+        if (exactIdResult.ExitCode == 0 && !IsAmbiguousPackageOutput(exactIdResult.Output))
+        {
+            return SavedPackageResolutionResult.Resolved(normalizedId, normalizedName, normalizedSource);
+        }
+
+        if (IsAmbiguousPackageOutput(exactIdResult.Output))
+        {
+            return SavedPackageResolutionResult.Ambiguous(normalizedId, normalizedName, normalizedSource);
+        }
+
+        var idSearchResolution = ResolveUniqueSearchCandidate(
+            SearchPackages("--id", normalizedId, normalizedSource, cancellationToken),
+            normalizedId,
+            normalizedName,
+            normalizedSource,
+            candidate => string.Equals(candidate.Id, normalizedId, StringComparison.OrdinalIgnoreCase));
+        if (idSearchResolution.Status != SavedPackageResolutionStatus.Unresolved)
+        {
+            return idSearchResolution;
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            return SavedPackageResolutionResult.Unresolved(normalizedId, normalizedName, normalizedSource);
+        }
+
+        return ResolveUniqueSearchCandidate(
+            SearchPackages("--name", normalizedName, normalizedSource, cancellationToken),
+            normalizedId,
+            normalizedName,
+            normalizedSource,
+            candidate => string.Equals(candidate.Name, normalizedName, StringComparison.CurrentCultureIgnoreCase));
+    }
+
     public IReadOnlyList<SearchResult> Search(string query, CancellationToken cancellationToken = default)
     {
         var result = Invoke("search", new Dictionary<string, string?>
@@ -219,6 +268,84 @@ public sealed class WingetService
         return parsedResults
             .Select(result => ExpandSearchResult(result, cancellationToken))
             .ToList();
+    }
+
+    private IReadOnlyList<SearchResult> SearchPackages(
+        string option,
+        string value,
+        string source,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Array.Empty<SearchResult>();
+        }
+
+        var result = Invoke("search", CreatePackageLookupParameters(option, value, source, exact: false), null, cancellationToken);
+        if (result.ExitCode != 0 || IsAmbiguousPackageOutput(result.Output))
+        {
+            return Array.Empty<SearchResult>();
+        }
+
+        return WingetTableParser.ParseSearchResults(result.Output)
+            .Where(candidate => string.IsNullOrWhiteSpace(source) || string.Equals(candidate.Source, source, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private static SavedPackageResolutionResult ResolveUniqueSearchCandidate(
+        IReadOnlyList<SearchResult> candidates,
+        string originalId,
+        string originalName,
+        string originalSource,
+        Func<SearchResult, bool> preferredMatch)
+    {
+        if (candidates.Count == 0)
+        {
+            return SavedPackageResolutionResult.Unresolved(originalId, originalName, originalSource);
+        }
+
+        var preferredCandidates = candidates.Where(preferredMatch).ToList();
+        var resolutionCandidates = preferredCandidates.Count > 0 ? preferredCandidates : candidates;
+        if (resolutionCandidates.Count != 1)
+        {
+            return SavedPackageResolutionResult.Ambiguous(originalId, originalName, originalSource);
+        }
+
+        var candidate = resolutionCandidates[0];
+        return SavedPackageResolutionResult.Resolved(candidate.Id, candidate.Name, candidate.Source);
+    }
+
+    private static Dictionary<string, string?> CreatePackageLookupParameters(
+        string option,
+        string value,
+        string source,
+        bool exact)
+    {
+        var parameters = new Dictionary<string, string?>
+        {
+            [option] = value,
+            ["--accept-source-agreements"] = null,
+            ["--disable-interactivity"] = null
+        };
+
+        if (exact)
+        {
+            parameters["--exact"] = null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            parameters["--source"] = source;
+        }
+
+        return parameters;
+    }
+
+    private static bool IsAmbiguousPackageOutput(string output)
+    {
+        return output.Contains("Multiple packages found", StringComparison.OrdinalIgnoreCase)
+            || output.Contains("Piu pacchetti trovati", StringComparison.OrdinalIgnoreCase)
+            || output.Contains("Più pacchetti trovati", StringComparison.OrdinalIgnoreCase);
     }
 
     public IReadOnlyList<UpdateEntry> LoadUpdates(CancellationToken cancellationToken = default)
