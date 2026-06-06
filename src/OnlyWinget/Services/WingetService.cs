@@ -526,20 +526,6 @@ public sealed class WingetService
         return Invoke(new[] { "source", "update" });
     }
 
-    public WingetCommandResult InstallApp(string id, Action<string>? onOutputLine = null)
-    {
-        var parameters = CreatePackageParameters("install", id, includeLog: true);
-        var result = Invoke("install", parameters, onOutputLine);
-        return ToDisplayResult("install", parameters, result);
-    }
-
-    public WingetCommandResult UninstallApp(string id, Action<string>? onOutputLine = null, CancellationToken cancellationToken = default)
-    {
-        var parameters = CreatePackageParameters("uninstall", id, includeLog: true, includePackageAgreements: false);
-        var result = Invoke("uninstall", parameters, onOutputLine, cancellationToken);
-        return ToDisplayResult("uninstall", parameters, result);
-    }
-
     public void CleanupOldLogs()
     {
         _runtimeEnvironment.CleanupOldLogs();

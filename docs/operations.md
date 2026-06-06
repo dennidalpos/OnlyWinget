@@ -327,7 +327,8 @@ Action:
 Observed behavior:
 
 - `--custom` and `--override` values are stored in `%LOCALAPPDATA%\OnlyWinget\AppsList.json`
-- exported `.onlywinget.json` preset files include those values
+- exported `.onlywinget.json` preset files include those values and the installer-specific package options
+- imported `.onlywinget.json` rows with advanced arguments are blocked until the user reviews and saves them in the package options dialog
 - command previews and runtime diagnostics redact advanced argument values
 
 Action:

@@ -1,6 +1,6 @@
 {
   "todos": [
-    "Run elevated installer lifecycle validation on a clean or dedicated Windows host before tagging.",
+    "Run end-to-end validation of the unified package operation pipeline on a clean or dedicated Windows host, including elevated install, uninstall, upgrade, winget update, and preset batch flows before tagging.",
     "Run the hosted GitHub Actions build-gate workflow for the exact release commit before tagging."
   ]
 }

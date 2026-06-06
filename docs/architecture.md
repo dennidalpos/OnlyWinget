@@ -22,7 +22,7 @@ OnlyWinget is a Windows desktop client for managing `winget` packages from a loc
 - `scripts/`: PowerShell entrypoints used for install, build, run, cleanup, verification, and unified setup/MSI generation
 - `.github/workflows/build-gate.yml`: CI workflow that runs the repository verification gate through `scripts/check.ps1`
 - `tools/`: repository-owned tooling inputs; `tools/wix314-binaries/` is an optional local WiX toolset location when present
-- `media/` and `tools/Default.onlywinget.json`: sample preset JSON files
+- `media/Default.onlywinget.json`: sample preset JSON file
 - `artifacts/`: normalized build, test, publish, and packaging output root configured by `Directory.Build.props`
 
 ## Solution structure
@@ -40,7 +40,7 @@ The app uses a lightweight MVVM structure:
 
 - `ViewModels/MainViewModel.cs` orchestrates the shell, search, updates, logging, progress reporting, and batch operations.
 - `ViewModels/PresetWorkspaceViewModel.cs` manages preset tabs, CRUD actions, import/export, and local list editing.
-- `Services/` contains the application services for persistence, localization, `winget` process execution, package interrogation, updates, tabs, dialogs, and elevation handling.
+- `Services/` contains the application services for persistence, localization, `winget` process execution, package interrogation, package operation orchestration, updates, tabs, dialogs, and elevation handling.
 - `Models/` contains the observable UI models and payload types used by the workspace, update, and interrogation flows.
 
 The repository is intentionally small and does not introduce a separate backend or data service. All state is local to the Windows client.
@@ -67,9 +67,9 @@ The current implementation persists the preferred UI language there. Settings JS
 
 ### Import and export
 
-Presets can be exported and imported as readable JSON files using the `.onlywinget.json` extension. The import flow normalizes preset names and deduplicates exact package entries by package ID, source, and architecture.
+Presets can be exported and imported as readable JSON files using the `.onlywinget.json` extension. Exported presets preserve package action, source, installer selectors, install mode, log/location support, elevation metadata, and advanced installer arguments. The import flow normalizes preset names and deduplicates exact package entries by package ID, source, and architecture.
 
-Imported preset rows that contain advanced installer arguments (`--custom` or `--override`) are treated as untrusted until reviewed in the package options dialog. Batch execution blocks those rows and does not pass their advanced arguments to `winget` until the user reviews and saves the row.
+Imported preset rows that contain advanced installer arguments (`--custom` or `--override`) are treated as untrusted until reviewed in the package options dialog, even when the file marks them as previously reviewed. Batch execution blocks those rows and does not pass their advanced arguments to `winget` until the user reviews and saves the row.
 
 Advanced installer arguments are persisted in `AppsList.json` and included in exported preset files, so users should not type tokens, license keys, passwords, or other secrets directly into those fields. The package options dialog warns about this storage model and redacts `--custom` and `--override` values in the command preview. When a secret-like value is required, the supported pattern is an environment-variable placeholder such as `%ONLYWINGET_LICENSE_KEY%`; the placeholder is saved in the preset and expanded only while building the final `winget install` command.
 
@@ -97,6 +97,8 @@ The application depends on the system `winget` CLI being available. `AppStartupC
 - checking and upgrading `Microsoft.AppInstaller`
 - decoding `winget` process output as UTF-8 so localized and non-ASCII package names are preserved
 - writing per-operation logs under the local runtime directory
+
+`PackageOperationService` is responsible for turning install, uninstall, upgrade, App Installer update, and source-update requests into a single operation pipeline: validate advanced argument review, resolve saved packages, build command arguments, decide direct versus elevated execution, invoke `winget`, classify results, and return a normalized operation result. `OperationRunner` adapts those normalized results to UI row status, progress, and log output.
 
 Batch install, upgrade, and uninstall flows pass a cancellation token from the shell UI to `OperationRunner`, direct `winget` process execution, and elevated launch handling. Direct `winget` calls use command-specific timeouts: short query timeouts for `show`, `search`, and `list`; a medium timeout for source maintenance; and longer bounded timeouts for install, upgrade, and uninstall operations. Elevated launches are also bounded and return local cancellation or timeout result codes when the prompt or child process does not complete.
 

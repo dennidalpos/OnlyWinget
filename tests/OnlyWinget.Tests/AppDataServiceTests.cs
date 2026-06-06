@@ -367,7 +367,7 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void ExportPreset_WritesPortableJsonWithoutInstallerSpecificFields()
+    public void ExportPreset_WritesFullJsonWithInstallerSpecificFields()
     {
         var root = CreateTempDirectory();
         try
@@ -405,16 +405,16 @@ public sealed class AppDataServiceTests
             Assert.Contains("\"apps\"", json, StringComparison.Ordinal);
             Assert.Contains("\"id\": \"Microsoft.VisualStudioCode\"", json, StringComparison.Ordinal);
             Assert.Contains("\"source\": \"winget\"", json, StringComparison.Ordinal);
-            Assert.DoesNotContain("scope", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("installMode", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("architecture", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("locale", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("installerType", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("installLocation", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("logPath", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("additionalCustomArgs", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("overrideArgs", json, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("elevationRequirement", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"scope\": \"machine\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"installMode\": \"silent\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"architecture\": \"x64\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"locale\": \"en-US\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"installerType\": \"inno\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"installLocation\": \"C:\\\\Apps\\\\VSCode\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"logPath\": \"C:\\\\Logs\\\\vscode.log\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"additionalCustomArgs\": \"/custom\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"overrideArgs\": \"/override\"", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("\"elevationRequirement\": \"elevationRequired\"", json, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -462,7 +462,7 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void ImportPreset_IgnoresInstallerSpecificAndAdvancedFields()
+    public void ImportPreset_PreservesInstallerSpecificFields_AndRequiresReviewForAdvancedArguments()
     {
         var root = CreateTempDirectory();
         try
@@ -504,17 +504,17 @@ public sealed class AppDataServiceTests
 
             Assert.True(result.Success);
             var advanced = Assert.Single(result.Apps, app => app.Id == "Contoso.InternalTool");
-            Assert.Equal(string.Empty, advanced.Scope);
-            Assert.Equal(InstallModes.SilentWithProgress, advanced.InstallMode);
-            Assert.Equal(string.Empty, advanced.Architecture);
-            Assert.Equal(string.Empty, advanced.Locale);
-            Assert.Equal(string.Empty, advanced.InstallerType);
-            Assert.Equal(string.Empty, advanced.InstallLocation);
-            Assert.Equal(string.Empty, advanced.LogPath);
-            Assert.Equal(string.Empty, advanced.AdditionalCustomArgs);
-            Assert.Equal(string.Empty, advanced.OverrideArgs);
-            Assert.True(advanced.AdvancedArgumentsReviewed);
-            Assert.False(advanced.RequiresAdvancedArgumentsReview);
+            Assert.Equal("machine", advanced.Scope);
+            Assert.Equal(InstallModes.Silent, advanced.InstallMode);
+            Assert.Equal("x64", advanced.Architecture);
+            Assert.Equal("en-US", advanced.Locale);
+            Assert.Equal("wix", advanced.InstallerType);
+            Assert.Equal("C:\\Tools\\Internal", advanced.InstallLocation);
+            Assert.Equal("C:\\Logs\\internal.log", advanced.LogPath);
+            Assert.Equal("/unsafe", advanced.AdditionalCustomArgs);
+            Assert.Equal("/override", advanced.OverrideArgs);
+            Assert.False(advanced.AdvancedArgumentsReviewed);
+            Assert.True(advanced.RequiresAdvancedArgumentsReview);
             var plain = Assert.Single(result.Apps, app => app.Id == "Contoso.PlainTool");
             Assert.True(plain.AdvancedArgumentsReviewed);
             Assert.False(plain.RequiresAdvancedArgumentsReview);
@@ -526,7 +526,7 @@ public sealed class AppDataServiceTests
     }
 
     [Fact]
-    public void ImportPreset_DeduplicatesPortableIdsWithoutInstallerConstraints()
+    public void ImportPreset_DeduplicatesFullIdsWithInstallerArchitecture()
     {
         var root = CreateTempDirectory();
         try
@@ -550,9 +550,10 @@ public sealed class AppDataServiceTests
             var result = service.ImportPreset(importPath, Array.Empty<string>());
 
             Assert.True(result.Success);
-            Assert.Equal(2, result.Apps.Count);
-            Assert.Contains(result.Apps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Source == "winget" && app.Architecture == string.Empty);
-            Assert.Contains(result.Apps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Source == "msstore" && app.Architecture == string.Empty);
+            Assert.Equal(3, result.Apps.Count);
+            Assert.Contains(result.Apps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Source == "winget" && app.Architecture == "x64");
+            Assert.Contains(result.Apps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Source == "winget" && app.Architecture == "x86");
+            Assert.Contains(result.Apps, app => app.Id == "Microsoft.DotNet.Runtime.8" && app.Source == "msstore" && app.Architecture == "x64");
         }
         finally
         {

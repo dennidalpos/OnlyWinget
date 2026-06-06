@@ -1584,6 +1584,105 @@ A newer package version is available in a configured source, but it does not app
         Assert.Contains("already installed", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task PackageOperationService_Install_UsesElevatedLauncher_WhenMachineScopeRequiresElevation()
+    {
+        var directInvocations = new List<IReadOnlyList<string>>();
+        IReadOnlyList<string> elevatedArgs = Array.Empty<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                directInvocations.Add(args.ToArray());
+                return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+            });
+        var elevatedLauncher = new FakeElevatedWingetLauncher((args, logPath, onOutputLine, cancellationToken) =>
+        {
+            elevatedArgs = args.ToArray();
+            return new WingetCommandResult { ExitCode = 0, Output = "event=elevated_launch_completed exit_code=0" };
+        });
+        var operationService = new PackageOperationService(service, new InstallCommandBuilder(service), elevatedLauncher, isCurrentProcessElevated: false);
+
+        var result = await operationService.ExecuteAsync(
+            new PackageOperationRequest
+            {
+                Kind = PackageOperationKind.Install,
+                OperationKey = "Contoso.Tool|winget|x64",
+                Name = "Contoso Tool",
+                Id = "Contoso.Tool",
+                Source = "winget",
+                Scope = "machine",
+                Architecture = "x64"
+            },
+            LocalizedStrings.English);
+
+        Assert.Equal(PackageOperationOutcome.Succeeded, result.Outcome);
+        Assert.Contains(directInvocations, args => args.Count > 0 && args[0] == "show");
+        Assert.Contains("install", elevatedArgs);
+        Assert.Equal(PackageOperationExecutionMode.Elevated, result.ExecutionMode);
+    }
+
+    [Fact]
+    public async Task PackageOperationService_Uninstall_IncludesConfiguredSource()
+    {
+        IReadOnlyList<string> uninstallArgs = Array.Empty<string>();
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                if ((singleArg ?? args[0]) == "uninstall")
+                {
+                    uninstallArgs = args.ToArray();
+                }
+
+                return new WingetCommandResult { ExitCode = 0, Output = "uninstalled" };
+            });
+        var operationService = new PackageOperationService(service, new InstallCommandBuilder(service), isCurrentProcessElevated: true);
+
+        var result = await operationService.ExecuteAsync(
+            new PackageOperationRequest
+            {
+                Kind = PackageOperationKind.Uninstall,
+                OperationKey = "9WZDNCRFJBBG|msstore",
+                Name = "Windows Camera",
+                Id = "9WZDNCRFJBBG",
+                Source = "msstore"
+            },
+            LocalizedStrings.English);
+
+        Assert.Equal(PackageOperationOutcome.Succeeded, result.Outcome);
+        Assert.Contains("--source", uninstallArgs);
+        Assert.Contains("msstore", uninstallArgs);
+    }
+
+    [Fact]
+    public async Task PackageOperationService_BlocksUnreviewedAdvancedArguments_BeforeWingetResolution()
+    {
+        var invoked = false;
+        var service = CreateWingetService(
+            wingetRunner: (singleArg, args, onOutputLine) =>
+            {
+                invoked = true;
+                return new WingetCommandResult { ExitCode = 0, Output = string.Empty };
+            });
+        var operationService = new PackageOperationService(service, new InstallCommandBuilder(service));
+
+        var result = await operationService.ExecuteAsync(
+            new PackageOperationRequest
+            {
+                Kind = PackageOperationKind.Install,
+                OperationKey = "Contoso.Tool|winget",
+                Name = "Contoso Tool",
+                Id = "Contoso.Tool",
+                Source = "winget",
+                OverrideArgs = "/token secret",
+                AdvancedArgumentsReviewed = false
+            },
+            LocalizedStrings.English);
+
+        Assert.False(invoked);
+        Assert.Equal(PackageOperationOutcome.AdvancedArgumentsReviewRequired, result.Outcome);
+        Assert.Equal(LocalizedStrings.English.AdvancedArgumentsReviewRequiredText, result.Message);
+    }
+
     public void Dispose()
     {
         foreach (var path in _temporaryPaths)

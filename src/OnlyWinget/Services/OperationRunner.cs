@@ -15,20 +15,21 @@ public sealed class OperationRunner : IOperationRunner
 {
     private const int IndeterminateProgress = -1;
     private readonly WingetService _wingetService;
-    private readonly IInstallCommandBuilder _installCommandBuilder;
-    private readonly IElevatedWingetLauncher _elevatedLauncher;
-    private readonly bool _isCurrentProcessElevated;
+    private readonly PackageOperationService _operationService;
 
     public OperationRunner(
         WingetService wingetService,
         IInstallCommandBuilder installCommandBuilder,
         IElevatedWingetLauncher? elevatedLauncher = null,
-        bool? isCurrentProcessElevated = null)
+        bool? isCurrentProcessElevated = null,
+        PackageOperationService? operationService = null)
     {
         _wingetService = wingetService;
-        _installCommandBuilder = installCommandBuilder;
-        _elevatedLauncher = elevatedLauncher ?? new ElevatedWingetLauncher();
-        _isCurrentProcessElevated = isCurrentProcessElevated ?? ProcessElevationService.IsRunningAsAdministrator;
+        _operationService = operationService ?? new PackageOperationService(
+            wingetService,
+            installCommandBuilder,
+            elevatedLauncher,
+            isCurrentProcessElevated);
     }
 
     public async Task RunApplyAsync(
@@ -50,28 +51,53 @@ public sealed class OperationRunner : IOperationRunner
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var app = apps[index];
-                var operationKey = app.OperationKey;
                 if (string.IsNullOrWhiteSpace(app.Id))
                 {
                     continue;
                 }
 
-                switch (app.Action)
+                if (string.Equals(app.Action, AppActions.Pause, StringComparison.Ordinal))
                 {
-                    case AppActions.Pause:
-                        setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.Paused));
-                        setErrorById?.Invoke(operationKey, string.Empty, string.Empty);
-                        reportProgress(CalculateOverallPercentage(index + 1, apps.Count), $"{app.Name}: 100%");
-                        break;
-
-                    case AppActions.Uninstall:
-                        await RunUninstallAsync(app, index, apps.Count, setStatusById, appendOutput, reportProgress, strings, setErrorById, cancellationToken);
-                        break;
-
-                    default:
-                        await RunInstallOrUpgradeAsync(app, index, apps.Count, setStatusById, appendOutput, reportProgress, strings, setErrorById, cancellationToken);
-                        break;
+                    setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Paused));
+                    setErrorById?.Invoke(app.OperationKey, string.Empty, string.Empty);
+                    reportProgress(CalculateOverallPercentage(index + 1, apps.Count), $"{app.Name}: 100%");
+                    continue;
                 }
+
+                var request = PackageOperationRequest.FromAppEntry(app);
+                var progressStatus = request.Kind == PackageOperationKind.Uninstall
+                    ? UiStatusKey.UninstallInProgress
+                    : UiStatusKey.InstallInProgress;
+                var operationLabel = request.Kind == PackageOperationKind.Uninstall
+                    ? strings.OperationUninstallLabel
+                    : strings.OperationInstallLabel;
+
+                setErrorById?.Invoke(request.OperationKey, string.Empty, string.Empty);
+                setStatusById(request.OperationKey, UiStatusState.FromKey(progressStatus));
+                appendOutput($"--- {request.Name} [{request.Id}] : {operationLabel} ---");
+
+                var result = await _operationService.ExecuteAsync(
+                    request,
+                    strings,
+                    line =>
+                    {
+                        HandleProgressLine(line, request.OperationKey, request.Name, progressStatus, index, apps.Count, setStatusById, reportProgress);
+                        if (_wingetService.ShouldLogOutputLine(line))
+                        {
+                            appendOutput(line.Trim());
+                        }
+                    },
+                    cancellationToken,
+                    mode =>
+                    {
+                        if (mode == PackageOperationExecutionMode.Elevated)
+                        {
+                            reportProgress(IndeterminateProgress, $"{request.Name}: elevated installer running");
+                        }
+                    }).ConfigureAwait(false);
+
+                ApplyAppOperationResult(result, setStatusById, appendOutput, strings, setErrorById);
+                reportProgress(CalculateOverallPercentage(index + 1, apps.Count), $"{request.Name}: 100%");
             }
 
             reportProgress(100, strings.OperationEndText);
@@ -83,7 +109,7 @@ public sealed class OperationRunner : IOperationRunner
         }
         catch (Exception ex)
         {
-            appendOutput($"event=apply_error message=\"{ex.Message}\"");
+            appendOutput($"event=apply_error message=\"{FormatLogValue(ex.Message)}\"");
             throw;
         }
     }
@@ -107,95 +133,26 @@ public sealed class OperationRunner : IOperationRunner
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var update = updates[index];
+                var request = PackageOperationRequest.FromUpdateEntry(update);
+
                 setStatusById(update.Id, UiStatusState.FromKey(UiStatusKey.UpgradeInProgress));
                 setErrorById?.Invoke(update.Id, string.Empty, string.Empty);
                 appendOutput($"--- {update.Name} [{update.Id}] : {strings.OperationUpgradeLabel} ---");
-                var receivedLiveOutput = false;
-                var loggedOutputLines = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var result = await Task.Run(() => _wingetService.UpgradeApp(
-                    update.Id,
-                    update.Source,
-                    update.Name,
-                    update.Available,
-                    update.Scope,
-                    update.Architecture,
-                    update.Locale,
-                    update.InstallerType,
+
+                var result = await _operationService.ExecuteAsync(
+                    request,
+                    strings,
                     line =>
-                {
-                    receivedLiveOutput = true;
-                    HandleProgressLine(line, update.Id, update.Name, UiStatusKey.UpgradeInProgress, index, updates.Count, setStatusById, reportProgress);
-                    if (_wingetService.ShouldLogOutputLine(line))
                     {
-                        var trimmedLine = line.Trim();
-                        loggedOutputLines.Add(trimmedLine);
-                        appendOutput(trimmedLine);
-                    }
-                }, cancellationToken), cancellationToken);
-
-                if (!receivedLiveOutput)
-                {
-                    AppendResultOutput(appendOutput, result);
-                }
-
-                if (result.ExitCode == 0)
-                {
-                    var stillAvailableUpdate = await Task.Run(
-                        () => _wingetService.FindAvailableUpdate(update.Id, update.Source, cancellationToken),
-                        cancellationToken);
-                    if (stillAvailableUpdate != null)
-                    {
-                        var message = UpdateVerificationFormatter.FormatStillAvailableStatus(strings.LocaleCode);
-                        var resolution = UpdateVerificationFormatter.FormatStillAvailableResolution(strings.LocaleCode, update, stillAvailableUpdate);
-                        setStatusById(update.Id, UiStatusState.FromRawText(message));
-                        setErrorById?.Invoke(update.Id, message, resolution);
-                        appendOutput(UpdateVerificationFormatter.FormatStillAvailableLog(update, stillAvailableUpdate));
-                    }
-                    else
-                    {
-                        setStatusById(update.Id, UiStatusState.FromKey(UiStatusKey.Ok));
-                    }
-                }
-                else if (_wingetService.IsNoUpgradeNeeded(result.ExitCode))
-                {
-                    if (receivedLiveOutput)
-                    {
-                        foreach (var line in _wingetService.GetRelevantOutputLines(result.Output))
+                        HandleProgressLine(line, update.Id, update.Name, UiStatusKey.UpgradeInProgress, index, updates.Count, setStatusById, reportProgress);
+                        if (_wingetService.ShouldLogOutputLine(line))
                         {
-                            if (loggedOutputLines.Add(line.Trim()))
-                            {
-                                appendOutput(line);
-                            }
+                            appendOutput(line.Trim());
                         }
-                    }
+                    },
+                    cancellationToken).ConfigureAwait(false);
 
-                    var isNoApplicableUpgrade = _wingetService.IsNoApplicableUpgrade(result);
-                    var hasAdvertisedUpdate = HasAdvertisedUpdate(update);
-                    var message = isNoApplicableUpgrade
-                        ? GetNoApplicableUpgradeMessage(strings.LocaleCode)
-                        : hasAdvertisedUpdate
-                            ? GetAdvertisedUpdateNoopMessage(strings.LocaleCode)
-                        : _wingetService.GetErrorMessage(result.ExitCode, strings.LocaleCode);
-                    var resolution = isNoApplicableUpgrade
-                        ? GetNoApplicableUpgradeResolution(strings.LocaleCode, update)
-                        : hasAdvertisedUpdate
-                            ? GetAdvertisedUpdateNoopResolution(strings.LocaleCode, update)
-                        : _wingetService.GetResolutionHint(result.ExitCode, strings.LocaleCode);
-                    setStatusById(update.Id, isNoApplicableUpgrade || hasAdvertisedUpdate
-                        ? UiStatusState.FromRawText(message)
-                        : UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
-                    setErrorById?.Invoke(update.Id, message, resolution);
-                    appendOutput($"event=winget_upgrade_noop id=\"{FormatLogValue(update.Id)}\" exit_code={result.ExitCode} message=\"{FormatLogValue(message)}\" resolution=\"{FormatLogValue(resolution)}\"");
-                }
-                else
-                {
-                    var error = _wingetService.GetErrorMessage(result.ExitCode, strings.LocaleCode);
-                    var resolution = _wingetService.GetResolutionHint(result.ExitCode, strings.LocaleCode);
-                    setStatusById(update.Id, UiStatusState.FromRawText(error));
-                    setErrorById?.Invoke(update.Id, error, resolution);
-                    appendOutput(error);
-                }
-
+                ApplyUpdateOperationResult(result, setStatusById, appendOutput, strings, setErrorById);
                 reportProgress(CalculateOverallPercentage(index + 1, updates.Count), $"{update.Name}: 100%");
             }
 
@@ -208,433 +165,109 @@ public sealed class OperationRunner : IOperationRunner
         }
         catch (Exception ex)
         {
-            appendOutput($"event=updates_error message=\"{ex.Message}\"");
+            appendOutput($"event=updates_error message=\"{FormatLogValue(ex.Message)}\"");
             throw;
         }
     }
 
-    private async Task RunInstallOrUpgradeAsync(
-        AppEntry app,
-        int currentIndex,
-        int totalCount,
+    private static void ApplyAppOperationResult(
+        PackageOperationResult result,
         Action<string, UiStatusState> setStatusById,
         Action<string> appendOutput,
-        Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null,
-        CancellationToken cancellationToken = default)
+        Action<string, string, string>? setErrorById)
     {
-        var operationKey = app.OperationKey;
-        if (app.RequiresAdvancedArgumentsReview)
+        AppendDiagnosticsAndOutput(result, appendOutput);
+
+        switch (result.Outcome)
         {
-            setStatusById(operationKey, UiStatusState.FromRawText(strings.AdvancedArgumentsReviewRequiredText));
-            setErrorById?.Invoke(
-                operationKey,
-                strings.AdvancedArgumentsReviewRequiredText,
-                strings.AdvancedArgumentsReviewRequiredResolution);
-            appendOutput($"event=advanced_arguments_review_required id=\"{FormatLogValue(app.Id)}\"");
-            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-            return;
+            case PackageOperationOutcome.Succeeded:
+                setStatusById(result.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
+                setErrorById?.Invoke(result.OperationKey, string.Empty, string.Empty);
+                break;
+
+            case PackageOperationOutcome.AlreadyInstalled:
+                setStatusById(result.OperationKey, UiStatusState.FromKey(UiStatusKey.AlreadyInstalled));
+                setErrorById?.Invoke(result.OperationKey, string.Empty, string.Empty);
+                break;
+
+            case PackageOperationOutcome.AlreadyUpdated:
+                setStatusById(result.OperationKey, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
+                setErrorById?.Invoke(result.OperationKey, string.Empty, string.Empty);
+                break;
+
+            case PackageOperationOutcome.NoApplicableInstaller:
+            case PackageOperationOutcome.AdvancedArgumentsReviewRequired:
+            case PackageOperationOutcome.PackageAmbiguous:
+            case PackageOperationOutcome.PackageUnresolved:
+            case PackageOperationOutcome.Failed:
+            default:
+                var message = string.IsNullOrWhiteSpace(result.Message)
+                    ? strings.ApplyFailedText
+                    : result.Message;
+                setStatusById(result.OperationKey, UiStatusState.FromRawText(message));
+                setErrorById?.Invoke(result.OperationKey, message, result.Resolution);
+                break;
         }
-
-        var resolution = _wingetService.ResolveSavedPackage(app.Id, app.Name, app.Source, cancellationToken);
-        if (!resolution.IsResolved)
-        {
-            ApplySavedPackageResolutionError(app, operationKey, resolution, setStatusById, appendOutput, reportProgress, strings, setErrorById, currentIndex, totalCount);
-            return;
-        }
-
-        app.Id = resolution.Id;
-        app.Source = resolution.Source;
-        if (!string.IsNullOrWhiteSpace(resolution.Name))
-        {
-            app.Name = resolution.Name;
-        }
-
-        var installArgs = _installCommandBuilder.BuildInstallArguments(app);
-        var elevationMode = ElevationDecisionService.Decide(_isCurrentProcessElevated, app.Scope, app.ElevationRequirement);
-
-        appendOutput($"event=install_command_built id=\"{app.Id}\" args=\"{FormatArgumentsForLog(installArgs)}\" elevation_mode={elevationMode} process_elevated={_isCurrentProcessElevated} scope=\"{app.Scope}\"");
-
-        setErrorById?.Invoke(operationKey, string.Empty, string.Empty);
-        setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
-        appendOutput($"--- {app.Name} [{app.Id}] : {strings.OperationInstallLabel} ---");
-
-        if (elevationMode == ElevationMode.ElevatedRequired)
-        {
-            appendOutput($"event=elevated_launch_starting id=\"{app.Id}\"");
-        }
-
-        var installResult = await RunInstallCommandAsync(app, operationKey, installArgs, elevationMode, currentIndex, totalCount, setStatusById, appendOutput, reportProgress, cancellationToken);
-
-        if (installResult.ExitCode == 0)
-        {
-            setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.Ok));
-            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-            return;
-        }
-
-        if (_wingetService.IsNoApplicableInstaller(installResult))
-        {
-            appendOutput($"event=install_no_applicable_installer_preserved_selectors id=\"{app.Id}\"");
-            var noApplicableError = _wingetService.GetErrorMessage(installResult.ExitCode, strings.LocaleCode);
-            var noApplicableResolution = GetNoApplicableInstallResolution(strings.LocaleCode, app);
-            setStatusById(operationKey, UiStatusState.FromRawText(noApplicableError));
-            setErrorById?.Invoke(operationKey, noApplicableError, noApplicableResolution);
-            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-            return;
-        }
-
-        if (_wingetService.IsAlreadyInstalled(installResult))
-        {
-            setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.AlreadyInstalled));
-            setErrorById?.Invoke(operationKey, string.Empty, string.Empty);
-            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-            return;
-        }
-
-        if (_wingetService.IsNoUpgradeNeeded(installResult.ExitCode))
-        {
-            setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
-            setErrorById?.Invoke(operationKey, string.Empty, string.Empty);
-            reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-            return;
-        }
-
-        var installError = _wingetService.GetErrorMessage(installResult.ExitCode, strings.LocaleCode);
-        var installResolution = _wingetService.GetResolutionHint(installResult.ExitCode, strings.LocaleCode);
-        setStatusById(operationKey, UiStatusState.FromRawText(installError));
-        setErrorById?.Invoke(operationKey, installError, installResolution);
-        reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
     }
 
-    private async Task<WingetCommandResult> RunInstallCommandAsync(
-        AppEntry app,
-        string operationKey,
-        IReadOnlyList<string> installArgs,
-        ElevationMode elevationMode,
-        int currentIndex,
-        int totalCount,
+    private static void ApplyUpdateOperationResult(
+        PackageOperationResult result,
         Action<string, UiStatusState> setStatusById,
         Action<string> appendOutput,
-        Action<int, string> reportProgress,
-        CancellationToken cancellationToken)
-    {
-        if (elevationMode == ElevationMode.ElevatedRequired)
-        {
-            var logPath = app.SupportsLog ? GetInstallLogPath(app) : null;
-            setStatusById(operationKey, UiStatusState.FromKey(UiStatusKey.InstallInProgress));
-            reportProgress(IndeterminateProgress, $"{app.Name}: elevated installer running");
-            var elevatedReceivedLiveOutput = false;
-            var installResult = await Task.Run(() => _elevatedLauncher.Launch(
-                installArgs,
-                logPath,
-                line =>
-                {
-                    elevatedReceivedLiveOutput = true;
-                    HandleProgressLine(line, operationKey, app.Name, UiStatusKey.InstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
-                    if (_wingetService.ShouldLogOutputLine(line))
-                    {
-                        appendOutput(line.Trim());
-                    }
-                },
-                cancellationToken: cancellationToken), cancellationToken);
-            if (elevatedReceivedLiveOutput)
-            {
-                appendOutput(installResult.Output);
-                return installResult;
-            }
-
-            appendOutput(installResult.Output);
-            return installResult;
-        }
-
-        var receivedLiveOutput = false;
-        var result = await Task.Run(() => _wingetService.Invoke(installArgs, line =>
-        {
-            receivedLiveOutput = true;
-            HandleProgressLine(line, operationKey, app.Name, UiStatusKey.InstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
-            if (_wingetService.ShouldLogOutputLine(line))
-            {
-                appendOutput(line.Trim());
-            }
-        }, cancellationToken), cancellationToken);
-
-        if (!receivedLiveOutput)
-        {
-            AppendResultOutput(appendOutput, result);
-        }
-
-        return result;
-    }
-
-    private static void ApplySavedPackageResolutionError(
-        AppEntry app,
-        string operationKey,
-        SavedPackageResolutionResult resolution,
-        Action<string, UiStatusState> setStatusById,
-        Action<string> appendOutput,
-        Action<int, string> reportProgress,
         LocalizedStrings strings,
-        Action<string, string, string>? setErrorById,
-        int currentIndex,
-        int totalCount)
+        Action<string, string, string>? setErrorById)
     {
-        var isAmbiguous = resolution.Status == SavedPackageResolutionStatus.Ambiguous;
-        var message = isAmbiguous
-            ? strings.SavedPackageAmbiguousText
-            : strings.SavedPackageUnresolvedText;
-        var hint = isAmbiguous
-            ? strings.SavedPackageAmbiguousResolution
-            : strings.SavedPackageUnresolvedResolution;
+        AppendDiagnosticsAndOutput(result, appendOutput);
 
-        setStatusById(operationKey, UiStatusState.FromRawText(message));
-        setErrorById?.Invoke(operationKey, message, hint);
-        appendOutput($"event=install_blocked_package_resolution id=\"{FormatLogValue(app.Id)}\" source=\"{FormatLogValue(app.Source)}\" status=\"{resolution.Status}\"");
-        reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-    }
-
-    private string GetInstallLogPath(AppEntry app)
-    {
-        return string.IsNullOrWhiteSpace(app.LogPath)
-            ? _wingetService.CreateOperationLogPath("install", app.OperationKey)
-            : Environment.ExpandEnvironmentVariables(app.LogPath.Trim());
-    }
-
-    private static bool TryBuildInstallArgumentsWithoutVersion(
-        IReadOnlyList<string> installArgs,
-        out IReadOnlyList<string> retryInstallArgs)
-    {
-        return TryBuildInstallArgumentsWithoutOptions(
-            installArgs,
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "--version" },
-            out retryInstallArgs);
-    }
-
-    private static bool TryBuildInstallArgumentsWithoutOptions(
-        IReadOnlyList<string> installArgs,
-        IReadOnlySet<string> options,
-        out IReadOnlyList<string> retryInstallArgs)
-    {
-        var retryArgs = new List<string>(installArgs.Count);
-        var removedOption = false;
-        for (var index = 0; index < installArgs.Count; index++)
+        switch (result.Outcome)
         {
-            var arg = installArgs[index];
-            if (options.Contains(arg))
-            {
-                removedOption = true;
-                if (index + 1 < installArgs.Count)
+            case PackageOperationOutcome.Succeeded:
+                setStatusById(result.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
+                setErrorById?.Invoke(result.OperationKey, string.Empty, string.Empty);
+                break;
+
+            case PackageOperationOutcome.AlreadyUpdated:
+                setStatusById(result.OperationKey, UiStatusState.FromKey(UiStatusKey.AlreadyUpdated));
+                setErrorById?.Invoke(result.OperationKey, result.Message, result.Resolution);
+                break;
+
+            case PackageOperationOutcome.StillAvailable:
+            case PackageOperationOutcome.NoApplicableUpgrade:
+            case PackageOperationOutcome.AdvertisedUpdateNotApplied:
+                setStatusById(result.OperationKey, UiStatusState.FromRawText(result.Message));
+                setErrorById?.Invoke(result.OperationKey, result.Message, result.Resolution);
+                break;
+
+            case PackageOperationOutcome.Failed:
+            default:
+                var message = string.IsNullOrWhiteSpace(result.Message)
+                    ? strings.UpdatesFailedText
+                    : result.Message;
+                setStatusById(result.OperationKey, UiStatusState.FromRawText(message));
+                setErrorById?.Invoke(result.OperationKey, message, result.Resolution);
+                if (!string.IsNullOrWhiteSpace(message))
                 {
-                    index++;
+                    appendOutput(message);
                 }
-
-                continue;
-            }
-
-            retryArgs.Add(arg);
+                break;
         }
-
-        retryInstallArgs = retryArgs;
-        return removedOption;
     }
 
-    private async Task RunUninstallAsync(
-        AppEntry app,
-        int currentIndex,
-        int totalCount,
-        Action<string, UiStatusState> setStatusById,
-        Action<string> appendOutput,
-        Action<int, string> reportProgress,
-        LocalizedStrings strings,
-        Action<string, string, string>? setErrorById = null,
-        CancellationToken cancellationToken = default)
+    private static void AppendDiagnosticsAndOutput(PackageOperationResult result, Action<string> appendOutput)
     {
-        setErrorById?.Invoke(app.OperationKey, string.Empty, string.Empty);
-        setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.UninstallInProgress));
-        appendOutput($"--- {app.Name} [{app.Id}] : {strings.OperationUninstallLabel} ---");
-        var receivedLiveOutput = false;
-        var uninstallResult = await Task.Run(() => _wingetService.UninstallApp(app.Id, line =>
+        foreach (var diagnostic in result.DiagnosticEvents)
         {
-            receivedLiveOutput = true;
-            HandleProgressLine(line, app.OperationKey, app.Name, UiStatusKey.UninstallInProgress, currentIndex, totalCount, setStatusById, reportProgress);
-            if (_wingetService.ShouldLogOutputLine(line))
+            if (!string.IsNullOrWhiteSpace(diagnostic))
             {
-                appendOutput(line.Trim());
-            }
-        }, cancellationToken), cancellationToken);
-
-        if (!receivedLiveOutput)
-        {
-            AppendResultOutput(appendOutput, uninstallResult);
-        }
-
-        if (uninstallResult.ExitCode == 0)
-        {
-            setStatusById(app.OperationKey, UiStatusState.FromKey(UiStatusKey.Ok));
-        }
-        else
-        {
-            var uninstallError = _wingetService.GetErrorMessage(uninstallResult.ExitCode, strings.LocaleCode);
-            var uninstallResolution = _wingetService.GetResolutionHint(uninstallResult.ExitCode, strings.LocaleCode);
-            setStatusById(app.OperationKey, UiStatusState.FromRawText(uninstallError));
-            setErrorById?.Invoke(app.OperationKey, uninstallError, uninstallResolution);
-        }
-
-        reportProgress(CalculateOverallPercentage(currentIndex + 1, totalCount), $"{app.Name}: 100%");
-    }
-
-    private static void AppendResultOutput(Action<string> appendOutput, WingetCommandResult result)
-    {
-        if (string.IsNullOrWhiteSpace(result.Output))
-        {
-            return;
-        }
-
-        appendOutput(result.Output);
-    }
-
-    private static string FormatArgumentsForLog(IReadOnlyList<string> args)
-    {
-        var formattedArgs = new List<string>(args.Count);
-        var redactNextValue = false;
-
-        foreach (var arg in args)
-        {
-            if (redactNextValue)
-            {
-                formattedArgs.Add("[redacted]");
-                redactNextValue = false;
-                continue;
-            }
-
-            formattedArgs.Add(FormatArgumentForLog(arg));
-            if (IsSensitiveArgumentOption(arg))
-            {
-                redactNextValue = true;
+                appendOutput(diagnostic);
             }
         }
 
-        return string.Join(" ", formattedArgs);
-    }
-
-    private static bool IsSensitiveArgumentOption(string arg)
-    {
-        return string.Equals(arg, "--custom", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(arg, "--override", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string FormatArgumentForLog(string arg)
-    {
-        return arg.Contains(' ', StringComparison.Ordinal) ? $"\"{arg}\"" : arg;
-    }
-
-    private static string FormatLogValue(string value)
-    {
-        return value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
-    }
-
-    private static string GetNoApplicableUpgradeMessage(string localeCode)
-    {
-        return UseEnglish(localeCode)
-            ? "Upgrade not applicable"
-            : "Aggiornamento non applicabile";
-    }
-
-    private static string GetNoApplicableUpgradeResolution(string localeCode, UpdateEntry update)
-    {
-        var configuredOptions = FormatConfiguredUpdateOptions(update);
-        if (!string.IsNullOrWhiteSpace(configuredOptions))
+        if (result.AppendOutput && !string.IsNullOrWhiteSpace(result.Output))
         {
-            return UseEnglish(localeCode)
-                ? $"winget found a newer version in the source, but no installer applies to the configured package options ({configuredOptions}). Edit the package options to a supported installer, or wait for the package maintainer to publish a matching installer."
-                : $"winget ha trovato una versione piu recente nella sorgente, ma nessun installer e compatibile con le opzioni configurate nel pacchetto ({configuredOptions}). Modifica le opzioni del pacchetto scegliendo un installer supportato oppure attendi che il manutentore pubblichi un installer compatibile.";
+            appendOutput(result.Output);
         }
-
-        return UseEnglish(localeCode)
-            ? "winget found a newer version in the source, but its manifest does not apply to this system or its requirements."
-            : "winget ha trovato una versione piu recente nella sorgente, ma il manifest non si applica a questo sistema o ai suoi requisiti.";
-    }
-
-    private static string GetAdvertisedUpdateNoopMessage(string localeCode)
-    {
-        return UseEnglish(localeCode)
-            ? "Advertised update not applied"
-            : "Aggiornamento segnalato non applicato";
-    }
-
-    private static string GetAdvertisedUpdateNoopResolution(string localeCode, UpdateEntry update)
-    {
-        var currentVersion = string.IsNullOrWhiteSpace(update.Version) ? "unknown" : update.Version.Trim();
-        var availableVersion = string.IsNullOrWhiteSpace(update.Available) ? "unknown" : update.Available.Trim();
-        return UseEnglish(localeCode)
-            ? $"winget listed {currentVersion} -> {availableVersion}, but upgrade returned already at the latest version. This usually means the installed major version or installer channel cannot be upgraded in place; review the package options or install the newer channel manually."
-            : $"winget ha elencato {currentVersion} -> {availableVersion}, ma upgrade ha risposto gia alla versione piu recente. Di solito significa che la major version o il canale installer installato non puo essere aggiornato in-place; verifica le opzioni del pacchetto o installa manualmente il canale piu recente.";
-    }
-
-    private static bool HasAdvertisedUpdate(UpdateEntry update)
-    {
-        return !string.IsNullOrWhiteSpace(update.Available)
-            && !IsNoUpdateMarker(update.Available)
-            && !string.Equals(update.Version?.Trim(), update.Available.Trim(), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsNoUpdateMarker(string value)
-    {
-        var normalized = value.Trim();
-        return normalized.Equals("No update", StringComparison.OrdinalIgnoreCase)
-            || normalized.Equals("No update available", StringComparison.OrdinalIgnoreCase)
-            || normalized.Equals("Nessun aggiornamento", StringComparison.OrdinalIgnoreCase)
-            || normalized.Equals("Gia alla versione piu recente", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string GetNoApplicableInstallResolution(string localeCode, AppEntry app)
-    {
-        var configuredOptions = FormatConfiguredInstallOptions(app);
-        if (!string.IsNullOrWhiteSpace(configuredOptions))
-        {
-            return UseEnglish(localeCode)
-                ? $"winget did not find an installer matching the configured package options ({configuredOptions}). OnlyWinget did not retry without these constraints. Edit the package options to a supported installer, or install the package manually if those constraints are required."
-                : $"winget non ha trovato un installer compatibile con le opzioni configurate nel pacchetto ({configuredOptions}). OnlyWinget non ha ritentato senza questi vincoli. Modifica le opzioni del pacchetto scegliendo un installer supportato oppure installa il pacchetto manualmente se quei vincoli sono necessari.";
-        }
-
-        return UseEnglish(localeCode)
-            ? "winget did not find an installer that applies to this system or its requirements. Edit the package options or install the package manually."
-            : "winget non ha trovato un installer applicabile a questo sistema o ai suoi requisiti. Modifica le opzioni del pacchetto oppure installa il pacchetto manualmente.";
-    }
-
-    private static string FormatConfiguredUpdateOptions(UpdateEntry update)
-    {
-        var options = new List<string>();
-        AddConfiguredOption(options, "scope", update.Scope);
-        AddConfiguredOption(options, "architecture", update.Architecture);
-        AddConfiguredOption(options, "locale", update.Locale);
-        AddConfiguredOption(options, "installer-type", update.InstallerType);
-        return string.Join(", ", options);
-    }
-
-    private static string FormatConfiguredInstallOptions(AppEntry app)
-    {
-        var options = new List<string>();
-        AddConfiguredOption(options, "scope", app.Scope);
-        AddConfiguredOption(options, "architecture", app.Architecture);
-        AddConfiguredOption(options, "locale", app.Locale);
-        AddConfiguredOption(options, "installer-type", app.InstallerType);
-        return string.Join(", ", options);
-    }
-
-    private static void AddConfiguredOption(List<string> options, string name, string value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            options.Add($"{name}={value.Trim()}");
-        }
-    }
-
-    private static bool UseEnglish(string localeCode)
-    {
-        return !string.IsNullOrWhiteSpace(localeCode)
-            && localeCode.StartsWith("en", StringComparison.OrdinalIgnoreCase);
     }
 
     private void HandleProgressLine(
@@ -691,5 +324,10 @@ public sealed class OperationRunner : IOperationRunner
         var safeCurrent = Math.Max(0, Math.Min(100, currentPackagePercentage));
         var overall = ((safeCompleted * 100.0) + safeCurrent) / totalPackages;
         return Math.Max(0, Math.Min(100, (int)Math.Round(overall)));
+    }
+
+    private static string FormatLogValue(string value)
+    {
+        return (value ?? string.Empty).Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
     }
 }

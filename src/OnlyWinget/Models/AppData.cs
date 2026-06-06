@@ -69,4 +69,43 @@ public sealed class PresetAppItem
 
     [JsonPropertyName("action")]
     public string Action { get; set; } = AppActions.Install;
+
+    [JsonPropertyName("scope")]
+    public string Scope { get; set; } = string.Empty;
+
+    [JsonPropertyName("installMode")]
+    public string InstallMode { get; set; } = InstallModes.SilentWithProgress;
+
+    [JsonPropertyName("architecture")]
+    public string Architecture { get; set; } = string.Empty;
+
+    [JsonPropertyName("locale")]
+    public string Locale { get; set; } = string.Empty;
+
+    [JsonPropertyName("installerType")]
+    public string InstallerType { get; set; } = string.Empty;
+
+    [JsonPropertyName("installLocation")]
+    public string InstallLocation { get; set; } = string.Empty;
+
+    [JsonPropertyName("logPath")]
+    public string LogPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("supportsInstallLocation")]
+    public bool SupportsInstallLocation { get; set; } = true;
+
+    [JsonPropertyName("supportsLog")]
+    public bool SupportsLog { get; set; } = true;
+
+    [JsonPropertyName("additionalCustomArgs")]
+    public string AdditionalCustomArgs { get; set; } = string.Empty;
+
+    [JsonPropertyName("overrideArgs")]
+    public string OverrideArgs { get; set; } = string.Empty;
+
+    [JsonPropertyName("advancedArgumentsReviewed")]
+    public bool? AdvancedArgumentsReviewed { get; set; }
+
+    [JsonPropertyName("elevationRequirement")]
+    public string ElevationRequirement { get; set; } = string.Empty;
 }

@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OnlyWinget.Models;
 using OnlyWinget.ViewModels;
 
 namespace OnlyWinget.Services;
@@ -19,15 +20,18 @@ public sealed class AppStartupCoordinator
 
     private readonly WingetService _wingetService;
     private readonly IDialogService _dialogService;
+    private readonly PackageOperationService _operationService;
     private readonly Action<string> _openExternalUrl;
 
     public AppStartupCoordinator(
         WingetService wingetService,
         IDialogService dialogService,
-        Action<string>? openExternalUrl = null)
+        Action<string>? openExternalUrl = null,
+        PackageOperationService? operationService = null)
     {
         _wingetService = wingetService;
         _dialogService = dialogService;
+        _operationService = operationService ?? new PackageOperationService(wingetService, new InstallCommandBuilder(wingetService));
         _openExternalUrl = openExternalUrl ?? OpenExternalUrl;
     }
 
@@ -54,7 +58,7 @@ public sealed class AppStartupCoordinator
         {
             var strings = viewModel.Strings;
             startupCheckStage = "source_update";
-            var sourceUpdate = await Task.Run(_wingetService.UpdateSources).ConfigureAwait(true);
+            var sourceUpdate = await _operationService.ExecuteAsync(PackageOperationRequest.ForSourceUpdate(), strings).ConfigureAwait(true);
             if (sourceUpdate.ExitCode != 0)
             {
                 viewModel.AppendLog(sourceUpdate.Output);
@@ -84,7 +88,7 @@ public sealed class AppStartupCoordinator
             try
             {
                 startupCheckStage = "winget_update_apply";
-                var result = await Task.Run(_wingetService.UpgradeWinget).ConfigureAwait(true);
+                var result = await _operationService.ExecuteAsync(PackageOperationRequest.ForUpdateWinget(), strings).ConfigureAwait(true);
                 viewModel.AppendLog(result.Output);
                 startupCheckStage = "winget_update_verify";
                 var installedAfterUpdate = _wingetService.GetInstalledWingetVersion();

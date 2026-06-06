@@ -513,7 +513,8 @@ public sealed class AppDataService
         {
             var id = (app.Id ?? string.Empty).Trim();
             var source = NormalizeSource(app.Source);
-            var operationKey = AppEntry.BuildOperationKey(id, source, string.Empty);
+            var architecture = NormalizeOptionalValue(app.Architecture);
+            var operationKey = AppEntry.BuildOperationKey(id, source, architecture);
             if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
             {
                 continue;
@@ -531,7 +532,20 @@ public sealed class AppDataService
                 Name = name,
                 Id = id,
                 Source = source,
-                Action = NormalizeAction(app.Action)
+                Action = NormalizeAction(app.Action),
+                Scope = NormalizeOptionalValue(app.Scope),
+                InstallMode = NormalizeInstallMode(app.InstallMode),
+                Architecture = architecture,
+                Locale = NormalizeOptionalValue(app.Locale),
+                InstallerType = NormalizeOptionalValue(app.InstallerType),
+                InstallLocation = NormalizeOptionalValue(app.InstallLocation),
+                LogPath = NormalizeOptionalValue(app.LogPath),
+                SupportsInstallLocation = app.SupportsInstallLocation,
+                SupportsLog = app.SupportsLog,
+                AdditionalCustomArgs = NormalizeOptionalValue(app.AdditionalCustomArgs),
+                OverrideArgs = NormalizeOptionalValue(app.OverrideArgs),
+                AdvancedArgumentsReviewed = app.AdvancedArgumentsReviewed,
+                ElevationRequirement = NormalizeOptionalValue(app.ElevationRequirement)
             });
         }
 
@@ -547,7 +561,8 @@ public sealed class AppDataService
 
         var id = (app.Id ?? string.Empty).Trim();
         var source = NormalizeSource(app.Source);
-        var operationKey = AppEntry.BuildOperationKey(id, source, string.Empty);
+        var architecture = NormalizeOptionalValue(app.Architecture);
+        var operationKey = AppEntry.BuildOperationKey(id, source, architecture);
         if (string.IsNullOrWhiteSpace(id) || !usedIds.Add(operationKey))
         {
             return null;
@@ -559,6 +574,10 @@ public sealed class AppDataService
             name = id;
         }
 
+        var additionalCustomArgs = NormalizeOptionalValue(app.AdditionalCustomArgs);
+        var overrideArgs = NormalizeOptionalValue(app.OverrideArgs);
+        var hasAdvancedArguments = HasAdvancedArguments(additionalCustomArgs, overrideArgs);
+
         return new AppEntry
         {
             Enabled = app.Enabled,
@@ -566,19 +585,21 @@ public sealed class AppDataService
             Id = id,
             Source = source,
             Action = NormalizeAction(app.Action),
-            Scope = string.Empty,
-            InstallMode = InstallModes.SilentWithProgress,
-            Architecture = string.Empty,
-            Locale = string.Empty,
-            InstallerType = string.Empty,
-            InstallLocation = string.Empty,
-            LogPath = string.Empty,
-            SupportsInstallLocation = true,
-            SupportsLog = true,
-            AdditionalCustomArgs = string.Empty,
-            OverrideArgs = string.Empty,
-            AdvancedArgumentsReviewed = true,
-            ElevationRequirement = string.Empty,
+            Scope = NormalizeOptionalValue(app.Scope),
+            InstallMode = NormalizeInstallMode(app.InstallMode),
+            Architecture = architecture,
+            Locale = NormalizeOptionalValue(app.Locale),
+            InstallerType = NormalizeOptionalValue(app.InstallerType),
+            InstallLocation = NormalizeOptionalValue(app.InstallLocation),
+            LogPath = NormalizeOptionalValue(app.LogPath),
+            SupportsInstallLocation = app.SupportsInstallLocation,
+            SupportsLog = app.SupportsLog,
+            AdditionalCustomArgs = additionalCustomArgs,
+            OverrideArgs = overrideArgs,
+            AdvancedArgumentsReviewed = hasAdvancedArguments
+                ? false
+                : app.AdvancedArgumentsReviewed ?? true,
+            ElevationRequirement = NormalizeOptionalValue(app.ElevationRequirement),
             Status = string.Empty
         };
     }

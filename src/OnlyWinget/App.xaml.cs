@@ -47,8 +47,9 @@ public partial class App : Application
         var dialogService = new DialogService(interrogationService, localizationService);
         var appEntryService = new AppEntryService(wingetService);
         var tabService = new TabService();
-        var operationRunner = new OperationRunner(wingetService, installCommandBuilder);
-        var startupCoordinator = new AppStartupCoordinator(wingetService, dialogService);
+        var operationService = new PackageOperationService(wingetService, installCommandBuilder);
+        var operationRunner = new OperationRunner(wingetService, installCommandBuilder, operationService: operationService);
+        var startupCoordinator = new AppStartupCoordinator(wingetService, dialogService, operationService: operationService);
 
         var viewModel = new MainViewModel(
             wingetService,

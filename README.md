@@ -113,7 +113,7 @@ Release versioning, tagging, artifact selection, and GitHub release publishing a
 
 - Application icon and package logo: `src\OnlyWinget\Assets\OnlyWinget.ico` and `src\OnlyWinget\Assets\OnlyWinget-icon.png`.
 - Installer UI assets: `src\OnlyWinget.Setup\Assets\WixUIBanner.bmp`, `src\OnlyWinget.Setup\Assets\WixUIDialog.bmp`, `src\OnlyWinget.Setup\BurnResponsiveTheme.xml`, and `src\OnlyWinget.Setup\BurnResponsiveTheme.wxl`.
-- Sample preset files: `media\Default.onlywinget.json` and `tools\Default.onlywinget.json`.
+- Sample preset file: `media\Default.onlywinget.json`.
 
 ## Project Status
 
