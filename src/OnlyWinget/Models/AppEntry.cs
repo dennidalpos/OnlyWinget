@@ -9,7 +9,8 @@ public sealed class AppEntry : ObservableObject
 {
     internal const string DefaultSource = "winget";
 
-    private bool _enabled = true;
+    private readonly RowStatusState _statusState = new();
+    private bool _isSelected = true;
     private string _name = string.Empty;
     private string _id = string.Empty;
     private string _source = DefaultSource;
@@ -30,14 +31,34 @@ public sealed class AppEntry : ObservableObject
     private string _errorMessage = string.Empty;
     private string _resolution = string.Empty;
     private string _status = string.Empty;
-    private UiStatusKey _statusKey = UiStatusKey.None;
-    private int? _statusProgressPercentage;
-    private string _statusRawText = string.Empty;
 
-    public bool Enabled
+    public AppEntry()
     {
-        get => _enabled;
-        set => SetProperty(ref _enabled, value);
+        _statusState.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(RowStatusState.Text))
+            {
+                SetProperty(ref _status, _statusState.Text, nameof(Status));
+                return;
+            }
+
+            if (e.PropertyName == nameof(RowStatusState.BadgeKey))
+            {
+                OnPropertyChanged(nameof(StatusBadgeKey));
+                return;
+            }
+
+            if (e.PropertyName == nameof(RowStatusState.BadgeSymbol))
+            {
+                OnPropertyChanged(nameof(StatusBadgeSymbol));
+            }
+        };
+    }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
     }
 
     public string Name
@@ -183,51 +204,21 @@ public sealed class AppEntry : ObservableObject
     public string Status
     {
         get => _status;
-        set
-        {
-            _statusKey = UiStatusKey.None;
-            _statusProgressPercentage = null;
-            _statusRawText = value ?? string.Empty;
-            OnPropertyChanged(nameof(StatusBadgeKey));
-            OnPropertyChanged(nameof(StatusBadgeSymbol));
-            SetProperty(ref _status, _statusRawText);
-        }
+        set => _statusState.SetRawText(value);
     }
 
-    public UiStatusKey? StatusBadgeKey => _statusKey == UiStatusKey.None && string.IsNullOrWhiteSpace(_statusRawText)
-        ? null
-        : _statusKey;
+    public UiStatusKey? StatusBadgeKey => _statusState.BadgeKey;
 
-    public string StatusBadgeSymbol => _statusKey switch
-    {
-        UiStatusKey.Ok => "\uE73E",
-        UiStatusKey.Paused => "\uE769",
-        UiStatusKey.UpgradeInProgress => "\uE895",
-        UiStatusKey.AlreadyUpdated => "\uE930",
-        UiStatusKey.InstallInProgress => "\uE895",
-        UiStatusKey.AlreadyInstalled => "\uE930",
-        UiStatusKey.UninstallInProgress => "\uE74D",
-        _ => string.IsNullOrWhiteSpace(_statusRawText) ? string.Empty : "\uE946"
-    };
+    public string StatusBadgeSymbol => _statusState.BadgeSymbol;
 
     public void ApplyStatus(UiStatusState statusState, Services.LocalizedStrings strings)
     {
-        _statusKey = statusState?.Key ?? UiStatusKey.None;
-        _statusProgressPercentage = statusState?.ProgressPercentage;
-        _statusRawText = statusState?.RawText ?? string.Empty;
-        OnPropertyChanged(nameof(StatusBadgeKey));
-        OnPropertyChanged(nameof(StatusBadgeSymbol));
-        SetProperty(ref _status, BuildStatusText(strings), nameof(Status));
+        _statusState.Apply(statusState, strings);
     }
 
     public void RefreshLocalizedStatus(Services.LocalizedStrings strings)
     {
-        SetProperty(ref _status, BuildStatusText(strings), nameof(Status));
-    }
-
-    private string BuildStatusText(Services.LocalizedStrings strings)
-    {
-        return UiStatusTextFormatter.Format(_statusKey, _statusProgressPercentage, _statusRawText, strings);
+        _statusState.Refresh(strings);
     }
 
     public static string BuildOperationKey(string? id, string? source, string? architecture)

@@ -92,6 +92,16 @@ public sealed partial class LocalizedStrings
     public string CloseButton { get; init; } = string.Empty;
     public string UseIdButton { get; init; } = string.Empty;
     public string UseSelectedPackagesButton { get; init; } = string.Empty;
+    public string SelectAllPresetRows { get; init; } = string.Empty;
+    public string SelectAllSearchResults { get; init; } = string.Empty;
+    public string SelectAllUpdates { get; init; } = string.Empty;
+    public string SelectedCountText { get; init; } = string.Empty;
+    public string BatchActions { get; init; } = string.Empty;
+    public string RemoveSelected { get; init; } = string.Empty;
+    public string SetSelectedInstall { get; init; } = string.Empty;
+    public string SetSelectedUninstall { get; init; } = string.Empty;
+    public string SetSelectedPause { get; init; } = string.Empty;
+    public string ApplySelected { get; init; } = string.Empty;
     public string VersionHeader { get; init; } = string.Empty;
     public string AvailableHeader { get; init; } = string.Empty;
     public string PrerequisitesWarningTitle { get; init; } = string.Empty;
@@ -208,6 +218,7 @@ public sealed partial class LocalizedStrings
     public string UpdatesListAutomationName { get; init; } = string.Empty;
     public string UpdateRowAutomationHelpText { get; init; } = string.Empty;
     public string SelectAppAutomationName { get; init; } = string.Empty;
+    public string SelectSearchResultAutomationName { get; init; } = string.Empty;
     public string SelectUpdateAutomationName { get; init; } = string.Empty;
     public string OutputLogAutomationName { get; init; } = string.Empty;
     public string ErrorHeader { get; init; } = string.Empty;

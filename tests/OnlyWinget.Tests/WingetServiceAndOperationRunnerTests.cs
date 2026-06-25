@@ -899,7 +899,7 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
                     Name = "Windows Camera",
                     Id = "9WZDNCRFJBBG",
                     Source = "msstore",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, _) => { },
@@ -953,7 +953,7 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
                     Version = "26.5.27.1",
                     Available = "149.0.7814.0",
                     Source = "winget",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, value) => status = RenderStatus(value, LocalizedStrings.Italian),
@@ -1046,7 +1046,7 @@ Installer:
                     Version = "7.20.0",
                     Available = "7.22.0",
                     Source = "winget",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, value) => status = RenderStatus(value, LocalizedStrings.English),
@@ -1134,7 +1134,7 @@ Installer:
                     Architecture = "x64",
                     Locale = "it",
                     InstallerType = "exe",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, _) => { },
@@ -1179,7 +1179,7 @@ Installer:
                     Name = "WinRAR",
                     Id = "RARLab.WinRAR",
                     Source = "winget",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, _) => { },
@@ -1223,7 +1223,7 @@ Installer:
                     Version = "2.1.1693.0",
                     Available = "3.0.94",
                     Source = "winget",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, state) => status = state.RawText,
@@ -1268,7 +1268,7 @@ A newer package version is available in a configured source, but it does not app
                     Name = "WinRAR",
                     Id = "RARLab.WinRAR",
                     Source = "winget",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, value) => status = RenderStatus(value, LocalizedStrings.English),
@@ -1318,7 +1318,7 @@ A newer package version is available in a configured source, but it does not app
                     Name = "WinRAR",
                     Id = "RARLab.WinRAR",
                     Source = "winget",
-                    Selected = true
+                    IsSelected = true
                 }
             },
             (_, _) => { },

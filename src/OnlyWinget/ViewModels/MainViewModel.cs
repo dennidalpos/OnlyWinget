@@ -22,8 +22,6 @@ namespace OnlyWinget.ViewModels;
 
 public sealed class MainViewModel : ObservableObject
 {
-    private const int MaxOutputLogLines = 1000;
-
     private enum ShellStatusState
     {
         None,
@@ -40,24 +38,13 @@ public sealed class MainViewModel : ObservableObject
     }
 
     private readonly WingetService _wingetService;
+    private readonly WingetQueryService _wingetQueryService;
     private readonly LocalizationService _localizationService;
     private readonly IDialogService _dialogService;
     private readonly IOperationRunner _operationRunner;
     private readonly OperatingSystemInfo _operatingSystemInfo;
-    private ObservableCollection<SearchResult> _searchResults = new();
-    private SearchResult? _selectedSearchResult;
-    private ObservableCollection<SearchResult> _selectedSearchResults = new();
-    private string _searchQuery = string.Empty;
-    private string _searchPickId = string.Empty;
-    private bool _isSearchVisible;
-    private bool _isSearchEnabled = true;
-    private bool _isSearchInProgress;
-    private ObservableCollection<UpdateEntry> _updates = new();
-    private bool _isUpdatesVisible;
-    private bool _areUpdatesActionsEnabled = true;
-    private bool _isUpdatesLoading;
+    private readonly OutputLogBuffer _outputLog = new();
     private string _outputText = string.Empty;
-    private readonly Queue<string> _outputLines = new();
     private string _statusText = string.Empty;
     private string _operationProgressText = string.Empty;
     private int _operationProgressValue;
@@ -71,8 +58,6 @@ public sealed class MainViewModel : ObservableObject
     private UiLanguageOption? _selectedLanguage;
     private ShellStatusState _shellStatusState;
     private ProgressTextState _progressTextState;
-    private ObservableCollection<UpdateEntry>? _observedUpdates;
-    private ObservableCollection<SearchResult>? _observedSelectedSearchResults;
     private ObservableCollection<AppEntry>? _observedPresetApps;
     private readonly HashSet<AppEntry> _observedPresetAppItems = new();
 
@@ -84,9 +69,11 @@ public sealed class MainViewModel : ObservableObject
         IAppEntryService appEntryService,
         ITabService tabService,
         IOperationRunner operationRunner,
-        OperatingSystemInfo? operatingSystemInfo = null)
+        OperatingSystemInfo? operatingSystemInfo = null,
+        WingetQueryService? wingetQueryService = null)
     {
         _wingetService = wingetService;
+        _wingetQueryService = wingetQueryService ?? new WingetQueryService(wingetService);
         _localizationService = localizationService;
         _dialogService = dialogService;
         _operationRunner = operationRunner;
@@ -94,6 +81,8 @@ public sealed class MainViewModel : ObservableObject
 
         _selectedLanguage = _localizationService.SelectedLanguage;
         IsWingetAvailable = _wingetService.TestAvailable();
+        SearchWorkspace = new SearchWorkspaceViewModel(localizationService, AppendOutput);
+        UpdatesWorkspace = new UpdatesWorkspaceViewModel(localizationService, AppendOutput);
         PresetWorkspace = new PresetWorkspaceViewModel(
             IsWingetAvailable,
             localizationService,
@@ -108,7 +97,7 @@ public sealed class MainViewModel : ObservableObject
         CloseSearchCommand = new RelayCommand(CloseSearch, () => IsSearchVisible);
         RunSearchCommand = new AsyncRelayCommand(RunSearchAsync, () => IsWingetAvailable && IsSearchEnabled && !string.IsNullOrWhiteSpace(SearchQuery.Trim()));
         UseSearchIdCommand = new AsyncRelayCommand(UseSearchIdAsync, () => IsWingetAvailable && AreMainActionsEnabled && IsSearchVisible && CanUseSearchId());
-        ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => IsWingetAvailable && IsApplyEnabled && HasEnabledPresetApps());
+        ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => IsWingetAvailable && IsApplyEnabled && HasRunnableSelectedPresetApps());
         OpenUpdatesCommand = new AsyncRelayCommand(OpenUpdatesAsync, () => IsWingetAvailable && AreMainActionsEnabled && !IsUpdatesVisible);
         RefreshUpdatesCommand = new AsyncRelayCommand(RefreshUpdatesAsync, () => IsWingetAvailable && AreUpdatesActionsEnabled);
         ApplyUpdatesCommand = new AsyncRelayCommand(ApplyUpdatesAsync, () => IsWingetAvailable && AreUpdatesActionsEnabled && IsUpdatesVisible && HasSelectedUpdates());
@@ -116,10 +105,10 @@ public sealed class MainViewModel : ObservableObject
         CancelOperationCommand = new RelayCommand(CancelOperation, () => IsOperationCancellationAvailable);
 
         PresetWorkspace.PropertyChanged += OnPresetWorkspacePropertyChanged;
+        SearchWorkspace.PropertyChanged += OnSearchWorkspacePropertyChanged;
+        UpdatesWorkspace.PropertyChanged += OnUpdatesWorkspacePropertyChanged;
         _localizationService.PropertyChanged += OnLocalizationServicePropertyChanged;
         AttachPresetAppsCollection(PresetWorkspace.CurrentApps);
-        AttachSelectedSearchResultsCollection(_selectedSearchResults);
-        AttachUpdatesCollection(_updates);
     }
 
     public LocalizedStrings Strings => _localizationService.Strings;
@@ -143,6 +132,10 @@ public sealed class MainViewModel : ObservableObject
     public string OperatingSystemStatusBadgeTooltip => string.Format(Strings.OperatingSystemBadgeTooltip, _operatingSystemInfo.DisplayText);
 
     public PresetWorkspaceViewModel PresetWorkspace { get; }
+
+    public SearchWorkspaceViewModel SearchWorkspace { get; }
+
+    public UpdatesWorkspaceViewModel UpdatesWorkspace { get; }
 
     public ObservableCollection<string> TabNames => PresetWorkspace.TabNames;
 
@@ -195,41 +188,26 @@ public sealed class MainViewModel : ObservableObject
 
     public ObservableCollection<SearchResult> SearchResults
     {
-        get => _searchResults;
-        private set
-        {
-            if (SetProperty(ref _searchResults, value))
-            {
-                OnPropertyChanged(nameof(IsSearchEmptyStateVisible));
-            }
-        }
+        get => SearchWorkspace.Results;
+        private set => SearchWorkspace.Results = value;
     }
 
     public SearchResult? SelectedSearchResult
     {
-        get => _selectedSearchResult;
-        set
-        {
-            if (SetProperty(ref _selectedSearchResult, value))
-            {
-                SearchPickId = value?.Id ?? string.Empty;
-            }
-        }
-    }
-
-    public ObservableCollection<SearchResult> SelectedSearchResults
-    {
-        get => _selectedSearchResults;
-        private set => SetProperty(ref _selectedSearchResults, value);
+        get => SearchWorkspace.SelectedResult;
+        set => SearchWorkspace.SelectedResult = value;
     }
 
     public string SearchQuery
     {
-        get => _searchQuery;
+        get => SearchWorkspace.Query;
         set
         {
-            if (SetProperty(ref _searchQuery, value))
+            var oldValue = SearchWorkspace.Query;
+            SearchWorkspace.Query = value;
+            if (!string.Equals(oldValue, SearchWorkspace.Query, StringComparison.Ordinal))
             {
+                OnPropertyChanged(nameof(SearchQuery));
                 RunSearchCommand.RaiseCanExecuteChanged();
             }
         }
@@ -237,11 +215,14 @@ public sealed class MainViewModel : ObservableObject
 
     public string SearchPickId
     {
-        get => _searchPickId;
+        get => SearchWorkspace.PickId;
         set
         {
-            if (SetProperty(ref _searchPickId, value))
+            var oldValue = SearchWorkspace.PickId;
+            SearchWorkspace.PickId = value;
+            if (!string.Equals(oldValue, SearchWorkspace.PickId, StringComparison.Ordinal))
             {
+                OnPropertyChanged(nameof(SearchPickId));
                 UseSearchIdCommand.RaiseCanExecuteChanged();
             }
         }
@@ -249,11 +230,14 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsSearchVisible
     {
-        get => _isSearchVisible;
+        get => SearchWorkspace.IsVisible;
         set
         {
-            if (SetProperty(ref _isSearchVisible, value))
+            var oldValue = SearchWorkspace.IsVisible;
+            SearchWorkspace.IsVisible = value;
+            if (oldValue != SearchWorkspace.IsVisible)
             {
+                OnPropertyChanged(nameof(IsSearchVisible));
                 RaiseWorkspaceStateChanged();
                 OpenSearchCommand.RaiseCanExecuteChanged();
                 CloseSearchCommand.RaiseCanExecuteChanged();
@@ -266,11 +250,14 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsSearchEnabled
     {
-        get => _isSearchEnabled;
+        get => SearchWorkspace.IsEnabled;
         set
         {
-            if (SetProperty(ref _isSearchEnabled, value))
+            var oldValue = SearchWorkspace.IsEnabled;
+            SearchWorkspace.IsEnabled = value;
+            if (oldValue != SearchWorkspace.IsEnabled)
             {
+                OnPropertyChanged(nameof(IsSearchEnabled));
                 RunSearchCommand.RaiseCanExecuteChanged();
             }
         }
@@ -278,42 +265,38 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsSearchInProgress
     {
-        get => _isSearchInProgress;
-        private set
-        {
-            if (SetProperty(ref _isSearchInProgress, value))
-            {
-                OnPropertyChanged(nameof(IsSearchEmptyStateVisible));
-            }
-        }
+        get => SearchWorkspace.IsInProgress;
+        private set => SearchWorkspace.IsInProgress = value;
     }
 
-    public bool IsSearchEmptyStateVisible => SearchResults.Count == 0 && !IsSearchInProgress;
+    public bool IsSearchEmptyStateVisible => SearchWorkspace.IsEmptyStateVisible;
 
-    public string SearchAddButtonText => SelectedSearchResults.Count > 1
-        ? Strings.UseSelectedPackagesButton
-        : Strings.UseIdButton;
+    public string SearchAddButtonText => SearchWorkspace.AddButtonText;
+
+    public int SelectedSearchResultCount => SearchWorkspace.SelectedCount;
+
+    public bool? AreAllSearchResultsSelected
+    {
+        get => SearchWorkspace.AreAllSearchResultsSelected;
+        set => SearchWorkspace.AreAllSearchResultsSelected = value;
+    }
 
     public ObservableCollection<UpdateEntry> Updates
     {
-        get => _updates;
-        private set
-        {
-            if (SetProperty(ref _updates, value))
-            {
-                AttachUpdatesCollection(value);
-                OnPropertyChanged(nameof(IsUpdatesEmptyStateVisible));
-            }
-        }
+        get => UpdatesWorkspace.Updates;
+        private set => UpdatesWorkspace.Updates = value;
     }
 
     public bool IsUpdatesVisible
     {
-        get => _isUpdatesVisible;
+        get => UpdatesWorkspace.IsVisible;
         set
         {
-            if (SetProperty(ref _isUpdatesVisible, value))
+            var oldValue = UpdatesWorkspace.IsVisible;
+            UpdatesWorkspace.IsVisible = value;
+            if (oldValue != UpdatesWorkspace.IsVisible)
             {
+                OnPropertyChanged(nameof(IsUpdatesVisible));
                 RaiseWorkspaceStateChanged();
                 OpenUpdatesCommand.RaiseCanExecuteChanged();
                 ApplyUpdatesCommand.RaiseCanExecuteChanged();
@@ -326,11 +309,14 @@ public sealed class MainViewModel : ObservableObject
 
     public bool AreUpdatesActionsEnabled
     {
-        get => _areUpdatesActionsEnabled;
+        get => UpdatesWorkspace.AreActionsEnabled;
         set
         {
-            if (SetProperty(ref _areUpdatesActionsEnabled, value))
+            var oldValue = UpdatesWorkspace.AreActionsEnabled;
+            UpdatesWorkspace.AreActionsEnabled = value;
+            if (oldValue != UpdatesWorkspace.AreActionsEnabled)
             {
+                OnPropertyChanged(nameof(AreUpdatesActionsEnabled));
                 RefreshUpdatesCommand.RaiseCanExecuteChanged();
                 ApplyUpdatesCommand.RaiseCanExecuteChanged();
                 CloseUpdatesCommand.RaiseCanExecuteChanged();
@@ -340,17 +326,19 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsUpdatesLoading
     {
-        get => _isUpdatesLoading;
-        private set
-        {
-            if (SetProperty(ref _isUpdatesLoading, value))
-            {
-                OnPropertyChanged(nameof(IsUpdatesEmptyStateVisible));
-            }
-        }
+        get => UpdatesWorkspace.IsLoading;
+        private set => UpdatesWorkspace.IsLoading = value;
     }
 
-    public bool IsUpdatesEmptyStateVisible => Updates.Count == 0 && !IsUpdatesLoading;
+    public bool IsUpdatesEmptyStateVisible => UpdatesWorkspace.IsEmptyStateVisible;
+
+    public int SelectedUpdateCount => UpdatesWorkspace.SelectedCount;
+
+    public bool? AreAllUpdatesSelected
+    {
+        get => UpdatesWorkspace.AreAllUpdatesSelected;
+        set => UpdatesWorkspace.AreAllUpdatesSelected = value;
+    }
 
     public string OutputText
     {
@@ -495,11 +483,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void OpenSearch()
     {
-        SearchResults = new ObservableCollection<SearchResult>();
-        SearchQuery = string.Empty;
-        SearchPickId = string.Empty;
-        SelectedSearchResult = null;
-        SelectedSearchResults.Clear();
+        SearchWorkspace.Reset();
         IsUpdatesVisible = false;
         IsSearchVisible = true;
     }
@@ -528,7 +512,7 @@ public sealed class MainViewModel : ObservableObject
                         async () =>
                         {
                             SearchResults = new ObservableCollection<SearchResult>();
-                            var results = await Task.Run(() => _wingetService.Search(query, cancellation.Token), cancellation.Token);
+                            var results = await _wingetQueryService.SearchAsync(query, cancellation.Token);
                             cancellation.Token.ThrowIfCancellationRequested();
                             SearchResults = new ObservableCollection<SearchResult>(results);
                         });
@@ -623,7 +607,7 @@ public sealed class MainViewModel : ObservableObject
                         async () =>
                         {
                             Updates = new ObservableCollection<UpdateEntry>();
-                            var results = await Task.Run(() => _wingetService.LoadUpdates(cancellation.Token), cancellation.Token);
+                            var results = await _wingetQueryService.LoadUpdatesAsync(cancellation.Token);
                             cancellation.Token.ThrowIfCancellationRequested();
                             UpdateWorkflow.ApplyPresetOptions(results, PresetWorkspace.CurrentApps);
                             Updates = new ObservableCollection<UpdateEntry>(results);
@@ -639,7 +623,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task ApplyUpdatesAsync()
     {
-        var selected = Updates.Where(update => update.Selected).ToList();
+        var selected = UpdatesWorkspace.SelectedUpdates().ToList();
         if (selected.Count == 0)
         {
             return;
@@ -684,7 +668,7 @@ public sealed class MainViewModel : ObservableObject
                                 return;
                             }
 
-                            var refreshedUpdates = await Task.Run(() => _wingetService.LoadUpdates(cancellation.Token), cancellation.Token);
+                            var refreshedUpdates = await _wingetQueryService.LoadUpdatesAsync(cancellation.Token);
                             UpdateWorkflow.ApplyPresetOptions(refreshedUpdates, PresetWorkspace.CurrentApps);
                             UpdateWorkflow.ApplyAttemptResults(
                                 refreshedUpdates,
@@ -713,7 +697,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task ApplyAsync()
     {
-        if (!HasEnabledPresetApps())
+        if (!HasRunnableSelectedPresetApps())
         {
             return;
         }
@@ -725,7 +709,7 @@ public sealed class MainViewModel : ObservableObject
         OperationProgressValue = 0;
         SetProgressTextState(ProgressTextState.OperationStart);
         using var cancellation = BeginCancellableOperation();
-        var snapshot = CreateEnabledAppSnapshot(PresetWorkspace.CurrentApps);
+        var snapshot = CreateSelectedRunnableAppSnapshot(PresetWorkspace.CurrentApps);
 
         try
         {
@@ -789,10 +773,10 @@ public sealed class MainViewModel : ObservableObject
         return Updates.FirstOrDefault(update => string.Equals(update.Id, id, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static IReadOnlyList<AppEntry> CreateEnabledAppSnapshot(IEnumerable<AppEntry> apps)
+    private static IReadOnlyList<AppEntry> CreateSelectedRunnableAppSnapshot(IEnumerable<AppEntry> apps)
     {
         return apps
-            .Where(app => app.Enabled)
+            .Where(app => app.IsSelected && !string.Equals(app.Action, AppActions.Pause, StringComparison.Ordinal))
             .Select(CloneAppEntryForOperation)
             .ToList();
     }
@@ -801,7 +785,7 @@ public sealed class MainViewModel : ObservableObject
     {
         return new AppEntry
         {
-            Enabled = app.Enabled,
+            IsSelected = true,
             Name = app.Name,
             Id = app.Id,
             Source = app.Source,
@@ -877,31 +861,15 @@ public sealed class MainViewModel : ObservableObject
 
         RunOnUiThread(() =>
         {
-            foreach (var line in SplitOutputLines(text))
-            {
-                _outputLines.Enqueue(line);
-                while (_outputLines.Count > MaxOutputLogLines)
-                {
-                    _outputLines.Dequeue();
-                }
-            }
-
-            OutputText = string.Join(Environment.NewLine, _outputLines);
+            _outputLog.AppendLines(text);
+            OutputText = _outputLog.ToString();
         });
     }
 
     private void ClearOutput()
     {
-        _outputLines.Clear();
+        _outputLog.Clear();
         OutputText = string.Empty;
-    }
-
-    private static IEnumerable<string> SplitOutputLines(string text)
-    {
-        return text
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n')
-            .Split('\n');
     }
 
     private static async Task RunBusyAsync(Action<bool> setEnabled, Func<Task> operation)
@@ -1001,12 +969,12 @@ public sealed class MainViewModel : ObservableObject
 
     private bool CanUseSearchId()
     {
-        return SelectedSearchResults.Count > 0 || !string.IsNullOrWhiteSpace(SearchPickId.Trim());
+        return SearchWorkspace.CanUseSelectedOrManualId();
     }
 
     private List<PackageInterrogationRequest> BuildInterrogationRequests()
     {
-        var selectedResults = SelectedSearchResults.ToList();
+        var selectedResults = SearchWorkspace.SelectedResults();
         if (selectedResults.Count > 0)
         {
             return selectedResults
@@ -1040,12 +1008,13 @@ public sealed class MainViewModel : ObservableObject
 
     private bool HasSelectedUpdates()
     {
-        return Updates.Any(update => update.Selected);
+        return UpdatesWorkspace.SelectedCount > 0;
     }
 
-    private bool HasEnabledPresetApps()
+    private bool HasRunnableSelectedPresetApps()
     {
-        return PresetWorkspace.CurrentApps.Any(app => app.Enabled);
+        return PresetWorkspace.CurrentApps.Any(app =>
+            app.IsSelected && !string.Equals(app.Action, AppActions.Pause, StringComparison.Ordinal));
     }
 
     private string FormatUpdateStillAvailableStatus(UpdateEntry update)
@@ -1065,13 +1034,95 @@ public sealed class MainViewModel : ObservableObject
 
     private void OnPresetWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(PresetWorkspaceViewModel.CurrentApps))
+        if (e.PropertyName == nameof(PresetWorkspaceViewModel.CurrentApps))
         {
-            return;
+            AttachPresetAppsCollection(PresetWorkspace.CurrentApps);
         }
 
-        AttachPresetAppsCollection(PresetWorkspace.CurrentApps);
-        ApplyCommand.RaiseCanExecuteChanged();
+        if (e.PropertyName == nameof(PresetWorkspaceViewModel.CurrentApps)
+            || e.PropertyName == nameof(PresetWorkspaceViewModel.SelectedAppCount)
+            || e.PropertyName == nameof(PresetWorkspaceViewModel.AreAllPresetRowsSelected))
+        {
+            ApplyCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(IsApplyEnabled));
+        }
+    }
+
+    private void OnSearchWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(SearchWorkspaceViewModel.Results):
+                OnPropertyChanged(nameof(SearchResults));
+                OnPropertyChanged(nameof(IsSearchEmptyStateVisible));
+                break;
+            case nameof(SearchWorkspaceViewModel.SelectedResult):
+                OnPropertyChanged(nameof(SelectedSearchResult));
+                break;
+            case nameof(SearchWorkspaceViewModel.Query):
+                OnPropertyChanged(nameof(SearchQuery));
+                RunSearchCommand.RaiseCanExecuteChanged();
+                break;
+            case nameof(SearchWorkspaceViewModel.PickId):
+                OnPropertyChanged(nameof(SearchPickId));
+                UseSearchIdCommand.RaiseCanExecuteChanged();
+                break;
+            case nameof(SearchWorkspaceViewModel.IsVisible):
+                OnPropertyChanged(nameof(IsSearchVisible));
+                break;
+            case nameof(SearchWorkspaceViewModel.IsEnabled):
+                OnPropertyChanged(nameof(IsSearchEnabled));
+                RunSearchCommand.RaiseCanExecuteChanged();
+                break;
+            case nameof(SearchWorkspaceViewModel.IsInProgress):
+                OnPropertyChanged(nameof(IsSearchInProgress));
+                OnPropertyChanged(nameof(IsSearchEmptyStateVisible));
+                break;
+            case nameof(SearchWorkspaceViewModel.IsEmptyStateVisible):
+                OnPropertyChanged(nameof(IsSearchEmptyStateVisible));
+                break;
+            case nameof(SearchWorkspaceViewModel.SelectedCount):
+            case nameof(SearchWorkspaceViewModel.AddButtonText):
+            case nameof(SearchWorkspaceViewModel.AreAllSearchResultsSelected):
+                OnPropertyChanged(nameof(SelectedSearchResultCount));
+                OnPropertyChanged(nameof(SearchAddButtonText));
+                OnPropertyChanged(nameof(AreAllSearchResultsSelected));
+                UseSearchIdCommand.RaiseCanExecuteChanged();
+                break;
+        }
+    }
+
+    private void OnUpdatesWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(UpdatesWorkspaceViewModel.Updates):
+                OnPropertyChanged(nameof(Updates));
+                OnPropertyChanged(nameof(IsUpdatesEmptyStateVisible));
+                break;
+            case nameof(UpdatesWorkspaceViewModel.IsVisible):
+                OnPropertyChanged(nameof(IsUpdatesVisible));
+                break;
+            case nameof(UpdatesWorkspaceViewModel.AreActionsEnabled):
+                OnPropertyChanged(nameof(AreUpdatesActionsEnabled));
+                RefreshUpdatesCommand.RaiseCanExecuteChanged();
+                ApplyUpdatesCommand.RaiseCanExecuteChanged();
+                CloseUpdatesCommand.RaiseCanExecuteChanged();
+                break;
+            case nameof(UpdatesWorkspaceViewModel.IsLoading):
+                OnPropertyChanged(nameof(IsUpdatesLoading));
+                OnPropertyChanged(nameof(IsUpdatesEmptyStateVisible));
+                break;
+            case nameof(UpdatesWorkspaceViewModel.IsEmptyStateVisible):
+                OnPropertyChanged(nameof(IsUpdatesEmptyStateVisible));
+                break;
+            case nameof(UpdatesWorkspaceViewModel.SelectedCount):
+            case nameof(UpdatesWorkspaceViewModel.AreAllUpdatesSelected):
+                OnPropertyChanged(nameof(SelectedUpdateCount));
+                OnPropertyChanged(nameof(AreAllUpdatesSelected));
+                ApplyUpdatesCommand.RaiseCanExecuteChanged();
+                break;
+        }
     }
 
     private void AttachPresetAppsCollection(ObservableCollection<AppEntry> apps)
@@ -1162,88 +1213,9 @@ public sealed class MainViewModel : ObservableObject
 
     private void OnPresetAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(AppEntry.Enabled))
+        if (e.PropertyName == nameof(AppEntry.IsSelected) || e.PropertyName == nameof(AppEntry.Action))
         {
             ApplyCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    private void AttachSelectedSearchResultsCollection(ObservableCollection<SearchResult> selectedResults)
-    {
-        if (ReferenceEquals(_observedSelectedSearchResults, selectedResults))
-        {
-            return;
-        }
-
-        if (_observedSelectedSearchResults != null)
-        {
-            _observedSelectedSearchResults.CollectionChanged -= OnSelectedSearchResultsCollectionChanged;
-        }
-
-        _observedSelectedSearchResults = selectedResults;
-        _observedSelectedSearchResults.CollectionChanged += OnSelectedSearchResultsCollectionChanged;
-        UseSearchIdCommand.RaiseCanExecuteChanged();
-    }
-
-    private void OnSelectedSearchResultsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        UseSearchIdCommand.RaiseCanExecuteChanged();
-        OnPropertyChanged(nameof(SearchAddButtonText));
-    }
-
-    private void AttachUpdatesCollection(ObservableCollection<UpdateEntry> updates)
-    {
-        if (ReferenceEquals(_observedUpdates, updates))
-        {
-            return;
-        }
-
-        if (_observedUpdates != null)
-        {
-            _observedUpdates.CollectionChanged -= OnUpdatesCollectionChanged;
-            foreach (var entry in _observedUpdates)
-            {
-                entry.PropertyChanged -= OnUpdateEntryPropertyChanged;
-            }
-        }
-
-        _observedUpdates = updates;
-        _observedUpdates.CollectionChanged += OnUpdatesCollectionChanged;
-        foreach (var entry in _observedUpdates)
-        {
-            entry.PropertyChanged += OnUpdateEntryPropertyChanged;
-        }
-
-        ApplyUpdatesCommand.RaiseCanExecuteChanged();
-        OnPropertyChanged(nameof(IsUpdatesEmptyStateVisible));
-    }
-
-    private void OnUpdatesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.OldItems != null)
-        {
-            foreach (var item in e.OldItems.OfType<UpdateEntry>())
-            {
-                item.PropertyChanged -= OnUpdateEntryPropertyChanged;
-            }
-        }
-
-        if (e.NewItems != null)
-        {
-            foreach (var item in e.NewItems.OfType<UpdateEntry>())
-            {
-                item.PropertyChanged += OnUpdateEntryPropertyChanged;
-            }
-        }
-
-        ApplyUpdatesCommand.RaiseCanExecuteChanged();
-    }
-
-    private void OnUpdateEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(UpdateEntry.Selected))
-        {
-            ApplyUpdatesCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -1264,6 +1236,8 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CurrentWorkspaceTitle));
         OnPropertyChanged(nameof(CurrentWorkspaceDescription));
         OnPropertyChanged(nameof(SearchAddButtonText));
+        SearchWorkspace.RefreshLocalizedState();
+        UpdatesWorkspace.RefreshLocalizedState();
 
         foreach (var update in Updates)
         {

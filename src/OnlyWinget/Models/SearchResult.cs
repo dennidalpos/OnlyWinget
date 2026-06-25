@@ -5,8 +5,16 @@
 
 namespace OnlyWinget.Models;
 
-public sealed class SearchResult
+public sealed class SearchResult : ObservableObject
 {
+    private bool _isSelected;
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
+
     public string Name { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;

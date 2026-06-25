@@ -265,6 +265,29 @@
                           Command="{Binding PresetWorkspace.RemoveCommand}"
                           Style="{StaticResource DangerButtonStyle}"/>
                 </StackPanel>
+                <StackPanel Margin="{StaticResource TopSpacing6}"
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}">
+                  <TextBlock Margin="{StaticResource InlineItemSpacing6}"
+                             VerticalAlignment="Center"
+                             Style="{StaticResource CaptionTextStyle}"
+                             Text="{Binding PresetWorkspace.SelectedCountText}"/>
+                  <Button Content="{Binding Strings.RemoveSelected}"
+                          Margin="{StaticResource ButtonInlineSpacing}"
+                          Command="{Binding PresetWorkspace.RemoveSelectedCommand}"
+                          Style="{StaticResource DangerButtonStyle}"/>
+                  <Button Content="{Binding Strings.SetSelectedInstall}"
+                          Margin="{StaticResource ButtonInlineSpacing}"
+                          Command="{Binding PresetWorkspace.SetSelectedInstallCommand}"
+                          Style="{StaticResource NeutralButtonStyle}"/>
+                  <Button Content="{Binding Strings.SetSelectedUninstall}"
+                          Margin="{StaticResource ButtonInlineSpacing}"
+                          Command="{Binding PresetWorkspace.SetSelectedUninstallCommand}"
+                          Style="{StaticResource NeutralButtonStyle}"/>
+                  <Button Content="{Binding Strings.SetSelectedPause}"
+                          Command="{Binding PresetWorkspace.SetSelectedPauseCommand}"
+                          Style="{StaticResource NeutralButtonStyle}"/>
+                </StackPanel>
 
                 <StackPanel Margin="{StaticResource TopSpacing6}"
                             Orientation="Horizontal">
@@ -351,10 +374,18 @@
                         <GridViewColumn Width="{StaticResource SelectColumnWidth}"
                                         helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource SelectColumnWidth}"
                                         Header="">
+                          <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                              <CheckBox IsThreeState="True"
+                                        IsChecked="{Binding DataContext.PresetWorkspace.AreAllPresetRowsSelected, RelativeSource={RelativeSource AncestorType=ListView}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        HorizontalAlignment="Center"
+                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllPresetRows, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                            </DataTemplate>
+                          </GridViewColumn.HeaderTemplate>
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
                               <Border Style="{StaticResource TableCellCompactBorderStyle}">
-                                <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                           HorizontalAlignment="Center"
                                           AutomationProperties.Name="{Binding DataContext.Strings.SelectAppAutomationName, RelativeSource={RelativeSource AncestorType=ListView}}"/>
                               </Border>
@@ -556,12 +587,32 @@
                   <ListView x:Name="SearchResultsList"
                             ItemsSource="{Binding SearchResults}"
                             SelectedItem="{Binding SelectedSearchResult}"
-                            SelectionMode="Extended"
-                            SelectionChanged="OnSearchSelectionChanged"
+                            SelectionMode="Single"
                             helpers:GridViewAutoSizeBehavior.Enabled="True"
                             AutomationProperties.Name="{Binding Strings.SearchResultsAutomationName}">
                     <ListView.View>
                       <GridView>
+                        <GridViewColumn Width="{StaticResource SelectColumnWidth}"
+                                        helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource SelectColumnWidth}"
+                                        Header="">
+                          <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                              <CheckBox IsThreeState="True"
+                                        IsChecked="{Binding DataContext.AreAllSearchResultsSelected, RelativeSource={RelativeSource AncestorType=ListView}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        HorizontalAlignment="Center"
+                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllSearchResults, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                            </DataTemplate>
+                          </GridViewColumn.HeaderTemplate>
+                          <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Style="{StaticResource TableCellCompactBorderStyle}">
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          HorizontalAlignment="Center"
+                                          AutomationProperties.Name="{Binding DataContext.Strings.SelectSearchResultAutomationName, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                              </Border>
+                            </DataTemplate>
+                          </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
                         <GridViewColumn helpers:GridViewAutoSizeBehavior.StarWidth="1.35"
                                         helpers:GridViewAutoSizeBehavior.MinWidth="320"
                                         Header="{Binding DataContext.Strings.Name, RelativeSource={RelativeSource AncestorType=ListView}}">
@@ -706,10 +757,18 @@
                         <GridViewColumn Width="{StaticResource SelectColumnWidth}"
                                         helpers:GridViewAutoSizeBehavior.MinWidth="{StaticResource SelectColumnWidth}"
                                         Header="">
+                          <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                              <CheckBox IsThreeState="True"
+                                        IsChecked="{Binding DataContext.AreAllUpdatesSelected, RelativeSource={RelativeSource AncestorType=ListView}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        HorizontalAlignment="Center"
+                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllUpdates, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                            </DataTemplate>
+                          </GridViewColumn.HeaderTemplate>
                           <GridViewColumn.CellTemplate>
                             <DataTemplate>
                               <Border Style="{StaticResource TableCellCompactBorderStyle}">
-                                <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                           HorizontalAlignment="Center"
                                           AutomationProperties.Name="{Binding DataContext.Strings.SelectUpdateAutomationName, RelativeSource={RelativeSource AncestorType=ListView}}"/>
                               </Border>

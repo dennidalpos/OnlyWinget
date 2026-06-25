@@ -415,9 +415,9 @@ public sealed class SearchResultsLayoutTests
                     DoEvents();
 
                     var gridView = Assert.IsType<GridView>(searchResultsList.View);
-                    Assert.True(gridView.Columns[0].Width >= 320d);
-                    Assert.True(gridView.Columns[1].Width >= 360d);
-                    Assert.True(gridView.Columns[2].Width >= 180d);
+                    Assert.True(gridView.Columns[1].Width >= 320d);
+                    Assert.True(gridView.Columns[2].Width >= 360d);
+                    Assert.True(gridView.Columns[3].Width >= 180d);
 
                     AssertTextFitsSingleLine(searchResultsList, "Microsoft .NET Windows Desktop Runtime 10.0");
                     AssertTextFitsSingleLine(searchResultsList, "Microsoft.DotNet.DesktopRuntime.10");

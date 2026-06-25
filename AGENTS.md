@@ -4,21 +4,21 @@ Repository-specific instructions for Codex.
 
 Primary local environment: **Windows + PowerShell**.
 
-Use repository conventions when they are clear. Keep changes small, focused, verifiable, and limited to the requested task.
+Use repository conventions when they are clear. Keep changes focused, verifiable, and aligned with improving the current application rather than preserving obsolete behavior.
 
 ---
 
 ## 1. Priorities
 
 1. Preserve user work.
-2. Make the smallest correct repository change.
+2. Improve and simplify the current application.
 3. Keep the repository clean and navigable.
 4. Follow existing repository conventions.
 5. Verify with available repository checks.
 6. Keep `PROJECT_STATUS.json` as a todo-only file when present or requested.
 7. Report changes, checks, and remaining uncertainty.
 
-Do not change unrelated files. Do not introduce dependencies, public API changes, config/deployment changes, broad refactors, migrations, or destructive operations unless the task clearly requires them.
+Do not change unrelated files. Do not introduce dependencies, config/deployment changes, broad refactors, migrations, or destructive operations unless they are needed to improve, clean up, or complete the requested work.
 
 Do not claim a check passed unless it was actually run and passed.
 
@@ -26,11 +26,15 @@ Do not claim a check passed unless it was actually run and passed.
 
 ## 2. Fresh project policy
 
-When creating or initializing a new project, treat it as fresh/greenfield unless the user explicitly says it must integrate with legacy systems.
+Treat OnlyWinget as a new/greenfield application unless the user explicitly says it must integrate with legacy systems, existing production data, or old public APIs.
 
-Do not add legacy compatibility layers, migration scaffolding, deprecated patterns, transitional folder names, backward-compatibility shims, historical cleanup work, or assumptions about previous production users/data/APIs.
+Prefer current conventions, clean architecture, minimal structure, and only the files needed for the current product direction.
 
-Prefer current conventions, clean architecture, minimal structure, and only the files needed for the requested scope.
+You may make destructive internal changes when they improve correctness, maintainability, UX, or cleanup. This includes removing obsolete code paths, replacing flawed logic, changing internal data flow, rewriting local implementations, or deleting stale files. Preserve user work and avoid destructive Git operations unless explicitly requested.
+
+Remove legacy code regularly. Do not add or keep compatibility facades, migration scaffolding, deprecated patterns, transitional folders, backward-compatibility shims, historical cleanup work, or assumptions about previous production users/data/APIs unless the user explicitly asks for them.
+
+Maintain exactly one current implementation/version of each feature, data model, workflow, script, and document until the user explicitly orders otherwise. Do not keep parallel old/new implementations, duplicate scripts, alternate docs, compatibility modes, or versioned variants as a hedge. When replacing something, remove the old path in the same change when practical.
 
 ---
 
@@ -59,8 +63,9 @@ For implementation tasks:
 4. Implement the smallest production-quality change.
 5. Add or update tests when behavior changes and a test framework exists.
 6. Update docs only when setup, commands, behavior, public API, deployment, scripts, or structure change.
-7. Run the most relevant available checks.
-8. Perform a cleanliness check before the final response.
+7. Run native formatting and linting regularly when practical.
+8. Run the most relevant available checks.
+9. Perform a cleanliness check before the final response.
 
 For read-only tasks, do not modify files. Report findings, affected areas, recommended fixes, and review limits.
 
@@ -135,11 +140,19 @@ Scripts must run from the repository root, validate required tools, fail with no
 
 Update `scripts/README.md` when public scripts are added, removed, or renamed.
 
+Maintain one authoritative script per task. If a new script replaces an old command or wrapper, remove or update the old one in the same change when practical.
+
 ---
 
 ## 9. Verification
 
 When behavior changes, add or update tests using the existing framework.
+
+Run formatting and linting with repository-native tools regularly:
+
+- Prefer existing scripts such as `scripts/format.ps1`, `scripts/lint.ps1`, `scripts/typecheck.ps1`, `scripts/test.ps1`, `scripts/build.ps1`, or `scripts/check.ps1` when present.
+- If native format/lint tools are missing and code quality work requires them, add and configure appropriate project-native tooling and scripts instead of relying on ad hoc commands.
+- Respect the existing package manager, lockfiles, and .NET tooling. Do not install tools only for convenience when an existing native tool already covers the need.
 
 If no test framework exists, do not install one automatically unless required. Provide a practical manual verification path instead.
 

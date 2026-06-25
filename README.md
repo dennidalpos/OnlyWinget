@@ -13,8 +13,10 @@ OnlyWinget is a Windows desktop app for managing local `winget` package workflow
 - Inspect package metadata before adding searched packages to a preset.
 - Configure install options captured from package metadata, including version, scope, architecture, locale, installer type, install mode, and custom arguments when available.
 - Advanced `--custom` and `--override` arguments are preview-redacted and can use environment-variable placeholders such as `%ONLYWINGET_LICENSE_KEY%` to avoid saving secrets directly in preset files.
-- Run install, uninstall, and pause actions from saved presets.
-- Review available package upgrades and run selected upgrades.
+- Select preset rows with row/header checkboxes and run install or uninstall actions only for the selected non-paused rows.
+- Apply batch actions to selected preset rows, including remove selected, set install, set uninstall, and set pause.
+- Search packages through checkbox-based multi-select results and add all selected packages, with manual ID fallback still available.
+- Review available package upgrades and run selected upgrades with row/header checkboxes.
 - Cancel an in-progress batch or update operation; direct and elevated `winget` executions are bounded by timeouts.
 - Enforce a single application instance per Windows session to protect the saved preset library from concurrent edits.
 - Persist presets, runtime logs, and UI preferences under `%LOCALAPPDATA%\OnlyWinget`.
@@ -114,6 +116,24 @@ Release versioning, tagging, artifact selection, and GitHub release publishing a
 - Application icon and package logo: `src\OnlyWinget\Assets\OnlyWinget.ico` and `src\OnlyWinget\Assets\OnlyWinget-icon.png`.
 - Installer UI assets: `src\OnlyWinget.Setup\Assets\WixUIBanner.bmp`, `src\OnlyWinget.Setup\Assets\WixUIDialog.bmp`, `src\OnlyWinget.Setup\BurnResponsiveTheme.xml`, and `src\OnlyWinget.Setup\BurnResponsiveTheme.wxl`.
 - Sample preset file: `media\Default.onlywinget.json`.
+
+## Preset JSON Schema
+
+OnlyWinget now saves and imports only schema v2 preset JSON. Selection checkboxes are UI state and are not persisted; use `"action": "Pause"` to keep a preset row but skip it during batch execution.
+
+```json
+{
+  "SchemaVersion": 2,
+  "Tabs": [
+    {
+      "Name": "Default",
+      "Apps": []
+    }
+  ]
+}
+```
+
+Preset exports use `.onlywinget.json` with `"schemaVersion": 2` and no `enabled` fields. Legacy or incompatible local `AppsList.json` files are backed up before replacement and the app starts from an empty Default preset.
 
 ## Project Status
 

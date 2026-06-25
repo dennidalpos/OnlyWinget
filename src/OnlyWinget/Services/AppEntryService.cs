@@ -12,11 +12,16 @@ namespace OnlyWinget.Services;
 
 public sealed class AppEntryService : IAppEntryService
 {
-    private readonly WingetService _wingetService;
+    private readonly WingetQueryService _wingetQueryService;
 
     public AppEntryService(WingetService wingetService)
+        : this(new WingetQueryService(wingetService))
     {
-        _wingetService = wingetService;
+    }
+
+    public AppEntryService(WingetQueryService wingetQueryService)
+    {
+        _wingetQueryService = wingetQueryService ?? throw new ArgumentNullException(nameof(wingetQueryService));
     }
 
     public AppEntryValidationError ValidateForInsert(string? id, IEnumerable<AppEntry> currentApps, string? source = "winget", string? architecture = null)
@@ -33,7 +38,7 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.DuplicateId;
         }
 
-        return _wingetService.TestAppExists(normalizedId, normalizedSource)
+        return _wingetQueryService.TestAppExists(normalizedId, normalizedSource)
             ? AppEntryValidationError.None
             : AppEntryValidationError.InvalidId;
     }
@@ -73,14 +78,14 @@ public sealed class AppEntryService : IAppEntryService
             return AppEntryValidationError.DuplicateId;
         }
 
-        return _wingetService.TestAppExists(normalizedId, normalizedSource)
+        return _wingetQueryService.TestAppExists(normalizedId, normalizedSource)
             ? AppEntryValidationError.None
             : AppEntryValidationError.InvalidId;
     }
 
     public SavedPackageResolutionResult ResolveSavedPackage(AppEntry app)
     {
-        return _wingetService.ResolveSavedPackage(app.Id, app.Name, app.Source);
+        return _wingetQueryService.ResolveSavedPackage(app.Id, app.Name, app.Source);
     }
 
     public AppEntry Create(string? name, string id, string? source = "winget", string? action = null)

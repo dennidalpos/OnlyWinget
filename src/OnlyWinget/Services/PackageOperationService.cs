@@ -15,6 +15,7 @@ namespace OnlyWinget.Services;
 public sealed class PackageOperationService
 {
     private readonly WingetService _wingetService;
+    private readonly WingetQueryService _wingetQueryService;
     private readonly IInstallCommandBuilder _installCommandBuilder;
     private readonly IElevatedWingetLauncher _elevatedLauncher;
     private readonly bool _isCurrentProcessElevated;
@@ -23,9 +24,11 @@ public sealed class PackageOperationService
         WingetService wingetService,
         IInstallCommandBuilder installCommandBuilder,
         IElevatedWingetLauncher? elevatedLauncher = null,
-        bool? isCurrentProcessElevated = null)
+        bool? isCurrentProcessElevated = null,
+        WingetQueryService? wingetQueryService = null)
     {
         _wingetService = wingetService;
+        _wingetQueryService = wingetQueryService ?? new WingetQueryService(wingetService);
         _installCommandBuilder = installCommandBuilder;
         _elevatedLauncher = elevatedLauncher ?? new ElevatedWingetLauncher();
         _isCurrentProcessElevated = isCurrentProcessElevated ?? ProcessElevationService.IsRunningAsAdministrator;
@@ -74,7 +77,9 @@ public sealed class PackageOperationService
             };
         }
 
-        var resolution = _wingetService.ResolveSavedPackage(request.Id, request.Name, request.Source, cancellationToken);
+        var resolution = await _wingetQueryService
+            .ResolveSavedPackageAsync(request.Id, request.Name, request.Source, cancellationToken)
+            .ConfigureAwait(false);
         if (!resolution.IsResolved)
         {
             return CreateResolutionFailure(request, resolution, strings);
@@ -147,7 +152,7 @@ public sealed class PackageOperationService
         CancellationToken cancellationToken)
     {
         var liveOutputLines = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var commandResult = await Task.Run(() => _wingetService.UpgradeApp(
+        var commandResult = await _wingetService.UpgradeAppAsync(
             request.Id,
             request.Source,
             request.Name,
@@ -166,14 +171,14 @@ public sealed class PackageOperationService
 
                 onOutputLine?.Invoke(line);
             },
-            cancellationToken), cancellationToken).ConfigureAwait(false);
+            cancellationToken).ConfigureAwait(false);
 
         var execution = new CommandExecutionResult(commandResult, PackageOperationExecutionMode.Direct, string.Empty, liveOutputLines.Count > 0);
         if (commandResult.ExitCode == 0)
         {
-            var stillAvailableUpdate = await Task.Run(
-                () => _wingetService.FindAvailableUpdate(request.Id, request.Source, cancellationToken),
-                cancellationToken).ConfigureAwait(false);
+            var stillAvailableUpdate = await _wingetQueryService
+                .FindAvailableUpdateAsync(request.Id, request.Source, cancellationToken)
+                .ConfigureAwait(false);
             if (stillAvailableUpdate != null)
             {
                 var message = UpdateVerificationFormatter.FormatStillAvailableStatus(strings.LocaleCode);
@@ -259,13 +264,8 @@ public sealed class PackageOperationService
         Action<string>? onOutputLine,
         CancellationToken cancellationToken)
     {
-        var commandResult = await Task.Run(() =>
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var result = _wingetService.UpgradeWinget();
-            onOutputLine?.Invoke(result.Output);
-            return result;
-        }, cancellationToken).ConfigureAwait(false);
+        var commandResult = await _wingetService.UpgradeWingetAsync(cancellationToken).ConfigureAwait(false);
+        onOutputLine?.Invoke(commandResult.Output);
 
         return new PackageOperationResult
         {
@@ -288,7 +288,7 @@ public sealed class PackageOperationService
         Action<string>? onOutputLine,
         CancellationToken cancellationToken)
     {
-        var commandResult = await Task.Run(() => _wingetService.Invoke(new[] { "source", "update" }, onOutputLine, cancellationToken), cancellationToken).ConfigureAwait(false);
+        var commandResult = await _wingetService.UpdateSourcesAsync(onOutputLine, cancellationToken).ConfigureAwait(false);
         return new PackageOperationResult
         {
             Kind = request.Kind,
@@ -320,7 +320,7 @@ public sealed class PackageOperationService
         onExecutionStarting?.Invoke(executionMode);
         var result = executionMode == PackageOperationExecutionMode.Elevated
             ? await Task.Run(() => _elevatedLauncher.Launch(args, logPath, wrappedOutput, cancellationToken: cancellationToken), cancellationToken).ConfigureAwait(false)
-            : await Task.Run(() => _wingetService.Invoke(args, wrappedOutput, cancellationToken), cancellationToken).ConfigureAwait(false);
+            : await _wingetService.InvokeAsync(args, wrappedOutput, cancellationToken).ConfigureAwait(false);
 
         return new CommandExecutionResult(result, executionMode, logPath ?? string.Empty, receivedLiveOutput);
     }

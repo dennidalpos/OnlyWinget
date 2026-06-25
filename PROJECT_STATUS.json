@@ -1,6 +1,10 @@
 {
   "todos": [
-    "Run end-to-end validation of the unified package operation pipeline on a clean or dedicated Windows host, including elevated install, uninstall, upgrade, winget update, and preset batch flows before tagging.",
+    "Remove the temporary WingetService compatibility facade after all callers and tests use the split services directly.",
+    "Manually validate preset batch flows on a Windows host with winget, including apply selected, remove selected, set selected actions, and search add selected.",
+    "Manually validate update batch flows on a Windows host with winget, including refresh, select all, clear selection, and apply selected updates.",
+    "Run winget smoke tests with -RunWingetSmoke on a machine with winget installed and configured.",
+    "Run elevated package lifecycle validation on a clean or dedicated Windows host, including install, uninstall, upgrade, and winget source update.",
     "Run the hosted GitHub Actions build-gate workflow for the exact release commit before tagging."
   ]
 }

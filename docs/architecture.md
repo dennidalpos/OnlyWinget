@@ -38,8 +38,11 @@ The WiX installer source is versioned under `src/OnlyWinget.Setup`, but it is no
 
 The app uses a lightweight MVVM structure:
 
-- `ViewModels/MainViewModel.cs` orchestrates the shell, search, updates, logging, progress reporting, and batch operations.
-- `ViewModels/PresetWorkspaceViewModel.cs` manages preset tabs, CRUD actions, import/export, and local list editing.
+- `ViewModels/MainViewModel.cs` orchestrates shell state, high-level commands, progress, cancellation, and cross-workspace operations.
+- `ViewModels/PresetWorkspaceViewModel.cs` manages preset tabs, CRUD actions, import/export, local list editing, selected-row counts, tri-state preset selection, and selected-row batch actions.
+- `ViewModels/SearchWorkspaceViewModel.cs` owns search query state, search result selection, selected counts, and tri-state search result selection.
+- `ViewModels/UpdatesWorkspaceViewModel.cs` owns update list state, update selection, selected counts, and tri-state update selection.
+- `Services/OutputLogBuffer.cs` stores bounded operation output and keeps the shell log from growing without limit.
 - `Services/` contains the application services for persistence, localization, `winget` process execution, package interrogation, package operation orchestration, updates, tabs, dialogs, and elevation handling.
 - `Models/` contains the observable UI models and payload types used by the workspace, update, and interrogation flows.
 
@@ -53,11 +56,25 @@ The main preset library is stored at:
 
 - `%LOCALAPPDATA%\OnlyWinget\AppsList.json`
 
-The app supports only the tabbed JSON store under `%LOCALAPPDATA%\OnlyWinget`. The local preset library and imported preset JSON files are rejected before full deserialization when they exceed the current 5 MiB application data limit.
+The app supports only schema v2 JSON under `%LOCALAPPDATA%\OnlyWinget`. The local preset library has this shape:
+
+```json
+{
+  "SchemaVersion": 2,
+  "Tabs": [
+    {
+      "Name": "Default",
+      "Apps": []
+    }
+  ]
+}
+```
+
+The local preset library and imported preset JSON files are rejected before full deserialization when they exceed the current 5 MiB application data limit.
 
 If the saved preset library is invalid, corrupted, legacy, or temporarily unreadable, the UI starts with an empty default preset and marks the original file as requiring recovery protection. Before the app writes a replacement `AppsList.json`, it first copies the original file to a timestamped `AppsList.json.recovery-*.bak` file in the same directory. If that recovery backup cannot be created, the save is blocked.
 
-Preset rows support install, uninstall, and pause actions. Paused rows are skipped during batch execution and marked as paused in the UI instead of invoking `winget`.
+Preset rows support install, uninstall, and pause actions. Row checkbox selection is transient UI state and is not saved. Batch apply runs only selected rows whose action is not pause. Paused rows are the only persisted way to keep a row but skip it during execution.
 
 UI preferences are stored at:
 
@@ -67,7 +84,7 @@ The current implementation persists the preferred UI language there. Settings JS
 
 ### Import and export
 
-Presets can be exported and imported as readable JSON files using the `.onlywinget.json` extension. Exported presets preserve package action, source, installer selectors, install mode, log/location support, elevation metadata, and advanced installer arguments. The import flow normalizes preset names and deduplicates exact package entries by package ID, source, and architecture.
+Presets can be exported and imported as readable schema v2 JSON files using the `.onlywinget.json` extension. Exported presets preserve package action, source, installer selectors, install mode, log/location support, elevation metadata, and advanced installer arguments. Exported presets do not include row selection state. The import flow normalizes preset names and deduplicates exact package entries by package ID, source, and architecture.
 
 Imported preset rows that contain advanced installer arguments (`--custom` or `--override`) are treated as untrusted until reviewed in the package options dialog, even when the file marks them as previously reviewed. Batch execution blocks those rows and does not pass their advanced arguments to `winget` until the user reviews and saves the row.
 
@@ -87,6 +104,8 @@ The runtime localization catalog applies to the WPF shell. MSI installer UI text
 ### `winget` integration
 
 The application depends on the system `winget` CLI being available. `AppStartupCoordinator` blocks before the main window is shown when `winget` is unavailable, explains that Microsoft App Installer with `winget` 1.x is required, gives `winget --version` as the verification command, and can open the official Microsoft App Installer page. Non-blocking post-startup checks log unexpected failures as structured `startup_check_failed` events with the failing stage, exception type, and HResult, without copying raw exception messages into the user-facing log.
+
+`WingetService` remains the compatibility facade used by existing callers. Internally, query parsing and operation execution stay separated through `WingetTableParser`, `WingetOutputClassifier`, `WingetPackageInterrogationService`, `PackageOperationService`, and `OperationRunner`.
 
 `WingetService` is responsible for:
 

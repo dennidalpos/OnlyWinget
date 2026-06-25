@@ -31,6 +31,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     private bool _areActionsEnabled = true;
     private bool _requiresDataRecoveryBackup;
     private string _dataRecoverySourcePath = string.Empty;
+    private readonly HashSet<AppEntry> _observedCurrentAppItems = new();
 
     public PresetWorkspaceViewModel(
         bool isWingetAvailable,
@@ -60,6 +61,10 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         AddCommand = new RelayCommand(AddApp, () => _isWingetAvailable && AreActionsEnabled);
         EditCommand = new RelayCommand(EditAppAsync, () => SelectedApp != null && AreActionsEnabled);
         RemoveCommand = new RelayCommand(RemoveApp, () => SelectedApp != null && AreActionsEnabled);
+        RemoveSelectedCommand = new RelayCommand(RemoveSelectedApps, () => AreActionsEnabled && SelectedAppCount > 0);
+        SetSelectedInstallCommand = new RelayCommand(() => SetSelectedAction(AppActions.Install), () => AreActionsEnabled && SelectedAppCount > 0);
+        SetSelectedUninstallCommand = new RelayCommand(() => SetSelectedAction(AppActions.Uninstall), () => AreActionsEnabled && SelectedAppCount > 0);
+        SetSelectedPauseCommand = new RelayCommand(() => SetSelectedAction(AppActions.Pause), () => AreActionsEnabled && SelectedAppCount > 0);
         SaveCommand = new RelayCommand(SaveData, () => _isWingetAvailable && AreActionsEnabled);
         NewTabCommand = new RelayCommand(CreateTab, () => _isWingetAvailable && AreActionsEnabled);
         RenameTabCommand = new RelayCommand(RenameTab, () => _isWingetAvailable && AreActionsEnabled);
@@ -82,6 +87,22 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         : SelectedTabName;
 
     public string CurrentPresetAppCountText => string.Format(Strings.PresetAppCountText, CurrentApps.Count);
+
+    public int SelectedAppCount => CurrentApps.Count(app => app.IsSelected);
+
+    public string SelectedCountText => string.Format(Strings.SelectedCountText, SelectedAppCount, CurrentApps.Count);
+
+    public bool? AreAllPresetRowsSelected
+    {
+        get => GetTriStateSelection(CurrentApps);
+        set
+        {
+            if (value.HasValue)
+            {
+                SetAllPresetRowsSelected(value.Value);
+            }
+        }
+    }
 
     public string SelectedTabName
     {
@@ -108,10 +129,13 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
             }
 
             _currentApps.CollectionChanged -= OnCurrentAppsCollectionChanged;
+            DetachCurrentAppItems();
             if (SetProperty(ref _currentApps, value))
             {
                 _currentApps.CollectionChanged += OnCurrentAppsCollectionChanged;
+                SyncCurrentAppItems();
                 OnPropertyChanged(nameof(CurrentPresetAppCountText));
+                RaiseSelectionStateChanged(logSelection: false);
             }
         }
     }
@@ -143,6 +167,10 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     public RelayCommand AddCommand { get; }
     public RelayCommand EditCommand { get; }
     public RelayCommand RemoveCommand { get; }
+    public RelayCommand RemoveSelectedCommand { get; }
+    public RelayCommand SetSelectedInstallCommand { get; }
+    public RelayCommand SetSelectedUninstallCommand { get; }
+    public RelayCommand SetSelectedPauseCommand { get; }
     public RelayCommand SaveCommand { get; }
     public RelayCommand NewTabCommand { get; }
     public RelayCommand RenameTabCommand { get; }
@@ -238,7 +266,9 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
         foreach (var option in options)
         {
-            CurrentApps.Add(_appEntryService.Create(interrogation, option));
+            var entry = _appEntryService.Create(interrogation, option);
+            entry.IsSelected = true;
+            CurrentApps.Add(entry);
         }
 
         return true;
@@ -270,7 +300,9 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
             return false;
         }
 
-        CurrentApps.Add(_appEntryService.Create(name, normalizedId, source));
+        var entry = _appEntryService.Create(name, normalizedId, source);
+        entry.IsSelected = true;
+        CurrentApps.Add(entry);
         return true;
     }
 
@@ -278,11 +310,34 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     {
         _currentApps = collection;
         _currentApps.CollectionChanged += OnCurrentAppsCollectionChanged;
+        SyncCurrentAppItems();
     }
 
     private void OnCurrentAppsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems != null)
+        {
+            foreach (var app in e.OldItems.OfType<AppEntry>())
+            {
+                DetachCurrentAppItem(app);
+            }
+        }
+
+        if (e.NewItems != null)
+        {
+            foreach (var app in e.NewItems.OfType<AppEntry>())
+            {
+                AttachCurrentAppItem(app);
+            }
+        }
+
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            SyncCurrentAppItems();
+        }
+
         OnPropertyChanged(nameof(CurrentPresetAppCountText));
+        RaiseSelectionStateChanged(logSelection: false);
     }
 
     private void UpdateCurrentTab(string tabName)
@@ -423,6 +478,43 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
 
         CurrentApps.Remove(SelectedApp);
         SelectedApp = null;
+    }
+
+    private void RemoveSelectedApps()
+    {
+        var selected = CurrentApps.Where(app => app.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var app in selected)
+        {
+            CurrentApps.Remove(app);
+        }
+
+        if (SelectedApp != null && !CurrentApps.Contains(SelectedApp))
+        {
+            SelectedApp = null;
+        }
+
+        _appendOutput($"event=batch_removed scope=preset count={selected.Count}");
+    }
+
+    private void SetSelectedAction(string action)
+    {
+        var selected = CurrentApps.Where(app => app.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var app in selected)
+        {
+            app.Action = action;
+        }
+
+        _appendOutput($"event=batch_action_applied scope=preset action={action.ToLowerInvariant()} count={selected.Count}");
     }
 
     private void SaveData()
@@ -706,6 +798,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         OnPropertyChanged(nameof(Strings));
         OnPropertyChanged(nameof(CurrentPresetName));
         OnPropertyChanged(nameof(CurrentPresetAppCountText));
+        OnPropertyChanged(nameof(SelectedCountText));
     }
 
     private void RaiseMainCommandCanExecute()
@@ -713,6 +806,10 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
         AddCommand.RaiseCanExecuteChanged();
         EditCommand.RaiseCanExecuteChanged();
         RemoveCommand.RaiseCanExecuteChanged();
+        RemoveSelectedCommand.RaiseCanExecuteChanged();
+        SetSelectedInstallCommand.RaiseCanExecuteChanged();
+        SetSelectedUninstallCommand.RaiseCanExecuteChanged();
+        SetSelectedPauseCommand.RaiseCanExecuteChanged();
         SaveCommand.RaiseCanExecuteChanged();
         NewTabCommand.RaiseCanExecuteChanged();
         RenameTabCommand.RaiseCanExecuteChanged();
@@ -724,5 +821,90 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     private void RaiseCommandCanExecute()
     {
         RaiseMainCommandCanExecute();
+    }
+
+    private void SetAllPresetRowsSelected(bool isSelected)
+    {
+        foreach (var app in CurrentApps)
+        {
+            app.IsSelected = isSelected;
+        }
+
+        RaiseSelectionStateChanged(logSelection: true);
+    }
+
+    private void SyncCurrentAppItems()
+    {
+        var currentItems = new HashSet<AppEntry>(CurrentApps);
+        foreach (var app in _observedCurrentAppItems.Where(app => !currentItems.Contains(app)).ToList())
+        {
+            DetachCurrentAppItem(app);
+        }
+
+        foreach (var app in currentItems)
+        {
+            AttachCurrentAppItem(app);
+        }
+    }
+
+    private void AttachCurrentAppItem(AppEntry app)
+    {
+        if (_observedCurrentAppItems.Add(app))
+        {
+            app.PropertyChanged += OnCurrentAppPropertyChanged;
+        }
+    }
+
+    private void DetachCurrentAppItem(AppEntry app)
+    {
+        if (_observedCurrentAppItems.Remove(app))
+        {
+            app.PropertyChanged -= OnCurrentAppPropertyChanged;
+        }
+    }
+
+    private void DetachCurrentAppItems()
+    {
+        foreach (var app in _observedCurrentAppItems.ToList())
+        {
+            DetachCurrentAppItem(app);
+        }
+    }
+
+    private void OnCurrentAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AppEntry.IsSelected))
+        {
+            RaiseSelectionStateChanged(logSelection: true);
+        }
+    }
+
+    private void RaiseSelectionStateChanged(bool logSelection)
+    {
+        if (logSelection)
+        {
+            _appendOutput($"event=batch_selection_changed scope=preset selected_count={SelectedAppCount} total_count={CurrentApps.Count}");
+        }
+
+        OnPropertyChanged(nameof(SelectedAppCount));
+        OnPropertyChanged(nameof(SelectedCountText));
+        OnPropertyChanged(nameof(AreAllPresetRowsSelected));
+        RaiseMainCommandCanExecute();
+    }
+
+    private static bool? GetTriStateSelection(IReadOnlyCollection<AppEntry> apps)
+    {
+        if (apps.Count == 0)
+        {
+            return false;
+        }
+
+        var selectedCount = apps.Count(app => app.IsSelected);
+        if (selectedCount == 0)
+        {
+            return false;
+        }
+
+        return selectedCount == apps.Count ? true : null;
     }
 }

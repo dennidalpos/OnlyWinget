@@ -3,6 +3,7 @@
 // Proprietary and confidential. Unauthorized copying, modification,
 // distribution, sublicensing, or commercial use is prohibited.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Commands;
@@ -35,5 +36,19 @@ public sealed class AsyncRelayCommandTests
         release.TrySetResult();
         await Task.Delay(50);
         Assert.Equal(1, Volatile.Read(ref executions));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ExposesExecutionTaskAndLastException()
+    {
+        var expected = new InvalidOperationException("boom");
+        var command = new AsyncRelayCommand(() => Task.FromException(expected));
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => command.ExecuteAsync());
+
+        Assert.Same(expected, thrown);
+        Assert.Same(expected, command.LastException);
+        Assert.Null(command.ExecutionTask);
+        Assert.True(command.CanExecute(null));
     }
 }

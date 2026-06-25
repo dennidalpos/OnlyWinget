@@ -45,7 +45,7 @@ Microsoft PowerToys          Microsoft.PowerToys        0.90.0       0.90.1     
         Assert.Equal("0.90.0", update.Version);
         Assert.Equal("0.90.1", update.Available);
         Assert.Equal("winget", update.Source);
-        Assert.True(update.Selected);
+        Assert.True(update.IsSelected);
     }
 
     [Fact]

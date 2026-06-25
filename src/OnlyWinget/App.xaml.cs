@@ -41,13 +41,14 @@ public partial class App : Application
 
         var operatingSystemInfo = new OperatingSystemInfoService().Detect();
         var wingetService = new WingetService();
+        var wingetQueryService = new WingetQueryService(wingetService);
         var installCommandBuilder = new InstallCommandBuilder(wingetService);
-        var interrogationService = new WingetPackageInterrogationService(wingetService, new HttpClient(), operatingSystemInfo: operatingSystemInfo);
+        var interrogationService = new WingetPackageInterrogationService(wingetService, new HttpClient(), operatingSystemInfo: operatingSystemInfo, wingetQueryService: wingetQueryService);
         var dataService = new AppDataService();
         var dialogService = new DialogService(interrogationService, localizationService);
-        var appEntryService = new AppEntryService(wingetService);
+        var appEntryService = new AppEntryService(wingetQueryService);
         var tabService = new TabService();
-        var operationService = new PackageOperationService(wingetService, installCommandBuilder);
+        var operationService = new PackageOperationService(wingetService, installCommandBuilder, wingetQueryService: wingetQueryService);
         var operationRunner = new OperationRunner(wingetService, installCommandBuilder, operationService: operationService);
         var startupCoordinator = new AppStartupCoordinator(wingetService, dialogService, operationService: operationService);
 
@@ -59,7 +60,8 @@ public partial class App : Application
             appEntryService,
             tabService,
             operationRunner,
-            operatingSystemInfo);
+            operatingSystemInfo,
+            wingetQueryService);
 
         if (!startupCoordinator.CanContinueStartup(viewModel))
         {

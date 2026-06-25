@@ -42,6 +42,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private readonly WingetService _wingetService;
+    private readonly WingetQueryService _wingetQueryService;
     private readonly HttpClient _httpClient;
     private readonly Func<string> _architectureProvider;
     private readonly Func<CultureInfo> _cultureProvider;
@@ -62,9 +63,11 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         TimeSpan? manifestFetchTimeout = null,
         int? manifestMaxBytes = null,
         int? manifestMaxAttempts = null,
-        TimeSpan? manifestRetryBaseDelay = null)
+        TimeSpan? manifestRetryBaseDelay = null,
+        WingetQueryService? wingetQueryService = null)
     {
         _wingetService = wingetService;
+        _wingetQueryService = wingetQueryService ?? new WingetQueryService(wingetService);
         _httpClient = httpClient ?? new HttpClient();
         _manifestFetchTimeout = ValidatePositive(manifestFetchTimeout ?? DefaultManifestFetchTimeout, nameof(manifestFetchTimeout));
         _manifestMaxBytes = ValidatePositive(manifestMaxBytes ?? DefaultManifestMaxBytes, nameof(manifestMaxBytes));
@@ -119,7 +122,9 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         var manifestFingerprint = string.Empty;
         var isReducedMode = true;
         cancellationToken.ThrowIfCancellationRequested();
-        var installedDetails = _wingetService.TryLoadInstalledPackageDetails(showMetadata.Id, showMetadata.Source, cancellationToken);
+        var installedDetails = await _wingetQueryService
+            .TryLoadInstalledPackageDetailsAsync(showMetadata.Id, showMetadata.Source, cancellationToken)
+            .ConfigureAwait(false);
         var defaultSelection = new SelectedInstallOptions
         {
             LogPath = _wingetService.CreateOperationLogPath("install", showMetadata.Id),
@@ -242,7 +247,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
     private async Task<WingetCommandResult> InvokeShowAsync(PackageInterrogationRequest request, CancellationToken cancellationToken)
     {
         var showArgs = BuildShowArguments(request);
-        return await Task.Run(() => _wingetService.Invoke(showArgs, null, cancellationToken), cancellationToken).ConfigureAwait(false);
+        return await _wingetService.InvokeAsync(showArgs, null, cancellationToken).ConfigureAwait(false);
     }
 
     private static bool TryBuildManifestUrl(string packageId, string version, out string url)

@@ -10,6 +10,9 @@ namespace OnlyWinget.Models;
 
 public sealed class AppDataRoot
 {
+    public const int CurrentSchemaVersion = 2;
+
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public List<AppTabData> Tabs { get; set; } = new();
 }
 
@@ -21,7 +24,6 @@ public sealed class AppTabData
 
 public sealed class AppDataItem
 {
-    public bool Enabled { get; set; } = true;
     public string Name { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
@@ -43,8 +45,8 @@ public sealed class AppDataItem
 
 public sealed class PresetFileRoot
 {
-    [JsonPropertyName("formatVersion")]
-    public int FormatVersion { get; set; } = 1;
+    [JsonPropertyName("schemaVersion")]
+    public int SchemaVersion { get; set; } = AppDataRoot.CurrentSchemaVersion;
 
     [JsonPropertyName("presetName")]
     public string PresetName { get; set; } = string.Empty;
@@ -55,9 +57,6 @@ public sealed class PresetFileRoot
 
 public sealed class PresetAppItem
 {
-    [JsonPropertyName("enabled")]
-    public bool Enabled { get; set; } = true;
-
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 

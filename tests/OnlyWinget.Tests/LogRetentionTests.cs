@@ -13,6 +13,18 @@ namespace OnlyWinget.Tests;
 public sealed class LogRetentionTests
 {
     [Fact]
+    public void OutputLogBuffer_TrimsToConfiguredMaxLines()
+    {
+        var buffer = new OutputLogBuffer(maxLineCount: 3);
+
+        buffer.AppendLines("one\ntwo");
+        buffer.AppendLines("three\r\nfour");
+
+        Assert.Equal(3, buffer.Count);
+        Assert.Equal(string.Join(Environment.NewLine, "two", "three", "four"), buffer.ToString());
+    }
+
+    [Fact]
     public void CleanupOldLogs_DeletesLogFilesOlderThanRetentionPeriod()
     {
         var dir = CreateTempDirectory();

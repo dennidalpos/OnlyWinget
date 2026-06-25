@@ -73,7 +73,7 @@ internal static class WingetTableParser
                 Version = FirstToken(row.GetValueOrDefault("Version", string.Empty)),
                 Available = FirstToken(row.GetValueOrDefault("Available", string.Empty)),
                 Source = NormalizeSource(row.GetValueOrDefault("Source", string.Empty)),
-                Selected = true
+                IsSelected = true
             })
             .Where(row => IsValidWingetId(row.Id))
             .ToList();

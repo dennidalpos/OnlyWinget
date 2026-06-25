@@ -5,10 +5,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using OnlyWinget.Models;
@@ -33,12 +31,9 @@ public sealed class WingetService
     private const string WingetPackageId = "Microsoft.AppInstaller";
     private const int AppInUseExitCode = -1978334975;
     private const int MaxInstallerDiagnosticLines = 8;
-    private const int WideConsoleWidth = 500;
-    private static readonly TimeSpan DefaultProcessTimeout = TimeSpan.FromHours(4);
-    private readonly Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult> _wingetRunner;
+    private readonly IWingetCommandRunner _wingetRunner;
     private readonly WingetRuntimeEnvironment _runtimeEnvironment;
     private readonly WingetOutputClassifier _outputClassifier;
-    private readonly TimeSpan? _processTimeoutOverride;
 
     public WingetService(
         Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult>? wingetRunner = null,
@@ -71,22 +66,27 @@ public sealed class WingetService
         Func<DateTime>? utcNow,
         TimeSpan? processTimeout,
         bool _)
+        : this(
+            wingetRunner == null ? null : new DelegateWingetCommandRunner(wingetRunner),
+            localRuntimeRoot,
+            utcNow,
+            processTimeout)
+    {
+    }
+
+    public WingetService(
+        IWingetCommandRunner? wingetRunner,
+        string? localRuntimeRoot = null,
+        Func<DateTime>? utcNow = null,
+        TimeSpan? processTimeout = null)
     {
         var runtimeRoot = localRuntimeRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OnlyWinget",
             "runtime");
-        _processTimeoutOverride = processTimeout;
-        if (_processTimeoutOverride.HasValue && _processTimeoutOverride.Value <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(processTimeout), "Process timeout must be greater than zero.");
-        }
-
-        _wingetRunner = wingetRunner == null
-            ? RunWingetProcess
-            : wingetRunner;
         _runtimeEnvironment = new WingetRuntimeEnvironment(runtimeRoot, utcNow ?? (() => DateTime.UtcNow));
         _outputClassifier = new WingetOutputClassifier();
+        _wingetRunner = wingetRunner ?? new WingetProcessRunner(_runtimeEnvironment, _outputClassifier, processTimeout);
     }
 
     public bool TestAvailable()
@@ -127,14 +127,14 @@ public sealed class WingetService
     {
         var installed = GetInstalledWingetVersion();
 
-        var result = await Task.Run(() => Invoke("upgrade", new Dictionary<string, string?>
+        var result = await InvokeAsync("upgrade", new Dictionary<string, string?>
         {
             ["--id"] = WingetPackageId,
             ["--exact"] = null,
             ["--include-unknown"] = null,
             ["--accept-source-agreements"] = null,
             ["--disable-interactivity"] = null
-        })).ConfigureAwait(false);
+        }, null, CancellationToken.None).ConfigureAwait(false);
 
         var availableUpdate = WingetTableParser.ParseUpgradeEntries(result.Output)
             .FirstOrDefault(entry => string.Equals(entry.Id, WingetPackageId, StringComparison.OrdinalIgnoreCase));
@@ -174,6 +174,25 @@ public sealed class WingetService
         return RunWinget(null, args.ToArray(), onOutputLine, cancellationToken);
     }
 
+    public Task<WingetCommandResult> InvokeAsync(
+        string command,
+        Dictionary<string, string?> parameters,
+        Action<string>? onOutputLine,
+        CancellationToken cancellationToken)
+    {
+        var args = new List<string> { command };
+        foreach (var pair in parameters)
+        {
+            args.Add(pair.Key);
+            if (!string.IsNullOrWhiteSpace(pair.Value))
+            {
+                args.Add(pair.Value);
+            }
+        }
+
+        return RunWingetAsync(null, args.ToArray(), onOutputLine, cancellationToken);
+    }
+
     public WingetCommandResult Invoke(IReadOnlyList<string> args, Action<string>? onOutputLine = null)
     {
         return Invoke(args, onOutputLine, CancellationToken.None);
@@ -182,6 +201,11 @@ public sealed class WingetService
     public WingetCommandResult Invoke(IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
     {
         return RunWinget(null, args, onOutputLine, cancellationToken);
+    }
+
+    public Task<WingetCommandResult> InvokeAsync(IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
+    {
+        return RunWingetAsync(null, args, onOutputLine, cancellationToken);
     }
 
     public bool TestAppExists(string id, string source = "winget")
@@ -419,14 +443,39 @@ public sealed class WingetService
         Action<string>? onOutputLine = null,
         CancellationToken cancellationToken = default)
     {
+        return UpgradeAppAsync(
+            id,
+            source,
+            name,
+            availableVersion,
+            configuredScope,
+            configuredArchitecture,
+            configuredLocale,
+            configuredInstallerType,
+            onOutputLine,
+            cancellationToken).GetAwaiter().GetResult();
+    }
+
+    public async Task<WingetCommandResult> UpgradeAppAsync(
+        string id,
+        string? source = "winget",
+        string? name = null,
+        string? availableVersion = null,
+        string? configuredScope = null,
+        string? configuredArchitecture = null,
+        string? configuredLocale = null,
+        string? configuredInstallerType = null,
+        Action<string>? onOutputLine = null,
+        CancellationToken cancellationToken = default)
+    {
         var parameters = CreatePackageParameters("upgrade", id, source, includeLog: true);
         parameters["--include-pinned"] = null;
-        var result = Invoke("upgrade", parameters, onOutputLine, cancellationToken);
+        var result = await InvokeAsync("upgrade", parameters, onOutputLine, cancellationToken).ConfigureAwait(false);
         if (ShouldFallbackToInstall(result) && !string.IsNullOrWhiteSpace(name))
         {
             var nameParameters = CreatePackageNameParameters("upgrade-by-name", name, source, includeLog: true);
             nameParameters["--include-pinned"] = null;
-            var nameResult = Invoke("upgrade", nameParameters, onOutputLine, cancellationToken);
+            var nameResult = await InvokeAsync("upgrade", nameParameters, onOutputLine, cancellationToken).ConfigureAwait(false);
             var nameLog = new List<string>();
             nameLog.AddRange(FormatCommandSummary("upgrade", parameters, result));
             nameLog.Add("retrying with installed package name");
@@ -452,7 +501,7 @@ public sealed class WingetService
             return ToDisplayResult("upgrade", parameters, result);
         }
 
-        var retryResult = Invoke("upgrade", retryParameters, onOutputLine, cancellationToken);
+        var retryResult = await InvokeAsync("upgrade", retryParameters, onOutputLine, cancellationToken).ConfigureAwait(false);
         var log = new List<string>();
         log.AddRange(FormatCommandSummary("upgrade", parameters, result));
         log.Add("retrying with installed package requirements");
@@ -461,6 +510,11 @@ public sealed class WingetService
     }
 
     public WingetCommandResult UpgradeWinget()
+    {
+        return UpgradeWingetAsync().GetAwaiter().GetResult();
+    }
+
+    public async Task<WingetCommandResult> UpgradeWingetAsync(CancellationToken cancellationToken = default)
     {
         var attempts = new List<(string Command, Dictionary<string, string?> Parameters)>
         {
@@ -475,7 +529,7 @@ public sealed class WingetService
 
         foreach (var attempt in attempts)
         {
-            var result = Invoke(attempt.Command, attempt.Parameters);
+            var result = await InvokeAsync(attempt.Command, attempt.Parameters, null, cancellationToken).ConfigureAwait(false);
             lastResult = result;
             log.AddRange(FormatCommandSummary(attempt.Command, attempt.Parameters, result));
 
@@ -501,7 +555,7 @@ public sealed class WingetService
         foreach (var source in new[] { "winget", null, "msstore" })
         {
             var parameters = CreatePackageParameters("install-winget", WingetPackageId, source, includeLog: true);
-            var result = Invoke("install", parameters);
+            var result = await InvokeAsync("install", parameters, null, cancellationToken).ConfigureAwait(false);
             lastResult = result;
             log.AddRange(FormatCommandSummary("install", parameters, result));
 
@@ -523,7 +577,12 @@ public sealed class WingetService
 
     public WingetCommandResult UpdateSources()
     {
-        return Invoke(new[] { "source", "update" });
+        return UpdateSourcesAsync().GetAwaiter().GetResult();
+    }
+
+    public Task<WingetCommandResult> UpdateSourcesAsync(Action<string>? onOutputLine = null, CancellationToken cancellationToken = default)
+    {
+        return InvokeAsync(new[] { "source", "update" }, onOutputLine, cancellationToken);
     }
 
     public void CleanupOldLogs()
@@ -551,202 +610,10 @@ public sealed class WingetService
         => RunWinget(singleArg, args, onOutputLine, CancellationToken.None);
 
     private WingetCommandResult RunWinget(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
-        => _wingetRunner(singleArg, args, onOutputLine, cancellationToken);
+        => _wingetRunner.Run(singleArg, args, onOutputLine, cancellationToken);
 
-    private WingetCommandResult RunWingetProcess(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
-        => RunWingetProcessAsync(singleArg, args, onOutputLine, cancellationToken).GetAwaiter().GetResult();
-
-    private async Task<WingetCommandResult> RunWingetProcessAsync(
-        string? singleArg,
-        IReadOnlyList<string> args,
-        Action<string>? onOutputLine,
-        CancellationToken cancellationToken)
-    {
-        var runtimeDirectory = _runtimeEnvironment.EnsureLocalRuntimeDirectory();
-        var commandArgs = BuildCommandArgs(singleArg, args);
-        var processStartInfo = CreateProcessStartInfo(runtimeDirectory, commandArgs);
-        var processTimeout = GetProcessTimeout(commandArgs);
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(processTimeout);
-
-        using var process = Process.Start(processStartInfo);
-        if (process == null)
-        {
-            return new WingetCommandResult { ExitCode = 9999, Output = GetErrorMessage(9999) };
-        }
-
-        var output = new List<string>();
-        var error = new List<string>();
-
-        var outputTask = ReadStreamAsync(process.StandardOutput, output, onOutputLine, timeoutCts.Token);
-        var errorTask = ReadStreamAsync(process.StandardError, error, onOutputLine, timeoutCts.Token);
-        try
-        {
-            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
-            await Task.WhenAll(outputTask, errorTask).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            KillProcessTree(process);
-            return new WingetCommandResult
-            {
-                ExitCode = 9997,
-                Output = "event=winget_process_cancelled reason=cancellation_requested"
-            };
-        }
-        catch (OperationCanceledException)
-        {
-            KillProcessTree(process);
-            return new WingetCommandResult
-            {
-                ExitCode = 9998,
-                Output = $"event=winget_process_timeout timeout_seconds={(int)processTimeout.TotalSeconds}"
-            };
-        }
-
-        var outputText = string.Join(Environment.NewLine, output);
-        var errorText = string.Join(Environment.NewLine, error);
-        var combined = string.IsNullOrEmpty(errorText)
-            ? outputText
-            : string.IsNullOrEmpty(outputText)
-                ? errorText
-                : outputText + Environment.NewLine + errorText;
-        return new WingetCommandResult { ExitCode = process.ExitCode, Output = combined };
-    }
-
-    private static void KillProcessTree(Process process)
-    {
-        try
-        {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-            }
-        }
-        catch
-        {
-            // The process may have exited between cancellation and cleanup.
-        }
-    }
-
-    private static IReadOnlyList<string> BuildCommandArgs(string? singleArg, IReadOnlyList<string> args)
-    {
-        if (string.IsNullOrWhiteSpace(singleArg))
-        {
-            return args;
-        }
-
-        var commandArgs = new List<string>(capacity: args.Count + 1)
-        {
-            singleArg
-        };
-        commandArgs.AddRange(args);
-        return commandArgs;
-    }
-
-    private TimeSpan GetProcessTimeout(IReadOnlyList<string> commandArgs)
-    {
-        if (_processTimeoutOverride.HasValue)
-        {
-            return _processTimeoutOverride.Value;
-        }
-
-        if (commandArgs.Count == 0)
-        {
-            return DefaultProcessTimeout;
-        }
-
-        return commandArgs[0].ToLowerInvariant() switch
-        {
-            "install" or "upgrade" or "uninstall" => TimeSpan.FromMinutes(90),
-            "source" => TimeSpan.FromMinutes(5),
-            "show" or "search" or "list" => TimeSpan.FromMinutes(2),
-            _ => TimeSpan.FromMinutes(10)
-        };
-    }
-
-    private static ProcessStartInfo CreateProcessStartInfo(string runtimeDirectory, IReadOnlyList<string> commandArgs)
-    {
-        var processStartInfo = ShouldUseWideConsole(commandArgs)
-            ? CreateWideConsoleProcessStartInfo(runtimeDirectory, commandArgs)
-            : CreateDirectWingetProcessStartInfo(runtimeDirectory, commandArgs);
-
-        processStartInfo.Environment["TMP"] = runtimeDirectory;
-        processStartInfo.Environment["TEMP"] = runtimeDirectory;
-        return processStartInfo;
-    }
-
-    private static ProcessStartInfo CreateDirectWingetProcessStartInfo(string runtimeDirectory, IReadOnlyList<string> commandArgs)
-    {
-        var processStartInfo = CreateBaseProcessStartInfo("winget", runtimeDirectory);
-        foreach (var arg in commandArgs)
-        {
-            processStartInfo.ArgumentList.Add(arg);
-        }
-
-        return processStartInfo;
-    }
-
-    private static ProcessStartInfo CreateWideConsoleProcessStartInfo(string runtimeDirectory, IReadOnlyList<string> commandArgs)
-    {
-        var processStartInfo = CreateBaseProcessStartInfo("powershell.exe", runtimeDirectory);
-        processStartInfo.ArgumentList.Add("-NoLogo");
-        processStartInfo.ArgumentList.Add("-NoProfile");
-        processStartInfo.ArgumentList.Add("-NonInteractive");
-        processStartInfo.ArgumentList.Add("-Command");
-        processStartInfo.ArgumentList.Add(BuildWideConsoleWingetCommand(commandArgs));
-        return processStartInfo;
-    }
-
-    private static ProcessStartInfo CreateBaseProcessStartInfo(string fileName, string runtimeDirectory)
-    {
-        return new ProcessStartInfo
-        {
-            FileName = fileName,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WorkingDirectory = runtimeDirectory
-        };
-    }
-
-    private static bool ShouldUseWideConsole(IReadOnlyList<string> commandArgs)
-    {
-        if (commandArgs.Count == 0)
-        {
-            return false;
-        }
-
-        var command = commandArgs[0];
-        if (string.Equals(command, "search", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(command, "list", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return string.Equals(command, "upgrade", StringComparison.OrdinalIgnoreCase) &&
-            !commandArgs.Any(arg => string.Equals(arg, "--log", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static string BuildWideConsoleWingetCommand(IReadOnlyList<string> commandArgs)
-    {
-        var escapedArgs = string.Join(
-            ", ",
-            commandArgs.Select(static arg => $"'{EscapePowerShellLiteral(arg)}'"));
-
-        return string.Join(
-            "; ",
-            "$rawUi = $Host.UI.RawUI",
-            "if ($null -ne $rawUi) { try { $rawUi.BufferSize = New-Object Management.Automation.Host.Size(" + WideConsoleWidth + ", $rawUi.BufferSize.Height) } catch { } }",
-            "& winget @(" + escapedArgs + ")",
-            "exit $LASTEXITCODE");
-    }
-
-    private static string EscapePowerShellLiteral(string value)
-        => value.Replace("'", "''", StringComparison.Ordinal);
+    private Task<WingetCommandResult> RunWingetAsync(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
+        => _wingetRunner.RunAsync(singleArg, args, onOutputLine, cancellationToken);
 
     private SearchResult ExpandSearchResult(SearchResult result, CancellationToken cancellationToken)
     {
@@ -835,21 +702,6 @@ public sealed class WingetService
         }
 
         return true;
-    }
-
-    private static async Task ReadStreamAsync(StreamReader reader, ICollection<string> target, Action<string>? onOutputLine, CancellationToken cancellationToken)
-    {
-        while (true)
-        {
-            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line == null)
-            {
-                break;
-            }
-
-            target.Add(line);
-            onOutputLine?.Invoke(line);
-        }
     }
 
     private Dictionary<string, string?> CreatePackageParameters(

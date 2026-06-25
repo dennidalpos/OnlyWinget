@@ -208,7 +208,6 @@ public sealed class AppDataServiceTests
                     [
                         new AppEntry
                         {
-                            Enabled = false,
                             Name = "PowerToys",
                             Id = "Microsoft.PowerToys",
                             Source = "winget",
@@ -231,7 +230,7 @@ public sealed class AppDataServiceTests
 
             var loaded = service.Load(jsonPath);
             var app = Assert.Single(loaded.Tabs["Default"]);
-            Assert.False(app.Enabled);
+            Assert.True(app.IsSelected);
             Assert.Equal("winget", app.Source);
             Assert.Equal("machine", app.Scope);
             Assert.Equal(InstallModes.Silent, app.InstallMode);
@@ -335,6 +334,7 @@ public sealed class AppDataServiceTests
                 jsonPath,
                 """
                 {
+                  "SchemaVersion": 2,
                   "Tabs": [
                     {
                       "Name": "Default",
@@ -356,7 +356,7 @@ public sealed class AppDataServiceTests
             Assert.Equal(AppDataLoadStatus.Success, result.Status);
             var app = Assert.Single(result.Tabs["Default"]);
             Assert.Equal("winget", app.Source);
-            Assert.True(app.Enabled);
+            Assert.True(app.IsSelected);
             Assert.Equal(InstallModes.SilentWithProgress, app.InstallMode);
             Assert.Equal(string.Empty, app.OverrideArgs);
         }
@@ -434,7 +434,7 @@ public sealed class AppDataServiceTests
                 importPath,
                 """
                 {
-                  "formatVersion": 1,
+                  "schemaVersion": 2,
                   "presetName": "Default",
                   "apps": [
                     { "name": "VS Code", "id": "Microsoft.VisualStudioCode", "action": "Install" },
@@ -473,7 +473,7 @@ public sealed class AppDataServiceTests
                 importPath,
                 """
                 {
-                  "formatVersion": 1,
+                  "schemaVersion": 2,
                   "presetName": "Advanced",
                   "apps": [
                     {
@@ -537,7 +537,7 @@ public sealed class AppDataServiceTests
                 importPath,
                 """
                 {
-                  "formatVersion": 1,
+                  "schemaVersion": 2,
                   "presetName": "Portable",
                   "apps": [
                     { "name": ".NET Runtime x64", "id": "Microsoft.DotNet.Runtime.8", "source": "winget", "architecture": "x64" },

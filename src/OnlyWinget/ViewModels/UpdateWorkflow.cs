@@ -16,7 +16,8 @@ internal static class UpdateWorkflow
     public static void ApplyPresetOptions(IEnumerable<UpdateEntry> updates, IEnumerable<AppEntry> presetApps)
     {
         var configuredApps = presetApps
-            .Where(app => app.Enabled && !string.IsNullOrWhiteSpace(app.Id))
+            .Where(app => !string.Equals(app.Action, AppActions.Pause, StringComparison.Ordinal)
+                && !string.IsNullOrWhiteSpace(app.Id))
             .GroupBy(app => app.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
 
@@ -64,7 +65,7 @@ internal static class UpdateWorkflow
                         UpdateVerificationFormatter.FormatStillAvailableStatus(strings.LocaleCode),
                         StringComparison.Ordinal))
                     {
-                        entry.Selected = false;
+                        entry.IsSelected = false;
                     }
 
                     continue;
@@ -74,7 +75,7 @@ internal static class UpdateWorkflow
                 entry.Status = stillAvailableStatus;
                 entry.ErrorMessage = stillAvailableStatus;
                 entry.Resolution = formatStillAvailableResolution(attemptedUpdate, entry);
-                entry.Selected = false;
+                entry.IsSelected = false;
                 appendOutput(UpdateVerificationFormatter.FormatStillAvailableLog(attemptedUpdate, entry));
                 continue;
             }

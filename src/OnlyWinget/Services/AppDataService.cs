@@ -63,6 +63,11 @@ public sealed class AppDataService
         return Path.Combine(_appDataRoot, "AppsList.json");
     }
 
+    public string GetJsonSchemaDescription()
+    {
+        return "OnlyWinget preset library v2: { \"SchemaVersion\": 2, \"Tabs\": [{ \"Name\": \"Default\", \"Apps\": [...] }] }. Row selection is not persisted; use Action: \"pause\" for rows that should not run.";
+    }
+
     public AppDataLoadResult Load(string jsonPath)
     {
         var tabs = new Dictionary<string, List<AppEntry>>(StringComparer.OrdinalIgnoreCase);
@@ -102,7 +107,13 @@ public sealed class AppDataService
                     "Il formato dati legacy non e' piu' supportato.");
             }
 
-            LoadTabbedFormat(rawText, tabs, tabNames);
+            if (!TryLoadTabbedFormat(rawText, tabs, tabNames, out var formatError))
+            {
+                return CreateFallbackLoadResult(
+                    AppDataLoadStatus.InvalidData,
+                    jsonPath,
+                    formatError);
+            }
         }
         catch (JsonException ex)
         {
@@ -281,9 +292,16 @@ public sealed class AppDataService
     {
         try
         {
+            _ = existingPresetNames;
             if (IsJsonFileTooLarge(path))
             {
                 return CreateImportError(path, "Il file preset supera la dimensione massima supportata.");
+            }
+
+            if (!string.Equals(Path.GetExtension(path), ".json", StringComparison.OrdinalIgnoreCase)
+                || !path.EndsWith(".onlywinget.json", StringComparison.OrdinalIgnoreCase))
+            {
+                return CreateImportError(path, "Sono supportati solo preset nel formato .onlywinget.json.");
             }
 
             var rawText = File.ReadAllText(path, Encoding.UTF8);
@@ -296,6 +314,11 @@ public sealed class AppDataService
             if (payload == null)
             {
                 return CreateImportError(path, "Il file preset non contiene dati validi.");
+            }
+
+            if (payload.SchemaVersion != AppDataRoot.CurrentSchemaVersion)
+            {
+                return CreateImportError(path, $"SchemaVersion {payload.SchemaVersion} non supportato. Importa solo preset OnlyWinget v{AppDataRoot.CurrentSchemaVersion}.");
             }
 
             var importedName = NormalizeTabName(payload.PresetName, "Imported preset");
@@ -357,12 +380,30 @@ public sealed class AppDataService
         WriteIndented = true
     };
 
-    private void LoadTabbedFormat(string rawText, Dictionary<string, List<AppEntry>> tabs, List<string> tabNames)
+    private bool TryLoadTabbedFormat(
+        string rawText,
+        Dictionary<string, List<AppEntry>> tabs,
+        List<string> tabNames,
+        out string errorMessage)
     {
+        errorMessage = string.Empty;
         var root = JsonSerializer.Deserialize<AppDataRoot>(rawText, JsonOptions());
-        if (root?.Tabs == null)
+        if (root == null)
         {
-            return;
+            errorMessage = "Il file dati non contiene un oggetto valido.";
+            return false;
+        }
+
+        if (root.SchemaVersion != AppDataRoot.CurrentSchemaVersion)
+        {
+            errorMessage = $"SchemaVersion {root.SchemaVersion} non supportato. OnlyWinget supporta solo SchemaVersion {AppDataRoot.CurrentSchemaVersion}.";
+            return false;
+        }
+
+        if (root.Tabs == null)
+        {
+            errorMessage = "Il file dati non contiene la collezione Tabs.";
+            return false;
         }
 
         var usedTabNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -392,6 +433,8 @@ public sealed class AppDataService
             tabs[tabName] = list;
             tabNames.Add(tabName);
         }
+
+        return true;
     }
 
     private AppEntry? NormalizeApp(AppDataItem? app, HashSet<string> usedIds, bool trustAdvancedArguments)
@@ -422,7 +465,7 @@ public sealed class AppDataService
 
         return new AppEntry
         {
-            Enabled = app.Enabled,
+            IsSelected = true,
             Name = name,
             Id = id,
             Source = source,
@@ -475,7 +518,6 @@ public sealed class AppDataService
 
             result.Add(new AppDataItem
             {
-                Enabled = app.Enabled,
                 Name = name,
                 Id = id,
                 Action = NormalizeAction(app.Action),
@@ -528,7 +570,6 @@ public sealed class AppDataService
 
             result.Add(new PresetAppItem
             {
-                Enabled = app.Enabled,
                 Name = name,
                 Id = id,
                 Source = source,
@@ -580,7 +621,7 @@ public sealed class AppDataService
 
         return new AppEntry
         {
-            Enabled = app.Enabled,
+            IsSelected = true,
             Name = name,
             Id = id,
             Source = source,

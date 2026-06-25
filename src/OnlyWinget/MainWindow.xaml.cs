@@ -77,28 +77,6 @@ public partial class MainWindow : Window
         Marshal.StructureToPtr(minMaxInfo, lParam, fDeleteOld: true);
     }
 
-    private void OnSearchSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (DataContext is not MainViewModel viewModel)
-        {
-            return;
-        }
-
-        if (sender is not ListView listView)
-        {
-            return;
-        }
-
-        viewModel.SelectedSearchResults.Clear();
-        foreach (var item in listView.SelectedItems)
-        {
-            if (item is Models.SearchResult result)
-            {
-                viewModel.SelectedSearchResults.Add(result);
-            }
-        }
-    }
-
     private void OnListViewPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.C || (Keyboard.Modifiers & ModifierKeys.Control) == 0)

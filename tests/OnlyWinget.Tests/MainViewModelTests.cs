@@ -421,7 +421,7 @@ Programma di installazione:
             viewModel.RunSearchCommand.Execute(null);
             await WaitForConditionAsync(() => viewModel.SearchResults.Count == 1);
 
-            viewModel.SelectedSearchResults.Add(viewModel.SearchResults[0]);
+            viewModel.SearchResults[0].IsSelected = true;
             viewModel.UseSearchIdCommand.Execute(null);
             await WaitForConditionAsync(() => viewModel.CurrentApps.Any(app => app.Id == "Microsoft.PowerToys"));
 
@@ -498,8 +498,8 @@ Programma di installazione:
             viewModel.Initialize();
 
             viewModel.OpenSearchCommand.Execute(null);
-            viewModel.SelectedSearchResults.Add(new SearchResult { Id = "Microsoft.PowerToys", Name = "Microsoft PowerToys", Version = "0.90.1", Source = "winget" });
-            viewModel.SelectedSearchResults.Add(new SearchResult { Id = "Git.Git", Name = "Git", Version = "2.53.0.2", Source = "winget" });
+            viewModel.SearchResults.Add(new SearchResult { Id = "Microsoft.PowerToys", Name = "Microsoft PowerToys", Version = "0.90.1", Source = "winget", IsSelected = true });
+            viewModel.SearchResults.Add(new SearchResult { Id = "Git.Git", Name = "Git", Version = "2.53.0.2", Source = "winget", IsSelected = true });
             viewModel.UseSearchIdCommand.Execute(null);
 
             await WaitForConditionAsync(() => viewModel.CurrentApps.Any(app => app.Id == "Microsoft.PowerToys"));
@@ -626,6 +626,7 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0   winget
                 Path.Combine(root, "AppsList.json"),
                 """
                 {
+                  "SchemaVersion": 2,
                   "Tabs": [
                     {
                       "Name": "Default",
@@ -687,7 +688,7 @@ WinRAR 7.20 (64-bit) RARLab.WinRAR 7.20.0    7.22.0    winget
     }
 
     [Fact]
-    public async Task UpdatesFlow_IgnoresDisabledPresetPackageOptions()
+    public async Task UpdatesFlow_IgnoresPausedPresetPackageOptions()
     {
         var root = CreateTempDirectory();
         try
@@ -696,16 +697,16 @@ WinRAR 7.20 (64-bit) RARLab.WinRAR 7.20.0    7.22.0    winget
                 Path.Combine(root, "AppsList.json"),
                 """
                 {
+                  "SchemaVersion": 2,
                   "Tabs": [
                     {
                       "Name": "Default",
                       "Apps": [
                         {
-                          "Enabled": false,
                           "Name": "WinRAR",
                           "Id": "RARLab.WinRAR",
                           "Source": "winget",
-                          "Action": "Install",
+                          "Action": "Pause",
                           "Scope": "machine",
                           "Architecture": "x64",
                           "Locale": "it",
@@ -798,7 +799,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Assert.Contains("installer exited without changing the registered installed version", update.Resolution, StringComparison.Ordinal);
             Assert.Contains("row was deselected", update.Resolution, StringComparison.Ordinal);
             Assert.Contains("if a package log was created", update.Resolution, StringComparison.Ordinal);
-            Assert.False(update.Selected);
+            Assert.False(update.IsSelected);
             Assert.Contains("event=update_still_available", viewModel.OutputText, StringComparison.Ordinal);
             Assert.DoesNotContain(viewModel.Strings.StatusAlreadyUpdated, update.Status, StringComparison.Ordinal);
         }
@@ -892,7 +893,7 @@ Google Play Games Google.PlayGames  26.5.27.1  149.0.7814.0 winget
             Assert.All(viewModel.Updates, update =>
             {
                 Assert.Equal("Aggiornamento ancora disponibile", update.Status);
-                Assert.False(update.Selected);
+                Assert.False(update.IsSelected);
                 Assert.Contains("dopo il tentativo di aggiornamento", update.Resolution, StringComparison.Ordinal);
                 Assert.Contains("senza cambiare la versione installata registrata", update.Resolution, StringComparison.Ordinal);
                 Assert.Contains("se e stato creato un log del pacchetto", update.Resolution, StringComparison.Ordinal);
@@ -1076,10 +1077,10 @@ Git                  Git.Git               2.53.0
             releaseSearch.Set();
             await WaitForConditionAsync(() => viewModel.SearchResults.Count == 2 && !viewModel.IsSearchInProgress);
 
-            viewModel.SelectedSearchResults.Add(viewModel.SearchResults[0]);
+            viewModel.SearchResults[0].IsSelected = true;
             Assert.Equal("Add selected package", viewModel.SearchAddButtonText);
 
-            viewModel.SelectedSearchResults.Add(viewModel.SearchResults[1]);
+            viewModel.SearchResults[1].IsSelected = true;
             Assert.Equal("Add selected packages", viewModel.SearchAddButtonText);
         }
         finally
@@ -1213,7 +1214,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Assert.False(viewModel.OpenUpdatesCommand.CanExecute(null));
             Assert.True(viewModel.ApplyUpdatesCommand.CanExecute(null));
 
-            viewModel.Updates[0].Selected = false;
+            viewModel.Updates[0].IsSelected = false;
 
             Assert.False(viewModel.ApplyUpdatesCommand.CanExecute(null));
         }
@@ -1265,7 +1266,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
                 importPath,
                 """
                 {
-                  "formatVersion": 1,
+                  "schemaVersion": 2,
                   "presetName": "Default",
                   "apps": [
                     { "name": "Git", "id": "Git.Git", "action": "Install" }
@@ -1400,7 +1401,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
-    public void ApplyCommand_TracksEnabledPresetApps()
+    public void ApplyCommand_TracksSelectedRunnablePresetApps()
     {
         var root = CreateTempDirectory();
         try
@@ -1410,7 +1411,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
 
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
             {
-                Enabled = false,
+                IsSelected = false,
                 Name = "PowerToys",
                 Id = "Microsoft.PowerToys",
                 Action = AppActions.Install
@@ -1418,7 +1419,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
 
             Assert.False(viewModel.ApplyCommand.CanExecute(null));
 
-            viewModel.PresetWorkspace.CurrentApps[0].Enabled = true;
+            viewModel.PresetWorkspace.CurrentApps[0].IsSelected = true;
 
             Assert.True(viewModel.ApplyCommand.CanExecute(null));
         }
@@ -1429,7 +1430,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
     }
 
     [Fact]
-    public async Task ApplyCommand_ExcludesDisabledPresetApps()
+    public async Task ApplyCommand_ExcludesUnselectedPresetApps()
     {
         var root = CreateTempDirectory();
         try
@@ -1440,14 +1441,14 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             viewModel.Initialize();
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
             {
-                Enabled = true,
+                IsSelected = true,
                 Name = "VS Code",
                 Id = "Microsoft.VisualStudioCode",
                 Action = AppActions.Install
             });
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
             {
-                Enabled = false,
+                IsSelected = false,
                 Name = "PowerToys",
                 Id = "Microsoft.PowerToys",
                 Action = AppActions.Install
@@ -1477,7 +1478,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             viewModel.Initialize();
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
             {
-                Enabled = true,
+                IsSelected = true,
                 Name = "Internal Tool",
                 Id = "Contoso.InternalTool",
                 Action = AppActions.Install,
@@ -1527,7 +1528,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             viewModel.Initialize();
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
             {
-                Enabled = true,
+                IsSelected = true,
                 Name = "Internal Tool",
                 Id = "Contoso.InternalTool",
                 Action = AppActions.Install,
@@ -1897,6 +1898,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Path.Combine(root, "AppsList.json"),
             """
             {
+              "SchemaVersion": 2,
               "Tabs": [
                 {
                   "Name": "Default",
@@ -1919,6 +1921,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Path.Combine(root, "AppsList.json"),
             """
             {
+              "SchemaVersion": 2,
               "Tabs": [
                 {
                   "Name": "Default",
@@ -1935,6 +1938,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Path.Combine(root, "AppsList.json"),
             """
             {
+              "SchemaVersion": 2,
               "Tabs": [
                 {
                   "Name": "Default",
@@ -1964,6 +1968,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             Path.Combine(root, "AppsList.json"),
             """
             {
+              "SchemaVersion": 2,
               "Tabs": [
                 {
                   "Name": "Default",
@@ -2263,7 +2268,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             CapturedApps.AddRange(apps.Select(app => new AppEntry
             {
-                Enabled = app.Enabled,
+                IsSelected = app.IsSelected,
                 Name = app.Name,
                 Id = app.Id,
                 Action = app.Action,
