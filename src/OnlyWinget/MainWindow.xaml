@@ -242,98 +242,110 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
               </Grid.RowDefinitions>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
 
               <TextBlock Grid.Row="0"
+                         Grid.Column="0"
                          FontSize="{StaticResource FontSizeTitle}"
                          FontWeight="SemiBold"
                          VerticalAlignment="Center"
                          Text="{Binding CurrentWorkspaceTitle}"/>
 
-              <StackPanel Grid.Row="1"
-                          Margin="{StaticResource TopSpacing6}">
-                <StackPanel Orientation="Horizontal"
-                            Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}">
-                  <Button Content="{Binding Strings.Add}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding PresetWorkspace.AddCommand}"
-                          Style="{StaticResource PrimaryButtonStyle}"/>
-                  <Button Content="{Binding Strings.Edit}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding PresetWorkspace.EditCommand}"
-                          Style="{StaticResource WarningButtonStyle}"/>
-                  <Button Content="{Binding Strings.Remove}"
-                          Command="{Binding PresetWorkspace.RemoveCommand}"
-                          Style="{StaticResource DangerButtonStyle}"/>
-                </StackPanel>
-                <StackPanel Margin="{StaticResource TopSpacing6}"
-                            Orientation="Horizontal"
-                            Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}">
-                  <TextBlock Margin="{StaticResource InlineItemSpacing6}"
-                             VerticalAlignment="Center"
-                             Style="{StaticResource CaptionTextStyle}"
-                             Text="{Binding PresetWorkspace.SelectedCountText}"/>
-                  <Button Content="{Binding Strings.RemoveSelected}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding PresetWorkspace.RemoveSelectedCommand}"
-                          Style="{StaticResource DangerButtonStyle}"/>
-                  <Button Content="{Binding Strings.SetSelectedInstall}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding PresetWorkspace.SetSelectedInstallCommand}"
-                          Style="{StaticResource NeutralButtonStyle}"/>
-                  <Button Content="{Binding Strings.SetSelectedUninstall}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding PresetWorkspace.SetSelectedUninstallCommand}"
-                          Style="{StaticResource NeutralButtonStyle}"/>
-                  <Button Content="{Binding Strings.SetSelectedPause}"
-                          Command="{Binding PresetWorkspace.SetSelectedPauseCommand}"
-                          Style="{StaticResource NeutralButtonStyle}"/>
-                </StackPanel>
-
-                <StackPanel Margin="{StaticResource TopSpacing6}"
-                            Orientation="Horizontal">
-                  <Button x:Name="SearchWorkspaceButton"
-                          Content="{Binding Strings.Search}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding OpenSearchCommand}"
-                          ToolTip="{Binding Strings.SearchTooltip}"
-                          Style="{StaticResource PrimaryButtonStyle}"
-                          Visibility="{Binding IsSearchWorkspaceButtonVisible, Converter={StaticResource BoolToVisibility}}"/>
-                  <Button x:Name="UpdatesWorkspaceButton"
-                          Content="{Binding Strings.Updates}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding OpenUpdatesCommand}"
-                          ToolTip="{Binding Strings.UpdatesTooltip}"
-                          Style="{StaticResource NeutralButtonStyle}"
-                          Visibility="{Binding IsUpdatesWorkspaceButtonVisible, Converter={StaticResource BoolToVisibility}}"/>
-                  <Button Content="{Binding Strings.Apply}"
-                          Command="{Binding ApplyCommand}"
-                          IsEnabled="{Binding IsApplyEnabled}"
-                          ToolTip="{Binding Strings.ApplyTooltip}"
-                          Style="{StaticResource SuccessButtonStyle}"
-                          Visibility="{Binding IsPresetToolbarActionVisible, Converter={StaticResource BoolToVisibility}}"/>
-                </StackPanel>
-
-                <StackPanel Margin="{StaticResource TopSpacing6}"
-                            Orientation="Horizontal">
-                  <Button Content="{Binding Strings.Save}"
-                          Margin="{StaticResource ButtonInlineSpacing}"
-                          Command="{Binding PresetWorkspace.SaveCommand}"
-                          ToolTip="{Binding Strings.SaveTooltip}"
-                          Style="{StaticResource NeutralButtonStyle}"
-                          Visibility="{Binding IsPresetToolbarActionVisible, Converter={StaticResource BoolToVisibility}}"/>
-                  <TextBlock Margin="{StaticResource InlineItemSpacing6}"
-                             VerticalAlignment="Center"
-                             Style="{StaticResource CaptionTextStyle}"
-                             Text="{Binding Strings.LanguageLabel}"/>
-                  <ComboBox Width="118"
-                            Height="{StaticResource ControlHeightMd}"
-                            ItemsSource="{Binding AvailableLanguages}"
-                            SelectedItem="{Binding SelectedLanguage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            DisplayMemberPath="DisplayName"
-                            ToolTip="{Binding Strings.LanguageSelectorTooltip}"
-                            AutomationProperties.Name="{Binding Strings.LanguageSelectorAutomationName}"/>
-                </StackPanel>
+              <StackPanel Grid.Row="0"
+                          Grid.Column="1"
+                          Orientation="Horizontal"
+                          VerticalAlignment="Center">
+                <Button Content="{Binding Strings.Save}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.SaveCommand}"
+                        ToolTip="{Binding Strings.SaveTooltip}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Visibility="{Binding IsPresetToolbarActionVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <TextBlock Margin="{StaticResource InlineItemSpacing6}"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource CaptionTextStyle}"
+                           Text="{Binding Strings.LanguageLabel}"/>
+                <ComboBox Width="118"
+                          Height="{StaticResource ControlHeightMd}"
+                          ItemsSource="{Binding AvailableLanguages}"
+                          SelectedItem="{Binding SelectedLanguage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          DisplayMemberPath="DisplayName"
+                          ToolTip="{Binding Strings.LanguageSelectorTooltip}"
+                          AutomationProperties.Name="{Binding Strings.LanguageSelectorAutomationName}"/>
               </StackPanel>
+
+              <WrapPanel Grid.Row="1"
+                         Grid.Column="0"
+                         Grid.ColumnSpan="2"
+                         Margin="{StaticResource TopSpacing8}"
+                         Orientation="Horizontal">
+                <Button Content="{Binding Strings.Add}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.AddCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button Content="{Binding Strings.Edit}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.EditCommand}"
+                        Style="{StaticResource WarningButtonStyle}"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button Content="{Binding Strings.Remove}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.RemoveCommand}"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Border Margin="{StaticResource ButtonInlineSpacing}"
+                        Style="{StaticResource BadgeBorderStyle}"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}">
+                  <TextBlock Style="{StaticResource BadgeTextStyle}"
+                             Text="{Binding PresetWorkspace.SelectedCountText}"/>
+                </Border>
+                <Button Content="{Binding Strings.RemoveSelected}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.RemoveSelectedCommand}"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button Content="{Binding Strings.SetSelectedInstall}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.SetSelectedInstallCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button Content="{Binding Strings.SetSelectedUninstall}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.SetSelectedUninstallCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button Content="{Binding Strings.SetSelectedPause}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding PresetWorkspace.SetSelectedPauseCommand}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Visibility="{Binding IsPresetWorkspaceVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button x:Name="SearchWorkspaceButton"
+                        Content="{Binding Strings.Search}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding OpenSearchCommand}"
+                        ToolTip="{Binding Strings.SearchTooltip}"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Visibility="{Binding IsSearchWorkspaceButtonVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button x:Name="UpdatesWorkspaceButton"
+                        Content="{Binding Strings.Updates}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding OpenUpdatesCommand}"
+                        ToolTip="{Binding Strings.UpdatesTooltip}"
+                        Style="{StaticResource NeutralButtonStyle}"
+                        Visibility="{Binding IsUpdatesWorkspaceButtonVisible, Converter={StaticResource BoolToVisibility}}"/>
+                <Button Content="{Binding Strings.Apply}"
+                        Margin="{StaticResource ButtonInlineSpacing}"
+                        Command="{Binding ApplyCommand}"
+                        IsEnabled="{Binding IsApplyEnabled}"
+                        ToolTip="{Binding Strings.ApplyTooltip}"
+                        Style="{StaticResource SuccessButtonStyle}"
+                        Visibility="{Binding IsPresetToolbarActionVisible, Converter={StaticResource BoolToVisibility}}"/>
+              </WrapPanel>
             </Grid>
           </Border>
 
@@ -377,9 +389,9 @@
                           <GridViewColumn.HeaderTemplate>
                             <DataTemplate>
                               <CheckBox IsThreeState="True"
-                                        IsChecked="{Binding DataContext.PresetWorkspace.AreAllPresetRowsSelected, RelativeSource={RelativeSource AncestorType=ListView}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsChecked="{Binding DataContext.PresetWorkspace.AreAllPresetRowsSelected, Source={x:Reference RootWindow}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         HorizontalAlignment="Center"
-                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllPresetRows, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllPresetRows, Source={x:Reference RootWindow}}"/>
                             </DataTemplate>
                           </GridViewColumn.HeaderTemplate>
                           <GridViewColumn.CellTemplate>
@@ -598,9 +610,9 @@
                           <GridViewColumn.HeaderTemplate>
                             <DataTemplate>
                               <CheckBox IsThreeState="True"
-                                        IsChecked="{Binding DataContext.AreAllSearchResultsSelected, RelativeSource={RelativeSource AncestorType=ListView}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsChecked="{Binding DataContext.AreAllSearchResultsSelected, Source={x:Reference RootWindow}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         HorizontalAlignment="Center"
-                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllSearchResults, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllSearchResults, Source={x:Reference RootWindow}}"/>
                             </DataTemplate>
                           </GridViewColumn.HeaderTemplate>
                           <GridViewColumn.CellTemplate>
@@ -760,9 +772,9 @@
                           <GridViewColumn.HeaderTemplate>
                             <DataTemplate>
                               <CheckBox IsThreeState="True"
-                                        IsChecked="{Binding DataContext.AreAllUpdatesSelected, RelativeSource={RelativeSource AncestorType=ListView}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsChecked="{Binding DataContext.AreAllUpdatesSelected, Source={x:Reference RootWindow}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         HorizontalAlignment="Center"
-                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllUpdates, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                        AutomationProperties.Name="{Binding DataContext.Strings.SelectAllUpdates, Source={x:Reference RootWindow}}"/>
                             </DataTemplate>
                           </GridViewColumn.HeaderTemplate>
                           <GridViewColumn.CellTemplate>

@@ -35,6 +35,11 @@ public sealed class BatchSelectionTests
         Assert.True(workspace.CurrentApps.All(app => app.IsSelected));
         Assert.True(workspace.AreAllPresetRowsSelected);
 
+        workspace.AreAllPresetRowsSelected = null;
+        Assert.All(workspace.CurrentApps, app => Assert.False(app.IsSelected));
+        Assert.False(workspace.AreAllPresetRowsSelected);
+
+        workspace.AreAllPresetRowsSelected = true;
         workspace.SetSelectedPauseCommand.Execute(null);
         Assert.All(workspace.CurrentApps, app => Assert.Equal(AppActions.Pause, app.Action));
         Assert.Contains(logs, line => line.Contains("event=batch_action_applied scope=preset action=pause count=2", StringComparison.Ordinal));
@@ -58,6 +63,12 @@ public sealed class BatchSelectionTests
 
         Assert.False(workspace.AreAllSearchResultsSelected);
         Assert.Equal(0, workspace.SelectedCount);
+
+        workspace.AreAllSearchResultsSelected = true;
+        workspace.AreAllSearchResultsSelected = null;
+
+        Assert.False(workspace.AreAllSearchResultsSelected);
+        Assert.Equal(0, workspace.SelectedCount);
     }
 
     [Fact]
@@ -73,6 +84,11 @@ public sealed class BatchSelectionTests
 
         Assert.True(workspace.AreAllUpdatesSelected);
         Assert.Equal(2, workspace.SelectedUpdates().Count);
+
+        workspace.AreAllUpdatesSelected = null;
+
+        Assert.False(workspace.AreAllUpdatesSelected);
+        Assert.Empty(workspace.SelectedUpdates());
     }
 
     private static string CreateTempDirectory()

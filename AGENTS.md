@@ -6,6 +6,8 @@ Repository instructions for Codex in OnlyWinget.
 
 - Environment: Windows, PowerShell, repository root commands.
 - Project policy: treat OnlyWinget as greenfield unless the user says otherwise.
+- Current product direction: migrate from the existing WPF `net8.0-windows` app to a WinUI 3 desktop app on .NET 10 LTS, using Windows App SDK stable and keeping WiX Burn as the installer channel.
+- During the WinUI 3/.NET 10 migration, WPF UI, WPF-only helpers, WPF-only tests, and legacy ViewModel/domain shapes are replaceable; prefer a clean scalable implementation over compatibility layers.
 - Prefer small, clean, current implementations over compatibility layers.
 - Preserve user work. Never run destructive Git commands unless explicitly requested.
 - Keep `PROJECT_STATUS.json` as todo-only JSON:
@@ -19,6 +21,16 @@ Repository instructions for Codex in OnlyWinget.
 ```
 
 Remove completed, obsolete, duplicate, historical, or non-actionable items.
+
+## Modernization target
+
+- Target stack: WinUI 3, .NET 10 LTS, Windows App SDK stable, Windows 10 1809 build 17763 minimum.
+- Architecture target: Clean Architecture with Domain, Application, Infrastructure, and WinUI Presentation layers with one-way dependencies.
+- Installer target: keep WiX Burn/MSI packaging and add the Windows App Runtime prerequisite or bootstrap flow required by Windows App SDK.
+- Data policy for the modernization: no automatic migration from WPF-era local state or preset schema unless a later user request changes this; use a new workspace storage schema.
+- Localization policy: preserve Italian and English visible UI strings in the new presentation layer.
+- Selection policy: implement batch selection in reusable state logic; header select-all must reliably toggle all rows from checked, unchecked, and mixed states.
+- Backlog source: `PROJECT_STATUS.json` is the prioritized implementation and validation backlog for the modernization.
 
 ## Workflow
 

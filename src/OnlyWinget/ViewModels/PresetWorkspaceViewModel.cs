@@ -95,13 +95,7 @@ public sealed class PresetWorkspaceViewModel : ObservableObject
     public bool? AreAllPresetRowsSelected
     {
         get => GetTriStateSelection(CurrentApps);
-        set
-        {
-            if (value.HasValue)
-            {
-                SetAllPresetRowsSelected(value.Value);
-            }
-        }
+        set => SetAllPresetRowsSelected(value == true);
     }
 
     public string SelectedTabName

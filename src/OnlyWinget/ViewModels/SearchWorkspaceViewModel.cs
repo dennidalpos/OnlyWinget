@@ -115,13 +115,7 @@ public sealed class SearchWorkspaceViewModel : ObservableObject
     public bool? AreAllSearchResultsSelected
     {
         get => GetTriStateSelection(Results);
-        set
-        {
-            if (value.HasValue)
-            {
-                SetAllSelected(value.Value);
-            }
-        }
+        set => SetAllSelected(value == true);
     }
 
     public IReadOnlyList<SearchResult> SelectedResults()

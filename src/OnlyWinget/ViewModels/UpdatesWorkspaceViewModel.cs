@@ -84,13 +84,7 @@ public sealed class UpdatesWorkspaceViewModel : ObservableObject
     public bool? AreAllUpdatesSelected
     {
         get => GetTriStateSelection(Updates);
-        set
-        {
-            if (value.HasValue)
-            {
-                SetAllSelected(value.Value);
-            }
-        }
+        set => SetAllSelected(value == true);
     }
 
     public IReadOnlyList<UpdateEntry> SelectedUpdates()
