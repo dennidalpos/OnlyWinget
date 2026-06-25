@@ -41,7 +41,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
         @"^(?<key>[^:]+):\s*(?<value>.*)$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
-    private readonly WingetService _wingetService;
+    private readonly WingetCommandService _wingetService;
     private readonly WingetQueryService _wingetQueryService;
     private readonly HttpClient _httpClient;
     private readonly Func<string> _architectureProvider;
@@ -55,7 +55,7 @@ public sealed class WingetPackageInterrogationService : IWingetPackageInterrogat
     private readonly Dictionary<string, string> _manifestCache = new(StringComparer.Ordinal);
 
     public WingetPackageInterrogationService(
-        WingetService wingetService,
+        WingetCommandService wingetService,
         HttpClient? httpClient = null,
         Func<string>? architectureProvider = null,
         Func<CultureInfo>? cultureProvider = null,

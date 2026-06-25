@@ -278,7 +278,7 @@ ManifestType: installer
     public async Task InterrogateAsync_SkipsManifestFetch_WhenManifestPathMetadataIsUnsafe()
     {
         var requestCount = 0;
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -442,7 +442,7 @@ ManifestType: installer
     public async Task InterrogateAsync_DoesNotPassSavedVersion()
     {
         var invocations = new List<IReadOnlyList<string>>();
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invocations.Add(args.ToArray());
@@ -592,7 +592,7 @@ ManifestType: installer
     [Fact]
     public async Task InterrogateAsync_ContinuesWhenInstalledDetailsLookupFails()
     {
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -642,7 +642,7 @@ ManifestType: installer
     public async Task InterrogateAsync_RetriesTransientManifestFetchFailure()
     {
         var requestCount = 0;
-        var wingetService = CreateSuccessfulShowWingetService();
+        var wingetService = CreateSuccessfulShowWingetCommandService();
         var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
         {
             requestCount++;
@@ -683,7 +683,7 @@ ManifestType: installer
     public async Task InterrogateAsync_CachesSuccessfulManifestFetches()
     {
         var requestCount = 0;
-        var wingetService = CreateSuccessfulShowWingetService();
+        var wingetService = CreateSuccessfulShowWingetCommandService();
         var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
         {
             requestCount++;
@@ -727,7 +727,7 @@ Installers:
 - Architecture: x64
 ManifestType: installer
 """;
-        var wingetService = CreateSuccessfulShowWingetService();
+        var wingetService = CreateSuccessfulShowWingetCommandService();
         var httpClient = new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new ByteArrayContent(Encoding.UTF8.GetBytes(oversizedManifest))
@@ -755,7 +755,7 @@ ManifestType: installer
         var manifestCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var httpClient = new HttpClient(new BlockingHttpMessageHandler(manifestStarted, manifestCancelled));
         var service = new WingetPackageInterrogationService(
-            CreateSuccessfulShowWingetService(),
+            CreateSuccessfulShowWingetCommandService(),
             httpClient,
             manifestFetchTimeout: TimeSpan.FromMilliseconds(50),
             manifestMaxAttempts: 1,
@@ -778,7 +778,7 @@ ManifestType: installer
     {
         var showStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var showCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             (singleArg, args, onOutputLine, cancellationToken) =>
             {
                 var command = singleArg ?? args[0];
@@ -821,7 +821,7 @@ ManifestType: installer
     {
         var manifestStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var manifestCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             (singleArg, args, onOutputLine, cancellationToken) =>
             {
                 var command = singleArg ?? args[0];
@@ -875,7 +875,7 @@ Installer Type: exe
         HttpStatusCode manifestStatusCode = HttpStatusCode.OK,
         string listOutput = "")
     {
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -899,9 +899,9 @@ Installer Type: exe
             cultureProvider);
     }
 
-    private static WingetService CreateSuccessfulShowWingetService()
+    private static WingetCommandService CreateSuccessfulShowWingetCommandService()
     {
-        return new WingetService(
+        return new WingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];

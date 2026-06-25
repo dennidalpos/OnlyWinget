@@ -14,11 +14,6 @@ public sealed class AppEntryService : IAppEntryService
 {
     private readonly WingetQueryService _wingetQueryService;
 
-    public AppEntryService(WingetService wingetService)
-        : this(new WingetQueryService(wingetService))
-    {
-    }
-
     public AppEntryService(WingetQueryService wingetQueryService)
     {
         _wingetQueryService = wingetQueryService ?? throw new ArgumentNullException(nameof(wingetQueryService));

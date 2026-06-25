@@ -14,14 +14,14 @@ namespace OnlyWinget.Services;
 
 public sealed class PackageOperationService
 {
-    private readonly WingetService _wingetService;
+    private readonly WingetCommandService _wingetService;
     private readonly WingetQueryService _wingetQueryService;
     private readonly IInstallCommandBuilder _installCommandBuilder;
     private readonly IElevatedWingetLauncher _elevatedLauncher;
     private readonly bool _isCurrentProcessElevated;
 
     public PackageOperationService(
-        WingetService wingetService,
+        WingetCommandService wingetService,
         IInstallCommandBuilder installCommandBuilder,
         IElevatedWingetLauncher? elevatedLauncher = null,
         bool? isCurrentProcessElevated = null,

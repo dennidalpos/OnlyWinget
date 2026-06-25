@@ -229,7 +229,7 @@ public sealed class InstallCommandBuilderTests
 
     private static InstallCommandBuilder CreateBuilder()
     {
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = string.Empty },
             localRuntimeRoot: System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OnlyWinget.Tests", Guid.NewGuid().ToString("N")));
         return new InstallCommandBuilder(wingetService);

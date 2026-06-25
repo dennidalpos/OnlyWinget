@@ -1,162 +1,76 @@
 # OnlyWinget
 
 <p align="center">
-  <img src="src/OnlyWinget/Assets/OnlyWinget-icon.png" alt="OnlyWinget icon" width="128" />
+  <img src="src/OnlyWinget/Assets/OnlyWinget-icon.png" alt="OnlyWinget" width="128" />
 </p>
 
-OnlyWinget is a Windows desktop app for managing local `winget` package workflows from a WPF UI. It is built for curated preset lists, package discovery, update review, and repeatable install or uninstall operations on a Windows machine.
+<p align="center">
+  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" />
+  <img alt=".NET" src="https://img.shields.io/badge/.NET-8%20WPF-512BD4" />
+  <img alt="winget" src="https://img.shields.io/badge/winget-1.x-107C10" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-242%20passing-2EA44F" />
+  <img alt="Languages" src="https://img.shields.io/badge/UI-English%20%7C%20Italian-555" />
+</p>
 
-## Features
+OnlyWinget is a Windows desktop app for managing local `winget` workflows from a clean WPF UI: curated presets, package search, update review, and repeatable install or uninstall batches.
 
-- Create, rename, delete, import, and export package preset tabs.
-- Search packages through the local `winget` sources and preserve the reported source.
-- Inspect package metadata before adding searched packages to a preset.
-- Configure install options captured from package metadata, including version, scope, architecture, locale, installer type, install mode, and custom arguments when available.
-- Advanced `--custom` and `--override` arguments are preview-redacted and can use environment-variable placeholders such as `%ONLYWINGET_LICENSE_KEY%` to avoid saving secrets directly in preset files.
-- Select preset rows with row/header checkboxes and run install or uninstall actions only for the selected non-paused rows.
-- Apply batch actions to selected preset rows, including remove selected, set install, set uninstall, and set pause.
-- Search packages through checkbox-based multi-select results and add all selected packages, with manual ID fallback still available.
-- Review available package upgrades and run selected upgrades with row/header checkboxes.
-- Cancel an in-progress batch or update operation; direct and elevated `winget` executions are bounded by timeouts.
-- Enforce a single application instance per Windows session to protect the saved preset library from concurrent edits.
-- Persist presets, runtime logs, and UI preferences under `%LOCALAPPDATA%\OnlyWinget`.
-- Use the runtime UI in English or Italian.
-- Build a Windows setup EXE that embeds x86 and x64 MSI payloads.
+## Highlights
+
+| Area | What it does |
+| --- | --- |
+| Presets | Create package lists, import/export `.onlywinget.json`, pause rows, and run selected install/uninstall actions. |
+| Search | Search local `winget` sources, inspect package metadata, configure installer options, and add selected results in batches. |
+| Updates | Review available upgrades, select all or specific rows, and apply selected updates. |
+| Safety | Single-instance guard, cancellable operations, bounded process timeouts, redacted advanced arguments, and local-only storage. |
+| Installer | Unified Windows setup EXE with x86 and x64 self-contained MSI payloads. |
+
+## Metrics
+
+| Metric | Current value |
+| --- | --- |
+| App framework | `net8.0-windows` WPF |
+| Test suite | 244 xUnit tests discovered: 242 pass, 2 live `winget` smoke tests skipped by default |
+| UI languages | English, Italian |
+| Release artifacts | 1 setup EXE, 2 internal MSI architectures |
+| Local data root | `%LOCALAPPDATA%\OnlyWinget` |
 
 ## Requirements
 
-### End-user runtime
+- Windows 10 or Windows 11.
+- Microsoft App Installer with `winget` 1.x on `PATH`.
+- For development: .NET SDK from [`global.json`](global.json), PowerShell 7+, and WiX Toolset 3.x only when packaging.
 
-- Windows 10 or Windows 11. The setup blocks unsupported Windows versions before installing payloads.
-- Microsoft App Installer with `winget` 1.x available on `PATH` for normal app use. If it is missing, OnlyWinget blocks startup with repair instructions before showing the main window.
-
-The generated setup is self-contained and does not require the .NET Desktop Runtime or Visual C++ Redistributable to be installed on end-user machines.
-
-End-user prerequisite verification:
+Quick verification:
 
 ```powershell
 winver
 winget --version
 ```
 
-### Developer toolchain
-
-- .NET SDK compatible with [`global.json`](global.json). The repository currently pins SDK `9.0.100` with `rollForward` set to `latestFeature`.
-- PowerShell 7+ (`pwsh`) for repository scripts.
-- Optional: `PSScriptAnalyzer` for PowerShell script linting.
-- WiX Toolset 3.x for packaging. `scripts\package.ps1` resolves WiX from `tools\wix314-binaries`, `ONLYWINGET_WIX_BIN`, the `WIX` environment variable, standard Program Files locations, or `PATH`.
-
-NuGet restore uses locked mode through `packages.lock.json` files and `Directory.Build.props`.
-
-## Fresh Setup
-
-Fresh repository setup restores NuGet dependencies in locked mode:
+## Commands
 
 ```powershell
 pwsh -ExecutionPolicy Bypass -File .\scripts\setup.ps1
-```
-
-Equivalent direct restore:
-
-```powershell
-dotnet restore .\OnlyWinget.sln --locked-mode
-```
-
-Recommended first verification on a fresh workstation:
-
-```powershell
 pwsh -ExecutionPolicy Bypass -File .\scripts\format.ps1 -NoRestore
 pwsh -ExecutionPolicy Bypass -File .\scripts\typecheck.ps1 -Configuration Release -NoRestore
 pwsh -ExecutionPolicy Bypass -File .\scripts\test.ps1 -Configuration Release -NoRestore
-```
-
-## Main Commands
-
-```powershell
-# Verify formatting
-pwsh -ExecutionPolicy Bypass -File .\scripts\format.ps1 -NoRestore
-
-# Build with warnings as errors
-pwsh -ExecutionPolicy Bypass -File .\scripts\typecheck.ps1 -Configuration Release -NoRestore
-
-# Lint PowerShell scripts when PSScriptAnalyzer is installed
-pwsh -ExecutionPolicy Bypass -File .\scripts\lint.ps1
-
-# Build the app
 pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release
-
-# Run the built app
-pwsh -ExecutionPolicy Bypass -File .\scripts\dev.ps1 -Configuration Release
-
-# Run unit tests
-pwsh -ExecutionPolicy Bypass -File .\scripts\test.ps1 -Configuration Release -NoRestore
-
-# Clean repository outputs and generated temp files
-pwsh -ExecutionPolicy Bypass -File .\scripts\clean.ps1 -Configuration Release
-
-# Extended clean, including Visual Studio/package folders and NuGet/.NET caches
-pwsh -ExecutionPolicy Bypass -File .\scripts\clean.ps1 -Configuration Release -All
-
-# Build setup EXE and internal self-contained MSIs
 pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore
+```
 
-# Validate real setup install, upgrade, repair, and uninstall lifecycle
-pwsh -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore
+Full local gate:
 
-# Reproduce the CI verification gate locally
+```powershell
 pwsh -ExecutionPolicy Bypass -File .\scripts\check.ps1 -Configuration Release
 ```
 
-Typecheck is covered by C# compilation in the build and check scripts. The default check restores, runs the canonical format, script lint, typecheck, test, build, and package entrypoints, generates the setup packages, and writes `artifacts\build-report.txt`.
-
-Release versioning, tagging, artifact selection, and GitHub release publishing are documented in [`docs\release.md`](docs/release.md). Release candidates must pass the local gate, elevated installer lifecycle validation on a clean or disposable Windows host, and the hosted GitHub Actions `build-gate` workflow before tagging.
-
-## Assets And Samples
-
-- Application icon and package logo: `src\OnlyWinget\Assets\OnlyWinget.ico` and `src\OnlyWinget\Assets\OnlyWinget-icon.png`.
-- Installer UI assets: `src\OnlyWinget.Setup\Assets\WixUIBanner.bmp`, `src\OnlyWinget.Setup\Assets\WixUIDialog.bmp`, `src\OnlyWinget.Setup\BurnResponsiveTheme.xml`, and `src\OnlyWinget.Setup\BurnResponsiveTheme.wxl`.
-- Sample preset file: `media\Default.onlywinget.json`.
-
-## Preset JSON Schema
-
-OnlyWinget now saves and imports only schema v2 preset JSON. Selection checkboxes are UI state and are not persisted; use `"action": "Pause"` to keep a preset row but skip it during batch execution.
-
-```json
-{
-  "SchemaVersion": 2,
-  "Tabs": [
-    {
-      "Name": "Default",
-      "Apps": []
-    }
-  ]
-}
-```
-
-Preset exports use `.onlywinget.json` with `"schemaVersion": 2` and no `enabled` fields. Legacy or incompatible local `AppsList.json` files are backed up before replacement and the app starts from an empty Default preset.
-
-## Project Status
-
-The repository contains the WPF app, xUnit tests, Windows PowerShell entrypoints, WiX packaging sources, and a GitHub Actions build gate. Source build, unit tests, package generation, and CI verification are scripted.
-
-Live `winget` smoke tests are opt-in through `-RunWingetSmoke`; when disabled, the test report marks them skipped and the build report records `SmokeTests: not_run`. Installer lifecycle validation requires an elevated clean or dedicated Windows host and writes its report under `artifacts\installer-validation\`.
-
-Current incomplete and actionable repository todos are tracked in [`PROJECT_STATUS.json`](PROJECT_STATUS.json). The file intentionally stores only the `todos` array, not completed work, check results, or handoff notes.
-
-## Troubleshooting
-
-- If `winget --version` fails, install or repair Microsoft App Installer from Microsoft Store before using the app.
-- If build, clean, or package output files are locked, close `OnlyWinget.exe` or rerun supported scripts with `-StopRunningInstance`.
-- If `scripts\package.ps1` cannot find WiX, install WiX Toolset 3.x, set `ONLYWINGET_WIX_BIN`, set `WIX`, add WiX to `PATH`, or place WiX binaries under `tools\wix314-binaries`.
-- Do not put secrets directly in `--custom` or `--override` values. Use environment-variable placeholders such as `%ONLYWINGET_LICENSE_KEY%`; exported preset JSON files include advanced argument text.
-
-## Technical Documentation
+## Project Links
 
 - [Architecture](docs/architecture.md)
-- [Build, Test, and Delivery](docs/operations.md)
-- [Release and Versioning](docs/release.md)
-- [Script Inventory](scripts/README.md)
-- [Project Status](PROJECT_STATUS.json)
+- [Operations](docs/operations.md)
+- [Release](docs/release.md)
+- [Scripts](scripts/README.md)
+- [Open todos](PROJECT_STATUS.json)
 
 ## License
 

@@ -26,7 +26,7 @@ public sealed class WingetCommandResult
     public string Output { get; init; } = string.Empty;
 }
 
-public sealed class WingetService
+public sealed class WingetCommandService
 {
     private const string WingetPackageId = "Microsoft.AppInstaller";
     private const int AppInUseExitCode = -1978334975;
@@ -35,7 +35,7 @@ public sealed class WingetService
     private readonly WingetRuntimeEnvironment _runtimeEnvironment;
     private readonly WingetOutputClassifier _outputClassifier;
 
-    public WingetService(
+    public WingetCommandService(
         Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult>? wingetRunner = null,
         string? localRuntimeRoot = null,
         Func<DateTime>? utcNow = null,
@@ -51,7 +51,7 @@ public sealed class WingetService
     {
     }
 
-    public WingetService(
+    public WingetCommandService(
         Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult> wingetRunner,
         string? localRuntimeRoot = null,
         Func<DateTime>? utcNow = null,
@@ -60,7 +60,7 @@ public sealed class WingetService
     {
     }
 
-    private WingetService(
+    private WingetCommandService(
         Func<string?, IReadOnlyList<string>, Action<string>?, CancellationToken, WingetCommandResult>? wingetRunner,
         string? localRuntimeRoot,
         Func<DateTime>? utcNow,
@@ -74,7 +74,7 @@ public sealed class WingetService
     {
     }
 
-    public WingetService(
+    public WingetCommandService(
         IWingetCommandRunner? wingetRunner,
         string? localRuntimeRoot = null,
         Func<DateTime>? utcNow = null,
@@ -206,229 +206,6 @@ public sealed class WingetService
     public Task<WingetCommandResult> InvokeAsync(IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
     {
         return RunWingetAsync(null, args, onOutputLine, cancellationToken);
-    }
-
-    public bool TestAppExists(string id, string source = "winget")
-    {
-        var parameters = new Dictionary<string, string?>
-        {
-            ["--id"] = id,
-            ["--exact"] = null,
-            ["--accept-source-agreements"] = null
-        };
-
-        if (!string.IsNullOrWhiteSpace(source))
-        {
-            parameters["--source"] = source;
-        }
-
-        var result = Invoke("show", parameters);
-        return result.ExitCode == 0;
-    }
-
-    public SavedPackageResolutionResult ResolveSavedPackage(
-        string id,
-        string name,
-        string? source = "winget",
-        CancellationToken cancellationToken = default)
-    {
-        var normalizedId = (id ?? string.Empty).Trim();
-        var normalizedName = (name ?? string.Empty).Trim();
-        var normalizedSource = AppEntry.NormalizeSource(source);
-        if (string.IsNullOrWhiteSpace(normalizedId))
-        {
-            return SavedPackageResolutionResult.Unresolved(normalizedId, normalizedName, normalizedSource);
-        }
-
-        var exactIdResult = Invoke("show", CreatePackageLookupParameters("--id", normalizedId, normalizedSource, exact: true), null, cancellationToken);
-        if (exactIdResult.ExitCode == 0 && !IsAmbiguousPackageOutput(exactIdResult.Output))
-        {
-            return SavedPackageResolutionResult.Resolved(normalizedId, normalizedName, normalizedSource);
-        }
-
-        if (IsAmbiguousPackageOutput(exactIdResult.Output))
-        {
-            return SavedPackageResolutionResult.Ambiguous(normalizedId, normalizedName, normalizedSource);
-        }
-
-        var idSearchResolution = ResolveUniqueSearchCandidate(
-            SearchPackages("--id", normalizedId, normalizedSource, cancellationToken),
-            normalizedId,
-            normalizedName,
-            normalizedSource,
-            candidate => string.Equals(candidate.Id, normalizedId, StringComparison.OrdinalIgnoreCase));
-        if (idSearchResolution.Status != SavedPackageResolutionStatus.Unresolved)
-        {
-            return idSearchResolution;
-        }
-
-        if (string.IsNullOrWhiteSpace(normalizedName))
-        {
-            return SavedPackageResolutionResult.Unresolved(normalizedId, normalizedName, normalizedSource);
-        }
-
-        return ResolveUniqueSearchCandidate(
-            SearchPackages("--name", normalizedName, normalizedSource, cancellationToken),
-            normalizedId,
-            normalizedName,
-            normalizedSource,
-            candidate => string.Equals(candidate.Name, normalizedName, StringComparison.CurrentCultureIgnoreCase));
-    }
-
-    public IReadOnlyList<SearchResult> Search(string query, CancellationToken cancellationToken = default)
-    {
-        var result = Invoke("search", new Dictionary<string, string?>
-        {
-            ["--query"] = query,
-            ["--accept-source-agreements"] = null
-        }, null, cancellationToken);
-
-        var parsedResults = WingetTableParser.ParseSearchResults(result.Output);
-        if (!parsedResults.Any(NeedsSearchResultExpansion))
-        {
-            return parsedResults;
-        }
-
-        return parsedResults
-            .Select(result => ExpandSearchResult(result, cancellationToken))
-            .ToList();
-    }
-
-    private IReadOnlyList<SearchResult> SearchPackages(
-        string option,
-        string value,
-        string source,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return Array.Empty<SearchResult>();
-        }
-
-        var result = Invoke("search", CreatePackageLookupParameters(option, value, source, exact: false), null, cancellationToken);
-        if (result.ExitCode != 0 || IsAmbiguousPackageOutput(result.Output))
-        {
-            return Array.Empty<SearchResult>();
-        }
-
-        return WingetTableParser.ParseSearchResults(result.Output)
-            .Where(candidate => string.IsNullOrWhiteSpace(source) || string.Equals(candidate.Source, source, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-    }
-
-    private static SavedPackageResolutionResult ResolveUniqueSearchCandidate(
-        IReadOnlyList<SearchResult> candidates,
-        string originalId,
-        string originalName,
-        string originalSource,
-        Func<SearchResult, bool> preferredMatch)
-    {
-        if (candidates.Count == 0)
-        {
-            return SavedPackageResolutionResult.Unresolved(originalId, originalName, originalSource);
-        }
-
-        var preferredCandidates = candidates.Where(preferredMatch).ToList();
-        var resolutionCandidates = preferredCandidates.Count > 0 ? preferredCandidates : candidates;
-        if (resolutionCandidates.Count != 1)
-        {
-            return SavedPackageResolutionResult.Ambiguous(originalId, originalName, originalSource);
-        }
-
-        var candidate = resolutionCandidates[0];
-        return SavedPackageResolutionResult.Resolved(candidate.Id, candidate.Name, candidate.Source);
-    }
-
-    private static Dictionary<string, string?> CreatePackageLookupParameters(
-        string option,
-        string value,
-        string source,
-        bool exact)
-    {
-        var parameters = new Dictionary<string, string?>
-        {
-            [option] = value,
-            ["--accept-source-agreements"] = null,
-            ["--disable-interactivity"] = null
-        };
-
-        if (exact)
-        {
-            parameters["--exact"] = null;
-        }
-
-        if (!string.IsNullOrWhiteSpace(source))
-        {
-            parameters["--source"] = source;
-        }
-
-        return parameters;
-    }
-
-    private static bool IsAmbiguousPackageOutput(string output)
-    {
-        return output.Contains("Multiple packages found", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("Piu pacchetti trovati", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("Più pacchetti trovati", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public IReadOnlyList<UpdateEntry> LoadUpdates(CancellationToken cancellationToken = default)
-    {
-        var updatesResult = Invoke("list", new Dictionary<string, string?>
-        {
-            ["--upgrade-available"] = null,
-            ["--include-unknown"] = null,
-            ["--include-pinned"] = null,
-            ["--accept-source-agreements"] = null
-        }, null, cancellationToken);
-
-        var updates = WingetTableParser.ParseUpgradeEntries(updatesResult.Output);
-        return updates
-            .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
-    }
-
-    public UpdateEntry? FindAvailableUpdate(string id, string? source = "winget", CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(id))
-        {
-            return null;
-        }
-
-        var matchingUpdates = LoadUpdates(cancellationToken)
-            .Where(update => string.Equals(update.Id, id, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (matchingUpdates.Count == 0)
-        {
-            return null;
-        }
-
-        if (!string.IsNullOrWhiteSpace(source))
-        {
-            var sourceMatch = matchingUpdates.FirstOrDefault(update => string.Equals(update.Source, source, StringComparison.OrdinalIgnoreCase));
-            if (sourceMatch != null)
-            {
-                return sourceMatch;
-            }
-        }
-
-        return matchingUpdates[0];
-    }
-
-    public WingetPackageDetails TryLoadInstalledPackageDetails(string id, string? source = "winget", CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return LoadInstalledPackageDetails(id, source, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch
-        {
-            return new WingetPackageDetails();
-        }
     }
 
     public WingetCommandResult UpgradeApp(
@@ -614,95 +391,6 @@ public sealed class WingetService
 
     private Task<WingetCommandResult> RunWingetAsync(string? singleArg, IReadOnlyList<string> args, Action<string>? onOutputLine, CancellationToken cancellationToken)
         => _wingetRunner.RunAsync(singleArg, args, onOutputLine, cancellationToken);
-
-    private SearchResult ExpandSearchResult(SearchResult result, CancellationToken cancellationToken)
-    {
-        if (!NeedsSearchResultExpansion(result))
-        {
-            return result;
-        }
-
-        var idQuery = GetSearchLookupPrefix(result.Id);
-        if (string.IsNullOrWhiteSpace(idQuery))
-        {
-            return result;
-        }
-
-        var parameters = new Dictionary<string, string?>
-        {
-            ["--id"] = idQuery,
-            ["--accept-source-agreements"] = null,
-            ["--disable-interactivity"] = null
-        };
-
-        if (!string.IsNullOrWhiteSpace(result.Source))
-        {
-            parameters["--source"] = result.Source;
-        }
-
-        var expandedResults = WingetTableParser.ParseSearchResults(Invoke("search", parameters, null, cancellationToken).Output);
-        var expandedResult = expandedResults.FirstOrDefault(candidate => MatchesExpandedSearchResult(result, candidate, idQuery));
-        return expandedResult ?? result;
-    }
-
-    private static bool NeedsSearchResultExpansion(SearchResult result)
-    {
-        return HasTruncationMarker(result.Name) || HasTruncationMarker(result.Id);
-    }
-
-    private static bool HasTruncationMarker(string value)
-    {
-        return value.Contains('…') || value.Contains("...", StringComparison.Ordinal);
-    }
-
-    private static string GetSearchLookupPrefix(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var ellipsisIndex = value.IndexOf('…');
-        if (ellipsisIndex >= 0)
-        {
-            return value[..ellipsisIndex];
-        }
-
-        var dotsIndex = value.IndexOf("...", StringComparison.Ordinal);
-        return dotsIndex >= 0
-            ? value[..dotsIndex]
-            : value;
-    }
-
-    private static bool MatchesExpandedSearchResult(SearchResult original, SearchResult candidate, string idQuery)
-    {
-        if (!candidate.Id.StartsWith(idQuery, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(original.Source) &&
-            !string.Equals(candidate.Source, original.Source, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(original.Version) &&
-            !string.Equals(original.Version, "Unknown", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(candidate.Version, original.Version, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var originalNamePrefix = GetSearchLookupPrefix(original.Name);
-        if (!string.IsNullOrWhiteSpace(originalNamePrefix) &&
-            !candidate.Name.StartsWith(originalNamePrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return true;
-    }
 
     private Dictionary<string, string?> CreatePackageParameters(
         string operation,

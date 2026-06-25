@@ -18,13 +18,13 @@ public sealed class AppStartupCoordinator
 {
     public const string AppInstallerDownloadUrl = "https://apps.microsoft.com/detail/9NBLGGH4NNS1";
 
-    private readonly WingetService _wingetService;
+    private readonly WingetCommandService _wingetService;
     private readonly IDialogService _dialogService;
     private readonly PackageOperationService _operationService;
     private readonly Action<string> _openExternalUrl;
 
     public AppStartupCoordinator(
-        WingetService wingetService,
+        WingetCommandService wingetService,
         IDialogService dialogService,
         Action<string>? openExternalUrl = null,
         PackageOperationService? operationService = null)

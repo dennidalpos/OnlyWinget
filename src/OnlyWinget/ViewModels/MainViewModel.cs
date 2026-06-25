@@ -37,7 +37,7 @@ public sealed class MainViewModel : ObservableObject
         Custom
     }
 
-    private readonly WingetService _wingetService;
+    private readonly WingetCommandService _wingetService;
     private readonly WingetQueryService _wingetQueryService;
     private readonly LocalizationService _localizationService;
     private readonly IDialogService _dialogService;
@@ -62,18 +62,18 @@ public sealed class MainViewModel : ObservableObject
     private readonly HashSet<AppEntry> _observedPresetAppItems = new();
 
     public MainViewModel(
-        WingetService wingetService,
+        WingetCommandService wingetService,
         AppDataService appDataService,
         LocalizationService localizationService,
         IDialogService dialogService,
         IAppEntryService appEntryService,
         ITabService tabService,
         IOperationRunner operationRunner,
-        OperatingSystemInfo? operatingSystemInfo = null,
-        WingetQueryService? wingetQueryService = null)
+        WingetQueryService wingetQueryService,
+        OperatingSystemInfo? operatingSystemInfo = null)
     {
         _wingetService = wingetService;
-        _wingetQueryService = wingetQueryService ?? new WingetQueryService(wingetService);
+        _wingetQueryService = wingetQueryService ?? throw new ArgumentNullException(nameof(wingetQueryService));
         _localizationService = localizationService;
         _dialogService = dialogService;
         _operationRunner = operationRunner;

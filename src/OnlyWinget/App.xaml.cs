@@ -40,7 +40,7 @@ public partial class App : Application
         _singleInstanceGuard = singleInstanceGuard;
 
         var operatingSystemInfo = new OperatingSystemInfoService().Detect();
-        var wingetService = new WingetService();
+        var wingetService = new WingetCommandService();
         var wingetQueryService = new WingetQueryService(wingetService);
         var installCommandBuilder = new InstallCommandBuilder(wingetService);
         var interrogationService = new WingetPackageInterrogationService(wingetService, new HttpClient(), operatingSystemInfo: operatingSystemInfo, wingetQueryService: wingetQueryService);
@@ -60,8 +60,8 @@ public partial class App : Application
             appEntryService,
             tabService,
             operationRunner,
-            operatingSystemInfo,
-            wingetQueryService);
+            wingetQueryService,
+            operatingSystemInfo);
 
         if (!startupCoordinator.CanContinueStartup(viewModel))
         {

@@ -22,7 +22,7 @@ public sealed class BatchSelectionTests
             new LocalizationService(),
             new AppDataService(CreateTempDirectory()),
             new NoopDialogService(),
-            new AppEntryService(new WingetService(static (_, _, _) => new WingetCommandResult { ExitCode = 0 })),
+            new AppEntryService(new WingetQueryService(new WingetCommandService(static (_, _, _) => new WingetCommandResult { ExitCode = 0 }))),
             new TabService(),
             logs.Add);
 

@@ -14,11 +14,11 @@ namespace OnlyWinget.Services;
 public sealed class OperationRunner : IOperationRunner
 {
     private const int IndeterminateProgress = -1;
-    private readonly WingetService _wingetService;
+    private readonly WingetCommandService _wingetService;
     private readonly PackageOperationService _operationService;
 
     public OperationRunner(
-        WingetService wingetService,
+        WingetCommandService wingetService,
         IInstallCommandBuilder installCommandBuilder,
         IElevatedWingetLauncher? elevatedLauncher = null,
         bool? isCurrentProcessElevated = null,

@@ -14,9 +14,9 @@ namespace OnlyWinget.Services;
 
 public sealed class WingetQueryService
 {
-    private readonly WingetService _wingetService;
+    private readonly WingetCommandService _wingetService;
 
-    public WingetQueryService(WingetService wingetService)
+    public WingetQueryService(WingetCommandService wingetService)
     {
         _wingetService = wingetService ?? throw new ArgumentNullException(nameof(wingetService));
     }

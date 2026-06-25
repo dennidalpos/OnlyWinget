@@ -15,14 +15,14 @@ using Xunit;
 
 namespace OnlyWinget.Tests;
 
-public sealed class WingetServiceAndOperationRunnerTests : IDisposable
+public sealed class WingetCommandServiceAndOperationRunnerTests : IDisposable
 {
     private readonly List<string> _temporaryPaths = new();
 
     [Fact]
     public async Task CheckForWingetUpdateAsync_UsesWingetUpgradeForAppInstaller()
     {
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -52,7 +52,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     [Fact]
     public async Task CheckForWingetUpdateAsync_DoesNotReportUpdate_WhenWingetSaysNoUpgrade()
     {
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -79,7 +79,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     public void UpdateSources_InvokesWingetSourceUpdate()
     {
         IReadOnlyList<string> invokedArgs = Array.Empty<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invokedArgs = args;
@@ -96,7 +96,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     public void UpgradeApp_RetriesByName_WhenExactIdDoesNotMatchInstalledPackage()
     {
         var invocations = new List<IReadOnlyList<string>>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invocations.Add(args.ToArray());
@@ -125,7 +125,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     [Fact]
     public void UpgradeApp_ReturnsAppInUse_WhenInstallerLogReportsMsixPackageInUse()
     {
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var logIndex = args.ToList().IndexOf("--log");
@@ -262,7 +262,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     public async Task RunApplyAsync_UsesInstallCommand_ForInstallAction()
     {
         var invokedCommands = new List<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -294,7 +294,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         using var cancellation = new System.Threading.CancellationTokenSource();
         var invocations = 0;
         var output = new List<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invocations++;
@@ -324,7 +324,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     {
         IReadOnlyList<string> invokedArgs = Array.Empty<string>();
         var output = new List<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invokedArgs = args;
@@ -364,7 +364,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         var resolution = string.Empty;
         var status = string.Empty;
         var strings = LocalizedStrings.English;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invokedCommands.Add(singleArg ?? args[0]);
@@ -407,7 +407,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     {
         var invokedCommands = new List<string>();
         var reportedProgress = new List<int>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invokedCommands.Add(singleArg ?? args[0]);
@@ -436,7 +436,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     public async Task RunApplyAsync_ReportsProgress_FromLiveWingetOutput()
     {
         var reportedProgress = new List<int>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -470,7 +470,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     {
         var reportedProgress = new List<int>();
         var receivedLogPath = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = string.Empty });
         var elevatedLauncher = new FakeElevatedWingetLauncher((args, logPath, onOutputLine, cancellationToken) =>
         {
@@ -508,7 +508,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     {
         var reportedProgress = new List<int>();
         var status = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) =>
             {
                 onOutputLine?.Invoke("  ███████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  5.00 MB / 10.0 MB");
@@ -536,7 +536,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
     {
         var reportedProgress = new List<int>();
         var reportedText = new List<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) =>
             {
                 onOutputLine?.Invoke("Avvio installazione pacchetto in corso...");
@@ -592,10 +592,10 @@ Name                         Id                               Version
 Visual Studio Code           Microsoft.VisualStudioCode       1.100.0
 Windows Terminal             Microsoft.WindowsTerminal        1.22.10352.0
 """;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
 
-        var results = service.Search("code");
+        var results = new WingetQueryService(service).Search("code");
 
         Assert.Collection(
             results,
@@ -618,10 +618,10 @@ Name                         Id                               Version
 Café Déjà Vu                 Contoso.CafeDejaVu               1.2.3
 Über Tool                    Contoso.UberTool                 4.5.6
 """;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
 
-        var results = service.Search("unicode");
+        var results = new WingetQueryService(service).Search("unicode");
 
         Assert.Collection(
             results,
@@ -643,7 +643,7 @@ Café Déjà Vu                 Contoso.CafeDejaVu               1.2.3
     public void Search_DoesNotRestrictResultsToWingetSource()
     {
         IReadOnlyList<string> invokedArgs = Array.Empty<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invokedArgs = args;
@@ -658,7 +658,7 @@ Windows Camera   9WZDNCRFJBBG          Unknown msstore
                 };
             });
 
-        var results = service.Search("camera");
+        var results = new WingetQueryService(service).Search("camera");
 
         Assert.DoesNotContain("--source", invokedArgs);
         var result = Assert.Single(results);
@@ -669,7 +669,7 @@ Windows Camera   9WZDNCRFJBBG          Unknown msstore
     [Fact]
     public void Search_ExpandsTruncatedRows_WithTargetedIdLookups()
     {
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -722,7 +722,7 @@ Microsoft Windows Desktop Runtime - 8.0.25 (arm64) Microsoft.DotNet.DesktopRunti
                 };
             });
 
-        var results = service.Search("net");
+        var results = new WingetQueryService(service).Search("net");
 
         Assert.Collection(
             results,
@@ -744,13 +744,13 @@ Microsoft Windows Desktop Runtime - 8.0.25 (arm64) Microsoft.DotNet.DesktopRunti
     public void AppEntryValidation_UsesRequestedSource_WhenCheckingPackageExists()
     {
         IReadOnlyList<string> invokedArgs = Array.Empty<string>();
-        var wingetService = CreateWingetService(
+        var wingetService = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invokedArgs = args;
                 return new WingetCommandResult { ExitCode = 0, Output = "found" };
             });
-        var service = new AppEntryService(wingetService);
+        var service = new AppEntryService(new WingetQueryService(wingetService));
 
         var validation = service.ValidateForInsert("9WZDNCRFJBBG", Array.Empty<AppEntry>(), "msstore");
 
@@ -762,9 +762,9 @@ Microsoft Windows Desktop Runtime - 8.0.25 (arm64) Microsoft.DotNet.DesktopRunti
     [Fact]
     public void AppEntryValidation_AllowsSameIdAndArchitecture_WhenSourceDiffers()
     {
-        var wingetService = CreateWingetService(
+        var wingetService = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = "found" });
-        var service = new AppEntryService(wingetService);
+        var service = new AppEntryService(new WingetQueryService(wingetService));
         var currentApps = new[]
         {
             new AppEntry { Id = "Contoso.Tool", Source = "winget", Architecture = "x64" }
@@ -778,9 +778,9 @@ Microsoft Windows Desktop Runtime - 8.0.25 (arm64) Microsoft.DotNet.DesktopRunti
     [Fact]
     public void AppEntryValidation_BlocksSameIdSourceAndArchitecture()
     {
-        var wingetService = CreateWingetService(
+        var wingetService = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = "found" });
-        var service = new AppEntryService(wingetService);
+        var service = new AppEntryService(new WingetQueryService(wingetService));
         var currentApps = new[]
         {
             new AppEntry { Id = "Contoso.Tool", Source = "msstore", Architecture = "x64" }
@@ -802,10 +802,10 @@ Nome                 ID                         Versione Disponibile Source
 App Installer        Microsoft.AppInstaller     1.12.470 1.28.190    winget
 Microsoft PowerToys  Microsoft.PowerToys        0.90.0   0.90.1      msstore
 """;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
 
-        var updates = service.LoadUpdates();
+        var updates = new WingetQueryService(service).LoadUpdates();
 
         Assert.Equal(2, updates.Count);
         Assert.Contains(updates, entry => entry.Id == "Microsoft.AppInstaller" && entry.Available == "1.28.190");
@@ -823,10 +823,10 @@ Microsoft Edge            Microsoft.Edge    146.0.3856.109 147.0.3912.60 winget
 CapCut                    ByteDance.CapCut  8.3.0.3497     8.4.0.3562    winget
 3 aggiornamenti disponibili.
 """;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
 
-        var updates = service.LoadUpdates();
+        var updates = new WingetQueryService(service).LoadUpdates();
 
         Assert.Equal(3, updates.Count);
         Assert.DoesNotContain(updates, entry => string.Equals(entry.Id, "i.", StringComparison.Ordinal));
@@ -843,10 +843,10 @@ Nome              Id               Versione  Disponibile  Origine
 -----------------------------------------------------------------
 Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
 """;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
 
-        var update = Assert.Single(service.LoadUpdates());
+        var update = Assert.Single(new WingetQueryService(service).LoadUpdates());
 
         Assert.Equal("Google Play Games", update.Name);
         Assert.Equal("Google.PlayGames", update.Id);
@@ -862,10 +862,10 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
             string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0,-25}{1,-18}{2,-14}{3,-13}{4,-20}{5}", "Nome", "Id", "Versione", "Disponibile", "Origine", "Stato"),
             new string('-', 110),
             string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0,-25}{1,-18}{2,-14}{3,-13}{4,-20}{5}", "AxCrypt 2.1.1693.0", "AxCrypt.AxCrypt", "2.1.1693.0", "3.0.94", "Nessun aggiornamento", "Gia alla versione piu recente."));
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) => new WingetCommandResult { ExitCode = 0, Output = output });
 
-        var update = Assert.Single(service.LoadUpdates());
+        var update = Assert.Single(new WingetQueryService(service).LoadUpdates());
 
         Assert.Equal("AxCrypt.AxCrypt", update.Id);
         Assert.Equal("2.1.1693.0", update.Version);
@@ -878,7 +878,7 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
     public async Task RunUpdatesAsync_UsesUpdateSource_WhenInvokingUpgrade()
     {
         IReadOnlyList<string> invokedArgs = Array.Empty<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -921,7 +921,7 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
         var status = string.Empty;
         var error = string.Empty;
         var resolution = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 commands.Add(args.ToArray());
@@ -979,7 +979,7 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0 winget
     public async Task RunUpdatesAsync_RetriesNoApplicableUpgrade_WithInstalledScopeArchitectureAndInstallerLocale()
     {
         var upgradeInvocations = new List<IReadOnlyList<string>>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1071,7 +1071,7 @@ Installer:
     {
         var upgradeInvocations = new List<IReadOnlyList<string>>();
         var resolution = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1163,7 +1163,7 @@ Installer:
         var output = new List<string>();
         var error = string.Empty;
         var resolution = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
             {
                 ExitCode = -1978335189,
@@ -1205,7 +1205,7 @@ Installer:
         var status = string.Empty;
         var error = string.Empty;
         var resolution = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
             {
                 ExitCode = -1978335189,
@@ -1249,7 +1249,7 @@ Installer:
         var status = string.Empty;
         var error = string.Empty;
         var resolution = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
             {
                 ExitCode = -1978335189,
@@ -1294,7 +1294,7 @@ A newer package version is available in a configured source, but it does not app
     public async Task RunUpdatesAsync_DoesNotDuplicateLiveNoApplicableUpgradeOutput()
     {
         var output = new List<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) =>
             {
                 onOutputLine?.Invoke("No applicable upgrade found.");
@@ -1335,7 +1335,7 @@ A newer package version is available in a configured source, but it does not app
     public async Task RunApplyAsync_ReportsInstallFailure_WhenInstallCommandFails()
     {
         var invokedCommands = new List<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1369,7 +1369,7 @@ A newer package version is available in a configured source, but it does not app
     [Fact]
     public async Task RunApplyAsync_UsesAlreadyInstalledStatus_WhenInstallDetectsExistingExternalApp()
     {
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1399,7 +1399,7 @@ A newer package version is available in a configured source, but it does not app
     [Fact]
     public async Task RunApplyAsync_UsesLatestVersionStatus_WhenInstallReportsNoUpgradeNeeded()
     {
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1442,7 +1442,7 @@ A newer package version is available in a configured source, but it does not app
         var output = new List<string>();
         var errorMessage = string.Empty;
         var resolution = string.Empty;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1513,7 +1513,7 @@ A newer package version is available in a configured source, but it does not app
     public async Task RunApplyAsync_DoesNotPinInstallToVersion()
     {
         var installInvocations = new List<IReadOnlyList<string>>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1555,7 +1555,7 @@ A newer package version is available in a configured source, but it does not app
     public void UpgradeWinget_DoesNotConvertAlreadyInstalledIntoSuccess()
     {
         var invocations = 0;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];
@@ -1589,7 +1589,7 @@ A newer package version is available in a configured source, but it does not app
     {
         var directInvocations = new List<IReadOnlyList<string>>();
         IReadOnlyList<string> elevatedArgs = Array.Empty<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 directInvocations.Add(args.ToArray());
@@ -1625,7 +1625,7 @@ A newer package version is available in a configured source, but it does not app
     public async Task PackageOperationService_Uninstall_IncludesConfiguredSource()
     {
         IReadOnlyList<string> uninstallArgs = Array.Empty<string>();
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 if ((singleArg ?? args[0]) == "uninstall")
@@ -1657,7 +1657,7 @@ A newer package version is available in a configured source, but it does not app
     public async Task PackageOperationService_BlocksUnreviewedAdvancedArguments_BeforeWingetResolution()
     {
         var invoked = false;
-        var service = CreateWingetService(
+        var service = CreateWingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 invoked = true;
@@ -1701,11 +1701,11 @@ A newer package version is available in a configured source, but it does not app
         }
     }
 
-    private WingetService CreateWingetService(
+    private WingetCommandService CreateWingetCommandService(
         Func<string?, IReadOnlyList<string>, Action<string>?, WingetCommandResult> wingetRunner,
         Func<DateTime>? utcNow = null)
     {
-        return new WingetService(
+        return new WingetCommandService(
             wingetRunner: wingetRunner,
             localRuntimeRoot: CreateTempDirectory(),
             utcNow: utcNow);

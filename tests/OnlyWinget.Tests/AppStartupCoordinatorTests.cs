@@ -24,7 +24,7 @@ public sealed class AppStartupCoordinatorTests
     {
         var dialog = new RecordingDialogService();
         dialog.EnqueueConfirm(true);
-        var wingetService = new WingetService(
+        var wingetService = new WingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
             {
                 ExitCode = 1,
@@ -59,7 +59,7 @@ public sealed class AppStartupCoordinatorTests
             dialog.EnqueueConfirm(true);
             var upgraded = false;
             var invocations = new List<IReadOnlyList<string>>();
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -136,7 +136,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         {
             var dialog = new RecordingDialogService();
             dialog.EnqueueConfirm(true);
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -205,7 +205,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         try
         {
             var dialog = new RecordingDialogService();
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -243,7 +243,7 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
         }
     }
 
-    private static MainViewModel CreateViewModel(string root, WingetService wingetService, RecordingDialogService dialogService)
+    private static MainViewModel CreateViewModel(string root, WingetCommandService wingetService, RecordingDialogService dialogService)
     {
         var dataService = new AppDataService(appDataRoot: root);
         var operationRunner = new OperationRunner(wingetService, new InstallCommandBuilder(wingetService));
@@ -255,9 +255,10 @@ App Installer    Microsoft.AppInstaller  1.12.470  1.28.190  winget
             dataService,
             localizationService,
             dialogService,
-            new AppEntryService(wingetService),
+            new AppEntryService(new WingetQueryService(wingetService)),
             new TabService(),
-            operationRunner);
+            operationRunner,
+            new WingetQueryService(wingetService));
     }
 
     private static string CreateTempDirectory()

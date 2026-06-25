@@ -27,7 +27,7 @@ public sealed class MainViewModelTests
         {
             WriteDefaultAppsList(root);
 
-            var wingetService = CreateWingetService();
+            var wingetService = CreateWingetCommandService();
             var operationRunner = new BlockingApplyOperationRunner();
             var viewModel = CreateViewModel(root, wingetService, operationRunner, new FakeDialogService());
 
@@ -71,7 +71,7 @@ public sealed class MainViewModelTests
             WriteDefaultAppsList(root);
 
             var operationRunner = new CancellationAwareApplyOperationRunner();
-            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), operationRunner, new FakeDialogService());
             viewModel.Initialize();
 
             viewModel.ApplyCommand.Execute(null);
@@ -102,7 +102,7 @@ public sealed class MainViewModelTests
             WriteEmptyAppsList(root);
             var searchStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var searchCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 (singleArg, args, onOutputLine, cancellationToken) =>
                 {
                     var command = singleArg ?? args[0];
@@ -164,7 +164,7 @@ public sealed class MainViewModelTests
             WriteEmptyAppsList(root);
             var refreshStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var refreshCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 (singleArg, args, onOutputLine, cancellationToken) =>
                 {
                     var command = singleArg ?? args[0];
@@ -225,7 +225,7 @@ public sealed class MainViewModelTests
             dialog.EnqueuePrompt("Utilities");
             dialog.EnqueuePrompt("Utilities Renamed");
 
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
 
             viewModel.NewTabCommand.Execute(null);
@@ -254,7 +254,7 @@ public sealed class MainViewModelTests
         try
         {
             WriteDefaultAppsList(root);
-            var viewModel = CreateViewModel(root, CreateWingetService(), new VerboseApplyOperationRunner(1005), new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new VerboseApplyOperationRunner(1005), new FakeDialogService());
             viewModel.Initialize();
 
             viewModel.ApplyCommand.Execute(null);
@@ -280,7 +280,7 @@ public sealed class MainViewModelTests
         {
             var dialog = new FakeDialogService();
             dialog.EnqueuePrompt("Utilities");
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
 
             viewModel.NewTabCommand.Execute(null);
@@ -303,7 +303,7 @@ public sealed class MainViewModelTests
             WriteTabbedAppsList(root);
             var dialog = new FakeDialogService();
             dialog.EnqueuePrompt("Utilities Renamed");
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
             viewModel.PresetWorkspace.SelectedTabName = "Utilities";
 
@@ -325,7 +325,7 @@ public sealed class MainViewModelTests
         var root = CreateTempDirectory();
         try
         {
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService(), systemCulture: "it-IT");
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), new FakeDialogService(), systemCulture: "it-IT");
             viewModel.Initialize();
             var changedProperties = new List<string>();
             viewModel.PropertyChanged += (_, e) =>
@@ -381,7 +381,7 @@ public sealed class MainViewModelTests
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -442,7 +442,7 @@ Programma di installazione:
         try
         {
             WriteTabbedAppsList(root);
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), new FakeDialogService());
             viewModel.Initialize();
             viewModel.PresetWorkspace.SelectedTabName = "Utilities";
 
@@ -465,7 +465,7 @@ Programma di installazione:
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = CreateWingetService();
+            var wingetService = CreateWingetCommandService();
             var dialog = new FakeDialogService();
             var viewModel = CreateViewModel(root, wingetService, new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
@@ -494,7 +494,7 @@ Programma di installazione:
             dialog.EnqueueInterrogationResult(CreateInterrogationDialogResult("Microsoft.PowerToys", "Microsoft PowerToys", "0.90.1"));
             dialog.EnqueueInterrogationFailure("Package could not be resolved uniquely.", "OnlyWinget");
 
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
 
             viewModel.OpenSearchCommand.Execute(null);
@@ -520,7 +520,7 @@ Programma di installazione:
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -571,7 +571,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -646,7 +646,7 @@ Google Play Games Google.PlayGames 26.5.27.1 149.0.7814.0   winget
                   ]
                 }
                 """);
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -717,7 +717,7 @@ WinRAR 7.20 (64-bit) RARLab.WinRAR 7.20.0    7.22.0    winget
                   ]
                 }
                 """);
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -764,7 +764,7 @@ WinRAR 7.20 (64-bit) RARLab.WinRAR 7.20.0    7.22.0    winget
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -815,7 +815,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -861,7 +861,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -915,7 +915,7 @@ Google Play Games Google.PlayGames  26.5.27.1  149.0.7814.0 winget
         {
             File.WriteAllText(Path.Combine(root, "AppsList.json"), "{ invalid json");
             var dialog = new FakeDialogService();
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
 
             viewModel.Initialize();
 
@@ -942,7 +942,7 @@ Google Play Games Google.PlayGames  26.5.27.1  149.0.7814.0 winget
             const string malformedContent = "{ invalid json";
             File.WriteAllText(jsonPath, malformedContent);
             var dialog = new FakeDialogService();
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
 
             viewModel.Initialize();
             viewModel.SaveCommand.Execute(null);
@@ -971,7 +971,7 @@ Google Play Games Google.PlayGames  26.5.27.1  149.0.7814.0 winget
             File.WriteAllText(jsonPath, "{ }");
             using var lockHandle = new FileStream(jsonPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             var dialog = new FakeDialogService();
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
 
             viewModel.Initialize();
 
@@ -993,7 +993,7 @@ Google Play Games Google.PlayGames  26.5.27.1  149.0.7814.0 winget
         var root = CreateTempDirectory();
         try
         {
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), new FakeDialogService());
             viewModel.Initialize();
 
             Assert.True(viewModel.OpenSearchCommand.CanExecute(null));
@@ -1032,7 +1032,7 @@ Google Play Games Google.PlayGames  26.5.27.1  149.0.7814.0 winget
 
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -1099,7 +1099,7 @@ Git                  Git.Git               2.53.0
 
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -1162,7 +1162,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         var root = CreateTempDirectory();
         try
         {
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), new FakeDialogService());
             viewModel.Initialize();
 
             Assert.Empty(viewModel.CurrentApps);
@@ -1183,7 +1183,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         var root = CreateTempDirectory();
         try
         {
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -1234,7 +1234,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             var exportPath = Path.Combine(root, "default.onlywinget.json");
             var dialog = new FakeDialogService();
             dialog.SaveFileResponse = exportPath;
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
 
             viewModel.Initialize();
 
@@ -1279,7 +1279,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
                 OpenFileResponse = importPath
             };
 
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
 
             viewModel.ImportPresetCommand.Execute(null);
@@ -1318,7 +1318,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
                 OpenFileResponse = importPath
             };
 
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
 
             viewModel.ImportPresetCommand.Execute(null);
@@ -1368,7 +1368,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             };
             dialog.EnqueueInterrogationResult(updatedResult);
 
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
 
             // Select the only app
@@ -1406,7 +1406,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         var root = CreateTempDirectory();
         try
         {
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), new FakeDialogService());
             viewModel.Initialize();
 
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
@@ -1437,7 +1437,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             WriteEmptyAppsList(root);
             var operationRunner = new CapturingApplyOperationRunner();
-            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), operationRunner, new FakeDialogService());
             viewModel.Initialize();
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
             {
@@ -1474,7 +1474,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             WriteEmptyAppsList(root);
             var operationRunner = new CapturingApplyOperationRunner();
-            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), operationRunner, new FakeDialogService());
             viewModel.Initialize();
             viewModel.PresetWorkspace.CurrentApps.Add(new AppEntry
             {
@@ -1508,7 +1508,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             WriteEmptyAppsList(root);
             var invokedCommands = new List<string>();
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -1582,7 +1582,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
                 ]
             });
 
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
             viewModel.OpenSearchCommand.Execute(null);
             viewModel.SearchPickId = "Microsoft.DotNet.Runtime.8";
@@ -1607,7 +1607,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         try
         {
             WriteEmptyAppsList(root);
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), new FakeDialogService());
             viewModel.Initialize();
 
             var interrogation = new PackageInterrogationResult
@@ -1654,7 +1654,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         try
         {
             WriteEmptyAppsList(root);
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), new FakeDialogService());
             viewModel.Initialize();
 
             var wingetInterrogation = new PackageInterrogationResult
@@ -1714,7 +1714,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             WriteMultiArchitectureAppsList(root);
             var operationRunner = new OperationKeyApplyRunner();
-            var viewModel = CreateViewModel(root, CreateWingetService(), operationRunner, new FakeDialogService());
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), operationRunner, new FakeDialogService());
             viewModel.Initialize();
 
             viewModel.ApplyCommand.Execute(null);
@@ -1742,7 +1742,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             WriteDefaultAppsList(root);
             var dialog = new FakeDialogService();
-            var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner(), dialog);
+            var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner(), dialog);
             viewModel.Initialize();
             Assert.True(viewModel.PresetWorkspace.TryAddEntry("PowerToys", "Microsoft.PowerToys", out _, showDialog: false));
 
@@ -1773,7 +1773,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         {
             WriteDefaultAppsList(root);
             var dialog = new FakeDialogService();
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: static (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -1813,7 +1813,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         try
         {
             IReadOnlyList<string> invokedArgs = Array.Empty<string>();
-            var wingetService = new WingetService(
+            var wingetService = new WingetCommandService(
                 wingetRunner: (singleArg, args, onOutputLine) =>
                 {
                     var command = singleArg ?? args[0];
@@ -1852,7 +1852,7 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         }
     }
 
-    private static MainViewModel CreateViewModel(string root, WingetService wingetService, IOperationRunner operationRunner, FakeDialogService dialogService, string systemCulture = "it-IT")
+    private static MainViewModel CreateViewModel(string root, WingetCommandService wingetService, IOperationRunner operationRunner, FakeDialogService dialogService, string systemCulture = "it-IT")
     {
         var dataService = new AppDataService(appDataRoot: root);
         var localizationService = new LocalizationService(
@@ -1863,9 +1863,10 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
             dataService,
             localizationService,
             dialogService,
-            new AppEntryService(wingetService),
+            new AppEntryService(new WingetQueryService(wingetService)),
             new TabService(),
             operationRunner,
+            new WingetQueryService(wingetService),
             CreateOperatingSystemInfo(systemCulture));
     }
 
@@ -1882,9 +1883,9 @@ Microsoft PowerToys  Microsoft.PowerToys   0.90.0    0.90.1    winget
         };
     }
 
-    private static WingetService CreateWingetService()
+    private static WingetCommandService CreateWingetCommandService()
     {
-        return new WingetService(
+        return new WingetCommandService(
             wingetRunner: static (singleArg, args, onOutputLine) => new WingetCommandResult
             {
                 ExitCode = 0,

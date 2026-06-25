@@ -16,7 +16,7 @@ public sealed class WingetSmokeTests
     [Trait("Category", "Smoke")]
     public void TestAvailable_ReturnsTrue_WhenSmokeModeIsEnabled()
     {
-        var service = new WingetService();
+        var service = new WingetCommandService();
         Assert.True(service.TestAvailable());
     }
 
@@ -24,8 +24,8 @@ public sealed class WingetSmokeTests
     [Trait("Category", "Smoke")]
     public void Search_ReturnsKnownPackage_WhenSmokeModeIsEnabled()
     {
-        var service = new WingetService();
-        var results = service.Search("Microsoft.PowerToys");
+        var service = new WingetCommandService();
+        var results = new WingetQueryService(service).Search("Microsoft.PowerToys");
 
         Assert.Contains(results, result => string.Equals(result.Id, "Microsoft.PowerToys", StringComparison.OrdinalIgnoreCase));
     }

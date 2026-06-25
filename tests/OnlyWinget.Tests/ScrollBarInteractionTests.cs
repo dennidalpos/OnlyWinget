@@ -50,7 +50,7 @@ public sealed class ScrollBarInteractionTests
 
                 try
                 {
-                    var viewModel = CreateViewModel(root, CreateWingetService(), new PassiveOperationRunner());
+                    var viewModel = CreateViewModel(root, CreateWingetCommandService(), new PassiveOperationRunner());
                     window.DataContext = viewModel;
                     viewModel.Initialize();
                     viewModel.IsUpdatesVisible = true;
@@ -200,7 +200,7 @@ public sealed class ScrollBarInteractionTests
         app.Resources.MergedDictionaries.Add(themeDictionary);
     }
 
-    private static MainViewModel CreateViewModel(string root, WingetService wingetService, IOperationRunner operationRunner)
+    private static MainViewModel CreateViewModel(string root, WingetCommandService wingetService, IOperationRunner operationRunner)
     {
         var dataService = new AppDataService(appDataRoot: root);
         var localizationService = new LocalizationService(
@@ -212,14 +212,15 @@ public sealed class ScrollBarInteractionTests
             dataService,
             localizationService,
             new FakeDialogService(),
-            new AppEntryService(wingetService),
+            new AppEntryService(new WingetQueryService(wingetService)),
             new TabService(),
-            operationRunner);
+            operationRunner,
+            new WingetQueryService(wingetService));
     }
 
-    private static WingetService CreateWingetService()
+    private static WingetCommandService CreateWingetCommandService()
     {
-        return new WingetService(
+        return new WingetCommandService(
             wingetRunner: (singleArg, args, onOutputLine) =>
             {
                 var command = singleArg ?? args[0];

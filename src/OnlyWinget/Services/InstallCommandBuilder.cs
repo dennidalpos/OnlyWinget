@@ -11,9 +11,9 @@ namespace OnlyWinget.Services;
 
 public sealed class InstallCommandBuilder : IInstallCommandBuilder
 {
-    private readonly WingetService _wingetService;
+    private readonly WingetCommandService _wingetService;
 
-    public InstallCommandBuilder(WingetService wingetService)
+    public InstallCommandBuilder(WingetCommandService wingetService)
     {
         _wingetService = wingetService;
     }
