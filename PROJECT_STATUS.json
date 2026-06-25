@@ -1,12 +1,8 @@
 {
   "todos": [
-    "Implement reusable WinUI table, command bar, empty state, loading state, error state, selection header, row status, and log/activity components.",
-    "Add refined WinUI update row status, per-package error details, and resolution output display.",
-    "Add WinUI cancellation wiring for preset install and uninstall operations.",
-    "Manually validate Italian and English visible navigation, command, status, empty, loading, and error labels.",
-    "Update WiX Burn and MSI packaging to install or prerequisite the Windows App Runtime required by Windows App SDK.",
-    "Update installer OS checks, app payload harvesting, shortcuts, icons, and version metadata for the WinUI and .NET 10 output.",
-    "Run format, lint, typecheck, test, build, package, and check scripts after the WinUI migration compiles.",
+    "Run full setup bundle packaging with WindowsAppRuntimeInstall.exe supplied by -WindowsAppRuntimeInstallerPath or ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER.",
+    "Run .\\scripts\\check.ps1 -Configuration Release with WindowsAppRuntimeInstall.exe available.",
+    "Manually validate Italian and English visible navigation, command, status, empty, loading, error, and operation result labels.",
     "Manually validate the WinUI app at minimum, default, and maximized window sizes in Italian and English.",
     "Manually validate preset, search, update, activity, cancellation, and select-all flows on a Windows host with winget installed.",
     "Run winget smoke tests with -RunWingetSmoke on a machine with winget installed and configured.",

@@ -2,12 +2,12 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Packages;
-using OnlyWinget.Domain.Selection;
 
 namespace OnlyWinget.Pages;
 
 public sealed partial class PresetsPage : Page
 {
+    private CancellationTokenSource? operationCancellation;
     private bool isRefreshing;
 
     public PresetsPage()
@@ -27,6 +27,9 @@ public sealed partial class PresetsPage : Page
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
         App.WorkflowChanged -= OnWorkflowChanged;
+        operationCancellation?.Cancel();
+        operationCancellation?.Dispose();
+        operationCancellation = null;
     }
 
     private void OnWorkflowChanged(object? sender, EventArgs args) => Refresh();
@@ -41,27 +44,25 @@ public sealed partial class PresetsPage : Page
         PresetSelector.SelectedItem = state.ActivePresetName;
         PresetNameBox.Text = state.ActivePresetName ?? string.Empty;
         PackageList.ItemsSource = state.Packages;
+        OperationResultList.ItemsSource = state.OperationResults;
         StatusText.Text = state.Error ?? GetEmptyText(state);
+        PageUi.SetVisible(OperationResultList, state.OperationResults.Count > 0);
+        PageUi.ApplyLoading(OperationRing, state.IsExecuting);
 
-        SelectAllPackagesBox.IsThreeState = true;
-        SelectAllPackagesBox.IsChecked = state.HeaderState switch
-        {
-            SelectionHeaderState.Checked => true,
-            SelectionHeaderState.Mixed => null,
-            _ => false
-        };
+        PageUi.ApplySelectionHeader(SelectAllPackagesBox, state.HeaderState);
 
-        SetEnabled(AddPresetButton, commands, "preset.add");
-        SetEnabled(RenamePresetButton, commands, "preset.rename");
-        SetEnabled(RemovePresetButton, commands, "preset.remove");
-        SetEnabled(AddPackageButton, commands, "preset.package.add");
-        SetEnabled(EditPackageButton, commands, "preset.package.edit");
-        SetEnabled(RemovePackageButton, commands, "preset.package.remove");
-        SetEnabled(ImportPresetButton, commands, "preset.import");
-        SetEnabled(ExportPresetButton, commands, "preset.export");
-        SetEnabled(SaveWorkspaceButton, commands, "preset.save");
-        SetEnabled(InstallPresetButton, commands, "preset.apply.install");
-        SetEnabled(UninstallPresetButton, commands, "preset.apply.uninstall");
+        PageUi.SetEnabled(AddPresetButton, commands, "preset.add");
+        PageUi.SetEnabled(RenamePresetButton, commands, "preset.rename");
+        PageUi.SetEnabled(RemovePresetButton, commands, "preset.remove");
+        PageUi.SetEnabled(AddPackageButton, commands, "preset.package.add");
+        PageUi.SetEnabled(EditPackageButton, commands, "preset.package.edit");
+        PageUi.SetEnabled(RemovePackageButton, commands, "preset.package.remove");
+        PageUi.SetEnabled(ImportPresetButton, commands, "preset.import");
+        PageUi.SetEnabled(ExportPresetButton, commands, "preset.export");
+        PageUi.SetEnabled(SaveWorkspaceButton, commands, "preset.save");
+        PageUi.SetEnabled(InstallPresetButton, commands, "preset.apply.install");
+        PageUi.SetEnabled(UninstallPresetButton, commands, "preset.apply.uninstall");
+        PageUi.SetEnabled(CancelPresetOperationButton, commands, "operation.cancel");
         isRefreshing = false;
     }
 
@@ -83,6 +84,8 @@ public sealed partial class PresetsPage : Page
         SaveWorkspaceButton.Content = TextResources.Get("Command_Workspace_Save");
         InstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyInstall");
         UninstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyUninstall");
+        CancelPresetOperationButton.Content = TextResources.Get("Command_Operation_Cancel");
+        SelectAllPackagesBox.Content = TextResources.Get("Command_Select_All");
     }
 
     private void OnPresetChanged(object sender, SelectionChangedEventArgs args)
@@ -162,18 +165,35 @@ public sealed partial class PresetsPage : Page
 
     private async void OnInstallPreset(object sender, RoutedEventArgs args)
     {
-        var install = App.Workflow.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
-        Notify();
-        await install;
-        Notify();
+        await ApplyPresetAsync(PackageAction.Install);
     }
 
     private async void OnUninstallPreset(object sender, RoutedEventArgs args)
     {
-        var uninstall = App.Workflow.ApplyActivePresetAsync(PackageAction.Uninstall, CancellationToken.None);
-        Notify();
-        await uninstall;
-        Notify();
+        await ApplyPresetAsync(PackageAction.Uninstall);
+    }
+
+    private async Task ApplyPresetAsync(PackageAction action)
+    {
+        operationCancellation?.Dispose();
+        operationCancellation = new CancellationTokenSource();
+        try
+        {
+            var operation = App.Workflow.ApplyActivePresetAsync(action, operationCancellation.Token);
+            Notify();
+            await operation;
+        }
+        finally
+        {
+            operationCancellation.Dispose();
+            operationCancellation = null;
+            Notify();
+        }
+    }
+
+    private void OnCancelPresetOperation(object sender, RoutedEventArgs args)
+    {
+        operationCancellation?.Cancel();
     }
 
     private async void OnSaveWorkspace(object sender, RoutedEventArgs args)
@@ -197,14 +217,6 @@ public sealed partial class PresetsPage : Page
     }
 
     private PackageIdentity CreatePackageFromInputs() => new(PackageIdBox.Text, PackageSourceBox.Text);
-
-    private static void SetEnabled(Control control, IReadOnlyDictionary<string, PresentationCommand> commands, string id)
-    {
-        if (commands.TryGetValue(id, out var command))
-        {
-            control.IsEnabled = command.IsEnabled;
-        }
-    }
 
     private static string GetEmptyText(PresetsPresentationState state)
     {

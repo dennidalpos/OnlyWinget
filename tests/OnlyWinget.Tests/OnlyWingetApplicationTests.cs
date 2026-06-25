@@ -69,6 +69,7 @@ public sealed class OnlyWingetApplicationTests
 
         Assert.True(result.Succeeded);
         Assert.Equal(PackageAction.Upgrade, executor.LastPlan?.Selections.Single().Action);
+        Assert.Single(app.State.LastOperationResults);
         Assert.Contains(app.State.Activity, entry => entry.Title == "Git.Git" && entry.Message == "upgraded");
     }
 
@@ -89,6 +90,34 @@ public sealed class OnlyWingetApplicationTests
         Assert.Single(presentation.Search.Results);
         Assert.True(presentation.Search.Commands.Single(command => command.Id == "search.addSelected").IsEnabled);
         Assert.False(presentation.Updates.Commands.Single(command => command.Id == "operation.cancel").IsEnabled);
+    }
+
+    [Fact]
+    public async Task PresentationStateMapsUpdateOperationResultDetails()
+    {
+        var updates = new StubUpdateLoader(
+            new PackageUpdate(new PackageIdentity("Missing.App", "winget"), "Missing", "1.0.0", "1.1.0"));
+        var executor = new RecordingOperationExecutor(
+            new OperationExecutionSummary(
+                [
+                    new OperationExecutionResult(
+                        new PackageSelection(new PackageIdentity("Missing.App", "winget"), PackageAction.Upgrade),
+                        new WingetCommandResult(1, string.Empty, "No package found matching input criteria."),
+                        new ClassifiedWingetError(WingetErrorKind.NotFound, "Package was not found."))
+                ]));
+        var app = CreateApplication(updates: updates, executor: executor);
+
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
+
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+        var row = Assert.Single(presentation.Updates.Updates);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Failed", row.Status);
+        Assert.Equal("Package was not found.", row.ErrorDetails);
+        Assert.Single(presentation.Updates.OperationResults);
     }
 
     private static OnlyWingetApplication CreateApplication(

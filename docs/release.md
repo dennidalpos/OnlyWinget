@@ -22,6 +22,8 @@ From a clean working tree:
 .\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore
 ```
 
+Packaging requires `WindowsAppRuntimeInstall.exe` matching the app's `Microsoft.WindowsAppSDK` version. Provide it with `-WindowsAppRuntimeInstallerPath` or `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER` when the file is not already available in the local NuGet cache.
+
 Then run the hosted GitHub Actions `build-gate` workflow for the exact release commit.
 
 ## Artifact

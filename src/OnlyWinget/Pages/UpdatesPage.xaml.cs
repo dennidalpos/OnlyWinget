@@ -2,7 +2,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Packages;
-using OnlyWinget.Domain.Selection;
 
 namespace OnlyWinget.Pages;
 
@@ -42,29 +41,23 @@ public sealed partial class UpdatesPage : Page
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
         UpdateList.ItemsSource = state.Updates;
-        StatusText.Text = state.Error ?? (state.Updates.Count == 0 ? TextResources.Get("Empty_Updates") : string.Empty);
-        LoadingRing.IsActive = state.IsLoading;
-        LoadingRing.Visibility = state.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        SelectAllUpdatesBox.IsThreeState = true;
-        SelectAllUpdatesBox.IsChecked = state.HeaderState switch
-        {
-            SelectionHeaderState.Checked => true,
-            SelectionHeaderState.Mixed => null,
-            _ => false
-        };
+        PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Updates"), state.Updates.Count > 0);
+        PageUi.ApplyLoading(LoadingRing, state.IsLoading || state.IsExecuting);
+        PageUi.ApplySelectionHeader(SelectAllUpdatesBox, state.HeaderState);
 
-        SetEnabled(RefreshButton, commands, "updates.refresh");
-        SetEnabled(ApplySelectedButton, commands, "updates.applySelected");
-        SetEnabled(CancelButton, commands, "operation.cancel");
+        PageUi.SetEnabled(RefreshButton, commands, "updates.refresh");
+        PageUi.SetEnabled(ApplySelectedButton, commands, "updates.applySelected");
+        PageUi.SetEnabled(CancelButton, commands, "operation.cancel");
         isRefreshing = false;
     }
 
     private void ApplyText()
     {
         TitleText.Text = TextResources.Get("Updates_Title");
-        RefreshButton.Content = TextResources.Get("Command_Updates_Refresh");
-        ApplySelectedButton.Content = TextResources.Get("Command_Updates_ApplySelected");
-        CancelButton.Content = TextResources.Get("Command_Operation_Cancel");
+        SelectAllUpdatesBox.Content = TextResources.Get("Command_Select_All");
+        RefreshButton.Label = TextResources.Get("Command_Updates_Refresh");
+        ApplySelectedButton.Label = TextResources.Get("Command_Updates_ApplySelected");
+        CancelButton.Label = TextResources.Get("Command_Operation_Cancel");
     }
 
     private async void OnRefreshUpdates(object sender, RoutedEventArgs args)
@@ -79,12 +72,18 @@ public sealed partial class UpdatesPage : Page
     {
         operationCancellation?.Dispose();
         operationCancellation = new CancellationTokenSource();
-        var apply = App.Workflow.ApplySelectedUpdatesAsync(operationCancellation.Token);
-        Notify();
-        await apply;
-        operationCancellation.Dispose();
-        operationCancellation = null;
-        Notify();
+        try
+        {
+            var apply = App.Workflow.ApplySelectedUpdatesAsync(operationCancellation.Token);
+            Notify();
+            await apply;
+        }
+        finally
+        {
+            operationCancellation.Dispose();
+            operationCancellation = null;
+            Notify();
+        }
     }
 
     private void OnCancel(object sender, RoutedEventArgs args)
@@ -112,14 +111,6 @@ public sealed partial class UpdatesPage : Page
 
         App.Workflow.ToggleUpdate(new PackageIdentity(row.PackageId, row.Source));
         Notify();
-    }
-
-    private static void SetEnabled(Control control, IReadOnlyDictionary<string, PresentationCommand> commands, string id)
-    {
-        if (commands.TryGetValue(id, out var command))
-        {
-            control.IsEnabled = command.IsEnabled;
-        }
     }
 
     private static void Notify()

@@ -26,17 +26,17 @@ The presentation layer can reference infrastructure for composition. Domain does
 
 ## Local State
 
-The current workspace schema is new for the WinUI modernization:
+The workspace schema is:
 
 ```text
 %LOCALAPPDATA%\OnlyWinget\workspace-v1.json
 ```
 
-There is no automatic migration from WPF-era files. Preset exchange supports only `onlywinget.preset.v1`.
+Preset exchange supports only `onlywinget.preset.v1`.
 
 ## Installer
 
-The release artifact remains a WiX Burn setup EXE with x86 and x64 MSI payloads. The WinUI app uses the stable Windows App SDK package and the installer backlog tracks adding the matching Windows App Runtime bootstrap/prerequisite.
+The release artifact is a WiX Burn setup EXE with x86 and x64 MSI payloads. The bundle chains the matching Windows App Runtime redistributable before installing the WinUI app MSI.
 
 ## Notes
 

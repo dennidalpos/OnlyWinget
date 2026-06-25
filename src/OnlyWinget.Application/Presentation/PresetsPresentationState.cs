@@ -7,5 +7,7 @@ public sealed record PresetsPresentationState(
     string? ActivePresetName,
     IReadOnlyList<PresetPackageRow> Packages,
     SelectionHeaderState HeaderState,
+    IReadOnlyList<OperationResultRow> OperationResults,
     IReadOnlyList<PresentationCommand> Commands,
+    bool IsExecuting,
     string? Error);

@@ -33,7 +33,7 @@ public sealed partial class ActivityPage : Page
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
         ActivityList.ItemsSource = state.Entries;
         StatusText.Text = state.Entries.Count == 0 ? TextResources.Get("Empty_Activity") : string.Empty;
-        SetEnabled(ClearButton, commands, "activity.clear");
+        PageUi.SetEnabled(ClearButton, commands, "activity.clear");
     }
 
     private void ApplyText()
@@ -48,11 +48,4 @@ public sealed partial class ActivityPage : Page
         App.NotifyWorkflowChanged();
     }
 
-    private static void SetEnabled(Control control, IReadOnlyDictionary<string, PresentationCommand> commands, string id)
-    {
-        if (commands.TryGetValue(id, out var command))
-        {
-            control.IsEnabled = command.IsEnabled;
-        }
-    }
 }

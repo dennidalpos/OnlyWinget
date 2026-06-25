@@ -41,12 +41,14 @@
                             <ColumnDefinition Width="2*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnResultSelectionClick" />
                         <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="{Binding PackageId}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="3" Text="{Binding Version}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="4" Text="{Binding Source}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5" Text="{Binding Match}" TextWrapping="Wrap" VerticalAlignment="Center" />
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>

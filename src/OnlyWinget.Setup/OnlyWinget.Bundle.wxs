@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
-     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
   <?define ProductName = "OnlyWinget" ?>
   <?define Manufacturer = "Danny Perondi" ?>
 
@@ -14,8 +15,15 @@
           DisableRemove="yes">
     <Variable Name="InstallDesktopShortcut" Type="numeric" Value="0" />
 
-    <bal:Condition Message="OnlyWinget requires Windows 10 or Windows 11. Install on an updated Windows 10/11 client and rerun setup. Verify with: winver">
-      VersionNT >= v10.0
+    <util:RegistrySearch Id="WindowsBuildNumberSearch"
+                         Root="HKLM"
+                         Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+                         Value="CurrentBuildNumber"
+                         Variable="WindowsBuildNumber"
+                         Result="value" />
+
+    <bal:Condition Message="OnlyWinget requires Windows 10 version 1809 build 17763 or newer, or Windows 11. Install on an updated Windows client and rerun setup. Verify with: winver">
+      VersionNT >= v10.0 AND WindowsBuildNumber >= 17763
     </bal:Condition>
 
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
@@ -27,6 +35,13 @@
     </BootstrapperApplicationRef>
 
     <Chain>
+      <ExePackage Id="WindowsAppRuntime"
+                  SourceFile="$(var.WindowsAppRuntimeInstallerPath)"
+                  InstallCommand="--quiet --force"
+                  RepairCommand="--quiet --force"
+                  PerMachine="yes"
+                  Permanent="yes"
+                  Vital="yes" />
       <MsiPackage Id="OnlyWingetX64"
                   SourceFile="$(var.X64MsiPath)"
                   Visible="yes"

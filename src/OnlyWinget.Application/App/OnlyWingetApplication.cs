@@ -26,6 +26,7 @@ public sealed class OnlyWingetApplication(
     private readonly List<PackageSearchResult> searchResults = [];
     private readonly List<PackageUpdate> updates = [];
     private readonly List<ActivityEntry> activity = [];
+    private readonly List<OperationExecutionResult> lastOperationResults = [];
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
 
     private WorkspaceState workspace = WorkspaceState.Empty;
@@ -294,12 +295,14 @@ public sealed class OnlyWingetApplication(
                         throw new InvalidOperationException("Select at least one package before applying an operation.");
                     }
 
+                    lastOperationResults.Clear();
                     AddActivity(ActivitySeverity.Information, "Operation started", plan.Name);
                     var summary = await operationExecutor.ExecuteAsync(plan, cancellationToken).ConfigureAwait(false);
+                    lastOperationResults.AddRange(summary.Results);
                     foreach (var result in summary.Results)
                     {
                         var severity = result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error;
-                        var message = result.Error?.Message ?? result.CommandResult.StandardOutput.Trim();
+                        var message = CreateOperationActivityMessage(result);
                         AddActivity(severity, result.Selection.Package.Id, string.IsNullOrWhiteSpace(message) ? "Completed." : message);
                     }
 
@@ -327,8 +330,28 @@ public sealed class OnlyWingetApplication(
             updateSelection.Selected.ToArray(),
             updateSelection.HeaderState,
             activity.ToArray(),
+            lastOperationResults.ToArray(),
             busyState,
             userVisibleError);
+    }
+
+    private static string CreateOperationActivityMessage(OperationExecutionResult result)
+    {
+        if (result.Error is not null)
+        {
+            return string.IsNullOrWhiteSpace(result.CommandResult.StandardError)
+                ? result.Error.Message
+                : $"{result.Error.Message} {result.CommandResult.StandardError.Trim()}";
+        }
+
+        var output = result.CommandResult.StandardOutput.Trim();
+        if (!string.IsNullOrWhiteSpace(output))
+        {
+            return output;
+        }
+
+        var errorOutput = result.CommandResult.StandardError.Trim();
+        return string.IsNullOrWhiteSpace(errorOutput) ? "Completed." : errorOutput;
     }
 
     private async Task<ApplicationActionResult> RunAsync(

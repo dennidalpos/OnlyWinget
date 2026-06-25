@@ -20,8 +20,7 @@ if ($null -eq $module) {
 Import-Module $module.Path -ErrorAction Stop
 $settingsPath = Join-Path $PSScriptRoot 'support/PSScriptAnalyzerSettings.psd1'
 $scriptsRoot = $PSScriptRoot
-$scripts = Get-ChildItem $scriptsRoot -Recurse -Filter '*.ps1' |
-    Where-Object { $_.FullName -notmatch '\\legacy\\' }
+$scripts = Get-ChildItem $scriptsRoot -Recurse -Filter '*.ps1'
 
 $anyIssue = $false
 foreach ($s in $scripts) {

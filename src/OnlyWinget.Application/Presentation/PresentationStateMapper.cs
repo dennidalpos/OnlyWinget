@@ -23,6 +23,7 @@ public static class PresentationStateMapper
         var hasPackages = active?.Packages.Count > 0;
         var hasSelectedPackages = state.SelectedPresetPackages.Count > 0;
         var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
+        var operationResults = CreateOperationResultRows(state);
 
         return new PresetsPresentationState(
             state.Workspace.Presets.Select(preset => preset.Name).ToArray(),
@@ -34,6 +35,7 @@ public static class PresentationStateMapper
                     state.SelectedPresetPackages.Any(selected => PackageEquals(selected, package))))
                 .ToArray() ?? [],
             state.PresetSelectionHeader,
+            operationResults,
             [
                 new("preset.add", "Command_Preset_Add", !isExecuting),
                 new("preset.rename", "Command_Preset_Rename", hasPreset && !isExecuting),
@@ -45,8 +47,10 @@ public static class PresentationStateMapper
                 new("preset.export", "Command_Preset_Export", hasPreset && !isExecuting),
                 new("preset.save", "Command_Workspace_Save", !isExecuting),
                 new("preset.apply.install", "Command_Preset_ApplyInstall", hasPackages && !isExecuting),
-                new("preset.apply.uninstall", "Command_Preset_ApplyUninstall", hasPackages && !isExecuting)
+                new("preset.apply.uninstall", "Command_Preset_ApplyUninstall", hasPackages && !isExecuting),
+                new("operation.cancel", "Command_Operation_Cancel", isExecuting)
             ],
+            isExecuting,
             state.UserVisibleError);
     }
 
@@ -78,24 +82,37 @@ public static class PresentationStateMapper
     {
         var isLoading = state.BusyState == ApplicationBusyState.RefreshingUpdates;
         var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
+        var operationResults = CreateOperationResultRows(state);
+        var operationResultsByPackage = operationResults
+            .GroupBy(result => PackageFingerprint(result.PackageId, result.Source), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
 
         return new UpdatesPresentationState(
             state.Updates
-                .Select(update => new UpdateRow(
-                    update.Package.Id,
-                    update.Name,
-                    update.Package.Source,
-                    update.InstalledVersion,
-                    update.AvailableVersion,
-                    state.SelectedUpdates.Any(selected => PackageEquals(selected, update.Package))))
+                .Select(update =>
+                {
+                    operationResultsByPackage.TryGetValue(PackageFingerprint(update.Package), out var result);
+                    return new UpdateRow(
+                        update.Package.Id,
+                        update.Name,
+                        update.Package.Source,
+                        update.InstalledVersion,
+                        update.AvailableVersion,
+                        state.SelectedUpdates.Any(selected => PackageEquals(selected, update.Package)),
+                        result?.Status,
+                        result?.ErrorDetails,
+                        result?.Output);
+                })
                 .ToArray(),
             state.UpdatesSelectionHeader,
+            operationResults,
             [
                 new("updates.refresh", "Command_Updates_Refresh", !isLoading && !isExecuting),
                 new("updates.applySelected", "Command_Updates_ApplySelected", state.SelectedUpdates.Count > 0 && !isLoading && !isExecuting),
                 new("operation.cancel", "Command_Operation_Cancel", isExecuting)
             ],
             isLoading,
+            isExecuting,
             state.UserVisibleError);
     }
 
@@ -110,7 +127,28 @@ public static class PresentationStateMapper
             ]);
     }
 
+    private static OperationResultRow[] CreateOperationResultRows(OnlyWingetState state) =>
+        state.LastOperationResults
+            .Select(result => new OperationResultRow(
+                result.Selection.Package.Id,
+                result.Selection.Package.Source,
+                result.Selection.Action,
+                result.Succeeded,
+                result.Succeeded ? "Succeeded" : "Failed",
+                result.Error?.Message ?? EmptyToNull(result.CommandResult.StandardError),
+                EmptyToNull(result.CommandResult.StandardOutput)))
+            .ToArray();
+
+    private static string? EmptyToNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private static bool PackageEquals(PackageIdentity left, PackageIdentity right) =>
         string.Equals(left.Id, right.Id, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(left.Source ?? string.Empty, right.Source ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+
+    private static string PackageFingerprint(PackageIdentity package) =>
+        PackageFingerprint(package.Id, package.Source);
+
+    private static string PackageFingerprint(string packageId, string? source) =>
+        $"{source?.ToUpperInvariant() ?? string.Empty}|{packageId.ToUpperInvariant()}";
 }

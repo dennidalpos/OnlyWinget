@@ -2,7 +2,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Packages;
-using OnlyWinget.Domain.Selection;
 
 namespace OnlyWinget.Pages;
 
@@ -38,19 +37,12 @@ public sealed partial class SearchPage : Page
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
         ResultList.ItemsSource = state.Results;
-        StatusText.Text = state.Error ?? (state.Results.Count == 0 ? TextResources.Get("Empty_Search") : string.Empty);
-        LoadingRing.IsActive = state.IsLoading;
-        LoadingRing.Visibility = state.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        SelectAllResultsBox.IsThreeState = true;
-        SelectAllResultsBox.IsChecked = state.HeaderState switch
-        {
-            SelectionHeaderState.Checked => true,
-            SelectionHeaderState.Mixed => null,
-            _ => false
-        };
+        PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Search"), state.Results.Count > 0);
+        PageUi.ApplyLoading(LoadingRing, state.IsLoading);
+        PageUi.ApplySelectionHeader(SelectAllResultsBox, state.HeaderState);
 
-        SetEnabled(SearchButton, commands, "search.execute");
-        SetEnabled(AddSelectedButton, commands, "search.addSelected");
+        PageUi.SetEnabled(SearchButton, commands, "search.execute");
+        PageUi.SetEnabled(AddSelectedButton, commands, "search.addSelected");
         isRefreshing = false;
     }
 
@@ -59,6 +51,7 @@ public sealed partial class SearchPage : Page
         TitleText.Text = TextResources.Get("Nav_Search");
         QueryBox.PlaceholderText = TextResources.Get("Search_Query");
         SourceBox.Header = TextResources.Get("Package_Source");
+        SelectAllResultsBox.Content = TextResources.Get("Command_Select_All");
         SearchButton.Content = TextResources.Get("Command_Search_Execute");
         AddSelectedButton.Content = TextResources.Get("Command_Search_AddSelected");
     }
@@ -109,14 +102,6 @@ public sealed partial class SearchPage : Page
 
         App.Workflow.ToggleSearchResult(new PackageIdentity(row.PackageId, row.Source));
         Notify();
-    }
-
-    private static void SetEnabled(Control control, IReadOnlyDictionary<string, PresentationCommand> commands, string id)
-    {
-        if (commands.TryGetValue(id, out var command))
-        {
-            control.IsEnabled = command.IsEnabled;
-        }
     }
 
     private static void Notify()

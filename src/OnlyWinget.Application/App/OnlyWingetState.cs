@@ -19,5 +19,6 @@ public sealed record OnlyWingetState(
     IReadOnlyList<PackageIdentity> SelectedUpdates,
     SelectionHeaderState UpdatesSelectionHeader,
     IReadOnlyList<ActivityEntry> Activity,
+    IReadOnlyList<OperationExecutionResult> LastOperationResults,
     ApplicationBusyState BusyState,
     string? UserVisibleError);

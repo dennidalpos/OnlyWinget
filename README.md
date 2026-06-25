@@ -38,7 +38,7 @@ OnlyWinget is a Windows desktop app for managing local `winget` workflows from a
 
 - Windows 10 or Windows 11.
 - Microsoft App Installer with `winget` 1.x on `PATH`.
-- Windows App Runtime matching the Windows App SDK package used by the app.
+- Windows App Runtime matching the Windows App SDK package used by the app. The setup bundle installs this prerequisite.
 - For development: .NET SDK from [`global.json`](global.json), PowerShell 7+, and WiX Toolset 3.x only when packaging.
 
 Quick verification:
@@ -56,7 +56,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\format.ps1 -NoRestore
 pwsh -ExecutionPolicy Bypass -File .\scripts\typecheck.ps1 -Configuration Release -NoRestore
 pwsh -ExecutionPolicy Bypass -File .\scripts\test.ps1 -Configuration Release -NoRestore
 pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release
-pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore
+pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore -WindowsAppRuntimeInstallerPath C:\Path\To\WindowsAppRuntimeInstall.exe
 ```
 
 Full local gate:

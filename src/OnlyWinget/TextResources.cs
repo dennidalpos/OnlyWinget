@@ -40,6 +40,7 @@ public static class TextResources
         ["Command_Updates_Refresh"] = "Refresh",
         ["Command_Updates_ApplySelected"] = "Apply selected",
         ["Command_Operation_Cancel"] = "Cancel",
+        ["Command_Select_All"] = "Select all",
         ["Command_Activity_Clear"] = "Clear"
     };
 
@@ -79,6 +80,7 @@ public static class TextResources
         ["Command_Updates_Refresh"] = "Aggiorna",
         ["Command_Updates_ApplySelected"] = "Applica selezionati",
         ["Command_Operation_Cancel"] = "Annulla",
+        ["Command_Select_All"] = "Seleziona tutto",
         ["Command_Activity_Clear"] = "Svuota"
     };
 

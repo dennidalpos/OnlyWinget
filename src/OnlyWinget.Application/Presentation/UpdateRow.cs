@@ -6,4 +6,7 @@ public sealed record UpdateRow(
     string? Source,
     string InstalledVersion,
     string AvailableVersion,
-    bool IsSelected);
+    bool IsSelected,
+    string? Status,
+    string? ErrorDetails,
+    string? Output);

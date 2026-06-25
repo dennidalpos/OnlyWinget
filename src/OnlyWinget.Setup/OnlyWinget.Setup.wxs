@@ -46,8 +46,8 @@
     <WixVariable Id="WixUIDialogBmp" Value="$(var.InstallerDialogBmpPath)" />
     <WixVariable Id="WixUIBannerBmp" Value="$(var.InstallerBannerBmpPath)" />
 
-    <Condition Message="OnlyWinget richiede Windows 10 o Windows 11. Installa su un client Windows 10/11 aggiornato e riesegui il setup. Verifica con: winver">
-      Installed OR (WINDOWSBUILDNUMBER &gt;= 10240)
+    <Condition Message="OnlyWinget richiede Windows 10 versione 1809 build 17763 o successiva, oppure Windows 11. Installa su un client Windows aggiornato e riesegui il setup. Verifica con: winver">
+      Installed OR (WINDOWSBUILDNUMBER &gt;= 17763)
     </Condition>
 
     <?if $(var.Platform) = x64 ?>

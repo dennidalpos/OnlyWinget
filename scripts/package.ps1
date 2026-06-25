@@ -2,6 +2,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [string]$Version,
+    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [switch]$NoRestore,
     [switch]$StopRunningInstance,
     [ValidateSet('x86', 'x64', 'All')]
@@ -32,6 +33,7 @@ $upgradeCode = '{B6E2D6FC-56ED-4A5C-A766-01F3FE71D7E6}'
 $bundleUpgradeCode = '{A34AF980-F5F1-4E4D-8124-8DC5E889C74D}'
 $builtMsiPaths = @{}
 $suppressedValidationIces = @('ICE61')
+$resolvedWindowsAppRuntimeInstallerPath = $null
 
 function Add-UniquePath {
     param(
@@ -149,6 +151,72 @@ function Get-ProjectVersion {
     }
 
     return $rawVersion.Trim()
+}
+
+function Get-WindowsAppSdkVersion {
+    [xml]$projectXml = Get-Content -Path $projectPath
+    $packageReference = $projectXml.SelectSingleNode('//PackageReference[@Include="Microsoft.WindowsAppSDK"]')
+
+    if ($null -eq $packageReference -or [string]::IsNullOrWhiteSpace($packageReference.Version)) {
+        throw "Microsoft.WindowsAppSDK PackageReference non trovato in '$projectPath'."
+    }
+
+    return $packageReference.Version.Trim()
+}
+
+function Resolve-WindowsAppRuntimeInstaller {
+    param(
+        [string]$ExplicitPath,
+        [string]$WindowsAppSdkVersion
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
+        Assert-Path -Path $ExplicitPath -Description 'Windows App Runtime installer'
+        return [System.IO.Path]::GetFullPath($ExplicitPath)
+    }
+
+    $nugetRoots = [System.Collections.Generic.List[string]]::new()
+    if (-not [string]::IsNullOrWhiteSpace($env:NUGET_PACKAGES)) {
+        Add-UniquePath -Paths $nugetRoots -Path $env:NUGET_PACKAGES
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        Add-UniquePath -Paths $nugetRoots -Path (Join-Path $env:USERPROFILE '.nuget/packages')
+    }
+    $packageNames = @('microsoft.windowsappsdk.runtime', 'microsoft.windowsappsdk.redist')
+
+    foreach ($nugetRoot in $nugetRoots) {
+        foreach ($packageName in $packageNames) {
+            $versionRoot = Join-Path (Join-Path $nugetRoot $packageName) $WindowsAppSdkVersion
+            if (-not (Test-Path -LiteralPath $versionRoot)) {
+                continue
+            }
+
+            $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if ($null -ne $candidate) {
+                return $candidate.FullName
+            }
+        }
+    }
+
+    foreach ($nugetRoot in $nugetRoots) {
+        foreach ($packageName in $packageNames) {
+            $packageRoot = Join-Path $nugetRoot $packageName
+            if (-not (Test-Path -LiteralPath $packageRoot)) {
+                continue
+            }
+
+            $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
+                Sort-Object FullName -Descending |
+                Select-Object -First 1
+            if ($null -ne $candidate) {
+                return $candidate.FullName
+            }
+        }
+    }
+
+    throw "Windows App Runtime installer non trovato. Passa -WindowsAppRuntimeInstallerPath oppure imposta ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER al percorso di WindowsAppRuntimeInstall.exe compatibile con Microsoft.WindowsAppSDK $WindowsAppSdkVersion."
 }
 
 function Convert-ToInstallerVersion {
@@ -336,6 +404,7 @@ function Invoke-UnifiedSetup {
     & $candleExe `
         -nologo `
         -ext $balExtension `
+        -ext $utilExtension `
         "-dProductVersion=$installerVersion" `
         "-dAppIconPath=$appIconPath" `
         "-dBundleLogoPath=$bundleLogoPath" `
@@ -344,6 +413,7 @@ function Invoke-UnifiedSetup {
         "-dBundleThemeLocalizationPath=$bundleThemeLocalizationPath" `
         "-dX86MsiPath=$($builtMsiPaths['x86'])" `
         "-dX64MsiPath=$($builtMsiPaths['x64'])" `
+        "-dWindowsAppRuntimeInstallerPath=$resolvedWindowsAppRuntimeInstallerPath" `
         "-dBundleUpgradeCode=$bundleUpgradeCode" `
         -out $bundleObjDir\ `
         $bundleSourcePath
@@ -355,6 +425,7 @@ function Invoke-UnifiedSetup {
     & $lightExe `
         -nologo `
         -ext $balExtension `
+        -ext $utilExtension `
         -out $setupFilePath `
         $bundleObjectPath
 
@@ -389,9 +460,17 @@ $wixSearchRoots = @(
 )
 $uiExtension = Resolve-WixExtension -ExtensionName 'WixUIExtension.dll' -SearchRoots $wixSearchRoots
 $balExtension = Resolve-WixExtension -ExtensionName 'WixBalExtension.dll' -SearchRoots $wixSearchRoots
+$utilExtension = Resolve-WixExtension -ExtensionName 'WixUtilExtension.dll' -SearchRoots $wixSearchRoots
 
 $rawVersion = if ([string]::IsNullOrWhiteSpace($Version)) { Get-ProjectVersion } else { $Version }
 $installerVersion = Convert-ToInstallerVersion -RawVersion $rawVersion
+
+if (-not $SkipBundle) {
+    $windowsAppSdkVersion = Get-WindowsAppSdkVersion
+    $resolvedWindowsAppRuntimeInstallerPath = Resolve-WindowsAppRuntimeInstaller `
+        -ExplicitPath $WindowsAppRuntimeInstallerPath `
+        -WindowsAppSdkVersion $windowsAppSdkVersion
+}
 
 if ($StopRunningInstance) {
     $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'

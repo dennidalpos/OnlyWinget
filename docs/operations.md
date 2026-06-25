@@ -35,7 +35,7 @@ The full gate restores, formats, lints scripts, typechecks, tests, builds, packa
 | Test | `.\scripts\test.ps1 -Configuration Release -NoRestore` |
 | Build | `.\scripts\build.ps1 -Configuration Release` |
 | Run app | `.\scripts\dev.ps1 -Configuration Release` |
-| Package setup | `.\scripts\package.ps1 -Configuration Release -NoRestore` |
+| Package setup | `.\scripts\package.ps1 -Configuration Release -NoRestore -WindowsAppRuntimeInstallerPath C:\Path\To\WindowsAppRuntimeInstall.exe` |
 | Clean outputs | `.\scripts\clean.ps1 -Configuration Release` |
 
 ## Optional Validations
@@ -59,3 +59,4 @@ Elevated installer lifecycle validation on a clean Windows host:
 - .NET SDK from `global.json`.
 - PowerShell 7+.
 - WiX Toolset 3.x for packaging and the full gate.
+- `WindowsAppRuntimeInstall.exe` matching the `Microsoft.WindowsAppSDK` package, passed with `-WindowsAppRuntimeInstallerPath` or `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`.

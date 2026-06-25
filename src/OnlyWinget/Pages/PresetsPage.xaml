@@ -47,6 +47,8 @@
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <CheckBox x:Name="SelectAllPackagesBox" Click="OnToggleAllPackages" />
                 <Button x:Name="UninstallPresetButton" Click="OnUninstallPreset" />
+                <Button x:Name="CancelPresetOperationButton" Click="OnCancelPresetOperation" />
+                <ProgressRing x:Name="OperationRing" Width="24" Height="24" />
             </StackPanel>
             <ListView x:Name="PackageList" Grid.Row="1">
                 <ListView.ItemTemplate>
@@ -71,6 +73,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <TextBox x:Name="ImportJsonBox" AcceptsReturn="True" MaxHeight="80" TextWrapping="Wrap" />
             <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
@@ -78,6 +81,32 @@
                 <Button x:Name="ExportPresetButton" Click="OnExportPreset" />
             </StackPanel>
             <TextBlock x:Name="StatusText" Grid.Row="2" TextWrapping="Wrap" />
+            <ListView x:Name="OperationResultList" Grid.Row="3" MaxHeight="140">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnSpacing="12" RowSpacing="2" Padding="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{Binding PackageId}" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="1" Text="{Binding Action}" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="2" Text="{Binding Status}" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="3" Text="{Binding Source}" VerticalAlignment="Top" />
+                            <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Spacing="2">
+                                <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Output}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
         </Grid>
     </Grid>
 </Page>
