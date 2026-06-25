@@ -2,16 +2,39 @@
     x:Class="OnlyWinget.Pages.ActivityPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Padding="24" RowSpacing="16">
+    <Grid Padding="24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock Text="Activity" Style="{StaticResource TitleTextBlockStyle}" />
-        <ListView Grid.Row="1">
-            <ListView.Header>
-                <TextBlock Text="Operation log" />
-            </ListView.Header>
+
+        <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="ClearButton" Click="OnClearActivity" />
+        </StackPanel>
+
+        <ListView x:Name="ActivityList" Grid.Row="2">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnSpacing="12" Padding="0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170" />
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Timestamp}" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="1" Text="{Binding Severity}" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="2" Text="{Binding Title}" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
         </ListView>
+
+        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" />
     </Grid>
 </Page>

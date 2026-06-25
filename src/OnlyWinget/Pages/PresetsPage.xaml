@@ -2,25 +2,82 @@
     x:Class="OnlyWinget.Pages.PresetsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Padding="24" RowSpacing="16">
+    <Grid Padding="24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock Text="Presets" Style="{StaticResource TitleTextBlockStyle}" />
-        <CommandBar Grid.Row="1" DefaultLabelPosition="Right">
-            <AppBarButton Icon="Add" Label="Add" />
-            <AppBarButton Icon="Edit" Label="Rename" />
-            <AppBarButton Icon="Delete" Label="Remove" />
-            <AppBarButton Icon="OpenFile" Label="Import" />
-            <AppBarButton Icon="Save" Label="Export" />
-            <AppBarButton Icon="Play" Label="Apply" />
-        </CommandBar>
-        <ListView Grid.Row="2">
-            <ListView.Header>
-                <TextBlock Text="Preset packages" />
-            </ListView.Header>
-        </ListView>
+
+        <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <ComboBox x:Name="PresetSelector" Width="220" SelectionChanged="OnPresetChanged" />
+            <TextBox x:Name="PresetNameBox" Width="220" />
+            <Button x:Name="AddPresetButton" Click="OnAddPreset" />
+            <Button x:Name="RenamePresetButton" Click="OnRenamePreset" />
+            <Button x:Name="RemovePresetButton" Click="OnRemovePreset" />
+            <Button x:Name="SaveWorkspaceButton" Click="OnSaveWorkspace" />
+        </StackPanel>
+
+        <Grid Grid.Row="2" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="PackageIdBox" />
+            <TextBox x:Name="PackageSourceBox" Grid.Column="1" />
+            <Button x:Name="AddPackageButton" Grid.Column="2" Click="OnAddPackage" />
+            <Button x:Name="EditPackageButton" Grid.Column="3" Click="OnEditPackage" />
+            <Button x:Name="RemovePackageButton" Grid.Column="4" Click="OnRemovePackages" />
+            <Button x:Name="InstallPresetButton" Grid.Column="5" Click="OnInstallPreset" />
+        </Grid>
+
+        <Grid Grid.Row="3" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <CheckBox x:Name="SelectAllPackagesBox" Click="OnToggleAllPackages" />
+                <Button x:Name="UninstallPresetButton" Click="OnUninstallPreset" />
+            </StackPanel>
+            <ListView x:Name="PackageList" Grid.Row="1">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnSpacing="12" Padding="0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnPackageSelectionClick" />
+                            <TextBlock Grid.Column="1" Text="{Binding PackageId}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="{Binding Source}" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+
+        <Grid Grid.Row="4" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBox x:Name="ImportJsonBox" AcceptsReturn="True" MaxHeight="80" TextWrapping="Wrap" />
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                <Button x:Name="ImportPresetButton" Click="OnImportPreset" />
+                <Button x:Name="ExportPresetButton" Click="OnExportPreset" />
+            </StackPanel>
+            <TextBlock x:Name="StatusText" Grid.Row="2" TextWrapping="Wrap" />
+        </Grid>
     </Grid>
 </Page>

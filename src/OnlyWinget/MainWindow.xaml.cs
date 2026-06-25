@@ -17,8 +17,17 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        RootNavigation.Loaded += OnLoaded;
+        ApplyText();
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
         ContentFrame.Navigate(typeof(PresetsPage));
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        RootNavigation.Loaded -= OnLoaded;
+        await App.Workflow.LoadWorkspaceAsync(CancellationToken.None);
+        App.NotifyWorkflowChanged();
     }
 
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -31,5 +40,20 @@ public sealed partial class MainWindow : Window
         }
 
         ContentFrame.Navigate(pageType);
+    }
+
+    private void ApplyText()
+    {
+        foreach (var item in RootNavigation.MenuItems.OfType<NavigationViewItem>())
+        {
+            item.Content = item.Tag switch
+            {
+                "presets" => TextResources.Get("Nav_Presets"),
+                "search" => TextResources.Get("Nav_Search"),
+                "updates" => TextResources.Get("Nav_Updates"),
+                "activity" => TextResources.Get("Nav_Activity"),
+                _ => item.Content
+            };
+        }
     }
 }

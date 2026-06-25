@@ -2,22 +2,47 @@
     x:Class="OnlyWinget.Pages.UpdatesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Padding="24" RowSpacing="16">
+    <Grid Padding="24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock Text="Updates" Style="{StaticResource TitleTextBlockStyle}" />
-        <CommandBar Grid.Row="1" DefaultLabelPosition="Right">
-            <AppBarButton Icon="Refresh" Label="Refresh" />
-            <AppBarButton Icon="Download" Label="Apply selected" />
-            <AppBarButton Icon="Cancel" Label="Cancel" />
-        </CommandBar>
-        <ListView Grid.Row="2">
-            <ListView.Header>
-                <TextBlock Text="Available updates" />
-            </ListView.Header>
+
+        <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="RefreshButton" Click="OnRefreshUpdates" />
+            <Button x:Name="ApplySelectedButton" Click="OnApplySelected" />
+            <Button x:Name="CancelButton" Click="OnCancel" />
+            <CheckBox x:Name="SelectAllUpdatesBox" Click="OnToggleAllUpdates" />
+            <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
+        </StackPanel>
+
+        <ListView x:Name="UpdateList" Grid.Row="2">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnSpacing="12" Padding="0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnUpdateSelectionClick" />
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding PackageId}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding InstalledVersion}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="{Binding AvailableVersion}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5" Text="{Binding Source}" VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
         </ListView>
+
+        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" />
     </Grid>
 </Page>

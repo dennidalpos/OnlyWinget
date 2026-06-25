@@ -1,14 +1,9 @@
 {
   "todos": [
-    "Rebuild the application logic as a clean, simple Application layer that coordinates workspace state, preset editing, package search, update refresh, operation planning, operation execution, cancellation, activity history, and user-visible errors without WPF-era ViewModel shapes.",
-    "Define the WinUI presentation state models and commands for Presets, Search, Updates, and Activity as thin adapters over the Application layer.",
     "Implement reusable WinUI table, command bar, empty state, loading state, error state, selection header, row status, and log/activity components.",
-    "Rebuild preset management in WinUI with batch selection, add package, edit package, remove package, rename preset, import, export, save workspace, and apply flows.",
-    "Rebuild package search in WinUI with search execution, selectable results, package resolution, duplicate handling, and add selected packages flow.",
-    "Rebuild updates in WinUI with refresh, selectable updates, apply selected updates, row status, error details, and resolution output.",
-    "Rebuild operation progress, cancellation, log buffering, and activity history so long winget operations remain observable and cancellable.",
-    "Preserve Italian and English localization in the new presentation layer and validate all visible navigation, command, status, empty, loading, and error labels.",
-    "Port remaining behavior tests to the new Domain, Application, Infrastructure, and WinUI presentation state layers.",
+    "Add refined WinUI update row status, per-package error details, and resolution output display.",
+    "Add WinUI cancellation wiring for preset install and uninstall operations.",
+    "Manually validate Italian and English visible navigation, command, status, empty, loading, and error labels.",
     "Update WiX Burn and MSI packaging to install or prerequisite the Windows App Runtime required by Windows App SDK.",
     "Update installer OS checks, app payload harvesting, shortcuts, icons, and version metadata for the WinUI and .NET 10 output.",
     "Run format, lint, typecheck, test, build, package, and check scripts after the WinUI migration compiles.",
