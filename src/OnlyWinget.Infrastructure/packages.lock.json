@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "onlywinget.application": {
+        "type": "Project",
+        "dependencies": {
+          "OnlyWinget.Domain": "[1.0.0, )"
+        }
+      },
+      "onlywinget.domain": {
+        "type": "Project"
+      }
+    }
+  }
+}

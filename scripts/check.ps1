@@ -21,7 +21,7 @@ $formatScriptPath = Join-Path $scriptsRoot 'format.ps1'
 $packageScriptPath = Join-Path $scriptsRoot 'package.ps1'
 $scriptLintPath = Join-Path $scriptsRoot 'lint.ps1'
 $typecheckScriptPath = Join-Path $scriptsRoot 'typecheck.ps1'
-$targetFramework = 'net8.0-windows'
+$targetFramework = 'net10.0-windows10.0.17763.0'
 $steps = [System.Collections.Generic.List[string]]::new()
 $smokeTestStatus = 'not_run'
 

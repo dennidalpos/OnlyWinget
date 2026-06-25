@@ -9,7 +9,7 @@ Run from the repository root with PowerShell.
 | `lint.ps1` | Run PowerShell script lint when PSScriptAnalyzer is available. |
 | `typecheck.ps1` | Build C# with warnings as errors. |
 | `test.ps1` | Run xUnit tests; `-RunWingetSmoke` enables live smoke tests. |
-| `build.ps1` | Build the WPF app. |
+| `build.ps1` | Build the WinUI app. |
 | `dev.ps1` | Launch the built app, optionally with `-Build`. |
 | `package.ps1` | Build x86/x64 MSI payloads and the unified setup EXE. |
 | `check.ps1` | Run the full local/CI gate. |

@@ -13,7 +13,7 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
-$targetFramework = 'net8.0-windows'
+$targetFramework = 'net10.0-windows10.0.17763.0'
 $outputExePath = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/OnlyWinget.exe"
 
 Assert-Command -Name 'dotnet'

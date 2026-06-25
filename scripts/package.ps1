@@ -237,7 +237,7 @@ function Invoke-ArchitectureMsi {
         '-c'
         $Configuration
         '-f'
-        'net8.0-windows'
+        'net10.0-windows10.0.17763.0'
         '-r'
         $runtimeIdentifier
         '--self-contained'

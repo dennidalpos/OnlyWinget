@@ -1,36 +1,42 @@
 # Architecture
 
-OnlyWinget is a Windows WPF client for local `winget` package workflows.
+OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows.
 
 ## Layout
 
-- `src/OnlyWinget`: WPF app targeting `net8.0-windows`.
+- `src/OnlyWinget.Domain`: package identity, presets, batch selection, operation plans, status, and validation primitives.
+- `src/OnlyWinget.Application`: use-case services, preset import/export, workspace storage contracts, and winget boundaries.
+- `src/OnlyWinget.Infrastructure`: JSON workspace persistence and winget command parsing/building adapters.
+- `src/OnlyWinget`: WinUI 3 presentation shell targeting `.NET 10` and Windows 10 build `17763`.
 - `src/OnlyWinget.Setup`: WiX setup sources.
-- `tests/OnlyWinget.Tests`: xUnit tests.
+- `tests/OnlyWinget.Tests`: xUnit tests for non-UI behavior.
 - `scripts`: PowerShell entrypoints.
 - `media/Default.onlywinget.json`: sample preset.
 
-## Core Flow
+## Dependency Rule
 
-- `MainViewModel` coordinates shell state, workspaces, progress, cancellation, and commands.
-- `PresetWorkspaceViewModel`, `SearchWorkspaceViewModel`, and `UpdatesWorkspaceViewModel` own their UI areas.
-- `WingetCommandService` is the low-level `winget` command boundary.
-- `WingetQueryService` owns search, update loading, package resolution, and installed details.
-- `WingetPackageInterrogationService` resolves package metadata before adding search results.
-- `PackageOperationService` builds and classifies install, uninstall, upgrade, App Installer update, and source update operations.
-- `OperationRunner` adapts operation results to row status, progress, and logs.
+Dependencies point inward:
+
+```text
+WinUI Presentation -> Application -> Domain
+Infrastructure -----> Application -> Domain
+```
+
+The presentation layer can reference infrastructure for composition. Domain does not reference application, infrastructure, or UI code.
 
 ## Local State
 
-- Presets: `%LOCALAPPDATA%\OnlyWinget\AppsList.json`
-- Preferences: `%LOCALAPPDATA%\OnlyWinget\settings.json`
-- Runtime logs: `%LOCALAPPDATA%\OnlyWinget\runtime`
+The current workspace schema is new for the WinUI modernization:
 
-Preset JSON uses schema v2. Row selection is UI-only and is not persisted.
+```text
+%LOCALAPPDATA%\OnlyWinget\workspace-v1.json
+```
+
+There is no automatic migration from WPF-era files. Preset exchange supports only `onlywinget.preset.v1`.
 
 ## Installer
 
-The release artifact is a WiX Burn setup EXE. It embeds x86 and x64 self-contained MSI payloads, blocks unsupported Windows versions, and installs per-machine under Program Files.
+The release artifact remains a WiX Burn setup EXE with x86 and x64 MSI payloads. The WinUI app uses the stable Windows App SDK package and the installer backlog tracks adding the matching Windows App Runtime bootstrap/prerequisite.
 
 ## Notes
 
