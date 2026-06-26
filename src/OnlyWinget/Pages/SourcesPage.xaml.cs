@@ -58,6 +58,10 @@ public sealed partial class SourcesPage : Page
         UpdateButton.Label = TextResources.Get("Command_Sources_Update");
         RemoveButton.Label = TextResources.Get("Command_Sources_Remove");
         ResetButton.Label = TextResources.Get("Command_Sources_Reset");
+        SourceNameHeaderText.Text = TextResources.Get("Header_Name");
+        SourceArgumentHeaderText.Text = TextResources.Get("Header_Argument");
+        SourceTypeHeaderText.Text = TextResources.Get("Header_Type");
+        SourceStatusHeaderText.Text = TextResources.Get("Header_Status");
     }
 
     private async void OnRefreshSources(object sender, RoutedEventArgs args)

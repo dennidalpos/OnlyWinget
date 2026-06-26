@@ -54,5 +54,8 @@ public sealed partial class DashboardPage : Page
         UpdateLabelText.Text = TextResources.Get("Dashboard_Updates");
         SourceLabelText.Text = TextResources.Get("Dashboard_Sources");
         RecentActivityText.Text = TextResources.Get("Dashboard_RecentActivity");
+        RecentSeverityHeaderText.Text = TextResources.Get("Header_Severity");
+        RecentTitleHeaderText.Text = TextResources.Get("Header_Title");
+        RecentMessageHeaderText.Text = TextResources.Get("Header_Message");
     }
 }

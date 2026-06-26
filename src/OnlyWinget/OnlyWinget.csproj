@@ -19,6 +19,8 @@
   <ItemGroup>
     <Resource Include="Assets\OnlyWinget.ico" />
     <Resource Include="Assets\OnlyWinget-icon.png" />
+    <Content Include="Assets\OnlyWinget.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\OnlyWinget-icon.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

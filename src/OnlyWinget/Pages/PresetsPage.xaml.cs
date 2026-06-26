@@ -69,10 +69,13 @@ public sealed partial class PresetsPage : Page
     private void ApplyText()
     {
         TitleText.Text = TextResources.Get("Presets_Title");
+        PresetManagementText.Text = TextResources.Get("Section_PresetManagement");
+        PackageManagementText.Text = TextResources.Get("Section_PackageManagement");
         PresetNameBox.Header = TextResources.Get("Preset_Name");
         PackageIdBox.Header = TextResources.Get("Package_Id");
         PackageSourceBox.Header = TextResources.Get("Package_Source");
         ImportJsonBox.Header = TextResources.Get("Import_Json");
+        ImportExportText.Text = TextResources.Get("Section_ImportExport");
         AddPresetButton.Content = TextResources.Get("Command_Preset_Add");
         RenamePresetButton.Content = TextResources.Get("Command_Preset_Rename");
         RemovePresetButton.Content = TextResources.Get("Command_Preset_Remove");
@@ -86,6 +89,8 @@ public sealed partial class PresetsPage : Page
         UninstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyUninstall");
         CancelPresetOperationButton.Content = TextResources.Get("Command_Operation_Cancel");
         SelectAllPackagesBox.Content = TextResources.Get("Command_Select_All");
+        PackageIdHeaderText.Text = TextResources.Get("Header_PackageId");
+        PackageSourceHeaderText.Text = TextResources.Get("Header_Source");
     }
 
     private void OnPresetChanged(object sender, SelectionChangedEventArgs args)

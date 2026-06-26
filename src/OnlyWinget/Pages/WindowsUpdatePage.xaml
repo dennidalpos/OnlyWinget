@@ -6,6 +6,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -14,8 +15,7 @@
 
         <CommandBar
             Grid.Row="1"
-            DefaultLabelPosition="Right"
-            IsOpen="False">
+            Style="{StaticResource PageToolbarStyle}">
             <CommandBar.Content>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <CheckBox x:Name="SelectAllWindowsUpdatesBox" Click="OnToggleAllWindowsUpdates" />
@@ -27,7 +27,24 @@
             <AppBarButton x:Name="CancelButton" Icon="Cancel" Click="OnCancel" />
         </CommandBar>
 
-        <ListView x:Name="WindowsUpdateList" Grid.Row="2">
+        <Grid Grid.Row="2" Padding="0,0,0,4" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Width="32" />
+            <TextBlock x:Name="WindowsUpdateTitleHeaderText" Grid.Column="1" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="WindowsUpdateSeverityHeaderText" Grid.Column="2" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="WindowsUpdateCategoriesHeaderText" Grid.Column="3" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="WindowsUpdateDownloadedHeaderText" Grid.Column="4" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="WindowsUpdateRebootHeaderText" Grid.Column="5" Style="{StaticResource ListHeaderTextBlockStyle}" />
+        </Grid>
+
+        <ListView x:Name="WindowsUpdateList" Grid.Row="3">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <Grid ColumnSpacing="12" RowSpacing="4" Padding="0,8">
@@ -61,6 +78,6 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+        <TextBlock x:Name="StatusText" Grid.Row="4" Style="{StaticResource StatusTextBlockStyle}" />
     </Grid>
 </Page>

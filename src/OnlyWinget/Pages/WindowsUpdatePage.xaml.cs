@@ -58,6 +58,11 @@ public sealed partial class WindowsUpdatePage : Page
         ScanButton.Label = TextResources.Get("Command_WindowsUpdates_Scan");
         InstallSelectedButton.Label = TextResources.Get("Command_WindowsUpdates_InstallSelected");
         CancelButton.Label = TextResources.Get("Command_Operation_Cancel");
+        WindowsUpdateTitleHeaderText.Text = TextResources.Get("Header_Title");
+        WindowsUpdateSeverityHeaderText.Text = TextResources.Get("Header_Severity");
+        WindowsUpdateCategoriesHeaderText.Text = TextResources.Get("Header_Categories");
+        WindowsUpdateDownloadedHeaderText.Text = TextResources.Get("Header_Downloaded");
+        WindowsUpdateRebootHeaderText.Text = TextResources.Get("Header_Reboot");
     }
 
     private async void OnScanWindowsUpdates(object sender, RoutedEventArgs args)

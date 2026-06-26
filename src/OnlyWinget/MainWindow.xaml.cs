@@ -1,6 +1,9 @@
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Pages;
+using WinRT.Interop;
 
 namespace OnlyWinget;
 
@@ -20,6 +23,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ApplyWindowIcon();
         RootNavigation.Loaded += OnLoaded;
         ApplyText();
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
@@ -86,5 +90,18 @@ public sealed partial class MainWindow : Window
                 _ => item.Content
             };
         }
+    }
+
+    private void ApplyWindowIcon()
+    {
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "OnlyWinget.ico");
+        if (!File.Exists(iconPath))
+        {
+            return;
+        }
+
+        var windowHandle = WindowNative.GetWindowHandle(this);
+        var windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
+        AppWindow.GetFromWindowId(windowId).SetIcon(iconPath);
     }
 }

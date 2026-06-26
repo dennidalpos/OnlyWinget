@@ -6,6 +6,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -14,8 +15,7 @@
 
         <CommandBar
             Grid.Row="1"
-            DefaultLabelPosition="Right"
-            IsOpen="False">
+            Style="{StaticResource PageToolbarStyle}">
             <CommandBar.Content>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <CheckBox x:Name="SelectAllUpdatesBox" Click="OnToggleAllUpdates" />
@@ -27,10 +27,29 @@
             <AppBarButton x:Name="CancelButton" Icon="Cancel" Click="OnCancel" />
         </CommandBar>
 
-        <ListView x:Name="UpdateList" Grid.Row="2">
+        <Grid Grid.Row="2" Padding="0,0,0,4" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Width="32" />
+            <TextBlock x:Name="UpdateNameHeaderText" Grid.Column="1" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="UpdatePackageHeaderText" Grid.Column="2" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="UpdateInstalledHeaderText" Grid.Column="3" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="UpdateAvailableHeaderText" Grid.Column="4" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="UpdateSourceHeaderText" Grid.Column="5" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="UpdateStatusHeaderText" Grid.Column="6" Style="{StaticResource ListHeaderTextBlockStyle}" />
+        </Grid>
+
+        <ListView x:Name="UpdateList" Grid.Row="3">
             <ListView.ItemTemplate>
                 <DataTemplate>
-                        <Grid ColumnSpacing="12" RowSpacing="4" Padding="0,8">
+                    <Grid ColumnSpacing="12" RowSpacing="4" Padding="0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="2*" />
@@ -45,7 +64,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnUpdateSelectionClick" />
-                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                         <TextBlock Grid.Column="2" Text="{Binding PackageId}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="3" Text="{Binding InstalledVersion}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="4" Text="{Binding AvailableVersion}" VerticalAlignment="Center" />
@@ -60,6 +79,6 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+        <TextBlock x:Name="StatusText" Grid.Row="4" Style="{StaticResource StatusTextBlockStyle}" />
     </Grid>
 </Page>

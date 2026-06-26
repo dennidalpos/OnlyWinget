@@ -7,6 +7,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -18,14 +19,14 @@
         <Grid Grid.Row="1" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="220" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <AutoSuggestBox x:Name="QueryBox" QuerySubmitted="OnQuerySubmitted" MinWidth="280" />
-            <TextBox x:Name="SourceBox" Grid.Column="1" />
-            <Button x:Name="SearchButton" Grid.Column="2" Click="OnSearch" />
-            <Button x:Name="AddSelectedButton" Grid.Column="3" Click="OnAddSelected" />
+            <TextBox x:Name="SourceBox" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" />
+            <Button x:Name="SearchButton" Grid.Column="2" Style="{StaticResource CompactButtonStyle}" Click="OnSearch" />
+            <Button x:Name="AddSelectedButton" Grid.Column="3" Style="{StaticResource CompactButtonStyle}" Click="OnAddSelected" />
         </Grid>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10">
@@ -33,7 +34,24 @@
             <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
         </StackPanel>
 
-        <ListView x:Name="ResultList" Grid.Row="3">
+        <Grid Grid.Row="3" Padding="0,0,0,4" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Width="32" />
+            <TextBlock x:Name="SearchNameHeaderText" Grid.Column="1" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="SearchPackageHeaderText" Grid.Column="2" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="SearchVersionHeaderText" Grid.Column="3" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="SearchSourceHeaderText" Grid.Column="4" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="SearchMatchHeaderText" Grid.Column="5" Style="{StaticResource ListHeaderTextBlockStyle}" />
+        </Grid>
+
+        <ListView x:Name="ResultList" Grid.Row="4">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <Grid ColumnSpacing="12" Padding="0,8">
@@ -46,7 +64,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnResultSelectionClick" />
-                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                         <TextBlock Grid.Column="2" Text="{Binding PackageId}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="3" Text="{Binding Version}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="4" Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
@@ -56,6 +74,6 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <TextBlock x:Name="StatusText" Grid.Row="4" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+        <TextBlock x:Name="StatusText" Grid.Row="5" Style="{StaticResource StatusTextBlockStyle}" />
     </Grid>
 </Page>

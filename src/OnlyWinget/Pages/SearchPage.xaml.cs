@@ -54,6 +54,11 @@ public sealed partial class SearchPage : Page
         SelectAllResultsBox.Content = TextResources.Get("Command_Select_All");
         SearchButton.Content = TextResources.Get("Command_Search_Execute");
         AddSelectedButton.Content = TextResources.Get("Command_Search_AddSelected");
+        SearchNameHeaderText.Text = TextResources.Get("Header_Name");
+        SearchPackageHeaderText.Text = TextResources.Get("Header_PackageId");
+        SearchVersionHeaderText.Text = TextResources.Get("Header_Version");
+        SearchSourceHeaderText.Text = TextResources.Get("Header_Source");
+        SearchMatchHeaderText.Text = TextResources.Get("Header_Match");
     }
 
     private async void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)

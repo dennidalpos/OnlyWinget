@@ -7,6 +7,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -15,16 +16,16 @@
 
         <Grid Grid.Row="1" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="240" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="SourceNameBox" />
-            <TextBox x:Name="SourceArgumentBox" Grid.Column="1" />
-            <Button x:Name="AddButton" Grid.Column="2" Click="OnAddSource" />
+            <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" />
+            <TextBox x:Name="SourceArgumentBox" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" />
+            <Button x:Name="AddButton" Grid.Column="2" Style="{StaticResource CompactButtonStyle}" Click="OnAddSource" />
         </Grid>
 
-        <CommandBar Grid.Row="2" DefaultLabelPosition="Right" IsOpen="False">
+        <CommandBar Grid.Row="2" Style="{StaticResource PageToolbarStyle}">
             <CommandBar.Content>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
@@ -36,17 +37,30 @@
             <AppBarButton x:Name="ResetButton" Icon="Repair" Click="OnResetSources" />
         </CommandBar>
 
-        <ListView x:Name="SourceList" Grid.Row="3" SelectionMode="Single">
+        <Grid Grid.Row="3" Padding="0,0,0,4" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="120" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="SourceNameHeaderText" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="SourceArgumentHeaderText" Grid.Column="1" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="SourceTypeHeaderText" Grid.Column="2" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            <TextBlock x:Name="SourceStatusHeaderText" Grid.Column="3" Style="{StaticResource ListHeaderTextBlockStyle}" />
+        </Grid>
+
+        <ListView x:Name="SourceList" Grid.Row="4" SelectionMode="Single">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <Grid Padding="0,8" ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="180" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="110" />
-                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="120" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Name}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                         <TextBlock Grid.Column="1" Text="{Binding Argument}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="{Binding Type}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="3" Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
@@ -55,6 +69,6 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <TextBlock x:Name="StatusText" Grid.Row="4" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+        <TextBlock x:Name="StatusText" Grid.Row="5" Style="{StaticResource StatusTextBlockStyle}" />
     </Grid>
 </Page>

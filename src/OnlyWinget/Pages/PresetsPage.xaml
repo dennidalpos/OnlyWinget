@@ -7,50 +7,75 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-            <ComboBox x:Name="PresetSelector" Width="220" SelectionChanged="OnPresetChanged" />
-            <TextBox x:Name="PresetNameBox" Width="220" />
-            <Button x:Name="AddPresetButton" Click="OnAddPreset" />
-            <Button x:Name="RenamePresetButton" Click="OnRenamePreset" />
-            <Button x:Name="RemovePresetButton" Click="OnRemovePreset" />
-            <Button x:Name="SaveWorkspaceButton" Click="OnSaveWorkspace" />
-        </StackPanel>
+        <TextBlock x:Name="PresetManagementText" Grid.Row="1" Style="{StaticResource SectionTitleTextBlockStyle}" />
 
         <Grid Grid.Row="2" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="240" />
+                <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="PackageIdBox" />
-            <TextBox x:Name="PackageSourceBox" Grid.Column="1" />
-            <Button x:Name="AddPackageButton" Grid.Column="2" Click="OnAddPackage" />
-            <Button x:Name="EditPackageButton" Grid.Column="3" Click="OnEditPackage" />
-            <Button x:Name="RemovePackageButton" Grid.Column="4" Click="OnRemovePackages" />
-            <Button x:Name="InstallPresetButton" Grid.Column="5" Click="OnInstallPreset" />
+            <ComboBox x:Name="PresetSelector" MinWidth="220" SelectionChanged="OnPresetChanged" />
+            <TextBox x:Name="PresetNameBox" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" />
+            <Button x:Name="AddPresetButton" Grid.Column="2" Style="{StaticResource CompactButtonStyle}" Click="OnAddPreset" />
+            <Button x:Name="RenamePresetButton" Grid.Column="3" Style="{StaticResource CompactButtonStyle}" Click="OnRenamePreset" />
+            <Button x:Name="RemovePresetButton" Grid.Column="4" Style="{StaticResource CompactButtonStyle}" Click="OnRemovePreset" />
+            <Button x:Name="SaveWorkspaceButton" Grid.Column="5" Style="{StaticResource CompactButtonStyle}" Click="OnSaveWorkspace" />
         </Grid>
 
-        <Grid Grid.Row="3" RowSpacing="8">
+        <TextBlock x:Name="PackageManagementText" Grid.Row="3" Style="{StaticResource SectionTitleTextBlockStyle}" />
+
+        <Grid Grid.Row="4" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="PackageIdBox" Style="{StaticResource FormTextBoxStyle}" />
+            <TextBox x:Name="PackageSourceBox" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" />
+            <Button x:Name="AddPackageButton" Grid.Column="2" Style="{StaticResource CompactButtonStyle}" Click="OnAddPackage" />
+            <Button x:Name="EditPackageButton" Grid.Column="3" Style="{StaticResource CompactButtonStyle}" Click="OnEditPackage" />
+            <Button x:Name="RemovePackageButton" Grid.Column="4" Style="{StaticResource CompactButtonStyle}" Click="OnRemovePackages" />
+            <Button x:Name="InstallPresetButton" Grid.Column="5" Style="{StaticResource CompactButtonStyle}" Click="OnInstallPreset" />
+        </Grid>
+
+        <Grid Grid.Row="5" RowSpacing="8">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <CheckBox x:Name="SelectAllPackagesBox" Click="OnToggleAllPackages" />
-                <Button x:Name="UninstallPresetButton" Click="OnUninstallPreset" />
-                <Button x:Name="CancelPresetOperationButton" Click="OnCancelPresetOperation" />
+                <Button x:Name="UninstallPresetButton" Style="{StaticResource CompactButtonStyle}" Click="OnUninstallPreset" />
+                <Button x:Name="CancelPresetOperationButton" Style="{StaticResource CompactButtonStyle}" Click="OnCancelPresetOperation" />
                 <ProgressRing x:Name="OperationRing" Width="24" Height="24" />
             </StackPanel>
-            <ListView x:Name="PackageList" Grid.Row="1">
+            <Grid Grid.Row="1" Padding="0,0,0,4" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Width="32" />
+                <TextBlock x:Name="PackageIdHeaderText" Grid.Column="1" Style="{StaticResource ListHeaderTextBlockStyle}" />
+                <TextBlock x:Name="PackageSourceHeaderText" Grid.Column="2" Style="{StaticResource ListHeaderTextBlockStyle}" />
+            </Grid>
+            <ListView x:Name="PackageList" Grid.Row="2">
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <Grid ColumnSpacing="12" Padding="0,6">
@@ -60,7 +85,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnPackageSelectionClick" />
-                            <TextBlock Grid.Column="1" Text="{Binding PackageId}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                             <TextBlock Grid.Column="2" Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         </Grid>
                     </DataTemplate>
@@ -68,20 +93,22 @@
             </ListView>
         </Grid>
 
-        <Grid Grid.Row="4" RowSpacing="8">
+        <Grid Grid.Row="6" RowSpacing="8">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <TextBox x:Name="ImportJsonBox" AcceptsReturn="True" MaxHeight="80" TextWrapping="Wrap" />
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-                <Button x:Name="ImportPresetButton" Click="OnImportPreset" />
-                <Button x:Name="ExportPresetButton" Click="OnExportPreset" />
+            <TextBlock x:Name="ImportExportText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+            <TextBox x:Name="ImportJsonBox" Grid.Row="1" AcceptsReturn="True" MaxHeight="88" TextWrapping="Wrap" />
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+                <Button x:Name="ImportPresetButton" Style="{StaticResource CompactButtonStyle}" Click="OnImportPreset" />
+                <Button x:Name="ExportPresetButton" Style="{StaticResource CompactButtonStyle}" Click="OnExportPreset" />
             </StackPanel>
-            <TextBlock x:Name="StatusText" Grid.Row="2" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-            <ListView x:Name="OperationResultList" Grid.Row="3" MaxHeight="140">
+            <TextBlock x:Name="StatusText" Grid.Row="3" Style="{StaticResource StatusTextBlockStyle}" />
+            <ListView x:Name="OperationResultList" Grid.Row="4" MaxHeight="140">
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <Grid ColumnSpacing="12" RowSpacing="2" Padding="0,4">

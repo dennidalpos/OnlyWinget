@@ -16,6 +16,11 @@
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
+            <Style x:Key="SectionTitleTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Margin" Value="0,0,0,2" />
+            </Style>
             <Style x:Key="MetricValueTextBlockStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="24" />
                 <Setter Property="FontWeight" Value="SemiBold" />
@@ -27,6 +32,36 @@
             <Style x:Key="RowSecondaryTextBlockStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+            <Style x:Key="RowPrimaryTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="ListHeaderTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="StatusTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="IsTextSelectionEnabled" Value="True" />
+                <Setter Property="MinHeight" Value="24" />
+            </Style>
+            <Style x:Key="PageToolbarStyle" TargetType="CommandBar">
+                <Setter Property="DefaultLabelPosition" Value="Right" />
+                <Setter Property="IsOpen" Value="False" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style x:Key="CompactButtonStyle" TargetType="Button">
+                <Setter Property="MinWidth" Value="96" />
+            </Style>
+            <Style x:Key="FormTextBoxStyle" TargetType="TextBox">
+                <Setter Property="MinWidth" Value="180" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

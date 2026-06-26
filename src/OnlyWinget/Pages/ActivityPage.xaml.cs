@@ -40,6 +40,10 @@ public sealed partial class ActivityPage : Page
     {
         TitleText.Text = TextResources.Get("Activity_Title");
         ClearButton.Content = TextResources.Get("Command_Activity_Clear");
+        ActivityTimeHeaderText.Text = TextResources.Get("Header_Time");
+        ActivitySeverityHeaderText.Text = TextResources.Get("Header_Severity");
+        ActivityTitleHeaderText.Text = TextResources.Get("Header_Title");
+        ActivityMessageHeaderText.Text = TextResources.Get("Header_Message");
     }
 
     private void OnClearActivity(object sender, RoutedEventArgs args)
