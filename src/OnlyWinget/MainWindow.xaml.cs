@@ -12,6 +12,7 @@ public sealed partial class MainWindow : Window
         ["presets"] = typeof(PresetsPage),
         ["search"] = typeof(SearchPage),
         ["updates"] = typeof(UpdatesPage),
+        ["windowsUpdates"] = typeof(WindowsUpdatePage),
         ["sources"] = typeof(SourcesPage),
         ["activity"] = typeof(ActivityPage)
     };
@@ -76,6 +77,7 @@ public sealed partial class MainWindow : Window
                 "presets" => TextResources.Get("Nav_Presets"),
                 "search" => TextResources.Get("Nav_Search"),
                 "updates" => TextResources.Get("Nav_Updates"),
+                "windowsUpdates" => TextResources.Get("Nav_WindowsUpdates"),
                 "sources" => TextResources.Get("Nav_Sources"),
                 "activity" => TextResources.Get("Nav_Activity"),
                 _ => item.Content

@@ -56,6 +56,6 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <TextBlock x:Name="StatusText" Grid.Row="4" TextWrapping="Wrap" />
+        <TextBlock x:Name="StatusText" Grid.Row="4" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </Grid>
 </Page>

@@ -2,8 +2,10 @@
   "todos": [
     "Run scripts\\validate-installed-startup.ps1 against the installed app and confirm no new WER/Application Error events for OnlyWinget.exe.",
     "Manually validate Italian and English visible navigation, command, source-management, status, empty, loading, error, and operation result labels.",
+    "Manually validate the setup wizard layout and OnlyWinget visibility in Programs and Features after installing the generated bundle.",
     "Manually validate the redesigned WinUI shell at minimum, default, and maximized window sizes in Italian and English.",
     "Manually validate preset, search, update, source-management, activity, cancellation, and select-all flows on a Windows host with winget installed.",
+    "Manually validate Windows Update scan, select-all, selected install, cancellation, and reboot-required reporting on Windows 10 1809 or newer.",
     "Run winget smoke tests with .\\scripts\\test.ps1 -RunWingetSmoke on a machine with winget installed and configured.",
     "Manually validate winget source update, add, remove, and reset flows with safe test sources and confirmations.",
     "Resolve dirty tracked files before release validation.",

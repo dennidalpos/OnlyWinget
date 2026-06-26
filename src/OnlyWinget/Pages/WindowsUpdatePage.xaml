@@ -1,0 +1,66 @@
+<Page
+    x:Class="OnlyWinget.Pages.WindowsUpdatePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="28" RowSpacing="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+
+        <CommandBar
+            Grid.Row="1"
+            DefaultLabelPosition="Right"
+            IsOpen="False">
+            <CommandBar.Content>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <CheckBox x:Name="SelectAllWindowsUpdatesBox" Click="OnToggleAllWindowsUpdates" />
+                    <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
+                </StackPanel>
+            </CommandBar.Content>
+            <AppBarButton x:Name="ScanButton" Icon="Refresh" Click="OnScanWindowsUpdates" />
+            <AppBarButton x:Name="InstallSelectedButton" Icon="Download" Click="OnInstallSelected" />
+            <AppBarButton x:Name="CancelButton" Icon="Cancel" Click="OnCancel" />
+        </CommandBar>
+
+        <ListView x:Name="WindowsUpdateList" Grid.Row="2">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnSpacing="12" RowSpacing="4" Padding="0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="3*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnWindowsUpdateSelectionClick" />
+                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        <TextBlock Grid.Column="2" Text="{Binding Severity}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding Categories}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="4" Text="{Binding IsDownloaded}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5" Text="{Binding RebootRequired}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5" Spacing="2">
+                            <TextBlock Text="{Binding UpdateId}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                            <TextBlock Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+    </Grid>
+</Page>

@@ -80,7 +80,7 @@
                 <Button x:Name="ImportPresetButton" Click="OnImportPreset" />
                 <Button x:Name="ExportPresetButton" Click="OnExportPreset" />
             </StackPanel>
-            <TextBlock x:Name="StatusText" Grid.Row="2" TextWrapping="Wrap" />
+            <TextBlock x:Name="StatusText" Grid.Row="2" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
             <ListView x:Name="OperationResultList" Grid.Row="3" MaxHeight="140">
                 <ListView.ItemTemplate>
                     <DataTemplate>
@@ -100,8 +100,8 @@
                             <TextBlock Grid.Column="2" Text="{Binding Status}" VerticalAlignment="Top" />
                             <TextBlock Grid.Column="3" Text="{Binding Source}" VerticalAlignment="Top" />
                             <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Spacing="2">
-                                <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" />
-                                <TextBlock Text="{Binding Output}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                <TextBlock Text="{Binding Output}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                             </StackPanel>
                         </Grid>
                     </DataTemplate>

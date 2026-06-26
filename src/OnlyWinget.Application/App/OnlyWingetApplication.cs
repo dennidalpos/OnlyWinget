@@ -3,6 +3,7 @@ using OnlyWinget.Application.Operations;
 using OnlyWinget.Application.Presets;
 using OnlyWinget.Application.Storage;
 using OnlyWinget.Application.Winget;
+using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Operations;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Presets;
@@ -16,6 +17,7 @@ public sealed class OnlyWingetApplication(
     IPackageSearchService packageSearch,
     IPackageResolver packageResolver,
     IUpdateLoader updateLoader,
+    IWindowsUpdateService windowsUpdateService,
     IWingetSourceService sourceService,
     IOperationExecutor operationExecutor,
     TimeProvider? timeProvider = null)
@@ -25,11 +27,14 @@ public sealed class OnlyWingetApplication(
     private readonly SelectionState<PackageIdentity> presetSelection = new();
     private readonly SelectionState<PackageIdentity> searchSelection = new();
     private readonly SelectionState<PackageIdentity> updateSelection = new();
+    private readonly SelectionState<WindowsUpdateIdentity> windowsUpdateSelection = new();
     private readonly List<PackageSearchResult> searchResults = [];
     private readonly List<PackageUpdate> updates = [];
+    private readonly List<WindowsUpdateItem> windowsUpdates = [];
     private readonly List<WingetSource> sources = [];
     private readonly List<ActivityEntry> activity = [];
     private readonly List<OperationExecutionResult> lastOperationResults = [];
+    private readonly List<WindowsUpdateInstallResult> lastWindowsUpdateResults = [];
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
 
     private WorkspaceState workspace = WorkspaceState.Empty;
@@ -224,7 +229,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.Searching,
                 async () =>
                 {
-                    var active = RequireActivePreset();
+                    var active = EnsureActivePreset();
                     var packages = active.Packages.ToList();
                     var added = 0;
                     foreach (var selected in searchSelection.Selected)
@@ -267,6 +272,75 @@ public sealed class OnlyWingetApplication(
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
                 },
                 "Unable to refresh updates.")
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> ScanWindowsUpdatesAsync(CancellationToken cancellationToken)
+    {
+        return await RunAsync(
+                ApplicationBusyState.ScanningWindowsUpdates,
+                async () =>
+                {
+                    var outcome = await windowsUpdateService.ScanAsync(cancellationToken).ConfigureAwait(false);
+                    if (!outcome.Succeeded)
+                    {
+                        throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update scan failed.");
+                    }
+
+                    windowsUpdates.Clear();
+                    windowsUpdates.AddRange(outcome.Rows.DistinctBy(update => WindowsUpdateFingerprint(update.Identity)));
+                    windowsUpdateSelection.ReplaceAvailable(windowsUpdates.Select(update => update.Identity));
+                    AddActivity(ActivitySeverity.Information, "Windows Update scan completed", $"{windowsUpdates.Count} update(s).");
+                },
+                "Unable to scan Windows Update.")
+            .ConfigureAwait(false);
+    }
+
+    public ApplicationActionResult ToggleWindowsUpdate(WindowsUpdateIdentity update) =>
+        ToggleSelection(windowsUpdateSelection, update);
+
+    public ApplicationActionResult ToggleAllWindowsUpdates() => Run(windowsUpdateSelection.ToggleAll);
+
+    public async Task<ApplicationActionResult> InstallSelectedWindowsUpdatesAsync(CancellationToken cancellationToken)
+    {
+        var selected = windowsUpdateSelection.Selected.ToArray();
+        return await RunAsync(
+                ApplicationBusyState.InstallingWindowsUpdates,
+                async () =>
+                {
+                    if (selected.Length == 0)
+                    {
+                        throw new InvalidOperationException("Select at least one Windows update before installing.");
+                    }
+
+                    lastWindowsUpdateResults.Clear();
+                    AddActivity(ActivitySeverity.Information, "Windows Update install started", $"{selected.Length} update(s).");
+                    var outcome = await windowsUpdateService.InstallAsync(selected, cancellationToken).ConfigureAwait(false);
+                    if (!outcome.Succeeded)
+                    {
+                        throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update install failed.");
+                    }
+
+                    lastWindowsUpdateResults.AddRange(outcome.Rows);
+                    foreach (var result in outcome.Rows)
+                    {
+                        AddActivity(
+                            result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error,
+                            result.Title,
+                            string.IsNullOrWhiteSpace(result.Message) ? result.ResultCode : result.Message);
+                    }
+
+                    if (outcome.Rows.Any(result => !result.Succeeded))
+                    {
+                        throw new InvalidOperationException("One or more Windows updates failed.");
+                    }
+
+                    if (outcome.Rows.Any(result => result.RebootRequired))
+                    {
+                        AddActivity(ActivitySeverity.Information, "Restart required", "One or more Windows updates require a restart.");
+                    }
+                },
+                "Unable to install Windows updates.")
             .ConfigureAwait(false);
     }
 
@@ -418,6 +492,10 @@ public sealed class OnlyWingetApplication(
             updates.ToArray(),
             updateSelection.Selected.ToArray(),
             updateSelection.HeaderState,
+            windowsUpdates.ToArray(),
+            windowsUpdateSelection.Selected.ToArray(),
+            windowsUpdateSelection.HeaderState,
+            lastWindowsUpdateResults.ToArray(),
             isWingetAvailable,
             sources.ToArray(),
             sourceError,
@@ -527,8 +605,9 @@ public sealed class OnlyWingetApplication(
         }
     }
 
-    private ApplicationActionResult ToggleSelection(SelectionState<PackageIdentity> selection, PackageIdentity package) =>
-        Run(() => selection.Toggle(package));
+    private ApplicationActionResult ToggleSelection<TKey>(SelectionState<TKey> selection, TKey key)
+        where TKey : notnull =>
+        Run(() => selection.Toggle(key));
 
     private ApplicationActionResult Fail(string error)
     {
@@ -547,6 +626,20 @@ public sealed class OnlyWingetApplication(
 
     private Preset RequireActivePreset() =>
         ActivePreset ?? throw new InvalidOperationException("Create or select a preset first.");
+
+    private Preset EnsureActivePreset()
+    {
+        if (ActivePreset is { } active)
+        {
+            return active;
+        }
+
+        var preset = new Preset("Default", []);
+        workspace = NormalizeWorkspace(new WorkspaceState([preset], preset.Name));
+        RefreshPresetSelection();
+        AddActivity(ActivitySeverity.Information, "Preset created", preset.Name);
+        return preset;
+    }
 
     private Preset? FindPreset(string name) =>
         workspace.Presets.FirstOrDefault(preset => PresetNameEquals(preset.Name, name));
@@ -588,6 +681,9 @@ public sealed class OnlyWingetApplication(
 
     private static string PackageFingerprint(PackageIdentity package) =>
         $"{package.Source?.ToUpperInvariant() ?? string.Empty}|{package.Id.ToUpperInvariant()}";
+
+    private static string WindowsUpdateFingerprint(WindowsUpdateIdentity update) =>
+        $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";
 
     private static bool PresetNameEquals(string left, string right) =>
         string.Equals(left, right, StringComparison.OrdinalIgnoreCase);

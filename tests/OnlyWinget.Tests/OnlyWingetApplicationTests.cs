@@ -2,6 +2,7 @@ using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.Storage;
 using OnlyWinget.Application.Winget;
+using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Operations;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Presets;
@@ -46,6 +47,24 @@ public sealed class OnlyWingetApplicationTests
         Assert.True(result.Succeeded);
         Assert.Equal(["Git.Git", "Microsoft.PowerToys"], app.State.ActivePreset?.Packages.Select(package => package.Id));
         Assert.Equal("winget", app.State.ActivePreset?.Packages[1].Source);
+    }
+
+    [Fact]
+    public async Task SearchAddSelectedCreatesDefaultPresetWhenWorkspaceIsEmpty()
+    {
+        var search = new StubPackageSearch(
+            new PackageSearchResult(new PackageIdentity("Git.Git"), "Git", "2.0.0", null));
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null, true, null));
+        var app = CreateApplication(search: search, resolver: resolver);
+
+        await app.SearchAsync("git", null, CancellationToken.None);
+        app.ToggleAllSearchResults();
+        var result = await app.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Default", app.State.ActivePreset?.Name);
+        Assert.Equal("Git.Git", Assert.Single(app.State.ActivePreset?.Packages ?? []).Id);
     }
 
     [Fact]
@@ -121,6 +140,30 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task WindowsUpdateScanAndInstallSelectedMapsResults()
+    {
+        var identity = new WindowsUpdateIdentity("update-1", 100);
+        var windowsUpdates = new StubWindowsUpdateService(
+            [
+                new WindowsUpdateItem(identity, "Security update", "Fixes", "Critical", ["Security"], false, false)
+            ],
+            [
+                new WindowsUpdateInstallResult(identity, "Security update", true, true, "2", null)
+            ]);
+        var app = CreateApplication(windowsUpdates: windowsUpdates);
+
+        await app.ScanWindowsUpdatesAsync(CancellationToken.None);
+        app.ToggleAllWindowsUpdates();
+        var result = await app.InstallSelectedWindowsUpdatesAsync(CancellationToken.None);
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+
+        Assert.True(result.Succeeded);
+        Assert.True(windowsUpdates.LastInstallSelection?.Single() == identity);
+        Assert.Single(presentation.WindowsUpdates.Updates);
+        Assert.True(Assert.Single(presentation.WindowsUpdates.Results).RebootRequired);
+    }
+
+    [Fact]
     public async Task PresentationStateMapsDashboardAndSources()
     {
         var sources = new StubSourceService(
@@ -139,6 +182,7 @@ public sealed class OnlyWingetApplicationTests
         Assert.Equal(1, presentation.Dashboard.ActivePresetPackageCount);
         var source = Assert.Single(presentation.Sources.Sources);
         Assert.Equal("winget", source.Name);
+        Assert.Equal("Source_Type_Default", source.Type);
         Assert.True(presentation.Sources.Commands.Single(command => command.Id == "sources.update").IsEnabled);
     }
 
@@ -146,6 +190,7 @@ public sealed class OnlyWingetApplicationTests
         StubPackageSearch? search = null,
         StubPackageResolver? resolver = null,
         StubUpdateLoader? updates = null,
+        StubWindowsUpdateService? windowsUpdates = null,
         StubSourceService? sources = null,
         RecordingOperationExecutor? executor = null)
     {
@@ -155,6 +200,7 @@ public sealed class OnlyWingetApplicationTests
             search ?? new StubPackageSearch(),
             resolver ?? new StubPackageResolver(),
             updates ?? new StubUpdateLoader(),
+            windowsUpdates ?? new StubWindowsUpdateService([], []),
             sources ?? new StubSourceService(),
             executor ?? new RecordingOperationExecutor(new OperationExecutionSummary([])));
     }
@@ -199,6 +245,24 @@ public sealed class OnlyWingetApplicationTests
     {
         public Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(CancellationToken cancellationToken) =>
             Task.FromResult(WingetOperationOutcome<PackageUpdate>.Success(updates, string.Empty));
+    }
+
+    private sealed class StubWindowsUpdateService(
+        IReadOnlyList<WindowsUpdateItem> updates,
+        IReadOnlyList<WindowsUpdateInstallResult> results) : IWindowsUpdateService
+    {
+        public IReadOnlyList<WindowsUpdateIdentity>? LastInstallSelection { get; private set; }
+
+        public Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(WindowsUpdateOperationOutcome<WindowsUpdateItem>.Success(updates, string.Empty));
+
+        public Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
+            IReadOnlyList<WindowsUpdateIdentity> selectedUpdates,
+            CancellationToken cancellationToken)
+        {
+            LastInstallSelection = selectedUpdates.ToArray();
+            return Task.FromResult(WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(results, string.Empty));
+        }
     }
 
     private sealed class StubSourceService(params WingetSource[] sources) : IWingetSourceService

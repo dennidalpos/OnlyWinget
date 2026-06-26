@@ -18,10 +18,11 @@ public sealed partial class UpdatesPage : Page
         ApplyText();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs args)
+    private async void OnLoaded(object sender, RoutedEventArgs args)
     {
         App.WorkflowChanged += OnWorkflowChanged;
         Refresh();
+        await RefreshUpdatesAsync();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
@@ -61,6 +62,11 @@ public sealed partial class UpdatesPage : Page
     }
 
     private async void OnRefreshUpdates(object sender, RoutedEventArgs args)
+    {
+        await RefreshUpdatesAsync();
+    }
+
+    private static async Task RefreshUpdatesAsync()
     {
         var refresh = App.Workflow.RefreshUpdatesAsync(CancellationToken.None);
         Notify();

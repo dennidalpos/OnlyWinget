@@ -8,6 +8,8 @@ public enum ApplicationBusyState
     SavingWorkspace,
     Searching,
     RefreshingUpdates,
+    ScanningWindowsUpdates,
+    InstallingWindowsUpdates,
     ManagingSources,
     ExecutingOperation
 }

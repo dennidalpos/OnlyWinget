@@ -176,9 +176,8 @@ function Assert-SingleInstalledProduct {
         throw "Atteso 1 prodotto installato visibile, trovati $($installed.Count)."
     }
 
-    $internalProducts = @(Get-InstalledOnlyWingetProduct | Where-Object { $_.SystemComponent -eq 1 })
-    if ($internalProducts.Count -gt 1) {
-        throw "Atteso al massimo 1 MSI interno nascosto, trovati $($internalProducts.Count)."
+    if ($installed[0].SystemComponent -eq 1) {
+        throw 'OnlyWinget e'' installato ma nascosto da Programmi e funzionalita.'
     }
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion) -and $installed[0].DisplayVersion -ne $ExpectedVersion) {

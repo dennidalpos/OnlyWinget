@@ -71,14 +71,14 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding Severity}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" IsTextSelectionEnabled="True" />
+                            <TextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
         </Grid>
 
-        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" />
+        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </Grid>
 </Page>

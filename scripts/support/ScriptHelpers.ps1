@@ -1,5 +1,6 @@
 $script:OnlyWingetScriptsRoot = Split-Path $PSScriptRoot -Parent
 $script:OnlyWingetRepositoryRoot = Split-Path $script:OnlyWingetScriptsRoot -Parent
+$script:OnlyWingetApprovedWindowsAppRuntimeRedistDownloads = @{}
 
 function Test-OnlyWingetInteractiveShell {
     if ([Console]::IsInputRedirected) {
@@ -194,8 +195,8 @@ function Install-WindowsAppRuntimeRedist {
         [string]$Architecture
     )
 
-    if (-not (Test-OnlyWingetAutoInstallAllowed -Description "Windows App Runtime redist $WindowsAppSdkVersion")) {
-        throw "Windows App Runtime installer richiesto per Microsoft.WindowsAppSDK $WindowsAppSdkVersion."
+    if ($env:ONLYWINGET_SKIP_AUTO_INSTALL -eq '1') {
+        throw "Windows App Runtime redist $WindowsAppSdkVersion mancante. Download automatico disabilitato da ONLYWINGET_SKIP_AUTO_INSTALL=1."
     }
 
     $versionParts = $WindowsAppSdkVersion.Split('.')
@@ -209,11 +210,13 @@ function Install-WindowsAppRuntimeRedist {
     $zipPath = Join-Path $dependencyRoot "Microsoft.WindowsAppRuntime.Redist.$WindowsAppSdkVersion.zip"
 
     New-Item -ItemType Directory -Path $dependencyRoot -Force | Out-Null
+    Write-Host "Windows App Runtime redist $WindowsAppSdkVersion ($Architecture): cache $dependencyRoot" -ForegroundColor Cyan
 
     if (Test-Path -LiteralPath $extractRoot) {
         $existingInstaller = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File -ErrorAction SilentlyContinue |
             Select-Object -First 1
         if ($null -ne $existingInstaller) {
+            Write-Host "Uso redist in cache: $($existingInstaller.FullName)" -ForegroundColor Green
             return $existingInstaller.FullName
         }
     }
@@ -224,10 +227,18 @@ function Install-WindowsAppRuntimeRedist {
     )
 
     if (-not (Test-Path -LiteralPath $zipPath)) {
+        if ((Test-OnlyWingetInteractiveShell) -and
+            -not $script:OnlyWingetApprovedWindowsAppRuntimeRedistDownloads.ContainsKey($WindowsAppSdkVersion) -and
+            -not (Read-OnlyWingetYesNo -Prompt "File redist Windows App Runtime $WindowsAppSdkVersion mancante per il bundle. Scaricarlo ora in '$dependencyRoot'?")) {
+            throw "Windows App Runtime installer richiesto per includere Microsoft.WindowsAppSDK $WindowsAppSdkVersion nel bundle."
+        }
+
+        $script:OnlyWingetApprovedWindowsAppRuntimeRedistDownloads[$WindowsAppSdkVersion] = $true
         $downloaded = $false
         foreach ($downloadUrl in $downloadUrls) {
             try {
                 Write-Host "Download Windows App Runtime redist: $downloadUrl" -ForegroundColor Cyan
+                Write-Host "Destinazione: $zipPath" -ForegroundColor Cyan
                 Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
                 $downloaded = $true
                 break
@@ -241,11 +252,16 @@ function Install-WindowsAppRuntimeRedist {
             throw "Impossibile scaricare Windows App Runtime redist $WindowsAppSdkVersion."
         }
     }
+    else {
+        Write-Host "Uso archivio redist in cache: $zipPath" -ForegroundColor Green
+    }
 
     if (Test-Path -LiteralPath $extractRoot) {
+        Write-Host "Aggiorno estrazione redist: $extractRoot" -ForegroundColor Cyan
         Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction Stop
     }
 
+    Write-Host "Estrazione Windows App Runtime redist: $extractRoot" -ForegroundColor Cyan
     Expand-Archive -LiteralPath $zipPath -DestinationPath $extractRoot -Force
     $installer = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File |
         Select-Object -First 1
@@ -258,6 +274,7 @@ function Install-WindowsAppRuntimeRedist {
         throw "WindowsAppRuntimeInstall-$Architecture.exe non trovato nel redist $WindowsAppSdkVersion."
     }
 
+    Write-Host "Redist risolto ($Architecture): $($installer.FullName)" -ForegroundColor Green
     return $installer.FullName
 }
 

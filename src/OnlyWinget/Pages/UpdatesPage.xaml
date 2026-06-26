@@ -52,14 +52,14 @@
                         <TextBlock Grid.Column="5" Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="6" Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6" Spacing="2">
-                            <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding Output}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                            <TextBlock Text="{Binding Output}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                         </StackPanel>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
 
-        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" />
+        <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </Grid>
 </Page>

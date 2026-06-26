@@ -31,7 +31,6 @@
 
     <Icon Id="OnlyWingetProductIcon" SourceFile="$(var.AppIconPath)" />
     <Property Id="ARPPRODUCTICON" Value="OnlyWingetProductIcon" />
-    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
     <Property Id="WINDOWSBUILDNUMBER" Secure="yes">
       <RegistrySearch Id="WindowsBuildNumberSearch"
                       Root="HKLM"

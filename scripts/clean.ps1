@@ -100,13 +100,23 @@ function Invoke-NuGetCacheClean {
     }
 
     if ($DryRun) {
-        Write-Host '[dry-run] dotnet nuget locals all --clear' -ForegroundColor Yellow
+        Write-Host '[dry-run] dotnet nuget locals global-packages --clear' -ForegroundColor Yellow
+        Write-Host '[dry-run] dotnet nuget locals http-cache --clear' -ForegroundColor Yellow
+        Write-Host '[dry-run] dotnet nuget locals temp --clear' -ForegroundColor Yellow
+        Write-Host '[dry-run] dotnet nuget locals plugins-cache --clear' -ForegroundColor Yellow
         return
     }
 
-    dotnet nuget locals all --clear
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Pulizia cache NuGet/.NET fallita.'
+    $failedCaches = [System.Collections.Generic.List[string]]::new()
+    foreach ($cacheName in @('global-packages', 'http-cache', 'temp', 'plugins-cache')) {
+        dotnet nuget locals $cacheName --clear
+        if ($LASTEXITCODE -ne 0) {
+            $failedCaches.Add($cacheName)
+        }
+    }
+
+    if ($failedCaches.Count -gt 0) {
+        Write-Warning "Pulizia cache NuGet/.NET parzialmente fallita per: $($failedCaches -join ', '). La clean del repository continua; chiudi Visual Studio/dotnet e riprova se vuoi svuotare anche quelle cache."
     }
 }
 

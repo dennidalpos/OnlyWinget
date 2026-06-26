@@ -1,6 +1,7 @@
 using OnlyWinget.Application.App;
 using OnlyWinget.Infrastructure.Storage;
 using OnlyWinget.Infrastructure.Winget;
+using OnlyWinget.Infrastructure.WindowsUpdate;
 
 namespace OnlyWinget;
 
@@ -46,6 +47,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             new WingetPackageSearchService(runner, parser, classifier),
             new WingetPackageResolver(runner, classifier),
             new WingetUpdateLoader(runner, parser, classifier),
+            new PowerShellWindowsUpdateService(runner),
             new WingetSourceService(runner, parser, classifier),
             new WingetOperationExecutor(runner, new WingetCommandBuilder(), classifier));
     }

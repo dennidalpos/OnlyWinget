@@ -5,5 +5,6 @@ public sealed record OnlyWingetPresentationState(
     PresetsPresentationState Presets,
     SearchPresentationState Search,
     UpdatesPresentationState Updates,
+    WindowsUpdatePresentationState WindowsUpdates,
     SourcePresentationState Sources,
     ActivityPresentationState Activity);

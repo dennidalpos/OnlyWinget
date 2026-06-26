@@ -301,6 +301,36 @@ function Get-RuntimeIdentifier {
     return "win-$MsiArchitecture"
 }
 
+function Copy-WinUiPublishResources {
+    param(
+        [string]$RuntimeIdentifier,
+        [string]$PublishDir
+    )
+
+    $buildOutputDir = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/net10.0-windows10.0.17763.0/$RuntimeIdentifier"
+    Assert-Path -Path $buildOutputDir -Description "WinUI build output $RuntimeIdentifier"
+
+    $resourcePaths = @(
+        'App.xbf',
+        'MainWindow.xbf',
+        'OnlyWinget.pri',
+        'Assets',
+        'Pages'
+    )
+
+    foreach ($resourcePath in $resourcePaths) {
+        $sourcePath = Join-Path $buildOutputDir $resourcePath
+        Assert-Path -Path $sourcePath -Description "WinUI publish resource $resourcePath"
+
+        $destinationPath = Join-Path $PublishDir $resourcePath
+        if (Test-Path -LiteralPath $destinationPath) {
+            Remove-Item -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop
+        }
+
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Recurse -Force -ErrorAction Stop
+    }
+}
+
 function Invoke-ArchitectureMsi {
     param(
         [ValidateSet('x86', 'x64')]
@@ -356,6 +386,7 @@ function Invoke-ArchitectureMsi {
 
     $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
     Assert-Path -Path $publishedExePath -Description "Published executable $MsiArchitecture"
+    Copy-WinUiPublishResources -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
 
     & $heatExe dir $publishDir `
         -nologo `

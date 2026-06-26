@@ -10,12 +10,41 @@
         PaneDisplayMode="Left"
         SelectionChanged="OnSelectionChanged">
         <NavigationView.MenuItems>
-            <NavigationViewItem Content="Dashboard" Icon="Home" Tag="dashboard" />
-            <NavigationViewItem Content="Presets" Icon="Library" Tag="presets" />
-            <NavigationViewItem Content="Search" Icon="Find" Tag="search" />
-            <NavigationViewItem Content="Updates" Icon="Sync" Tag="updates" />
-            <NavigationViewItem Content="Sources" Icon="Globe" Tag="sources" />
-            <NavigationViewItem Content="Activity" Icon="Clock" Tag="activity" />
+            <NavigationViewItem Content="Dashboard" Tag="dashboard">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Home" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Presets" Tag="presets">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Library" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Search" Tag="search">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Find" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Updates" Tag="updates">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Sync" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Windows Update" Tag="windowsUpdates">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Download" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Sources" Tag="sources">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Globe" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Activity" Tag="activity">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Clock" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
         </NavigationView.MenuItems>
         <Frame x:Name="ContentFrame" />
     </NavigationView>

@@ -33,7 +33,11 @@ public sealed partial class SourcesPage : Page
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
         SourceList.ItemsSource = state.Sources
-            .Select(source => source with { Status = TextResources.Get($"Source_Status_{source.Status}") })
+            .Select(source => source with
+            {
+                Type = TextResources.Get(source.Type),
+                Status = TextResources.Get($"Source_Status_{source.Status}")
+            })
             .ToArray();
         PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Sources"), state.Sources.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsLoading);

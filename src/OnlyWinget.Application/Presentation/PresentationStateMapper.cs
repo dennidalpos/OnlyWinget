@@ -1,4 +1,5 @@
 using OnlyWinget.Application.App;
+using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Application.Presentation;
@@ -14,6 +15,7 @@ public static class PresentationStateMapper
             CreatePresetsState(state),
             CreateSearchState(state),
             CreateUpdatesState(state),
+            CreateWindowsUpdateState(state),
             CreateSourceState(state),
             CreateActivityState(state));
     }
@@ -92,7 +94,7 @@ public static class PresentationStateMapper
             state.SearchSelectionHeader,
             [
                 new("search.execute", "Command_Search_Execute", !isLoading && !isExecuting),
-                new("search.addSelected", "Command_Search_AddSelected", state.SelectedSearchPackages.Count > 0 && state.ActivePreset is not null && !isLoading && !isExecuting)
+                new("search.addSelected", "Command_Search_AddSelected", state.SelectedSearchPackages.Count > 0 && !isLoading && !isExecuting)
             ],
             isLoading,
             state.UserVisibleError);
@@ -136,6 +138,55 @@ public static class PresentationStateMapper
             state.UserVisibleError);
     }
 
+    private static WindowsUpdatePresentationState CreateWindowsUpdateState(OnlyWingetState state)
+    {
+        var isScanning = state.BusyState == ApplicationBusyState.ScanningWindowsUpdates;
+        var isInstalling = state.BusyState == ApplicationBusyState.InstallingWindowsUpdates;
+        var isBusy = isScanning || isInstalling;
+        var resultsByUpdate = state.LastWindowsUpdateResults
+            .GroupBy(result => WindowsUpdateFingerprint(result.Identity), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
+
+        return new WindowsUpdatePresentationState(
+            state.WindowsUpdates
+                .Select(update =>
+                {
+                    resultsByUpdate.TryGetValue(WindowsUpdateFingerprint(update.Identity), out var result);
+                    return new WindowsUpdateRow(
+                        update.Identity.UpdateId,
+                        update.Identity.RevisionNumber,
+                        update.Title,
+                        update.Description,
+                        update.Severity,
+                        string.Join(", ", update.Categories),
+                        update.IsDownloaded,
+                        update.RebootRequired,
+                        state.SelectedWindowsUpdates.Any(selected => WindowsUpdateEquals(selected, update.Identity)),
+                        result is null ? null : result.Succeeded ? "Succeeded" : "Failed",
+                        result?.Message ?? (result?.RebootRequired == true ? "Restart required." : null));
+                })
+                .ToArray(),
+            state.WindowsUpdatesSelectionHeader,
+            state.LastWindowsUpdateResults
+                .Select(result => new WindowsUpdateResultRow(
+                    result.Identity.UpdateId,
+                    result.Identity.RevisionNumber,
+                    result.Title,
+                    result.Succeeded,
+                    result.RebootRequired,
+                    result.ResultCode,
+                    result.Message))
+                .ToArray(),
+            [
+                new("windowsUpdates.scan", "Command_WindowsUpdates_Scan", !isBusy),
+                new("windowsUpdates.installSelected", "Command_WindowsUpdates_InstallSelected", state.SelectedWindowsUpdates.Count > 0 && !isBusy),
+                new("operation.cancel", "Command_Operation_Cancel", isBusy)
+            ],
+            isScanning,
+            isInstalling,
+            state.UserVisibleError);
+    }
+
     private static SourcePresentationState CreateSourceState(OnlyWingetState state)
     {
         var isLoading = state.BusyState is ApplicationBusyState.ManagingSources or ApplicationBusyState.CheckingWinget;
@@ -147,6 +198,7 @@ public static class PresentationStateMapper
                     source.Name,
                     source.Argument,
                     source.IsExplicit,
+                    source.IsExplicit ? "Source_Type_User" : "Source_Type_Default",
                     source.Status.ToString()))
                 .ToArray(),
             [
@@ -195,4 +247,11 @@ public static class PresentationStateMapper
 
     private static string PackageFingerprint(string packageId, string? source) =>
         $"{source?.ToUpperInvariant() ?? string.Empty}|{packageId.ToUpperInvariant()}";
+
+    private static bool WindowsUpdateEquals(WindowsUpdateIdentity left, WindowsUpdateIdentity right) =>
+        string.Equals(left.UpdateId, right.UpdateId, StringComparison.OrdinalIgnoreCase) &&
+        left.RevisionNumber == right.RevisionNumber;
+
+    private static string WindowsUpdateFingerprint(WindowsUpdateIdentity update) =>
+        $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";
 }
