@@ -27,7 +27,7 @@ Keep the list in execution order. Remove completed, obsolete, duplicate, histori
 - Target stack: WinUI 3, .NET 10 LTS, Windows App SDK stable, Windows 10 1809 build 17763 minimum.
 - Architecture target: Clean Architecture with Domain, Application, Infrastructure, and WinUI Presentation layers with one-way dependencies.
 - Installer target: keep WiX Burn/MSI packaging and chain the Windows App Runtime redistributable required by Windows App SDK.
-- Packaging target: full bundle packaging requires `WindowsAppRuntimeInstall.exe` matching `Microsoft.WindowsAppSDK`, supplied by `-WindowsAppRuntimeInstallerPath` or `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER` when it is not in the local NuGet cache.
+- Packaging target: full bundle packaging resolves `WindowsAppRuntimeInstall.exe` matching `Microsoft.WindowsAppSDK` from `-WindowsAppRuntimeInstallerPath`, `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`, local cache, or the official redist download.
 - Data policy: use the current workspace schema; do not add migration layers unless a later user request changes this.
 - Localization policy: preserve Italian and English visible UI strings in the new presentation layer.
 - Selection policy: implement batch selection in reusable state logic; header select-all must reliably toggle all rows from checked, unchecked, and mixed states.
@@ -47,27 +47,28 @@ Keep the list in execution order. Remove completed, obsolete, duplicate, histori
 Use scripts before ad hoc commands:
 
 ```powershell
-.\scripts\setup.ps1
-.\scripts\format.ps1
-.\scripts\lint.ps1
-.\scripts\typecheck.ps1
-.\scripts\test.ps1
-.\scripts\build.ps1
-.\scripts\package.ps1 -WindowsAppRuntimeInstallerPath C:\Path\To\WindowsAppRuntimeInstall.exe
-.\scripts\check.ps1
+.\scripts\run.ps1
+.\scripts\run.ps1 -Task Setup -NonInteractive
+.\scripts\run.ps1 -Task Format -NoRestore -NonInteractive
+.\scripts\run.ps1 -Task Lint -NonInteractive
+.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive
+.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
+.\scripts\run.ps1 -Task Build -Configuration Release -NonInteractive
+.\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive
+.\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```
 
 Run live `winget` smoke tests only when explicitly needed:
 
 ```powershell
-.\scripts\test.ps1 -RunWingetSmoke
-.\scripts\check.ps1 -RunWingetSmoke
+.\scripts\run.ps1 -Task Test -RunWingetSmoke -NonInteractive
+.\scripts\run.ps1 -Task Check -RunWingetSmoke -NonInteractive
 ```
 
 Run installer lifecycle validation only on a clean elevated Windows host:
 
 ```powershell
-.\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore
+.\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
 ```
 
 ## Guardrails

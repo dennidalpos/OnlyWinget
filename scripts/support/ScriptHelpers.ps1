@@ -210,26 +210,36 @@ function Install-WindowsAppRuntimeRedist {
 
     New-Item -ItemType Directory -Path $dependencyRoot -Force | Out-Null
 
+    if (Test-Path -LiteralPath $extractRoot) {
+        $existingInstaller = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($null -ne $existingInstaller) {
+            return $existingInstaller.FullName
+        }
+    }
+
     $downloadUrls = @(
         "https://aka.ms/windowsappsdk/$majorMinor/$WindowsAppSdkVersion/Microsoft.WindowsAppRuntime.Redist.$majorMinor.zip",
         "https://aka.ms/windowsappsdk/$majorMinor/$WindowsAppSdkVersion/Microsoft.WindowsAppRuntime.Redist.$WindowsAppSdkVersion.zip"
     )
 
-    $downloaded = $false
-    foreach ($downloadUrl in $downloadUrls) {
-        try {
-            Write-Host "Download Windows App Runtime redist: $downloadUrl" -ForegroundColor Cyan
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
-            $downloaded = $true
-            break
+    if (-not (Test-Path -LiteralPath $zipPath)) {
+        $downloaded = $false
+        foreach ($downloadUrl in $downloadUrls) {
+            try {
+                Write-Host "Download Windows App Runtime redist: $downloadUrl" -ForegroundColor Cyan
+                Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+                $downloaded = $true
+                break
+            }
+            catch {
+                Write-Warning "Download non riuscito: $downloadUrl"
+            }
         }
-        catch {
-            Write-Warning "Download non riuscito: $downloadUrl"
-        }
-    }
 
-    if (-not $downloaded) {
-        throw "Impossibile scaricare Windows App Runtime redist $WindowsAppSdkVersion."
+        if (-not $downloaded) {
+            throw "Impossibile scaricare Windows App Runtime redist $WindowsAppSdkVersion."
+        }
     }
 
     if (Test-Path -LiteralPath $extractRoot) {
