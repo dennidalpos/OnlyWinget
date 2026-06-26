@@ -1,22 +1,17 @@
 param(
-    [switch]$Required
+    [switch]$Required,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
-$module = Get-Module -ListAvailable -Name PSScriptAnalyzer |
-    Sort-Object Version -Descending |
-    Select-Object -First 1
-if ($null -eq $module) {
-    Write-Warning 'PowerShell script lint not_available: PSScriptAnalyzer is not installed. Install it with: Install-Module PSScriptAnalyzer -Scope CurrentUser -Repository PSGallery'
-    if ($Required) {
-        exit 2
-    }
-
+if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -ScriptRoot $PSScriptRoot -NonInteractive:$NonInteractive) {
     return
 }
 
+$module = Install-PowerShellModuleIfMissing -Name 'PSScriptAnalyzer'
 Import-Module $module.Path -ErrorAction Stop
 $settingsPath = Join-Path $PSScriptRoot 'support/PSScriptAnalyzerSettings.psd1'
 $scriptsRoot = $PSScriptRoot

@@ -1,12 +1,18 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [switch]$RunWingetSmoke
+    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
+    [switch]$RunWingetSmoke,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+
+if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -ScriptRoot $PSScriptRoot -NonInteractive:$NonInteractive) {
+    return
+}
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
@@ -124,7 +130,16 @@ Invoke-Step 'build' {
 }
 
 Invoke-Step 'setup package' {
-    & $packageScriptPath -Configuration $Configuration -NoRestore
+    $packageParameters = @{
+        Configuration = $Configuration
+        NoRestore = $true
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($WindowsAppRuntimeInstallerPath)) {
+        $packageParameters.WindowsAppRuntimeInstallerPath = $WindowsAppRuntimeInstallerPath
+    }
+
+    & $packageScriptPath @packageParameters
 }
 
 Invoke-Step 'artifact analysis' {

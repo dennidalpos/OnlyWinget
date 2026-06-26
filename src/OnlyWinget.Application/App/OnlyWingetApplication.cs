@@ -12,9 +12,11 @@ namespace OnlyWinget.Application.App;
 
 public sealed class OnlyWingetApplication(
     IWorkspaceStore workspaceStore,
+    ICommandAvailability commandAvailability,
     IPackageSearchService packageSearch,
     IPackageResolver packageResolver,
     IUpdateLoader updateLoader,
+    IWingetSourceService sourceService,
     IOperationExecutor operationExecutor,
     TimeProvider? timeProvider = null)
 {
@@ -25,12 +27,15 @@ public sealed class OnlyWingetApplication(
     private readonly SelectionState<PackageIdentity> updateSelection = new();
     private readonly List<PackageSearchResult> searchResults = [];
     private readonly List<PackageUpdate> updates = [];
+    private readonly List<WingetSource> sources = [];
     private readonly List<ActivityEntry> activity = [];
     private readonly List<OperationExecutionResult> lastOperationResults = [];
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
 
     private WorkspaceState workspace = WorkspaceState.Empty;
     private ApplicationBusyState busyState;
+    private bool? isWingetAvailable;
+    private ClassifiedWingetError? sourceError;
     private string? userVisibleError;
 
     public OnlyWingetState State => CreateState();
@@ -59,6 +64,23 @@ public sealed class OnlyWingetApplication(
                     AddActivity(ActivitySeverity.Success, "Workspace saved", "Workspace state was saved.");
                 },
                 "Unable to save workspace.")
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> CheckWingetAsync(CancellationToken cancellationToken)
+    {
+        return await RunAsync(
+                ApplicationBusyState.CheckingWinget,
+                async () =>
+                {
+                    isWingetAvailable = await commandAvailability.IsWingetAvailableAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    AddActivity(
+                        isWingetAvailable.Value ? ActivitySeverity.Success : ActivitySeverity.Error,
+                        "winget checked",
+                        isWingetAvailable.Value ? "winget is available." : "winget is not available on PATH.");
+                },
+                "Unable to check winget availability.")
             .ConfigureAwait(false);
     }
 
@@ -176,10 +198,15 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.Searching,
                 async () =>
                 {
-                    var results = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
+                    var outcome = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
                         .ConfigureAwait(false);
+                    if (!outcome.Succeeded)
+                    {
+                        throw new InvalidOperationException(outcome.Error?.Message ?? "winget search failed.");
+                    }
+
                     searchResults.Clear();
-                    searchResults.AddRange(results.DistinctBy(result => PackageFingerprint(result.Package)));
+                    searchResults.AddRange(outcome.Rows.DistinctBy(result => PackageFingerprint(result.Package)));
                     searchSelection.ReplaceAvailable(searchResults.Select(result => result.Package));
                     AddActivity(ActivitySeverity.Information, "Search completed", $"{searchResults.Count} result(s).");
                 },
@@ -228,13 +255,75 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.RefreshingUpdates,
                 async () =>
                 {
-                    var loadedUpdates = await updateLoader.LoadUpdatesAsync(cancellationToken).ConfigureAwait(false);
+                    var outcome = await updateLoader.LoadUpdatesAsync(cancellationToken).ConfigureAwait(false);
+                    if (!outcome.Succeeded && outcome.Error?.Kind != WingetErrorKind.NoUpdates)
+                    {
+                        throw new InvalidOperationException(outcome.Error?.Message ?? "winget upgrade failed.");
+                    }
+
                     updates.Clear();
-                    updates.AddRange(loadedUpdates.DistinctBy(update => PackageFingerprint(update.Package)));
+                    updates.AddRange(outcome.Rows.DistinctBy(update => PackageFingerprint(update.Package)));
                     updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
                 },
                 "Unable to refresh updates.")
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> RefreshSourcesAsync(CancellationToken cancellationToken)
+    {
+        return await RunAsync(
+                ApplicationBusyState.ManagingSources,
+                async () =>
+                {
+                    var outcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
+                    ApplySourceOutcome(outcome, updateRows: true);
+                    AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{sources.Count} source(s).");
+                },
+                "Unable to refresh winget sources.")
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> UpdateSourcesAsync(CancellationToken cancellationToken)
+    {
+        return await RunSourceMutationAsync(
+                () => sourceService.UpdateSourcesAsync(cancellationToken),
+                "Sources updated",
+                "winget source update completed.",
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> AddSourceAsync(
+        string name,
+        string argument,
+        CancellationToken cancellationToken)
+    {
+        return await RunSourceMutationAsync(
+                () => sourceService.AddSourceAsync(name, argument, cancellationToken),
+                "Source added",
+                name,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> RemoveSourceAsync(string name, CancellationToken cancellationToken)
+    {
+        return await RunSourceMutationAsync(
+                () => sourceService.RemoveSourceAsync(name, cancellationToken),
+                "Source removed",
+                name,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> ResetSourcesAsync(CancellationToken cancellationToken)
+    {
+        return await RunSourceMutationAsync(
+                () => sourceService.ResetSourcesAsync(cancellationToken),
+                "Sources reset",
+                "winget sources reset to defaults.",
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -329,10 +418,50 @@ public sealed class OnlyWingetApplication(
             updates.ToArray(),
             updateSelection.Selected.ToArray(),
             updateSelection.HeaderState,
+            isWingetAvailable,
+            sources.ToArray(),
+            sourceError,
             activity.ToArray(),
             lastOperationResults.ToArray(),
             busyState,
             userVisibleError);
+    }
+
+    private async Task<ApplicationActionResult> RunSourceMutationAsync(
+        Func<Task<WingetOperationOutcome<WingetSource>>> operation,
+        string title,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        return await RunAsync(
+                ApplicationBusyState.ManagingSources,
+                async () =>
+                {
+                    var outcome = await operation().ConfigureAwait(false);
+                    ApplySourceOutcome(outcome, updateRows: false);
+                    AddActivity(ActivitySeverity.Success, title, message);
+
+                    var refresh = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
+                    ApplySourceOutcome(refresh, updateRows: true);
+                },
+                "Unable to manage winget sources.")
+            .ConfigureAwait(false);
+    }
+
+    private void ApplySourceOutcome(WingetOperationOutcome<WingetSource> outcome, bool updateRows)
+    {
+        if (!outcome.Succeeded)
+        {
+            sourceError = outcome.Error;
+            throw new InvalidOperationException(outcome.Error?.Message ?? "winget source failed.");
+        }
+
+        sourceError = null;
+        if (updateRows)
+        {
+            sources.Clear();
+            sources.AddRange(outcome.Rows);
+        }
     }
 
     private static string CreateOperationActivityMessage(OperationExecutionResult result)

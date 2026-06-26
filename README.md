@@ -39,7 +39,7 @@ OnlyWinget is a Windows desktop app for managing local `winget` workflows from a
 - Windows 10 or Windows 11.
 - Microsoft App Installer with `winget` 1.x on `PATH`.
 - Windows App Runtime matching the Windows App SDK package used by the app. The setup bundle installs this prerequisite.
-- For development: .NET SDK from [`global.json`](global.json), PowerShell 7+, and WiX Toolset 3.x only when packaging.
+- For development: PowerShell 7+. The repository scripts install missing local prerequisites where practical: .NET SDK from [`global.json`](global.json), PSScriptAnalyzer, WiX Toolset 3.x, and the Windows App Runtime redistributable used for bundling.
 
 Quick verification:
 
@@ -50,19 +50,27 @@ winget --version
 
 ## Commands
 
+Interactive menu:
+
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\setup.ps1
-pwsh -ExecutionPolicy Bypass -File .\scripts\format.ps1 -NoRestore
-pwsh -ExecutionPolicy Bypass -File .\scripts\typecheck.ps1 -Configuration Release -NoRestore
-pwsh -ExecutionPolicy Bypass -File .\scripts\test.ps1 -Configuration Release -NoRestore
-pwsh -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Configuration Release
-pwsh -ExecutionPolicy Bypass -File .\scripts\package.ps1 -Configuration Release -NoRestore -WindowsAppRuntimeInstallerPath C:\Path\To\WindowsAppRuntimeInstall.exe
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1
+```
+
+Non-interactive examples:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Setup -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Format -NoRestore -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Build -Configuration Release -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive
 ```
 
 Full local gate:
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\check.ps1 -Configuration Release
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```
 
 ## Project Links

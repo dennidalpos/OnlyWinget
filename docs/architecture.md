@@ -11,7 +11,6 @@ OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows.
 - `src/OnlyWinget.Setup`: WiX setup sources.
 - `tests/OnlyWinget.Tests`: xUnit tests for non-UI behavior.
 - `scripts`: PowerShell entrypoints.
-- `media/Default.onlywinget.json`: sample preset.
 
 ## Dependency Rule
 
@@ -33,6 +32,8 @@ The workspace schema is:
 ```
 
 Preset exchange supports only `onlywinget.preset.v1`.
+
+No legacy sample preset is shipped with the repository. Presets are created in the app or imported explicitly in the current exchange format.
 
 ## Installer
 

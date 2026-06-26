@@ -1,7 +1,266 @@
+$script:OnlyWingetScriptsRoot = Split-Path $PSScriptRoot -Parent
+$script:OnlyWingetRepositoryRoot = Split-Path $script:OnlyWingetScriptsRoot -Parent
+
+function Test-OnlyWingetInteractiveShell {
+    if ([Console]::IsInputRedirected) {
+        return $false
+    }
+
+    return $null -ne $Host -and
+        $null -ne $Host.UI -and
+        $null -ne $Host.UI.RawUI
+}
+
+function Read-OnlyWingetYesNo {
+    param(
+        [string]$Prompt,
+        [bool]$DefaultYes = $true
+    )
+
+    if (-not (Test-OnlyWingetInteractiveShell)) {
+        return $DefaultYes
+    }
+
+    $suffix = if ($DefaultYes) { '[S/n]' } else { '[s/N]' }
+    $answer = Read-Host "$Prompt $suffix"
+    if ([string]::IsNullOrWhiteSpace($answer)) {
+        return $DefaultYes
+    }
+
+    return $answer.Trim().StartsWith('s', [System.StringComparison]::OrdinalIgnoreCase) -or
+        $answer.Trim().StartsWith('y', [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-OnlyWingetAutoInstallAllowed {
+    param(
+        [string]$Description
+    )
+
+    if ($env:ONLYWINGET_SKIP_AUTO_INSTALL -eq '1') {
+        throw "$Description mancante. Installazione automatica disabilitata da ONLYWINGET_SKIP_AUTO_INSTALL=1."
+    }
+
+    if (Test-OnlyWingetInteractiveShell) {
+        return Read-OnlyWingetYesNo -Prompt "$Description mancante. Installarlo ora?"
+    }
+
+    return $true
+}
+
+function Invoke-OnlyWingetExternalInstall {
+    param(
+        [string]$Command,
+        [string[]]$Arguments,
+        [string]$Description
+    )
+
+    Write-Host "Installazione prerequisito: $Description" -ForegroundColor Cyan
+    & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Installazione fallita: $Description"
+    }
+}
+
+function Get-RequiredDotNetSdkMajor {
+    $globalJsonPath = Join-Path $script:OnlyWingetRepositoryRoot 'global.json'
+    if (-not (Test-Path -LiteralPath $globalJsonPath)) {
+        return '10'
+    }
+
+    $globalJson = Get-Content -LiteralPath $globalJsonPath -Raw | ConvertFrom-Json
+    $version = [string]$globalJson.sdk.version
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        return '10'
+    }
+
+    return $version.Split('.')[0]
+}
+
+function Install-DotNetSdk {
+    $major = Get-RequiredDotNetSdkMajor
+    $winget = Get-Command 'winget' -ErrorAction SilentlyContinue
+    if ($null -eq $winget) {
+        throw ".NET SDK $major richiesto, ma winget non e' disponibile per installarlo automaticamente."
+    }
+
+    Invoke-OnlyWingetExternalInstall `
+        -Command $winget.Source `
+        -Arguments @(
+            'install',
+            '--id',
+            "Microsoft.DotNet.SDK.$major",
+            '--exact',
+            '--source',
+            'winget',
+            '--accept-source-agreements',
+            '--accept-package-agreements',
+            '--silent'
+        ) `
+        -Description ".NET SDK $major"
+}
+
+function Install-WixToolset {
+    if (-not (Test-OnlyWingetAutoInstallAllowed -Description 'WiX Toolset 3.x')) {
+        throw 'WiX Toolset 3.x richiesto per il packaging.'
+    }
+
+    $choco = Get-Command 'choco' -ErrorAction SilentlyContinue
+    if ($null -ne $choco) {
+        Invoke-OnlyWingetExternalInstall `
+            -Command $choco.Source `
+            -Arguments @('install', 'wixtoolset', '--version=3.14.1.20250415', '--no-progress', '-y') `
+            -Description 'WiX Toolset 3.14'
+        return
+    }
+
+    $winget = Get-Command 'winget' -ErrorAction SilentlyContinue
+    if ($null -ne $winget) {
+        Invoke-OnlyWingetExternalInstall `
+            -Command $winget.Source `
+            -Arguments @(
+                'install',
+                '--id',
+                'WiXToolset.WiXToolset',
+                '--exact',
+                '--source',
+                'winget',
+                '--accept-source-agreements',
+                '--accept-package-agreements',
+                '--silent'
+            ) `
+            -Description 'WiX Toolset 3.x'
+        return
+    }
+
+    throw 'WiX Toolset 3.x non trovato e nessun installer automatico disponibile (winget/choco).'
+}
+
+function Install-PowerShellModuleIfMissing {
+    param(
+        [string]$Name
+    )
+
+    $module = Get-Module -ListAvailable -Name $Name |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if ($null -ne $module) {
+        return $module
+    }
+
+    if (-not (Test-OnlyWingetAutoInstallAllowed -Description "Modulo PowerShell $Name")) {
+        throw "Modulo PowerShell richiesto non installato: $Name"
+    }
+
+    Install-Module -Name $Name -Scope CurrentUser -Repository PSGallery -Force -AllowClobber
+
+    $module = Get-Module -ListAvailable -Name $Name |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if ($null -eq $module) {
+        throw "Modulo PowerShell $Name non trovato dopo l'installazione."
+    }
+
+    return $module
+}
+
+function Enter-InteractiveModeIfNoParameter {
+    param(
+        [hashtable]$BoundParameters,
+        [string]$ScriptRoot,
+        [switch]$NonInteractive
+    )
+
+    if ($NonInteractive) {
+        return $false
+    }
+
+    $effectiveParameterNames = @($BoundParameters.Keys | Where-Object { $_ -ne 'NonInteractive' })
+    if ($effectiveParameterNames.Count -gt 0) {
+        return $false
+    }
+
+    if (-not (Test-OnlyWingetInteractiveShell)) {
+        throw 'Script avviato senza parametri in una sessione non interattiva. Passa parametri espliciti oppure usa scripts/run.ps1 -Task <nome> -NonInteractive.'
+    }
+
+    & (Join-Path $ScriptRoot 'run.ps1')
+    return $true
+}
+
+function Install-WindowsAppRuntimeRedist {
+    param(
+        [string]$WindowsAppSdkVersion,
+        [ValidateSet('x86', 'x64')]
+        [string]$Architecture
+    )
+
+    if (-not (Test-OnlyWingetAutoInstallAllowed -Description "Windows App Runtime redist $WindowsAppSdkVersion")) {
+        throw "Windows App Runtime installer richiesto per Microsoft.WindowsAppSDK $WindowsAppSdkVersion."
+    }
+
+    $versionParts = $WindowsAppSdkVersion.Split('.')
+    if ($versionParts.Count -lt 2) {
+        throw "Versione Microsoft.WindowsAppSDK non valida: $WindowsAppSdkVersion"
+    }
+
+    $majorMinor = "$($versionParts[0]).$($versionParts[1])"
+    $dependencyRoot = Join-Path $script:OnlyWingetRepositoryRoot "artifacts/dependencies/windowsappsdk/$WindowsAppSdkVersion"
+    $extractRoot = Join-Path $dependencyRoot 'redist'
+    $zipPath = Join-Path $dependencyRoot "Microsoft.WindowsAppRuntime.Redist.$WindowsAppSdkVersion.zip"
+
+    New-Item -ItemType Directory -Path $dependencyRoot -Force | Out-Null
+
+    $downloadUrls = @(
+        "https://aka.ms/windowsappsdk/$majorMinor/$WindowsAppSdkVersion/Microsoft.WindowsAppRuntime.Redist.$majorMinor.zip",
+        "https://aka.ms/windowsappsdk/$majorMinor/$WindowsAppSdkVersion/Microsoft.WindowsAppRuntime.Redist.$WindowsAppSdkVersion.zip"
+    )
+
+    $downloaded = $false
+    foreach ($downloadUrl in $downloadUrls) {
+        try {
+            Write-Host "Download Windows App Runtime redist: $downloadUrl" -ForegroundColor Cyan
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+            $downloaded = $true
+            break
+        }
+        catch {
+            Write-Warning "Download non riuscito: $downloadUrl"
+        }
+    }
+
+    if (-not $downloaded) {
+        throw "Impossibile scaricare Windows App Runtime redist $WindowsAppSdkVersion."
+    }
+
+    if (Test-Path -LiteralPath $extractRoot) {
+        Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction Stop
+    }
+
+    Expand-Archive -LiteralPath $zipPath -DestinationPath $extractRoot -Force
+    $installer = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File |
+        Select-Object -First 1
+    if ($null -eq $installer) {
+        $installer = Get-ChildItem -Path $extractRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File |
+            Select-Object -First 1
+    }
+
+    if ($null -eq $installer) {
+        throw "WindowsAppRuntimeInstall-$Architecture.exe non trovato nel redist $WindowsAppSdkVersion."
+    }
+
+    return $installer.FullName
+}
+
 function Assert-Command {
     param(
         [string]$Name
     )
+
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+        if ($Name -eq 'dotnet' -and (Test-OnlyWingetAutoInstallAllowed -Description '.NET SDK')) {
+            Install-DotNetSdk
+        }
+    }
 
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "Comando richiesto non trovato: $Name"

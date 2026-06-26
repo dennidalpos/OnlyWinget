@@ -6,11 +6,11 @@ Repository instructions for Codex in OnlyWinget.
 
 - Environment: Windows, PowerShell, repository root commands.
 - Project policy: treat OnlyWinget as greenfield unless the user says otherwise.
-- Current product direction: migrate from the existing WPF `net8.0-windows` app to a WinUI 3 desktop app on .NET 10 LTS, using Windows App SDK stable and keeping WiX Burn as the installer channel.
-- During the WinUI 3/.NET 10 migration, WPF UI, WPF-only helpers, WPF-only tests, and legacy ViewModel/domain shapes are replaceable; prefer a clean scalable implementation over compatibility layers.
+- Current product direction: maintain the WinUI 3 desktop app on .NET 10 LTS, using Windows App SDK stable and keeping WiX Burn as the installer channel.
+- Treat pre-WinUI compatibility code, transitional migration scaffolding, and obsolete compatibility notes as removable unless a current task explicitly requires them.
 - Prefer small, clean, current implementations over compatibility layers.
 - Preserve user work. Never run destructive Git commands unless explicitly requested.
-- Keep `PROJECT_STATUS.json` as todo-only JSON:
+- Keep `PROJECT_STATUS.json` as the complete prioritized residual plan and todo-only JSON:
 
 ```json
 {
@@ -20,17 +20,18 @@ Repository instructions for Codex in OnlyWinget.
 }
 ```
 
-Remove completed, obsolete, duplicate, historical, or non-actionable items.
+Keep the list in execution order. Remove completed, obsolete, duplicate, historical, or non-actionable items. Add newly identified blockers when local inspection finds them, especially dirty tracked files that must be resolved before release validation.
 
-## Modernization target
+## Current target
 
 - Target stack: WinUI 3, .NET 10 LTS, Windows App SDK stable, Windows 10 1809 build 17763 minimum.
 - Architecture target: Clean Architecture with Domain, Application, Infrastructure, and WinUI Presentation layers with one-way dependencies.
-- Installer target: keep WiX Burn/MSI packaging and add the Windows App Runtime prerequisite or bootstrap flow required by Windows App SDK.
-- Data policy for the modernization: no automatic migration from WPF-era local state or preset schema unless a later user request changes this; use a new workspace storage schema.
+- Installer target: keep WiX Burn/MSI packaging and chain the Windows App Runtime redistributable required by Windows App SDK.
+- Packaging target: full bundle packaging requires `WindowsAppRuntimeInstall.exe` matching `Microsoft.WindowsAppSDK`, supplied by `-WindowsAppRuntimeInstallerPath` or `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER` when it is not in the local NuGet cache.
+- Data policy: use the current workspace schema; do not add migration layers unless a later user request changes this.
 - Localization policy: preserve Italian and English visible UI strings in the new presentation layer.
 - Selection policy: implement batch selection in reusable state logic; header select-all must reliably toggle all rows from checked, unchecked, and mixed states.
-- Backlog source: `PROJECT_STATUS.json` is the prioritized implementation and validation backlog for the modernization.
+- Backlog source: `PROJECT_STATUS.json` is the prioritized residual implementation, validation, and release backlog.
 
 ## Workflow
 
@@ -52,7 +53,7 @@ Use scripts before ad hoc commands:
 .\scripts\typecheck.ps1
 .\scripts\test.ps1
 .\scripts\build.ps1
-.\scripts\package.ps1
+.\scripts\package.ps1 -WindowsAppRuntimeInstallerPath C:\Path\To\WindowsAppRuntimeInstall.exe
 .\scripts\check.ps1
 ```
 

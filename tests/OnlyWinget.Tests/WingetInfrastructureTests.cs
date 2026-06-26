@@ -60,14 +60,46 @@ public sealed class WingetInfrastructureTests
             PowerToys  Microsoft.PowerToys 1.0.0               winget
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
-        var service = new WingetPackageSearchService(runner, new WingetTableParser());
+        var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
 
-        var results = await service.SearchAsync(new PackageSearchRequest("git", "winget"), CancellationToken.None);
+        var outcome = await service.SearchAsync(new PackageSearchRequest("git", "winget"), CancellationToken.None);
 
         Assert.Equal(["search", "git", "--accept-source-agreements", "--source", "winget"], runner.LastArguments);
-        Assert.Equal(2, results.Count);
-        Assert.Equal("Git.Git", results[0].Package.Id);
-        Assert.Equal("winget", results[0].Package.Source);
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(2, outcome.Rows.Count);
+        Assert.Equal("Git.Git", outcome.Rows[0].Package.Id);
+        Assert.Equal("winget", outcome.Rows[0].Package.Source);
+    }
+
+    [Fact]
+    public async Task PackageSearchMapsLocalizedRows()
+    {
+        const string output = """
+            Nome Id      Versione Origine
+            ------------------------------
+            Git  Git.Git 2.54.0   winget
+            """;
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
+        var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var outcome = await service.SearchAsync(new PackageSearchRequest("Git.Git"), CancellationToken.None);
+
+        var result = Assert.Single(outcome.Rows);
+        Assert.Equal("Git", result.Name);
+        Assert.Equal("2.54.0", result.Version);
+        Assert.Equal("winget", result.Package.Source);
+    }
+
+    [Fact]
+    public async Task PackageSearchReturnsStructuredFailure()
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(1, string.Empty, "Failed when searching source: winget"));
+        var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var outcome = await service.SearchAsync(new PackageSearchRequest("git"), CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(WingetErrorKind.SourceUnavailable, outcome.Error?.Kind);
     }
 
     [Fact]
@@ -100,15 +132,46 @@ public sealed class WingetInfrastructureTests
             Git   Git.Git  2.0.0    2.1.0      winget
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
-        var loader = new WingetUpdateLoader(runner, new WingetTableParser());
+        var loader = new WingetUpdateLoader(runner, new WingetTableParser(), new WingetErrorClassifier());
 
-        var updates = await loader.LoadUpdatesAsync(CancellationToken.None);
+        var outcome = await loader.LoadUpdatesAsync(CancellationToken.None);
 
         Assert.Equal(["upgrade", "--accept-source-agreements"], runner.LastArguments);
-        var update = Assert.Single(updates);
+        var update = Assert.Single(outcome.Rows);
         Assert.Equal("Git.Git", update.Package.Id);
         Assert.Equal("2.0.0", update.InstalledVersion);
         Assert.Equal("2.1.0", update.AvailableVersion);
+    }
+
+    [Fact]
+    public async Task SourceServiceRunsSourceCommandsAndMapsLocalizedRows()
+    {
+        const string output = """
+            Nome   Argomento                              Contenuti espliciti
+            -----------------------------------------------------------------
+            winget https://cdn.winget.microsoft.com/cache false
+            """;
+        var runner = new RecordingWingetCommandRunner(
+            new WingetCommandResult(0, output, string.Empty),
+            new WingetCommandResult(0, "Done", string.Empty),
+            new WingetCommandResult(0, "Done", string.Empty),
+            new WingetCommandResult(0, "Done", string.Empty),
+            new WingetCommandResult(0, "Done", string.Empty));
+        var service = new WingetSourceService(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var sources = await service.ListSourcesAsync(CancellationToken.None);
+        await service.UpdateSourcesAsync(CancellationToken.None);
+        await service.AddSourceAsync("custom", "https://example.test", CancellationToken.None);
+        await service.RemoveSourceAsync("custom", CancellationToken.None);
+        await service.ResetSourcesAsync(CancellationToken.None);
+
+        var source = Assert.Single(sources.Rows);
+        Assert.Equal("winget", source.Name);
+        Assert.Equal("https://cdn.winget.microsoft.com/cache", source.Argument);
+        Assert.Equal(["source", "reset", "--force"], runner.LastArguments);
+        Assert.Contains(runner.Calls, call => call.SequenceEqual(["source", "update", "--accept-source-agreements"]));
+        Assert.Contains(runner.Calls, call => call.SequenceEqual(["source", "add", "--name", "custom", "--arg", "https://example.test", "--accept-source-agreements"]));
+        Assert.Contains(runner.Calls, call => call.SequenceEqual(["source", "remove", "--name", "custom"]));
     }
 
     [Fact]

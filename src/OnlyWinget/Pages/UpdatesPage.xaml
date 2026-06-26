@@ -2,7 +2,7 @@
     x:Class="OnlyWinget.Pages.UpdatesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Padding="24" RowSpacing="12">
+    <Grid Padding="28" RowSpacing="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -30,7 +30,7 @@
         <ListView x:Name="UpdateList" Grid.Row="2">
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Grid ColumnSpacing="12" RowSpacing="4" Padding="0,6">
+                        <Grid ColumnSpacing="12" RowSpacing="4" Padding="0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="2*" />
@@ -45,12 +45,12 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <CheckBox IsChecked="{Binding IsSelected, Mode=OneWay}" Click="OnUpdateSelectionClick" />
-                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="{Binding PackageId}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="3" Text="{Binding InstalledVersion}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" Text="{Binding PackageId}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding InstalledVersion}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="4" Text="{Binding AvailableVersion}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="5" Text="{Binding Source}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="6" Text="{Binding Status}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5" Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="6" Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" />
                         <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6" Spacing="2">
                             <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" />
                             <TextBlock Text="{Binding Output}" TextWrapping="Wrap" />

@@ -5,9 +5,10 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class WingetUpdateLoader(
     IWingetCommandRunner commandRunner,
-    WingetTableParser tableParser) : IUpdateLoader
+    WingetTableParser tableParser,
+    WingetErrorClassifier errorClassifier) : IUpdateLoader
 {
-    public async Task<IReadOnlyList<PackageUpdate>> LoadUpdatesAsync(CancellationToken cancellationToken)
+    public async Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(CancellationToken cancellationToken)
     {
         var result = await commandRunner.RunAsync(
                 "winget",
@@ -15,29 +16,33 @@ public sealed class WingetUpdateLoader(
                 cancellationToken)
             .ConfigureAwait(false);
 
+        var rawOutput = JoinOutput(result);
         if (!result.Succeeded)
         {
-            return [];
+            return WingetOperationOutcome<PackageUpdate>.Failure(
+                errorClassifier.Classify(result) ?? new ClassifiedWingetError(WingetErrorKind.Unknown, "winget upgrade failed."),
+                rawOutput);
         }
 
-        return tableParser.Parse(result.StandardOutput)
+        var rows = tableParser.Parse(result.StandardOutput)
             .Select(ToUpdate)
             .Where(update => update is not null)
             .Cast<PackageUpdate>()
             .ToArray();
+        return WingetOperationOutcome<PackageUpdate>.Success(rows, rawOutput);
     }
 
     private static PackageUpdate? ToUpdate(IReadOnlyDictionary<string, string> row)
     {
-        if (!TryGet(row, "Id", out var id) ||
-            !TryGet(row, "Version", out var version) ||
-            !TryGet(row, "Available", out var available))
+        if (!TryGetAny(row, out var id, "Id") ||
+            !TryGetAny(row, out var version, "Version", "Versione") ||
+            !TryGetAny(row, out var available, "Available", "Disponibile"))
         {
             return null;
         }
 
-        TryGet(row, "Name", out var name);
-        TryGet(row, "Source", out var source);
+        TryGetAny(row, out var name, "Name", "Nome");
+        TryGetAny(row, out var source, "Source", "Origine");
 
         return new PackageUpdate(
             new PackageIdentity(id, source),
@@ -48,4 +53,21 @@ public sealed class WingetUpdateLoader(
 
     private static bool TryGet(IReadOnlyDictionary<string, string> row, string key, out string value) =>
         row.TryGetValue(key, out value!) && !string.IsNullOrWhiteSpace(value);
+
+    private static bool TryGetAny(IReadOnlyDictionary<string, string> row, out string value, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (TryGet(row, key, out value))
+            {
+                return true;
+            }
+        }
+
+        value = string.Empty;
+        return false;
+    }
+
+    private static string JoinOutput(WingetCommandResult result) =>
+        string.Join(Environment.NewLine, result.StandardOutput, result.StandardError).Trim();
 }

@@ -2,7 +2,7 @@
     x:Class="OnlyWinget.Pages.ActivityPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Padding="24" RowSpacing="12">
+    <Grid Padding="28" RowSpacing="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -19,16 +19,16 @@
         <ListView x:Name="ActivityList" Grid.Row="2">
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Grid ColumnSpacing="12" Padding="0,6">
+                    <Grid ColumnSpacing="12" Padding="0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170" />
                             <ColumnDefinition Width="100" />
                             <ColumnDefinition Width="180" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding Timestamp}" VerticalAlignment="Top" />
-                        <TextBlock Grid.Column="1" Text="{Binding Severity}" VerticalAlignment="Top" />
-                        <TextBlock Grid.Column="2" Text="{Binding Title}" VerticalAlignment="Top" />
+                        <TextBlock Text="{Binding Timestamp}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="1" Text="{Binding Severity}" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Top" />
                         <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" />
                     </Grid>
                 </DataTemplate>

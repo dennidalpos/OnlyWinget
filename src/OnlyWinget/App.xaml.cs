@@ -14,13 +14,23 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     public App()
     {
+        AppDiagnostics.Initialize();
+        AppDiagnostics.Register(this);
         InitializeComponent();
     }
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        window = new MainWindow();
-        window.Activate();
+        try
+        {
+            window = new MainWindow();
+            window.Activate();
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("OnLaunched", exception);
+            throw;
+        }
     }
 
     public static void NotifyWorkflowChanged() => WorkflowChanged?.Invoke(null, EventArgs.Empty);
@@ -32,9 +42,11 @@ public partial class App : Microsoft.UI.Xaml.Application
         var classifier = new WingetErrorClassifier();
         return new OnlyWingetApplication(
             new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath),
-            new WingetPackageSearchService(runner, parser),
+            new CommandAvailability(runner),
+            new WingetPackageSearchService(runner, parser, classifier),
             new WingetPackageResolver(runner, classifier),
-            new WingetUpdateLoader(runner, parser),
+            new WingetUpdateLoader(runner, parser, classifier),
+            new WingetSourceService(runner, parser, classifier),
             new WingetOperationExecutor(runner, new WingetCommandBuilder(), classifier));
     }
 }

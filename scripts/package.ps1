@@ -7,12 +7,17 @@ param(
     [switch]$StopRunningInstance,
     [ValidateSet('x86', 'x64', 'All')]
     [string]$Architecture = 'All',
-    [switch]$SkipBundle
+    [switch]$SkipBundle,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+
+if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -ScriptRoot $PSScriptRoot -NonInteractive:$NonInteractive) {
+    return
+}
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
@@ -33,7 +38,9 @@ $upgradeCode = '{B6E2D6FC-56ED-4A5C-A766-01F3FE71D7E6}'
 $bundleUpgradeCode = '{A34AF980-F5F1-4E4D-8124-8DC5E889C74D}'
 $builtMsiPaths = @{}
 $suppressedValidationIces = @('ICE61')
-$resolvedWindowsAppRuntimeInstallerPath = $null
+$resolvedWindowsAppRuntimeInstallerX86Path = $null
+$resolvedWindowsAppRuntimeInstallerX64Path = $null
+$attemptedWixInstall = $false
 
 function Add-UniquePath {
     param(
@@ -117,6 +124,12 @@ function Resolve-WixTool {
         return $command.Source
     }
 
+    if (-not $script:attemptedWixInstall) {
+        $script:attemptedWixInstall = $true
+        Install-WixToolset
+        return Resolve-WixTool -ToolName $ToolName -SearchRoots (Get-WixToolSearchRoot)
+    }
+
     throw "Tool WiX non trovato: $ToolName. Installa WiX Toolset 3.x, imposta ONLYWINGET_WIX_BIN alla cartella bin di WiX, aggiungi WiX al PATH, oppure aggiungi i binari in 'tools/wix314-binaries'."
 }
 
@@ -135,6 +148,12 @@ function Resolve-WixExtension {
         if (Test-Path $candidate) {
             return $candidate
         }
+    }
+
+    if (-not $script:attemptedWixInstall) {
+        $script:attemptedWixInstall = $true
+        Install-WixToolset
+        return Resolve-WixExtension -ExtensionName $ExtensionName -SearchRoots (Get-WixToolSearchRoot)
     }
 
     throw "Estensione WiX non trovata: $ExtensionName."
@@ -167,7 +186,9 @@ function Get-WindowsAppSdkVersion {
 function Resolve-WindowsAppRuntimeInstaller {
     param(
         [string]$ExplicitPath,
-        [string]$WindowsAppSdkVersion
+        [string]$WindowsAppSdkVersion,
+        [ValidateSet('x86', 'x64')]
+        [string]$Architecture
     )
 
     if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
@@ -192,8 +213,12 @@ function Resolve-WindowsAppRuntimeInstaller {
                 continue
             }
 
-            $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
+            $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File -ErrorAction SilentlyContinue |
                 Select-Object -First 1
+            if ($null -eq $candidate) {
+                $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
+                    Select-Object -First 1
+            }
             if ($null -ne $candidate) {
                 return $candidate.FullName
             }
@@ -207,16 +232,21 @@ function Resolve-WindowsAppRuntimeInstaller {
                 continue
             }
 
-            $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
+            $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File -ErrorAction SilentlyContinue |
                 Sort-Object FullName -Descending |
                 Select-Object -First 1
+            if ($null -eq $candidate) {
+                $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
+                    Sort-Object FullName -Descending |
+                    Select-Object -First 1
+            }
             if ($null -ne $candidate) {
                 return $candidate.FullName
             }
         }
     }
 
-    throw "Windows App Runtime installer non trovato. Passa -WindowsAppRuntimeInstallerPath oppure imposta ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER al percorso di WindowsAppRuntimeInstall.exe compatibile con Microsoft.WindowsAppSDK $WindowsAppSdkVersion."
+    return Install-WindowsAppRuntimeRedist -WindowsAppSdkVersion $WindowsAppSdkVersion -Architecture $Architecture
 }
 
 function Convert-ToInstallerVersion {
@@ -413,7 +443,8 @@ function Invoke-UnifiedSetup {
         "-dBundleThemeLocalizationPath=$bundleThemeLocalizationPath" `
         "-dX86MsiPath=$($builtMsiPaths['x86'])" `
         "-dX64MsiPath=$($builtMsiPaths['x64'])" `
-        "-dWindowsAppRuntimeInstallerPath=$resolvedWindowsAppRuntimeInstallerPath" `
+        "-dWindowsAppRuntimeInstallerX86Path=$resolvedWindowsAppRuntimeInstallerX86Path" `
+        "-dWindowsAppRuntimeInstallerX64Path=$resolvedWindowsAppRuntimeInstallerX64Path" `
         "-dBundleUpgradeCode=$bundleUpgradeCode" `
         -out $bundleObjDir\ `
         $bundleSourcePath
@@ -467,9 +498,14 @@ $installerVersion = Convert-ToInstallerVersion -RawVersion $rawVersion
 
 if (-not $SkipBundle) {
     $windowsAppSdkVersion = Get-WindowsAppSdkVersion
-    $resolvedWindowsAppRuntimeInstallerPath = Resolve-WindowsAppRuntimeInstaller `
+    $resolvedWindowsAppRuntimeInstallerX86Path = Resolve-WindowsAppRuntimeInstaller `
         -ExplicitPath $WindowsAppRuntimeInstallerPath `
-        -WindowsAppSdkVersion $windowsAppSdkVersion
+        -WindowsAppSdkVersion $windowsAppSdkVersion `
+        -Architecture 'x86'
+    $resolvedWindowsAppRuntimeInstallerX64Path = Resolve-WindowsAppRuntimeInstaller `
+        -ExplicitPath $WindowsAppRuntimeInstallerPath `
+        -WindowsAppSdkVersion $windowsAppSdkVersion `
+        -Architecture 'x64'
 }
 
 if ($StopRunningInstance) {

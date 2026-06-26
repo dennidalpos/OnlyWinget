@@ -26,25 +26,20 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore
-        run: dotnet restore OnlyWinget.sln --locked-mode
-
-      - name: Install WiX Toolset
-        shell: pwsh
-        run: choco install wixtoolset --version=3.14.1.20250415 --no-progress -y
-
       - name: Build Gate
         shell: pwsh
         run: |
           $buildGateParameters = @{
+            Task = 'Check'
             Configuration = 'Release'
+            NonInteractive = $true
           }
 
           if ('${{ github.event.inputs.run_winget_smoke }}' -eq 'true') {
             $buildGateParameters.RunWingetSmoke = $true
           }
 
-          ./scripts/check.ps1 @buildGateParameters
+          ./scripts/run.ps1 @buildGateParameters
 
       - name: Upload verification artifacts
         if: always()

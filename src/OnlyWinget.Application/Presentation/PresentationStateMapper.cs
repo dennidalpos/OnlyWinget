@@ -10,10 +10,30 @@ public static class PresentationStateMapper
         ArgumentNullException.ThrowIfNull(state);
 
         return new OnlyWingetPresentationState(
+            CreateDashboardState(state),
             CreatePresetsState(state),
             CreateSearchState(state),
             CreateUpdatesState(state),
+            CreateSourceState(state),
             CreateActivityState(state));
+    }
+
+    private static DashboardPresentationState CreateDashboardState(OnlyWingetState state)
+    {
+        return new DashboardPresentationState(
+            state.IsWingetAvailable,
+            state.Workspace.Presets.Count,
+            state.ActivePreset?.Packages.Count ?? 0,
+            state.SearchResults.Count,
+            state.Updates.Count,
+            state.Sources.Count,
+            state.BusyState != ApplicationBusyState.Idle,
+            state.UserVisibleError,
+            state.Activity
+                .TakeLast(5)
+                .Reverse()
+                .Select(entry => new ActivityRow(entry.Timestamp, entry.Severity, entry.Title, entry.Message))
+                .ToArray());
     }
 
     private static PresetsPresentationState CreatePresetsState(OnlyWingetState state)
@@ -114,6 +134,30 @@ public static class PresentationStateMapper
             isLoading,
             isExecuting,
             state.UserVisibleError);
+    }
+
+    private static SourcePresentationState CreateSourceState(OnlyWingetState state)
+    {
+        var isLoading = state.BusyState is ApplicationBusyState.ManagingSources or ApplicationBusyState.CheckingWinget;
+        var hasSource = state.Sources.Count > 0;
+
+        return new SourcePresentationState(
+            state.Sources
+                .Select(source => new SourceRow(
+                    source.Name,
+                    source.Argument,
+                    source.IsExplicit,
+                    source.Status.ToString()))
+                .ToArray(),
+            [
+                new("sources.refresh", "Command_Sources_Refresh", !isLoading),
+                new("sources.update", "Command_Sources_Update", !isLoading),
+                new("sources.add", "Command_Sources_Add", !isLoading),
+                new("sources.remove", "Command_Sources_Remove", hasSource && !isLoading),
+                new("sources.reset", "Command_Sources_Reset", !isLoading)
+            ],
+            isLoading,
+            state.SourceError?.Message ?? state.UserVisibleError);
     }
 
     private static ActivityPresentationState CreateActivityState(OnlyWingetState state)

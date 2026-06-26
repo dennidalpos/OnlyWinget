@@ -4,13 +4,19 @@ param(
     [string]$CurrentSetupPath,
     [string]$PreviousSetupPath,
     [string]$PreviousVersion,
+    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [switch]$NoRestore,
-    [switch]$SkipPackage
+    [switch]$SkipPackage,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+
+if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -ScriptRoot $PSScriptRoot -NonInteractive:$NonInteractive) {
+    return
+}
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $packageScriptPath = Join-Path $PSScriptRoot 'package.ps1'
@@ -134,12 +140,20 @@ function New-SetupArtifact {
         [string]$Version
     )
 
-    if ([string]::IsNullOrWhiteSpace($Version)) {
-        $packageOutput = & $packageScriptPath -Configuration $Configuration -NoRestore:$NoRestore
+    $packageParameters = @{
+        Configuration = $Configuration
+        NoRestore = $NoRestore
     }
-    else {
-        $packageOutput = & $packageScriptPath -Configuration $Configuration -NoRestore:$NoRestore -Version $Version
+
+    if (-not [string]::IsNullOrWhiteSpace($Version)) {
+        $packageParameters.Version = $Version
     }
+
+    if (-not [string]::IsNullOrWhiteSpace($WindowsAppRuntimeInstallerPath)) {
+        $packageParameters.WindowsAppRuntimeInstallerPath = $WindowsAppRuntimeInstallerPath
+    }
+
+    $packageOutput = & $packageScriptPath @packageParameters
 
     foreach ($line in $packageOutput) {
         Write-Host $line

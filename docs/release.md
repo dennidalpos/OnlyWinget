@@ -18,11 +18,11 @@ Use annotated tags named `vMAJOR.MINOR.PATCH`.
 From a clean working tree:
 
 ```powershell
-.\scripts\check.ps1 -Configuration Release
-.\scripts\validate-installer-lifecycle.ps1 -Configuration Release -NoRestore
+.\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
+.\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
 ```
 
-Packaging requires `WindowsAppRuntimeInstall.exe` matching the app's `Microsoft.WindowsAppSDK` version. Provide it with `-WindowsAppRuntimeInstallerPath` or `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER` when the file is not already available in the local NuGet cache.
+Packaging resolves `WindowsAppRuntimeInstall.exe` from an explicit `-WindowsAppRuntimeInstallerPath`, `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`, local NuGet/cache paths, or the official Windows App Runtime redistributable download.
 
 Then run the hosted GitHub Actions `build-gate` workflow for the exact release commit.
 

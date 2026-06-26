@@ -120,17 +120,42 @@ public sealed class OnlyWingetApplicationTests
         Assert.Single(presentation.Updates.OperationResults);
     }
 
+    [Fact]
+    public async Task PresentationStateMapsDashboardAndSources()
+    {
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available));
+        var app = CreateApplication(sources: sources);
+
+        app.AddPreset("Default");
+        app.AddPackageToActivePreset(new PackageIdentity("Git.Git", "winget"));
+        await app.CheckWingetAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+
+        Assert.True(presentation.Dashboard.IsWingetAvailable);
+        Assert.Equal(1, presentation.Dashboard.PresetCount);
+        Assert.Equal(1, presentation.Dashboard.ActivePresetPackageCount);
+        var source = Assert.Single(presentation.Sources.Sources);
+        Assert.Equal("winget", source.Name);
+        Assert.True(presentation.Sources.Commands.Single(command => command.Id == "sources.update").IsEnabled);
+    }
+
     private static OnlyWingetApplication CreateApplication(
         StubPackageSearch? search = null,
         StubPackageResolver? resolver = null,
         StubUpdateLoader? updates = null,
+        StubSourceService? sources = null,
         RecordingOperationExecutor? executor = null)
     {
         return new OnlyWingetApplication(
             new MemoryWorkspaceStore(),
+            new StubCommandAvailability(),
             search ?? new StubPackageSearch(),
             resolver ?? new StubPackageResolver(),
             updates ?? new StubUpdateLoader(),
+            sources ?? new StubSourceService(),
             executor ?? new RecordingOperationExecutor(new OperationExecutionSummary([])));
     }
 
@@ -147,12 +172,17 @@ public sealed class OnlyWingetApplicationTests
         }
     }
 
+    private sealed class StubCommandAvailability : ICommandAvailability
+    {
+        public Task<bool> IsWingetAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+    }
+
     private sealed class StubPackageSearch(params PackageSearchResult[] results) : IPackageSearchService
     {
-        public Task<IReadOnlyList<PackageSearchResult>> SearchAsync(
+        public Task<WingetOperationOutcome<PackageSearchResult>> SearchAsync(
             PackageSearchRequest request,
             CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<PackageSearchResult>>(results);
+            Task.FromResult(WingetOperationOutcome<PackageSearchResult>.Success(results, string.Empty));
     }
 
     private sealed class StubPackageResolver(params PackageResolution[] resolutions) : IPackageResolver
@@ -167,8 +197,31 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class StubUpdateLoader(params PackageUpdate[] updates) : IUpdateLoader
     {
-        public Task<IReadOnlyList<PackageUpdate>> LoadUpdatesAsync(CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<PackageUpdate>>(updates);
+        public Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(WingetOperationOutcome<PackageUpdate>.Success(updates, string.Empty));
+    }
+
+    private sealed class StubSourceService(params WingetSource[] sources) : IWingetSourceService
+    {
+        public Task<WingetOperationOutcome<WingetSource>> ListSourcesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+
+        public Task<WingetOperationOutcome<WingetSource>> UpdateSourcesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+
+        public Task<WingetOperationOutcome<WingetSource>> AddSourceAsync(
+            string name,
+            string argument,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+
+        public Task<WingetOperationOutcome<WingetSource>> RemoveSourceAsync(
+            string name,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+
+        public Task<WingetOperationOutcome<WingetSource>> ResetSourcesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
     }
 
     private sealed class RecordingOperationExecutor(OperationExecutionSummary summary) : IOperationExecutor

@@ -41,20 +41,55 @@ public sealed class WingetTableParser
 
     private static IEnumerable<int> GetColumnStarts(string header)
     {
+        var yielded = new HashSet<int>();
         if (!string.IsNullOrWhiteSpace(header))
         {
+            yielded.Add(0);
             yield return 0;
         }
 
-        for (var index = 2; index < header.Length; index++)
+        for (var index = 1; index < header.Length; index++)
         {
-            if (!char.IsWhiteSpace(header[index]) &&
+            var isFixedWidthStart = index >= 2 &&
+                !char.IsWhiteSpace(header[index]) &&
                 char.IsWhiteSpace(header[index - 1]) &&
-                char.IsWhiteSpace(header[index - 2]))
+                char.IsWhiteSpace(header[index - 2]);
+            var isCompactKnownStart = IsCompactKnownHeaderStart(header, index);
+
+            if ((isFixedWidthStart || isCompactKnownStart) && yielded.Add(index))
             {
                 yield return index;
             }
         }
+    }
+
+    private static bool IsCompactKnownHeaderStart(string header, int index)
+    {
+        if (index == 0 || !char.IsWhiteSpace(header[index - 1]))
+        {
+            return false;
+        }
+
+        return StartsWithToken(header, index, "Id") ||
+            StartsWithToken(header, index, "Version") ||
+            StartsWithToken(header, index, "Versione") ||
+            StartsWithToken(header, index, "Available") ||
+            StartsWithToken(header, index, "Disponibile") ||
+            StartsWithToken(header, index, "Source") ||
+            StartsWithToken(header, index, "Origine") ||
+            StartsWithToken(header, index, "Match");
+    }
+
+    private static bool StartsWithToken(string text, int index, string token)
+    {
+        if (text.Length - index < token.Length ||
+            !text.AsSpan(index, token.Length).Equals(token, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var end = index + token.Length;
+        return text.Length == end || char.IsWhiteSpace(text[end]);
     }
 
     private static Dictionary<string, string> ParseRow(string line, int[] starts, string[] headers)

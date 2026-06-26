@@ -8,9 +8,11 @@ public sealed partial class MainWindow : Window
 {
     private readonly Dictionary<string, Type> pages = new(StringComparer.Ordinal)
     {
+        ["dashboard"] = typeof(DashboardPage),
         ["presets"] = typeof(PresetsPage),
         ["search"] = typeof(SearchPage),
         ["updates"] = typeof(UpdatesPage),
+        ["sources"] = typeof(SourcesPage),
         ["activity"] = typeof(ActivityPage)
     };
 
@@ -20,14 +22,36 @@ public sealed partial class MainWindow : Window
         RootNavigation.Loaded += OnLoaded;
         ApplyText();
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
-        ContentFrame.Navigate(typeof(PresetsPage));
+        ContentFrame.Navigate(typeof(DashboardPage));
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
         RootNavigation.Loaded -= OnLoaded;
-        await App.Workflow.LoadWorkspaceAsync(CancellationToken.None);
-        App.NotifyWorkflowChanged();
+        try
+        {
+            var load = App.Workflow.LoadWorkspaceAsync(CancellationToken.None);
+            App.NotifyWorkflowChanged();
+            await load;
+            App.NotifyWorkflowChanged();
+
+            var checkWinget = App.Workflow.CheckWingetAsync(CancellationToken.None);
+            App.NotifyWorkflowChanged();
+            await checkWinget;
+            App.NotifyWorkflowChanged();
+
+            var refreshSources = App.Workflow.RefreshSourcesAsync(CancellationToken.None);
+            App.NotifyWorkflowChanged();
+            await refreshSources;
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("MainWindow.OnLoaded", exception);
+        }
+        finally
+        {
+            App.NotifyWorkflowChanged();
+        }
     }
 
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -48,9 +72,11 @@ public sealed partial class MainWindow : Window
         {
             item.Content = item.Tag switch
             {
+                "dashboard" => TextResources.Get("Nav_Dashboard"),
                 "presets" => TextResources.Get("Nav_Presets"),
                 "search" => TextResources.Get("Nav_Search"),
                 "updates" => TextResources.Get("Nav_Updates"),
+                "sources" => TextResources.Get("Nav_Sources"),
                 "activity" => TextResources.Get("Nav_Activity"),
                 _ => item.Content
             };

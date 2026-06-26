@@ -10,9 +10,11 @@
         PaneDisplayMode="Left"
         SelectionChanged="OnSelectionChanged">
         <NavigationView.MenuItems>
+            <NavigationViewItem Content="Dashboard" Icon="Home" Tag="dashboard" />
             <NavigationViewItem Content="Presets" Icon="Library" Tag="presets" />
             <NavigationViewItem Content="Search" Icon="Find" Tag="search" />
             <NavigationViewItem Content="Updates" Icon="Sync" Tag="updates" />
+            <NavigationViewItem Content="Sources" Icon="Globe" Tag="sources" />
             <NavigationViewItem Content="Activity" Icon="Clock" Tag="activity" />
         </NavigationView.MenuItems>
         <Frame x:Name="ContentFrame" />

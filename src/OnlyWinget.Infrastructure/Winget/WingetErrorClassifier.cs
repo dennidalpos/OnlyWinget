@@ -19,19 +19,39 @@ public sealed class WingetErrorClassifier
             result.StandardError);
 
         var kind = WingetErrorKind.Unknown;
-        if (ContainsAny(text, "No installed package found matching input criteria", "No applicable update found", "No available upgrade found"))
+        if (ContainsAny(
+            text,
+            "No installed package found matching input criteria",
+            "No applicable update found",
+            "No available upgrade found",
+            "Nessun aggiornamento disponibile",
+            "Nessun aggiornamento applicabile"))
         {
             kind = WingetErrorKind.NoUpdates;
         }
-        else if (ContainsAny(text, "No package found", "No installed package found", "No package found matching input criteria"))
+        else if (ContainsAny(
+            text,
+            "No package found",
+            "No installed package found",
+            "No package found matching input criteria",
+            "Nessun pacchetto trovato",
+            "Nessun pacchetto installato trovato"))
         {
             kind = WingetErrorKind.NotFound;
         }
-        else if (ContainsAny(text, "Failed when searching source", "source agreements", "source is not configured", "No sources are configured"))
+        else if (ContainsAny(
+            text,
+            "Failed when searching source",
+            "source agreements",
+            "source is not configured",
+            "No sources are configured",
+            "origine non configurata",
+            "origini non sono configurate",
+            "contratti dell'origine"))
         {
             kind = WingetErrorKind.SourceUnavailable;
         }
-        else if (ContainsAny(text, "cancelled", "canceled", "operation was canceled"))
+        else if (ContainsAny(text, "cancelled", "canceled", "operation was canceled", "annullata", "annullato"))
         {
             kind = WingetErrorKind.Cancelled;
         }

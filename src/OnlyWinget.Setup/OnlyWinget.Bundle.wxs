@@ -35,8 +35,17 @@
     </BootstrapperApplicationRef>
 
     <Chain>
-      <ExePackage Id="WindowsAppRuntime"
-                  SourceFile="$(var.WindowsAppRuntimeInstallerPath)"
+      <ExePackage Id="WindowsAppRuntimeX64"
+                  SourceFile="$(var.WindowsAppRuntimeInstallerX64Path)"
+                  InstallCondition="VersionNT64"
+                  InstallCommand="--quiet --force"
+                  RepairCommand="--quiet --force"
+                  PerMachine="yes"
+                  Permanent="yes"
+                  Vital="yes" />
+      <ExePackage Id="WindowsAppRuntimeX86"
+                  SourceFile="$(var.WindowsAppRuntimeInstallerX86Path)"
+                  InstallCondition="NOT VersionNT64"
                   InstallCommand="--quiet --force"
                   RepairCommand="--quiet --force"
                   PerMachine="yes"
