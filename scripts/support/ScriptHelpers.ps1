@@ -205,7 +205,7 @@ function Install-WindowsAppRuntimeRedist {
     }
 
     $majorMinor = "$($versionParts[0]).$($versionParts[1])"
-    $dependencyRoot = Join-Path $script:OnlyWingetRepositoryRoot "artifacts/dependencies/windowsappsdk/$WindowsAppSdkVersion"
+    $dependencyRoot = Join-Path $script:OnlyWingetRepositoryRoot "dependencies/windowsappsdk/$WindowsAppSdkVersion"
     $extractRoot = Join-Path $dependencyRoot 'redist'
     $zipPath = Join-Path $dependencyRoot "Microsoft.WindowsAppRuntime.Redist.$WindowsAppSdkVersion.zip"
 

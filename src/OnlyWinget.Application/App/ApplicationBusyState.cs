@@ -4,7 +4,7 @@ public enum ApplicationBusyState
 {
     Idle,
     LoadingWorkspace,
-    CheckingWinget,
+    CheckingCapabilities,
     SavingWorkspace,
     Searching,
     RefreshingUpdates,

@@ -66,12 +66,9 @@ public sealed partial class UpdatesPage : Page
         await RefreshUpdatesAsync();
     }
 
-    private static async Task RefreshUpdatesAsync()
+    private static Task RefreshUpdatesAsync()
     {
-        var refresh = App.Workflow.RefreshUpdatesAsync(CancellationToken.None);
-        Notify();
-        await refresh;
-        Notify();
+        return PageUi.RunWorkflowAsync(() => App.Workflow.RefreshUpdatesAsync(CancellationToken.None));
     }
 
     private async void OnApplySelected(object sender, RoutedEventArgs args)

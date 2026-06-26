@@ -8,7 +8,7 @@ OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows.
 - `src/OnlyWinget.Application`: use-case services, preset import/export, workspace storage contracts, and winget boundaries.
 - `src/OnlyWinget.Infrastructure`: JSON workspace persistence and winget command parsing/building adapters.
 - `src/OnlyWinget`: WinUI 3 presentation shell targeting `.NET 10` and Windows 10 build `17763`.
-- `src/OnlyWinget.Setup`: WiX setup sources.
+- `src/OnlyWinget.Setup`: WiX setup sources, packaged by `scripts/package.ps1` rather than included as an SDK project in the solution.
 - `tests/OnlyWinget.Tests`: xUnit tests for non-UI behavior.
 - `scripts`: PowerShell entrypoints.
 
@@ -34,6 +34,10 @@ The workspace schema is:
 Preset exchange supports only `onlywinget.preset.v1`.
 
 No legacy sample preset is shipped with the repository. Presets are created in the app or imported explicitly in the current exchange format.
+
+## Capabilities
+
+Application startup checks OS support, `winget`, PowerShell, and Windows Update COM availability through one capability service. Presentation commands are disabled when a required capability is unavailable, and infrastructure services return structured failures instead of invoking unsupported APIs.
 
 ## Installer
 

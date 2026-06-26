@@ -301,7 +301,7 @@ function Get-RuntimeIdentifier {
     return "win-$MsiArchitecture"
 }
 
-function Copy-WinUiPublishResources {
+function Copy-WinUiPublishResource {
     param(
         [string]$RuntimeIdentifier,
         [string]$PublishDir
@@ -386,7 +386,7 @@ function Invoke-ArchitectureMsi {
 
     $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
     Assert-Path -Path $publishedExePath -Description "Published executable $MsiArchitecture"
-    Copy-WinUiPublishResources -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
+    Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
 
     & $heatExe dir $publishDir `
         -nologo `

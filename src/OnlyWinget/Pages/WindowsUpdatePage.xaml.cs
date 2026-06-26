@@ -18,11 +18,10 @@ public sealed partial class WindowsUpdatePage : Page
         ApplyText();
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs args)
+    private void OnLoaded(object sender, RoutedEventArgs args)
     {
         App.WorkflowChanged += OnWorkflowChanged;
         Refresh();
-        await ScanWindowsUpdatesAsync(CancellationToken.None);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
@@ -111,12 +110,9 @@ public sealed partial class WindowsUpdatePage : Page
         Notify();
     }
 
-    private static async Task ScanWindowsUpdatesAsync(CancellationToken cancellationToken)
+    private static Task ScanWindowsUpdatesAsync(CancellationToken cancellationToken)
     {
-        var scan = App.Workflow.ScanWindowsUpdatesAsync(cancellationToken);
-        Notify();
-        await scan;
-        Notify();
+        return PageUi.RunWorkflowAsync(() => App.Workflow.ScanWindowsUpdatesAsync(cancellationToken));
     }
 
     private static void Notify()

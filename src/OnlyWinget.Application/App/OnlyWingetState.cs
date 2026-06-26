@@ -1,5 +1,6 @@
 using OnlyWinget.Application.Activity;
 using OnlyWinget.Application.Storage;
+using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Packages;
@@ -23,7 +24,7 @@ public sealed record OnlyWingetState(
     IReadOnlyList<WindowsUpdateIdentity> SelectedWindowsUpdates,
     SelectionHeaderState WindowsUpdatesSelectionHeader,
     IReadOnlyList<WindowsUpdateInstallResult> LastWindowsUpdateResults,
-    bool? IsWingetAvailable,
+    SystemCapabilities Capabilities,
     IReadOnlyList<WingetSource> Sources,
     ClassifiedWingetError? SourceError,
     IReadOnlyList<ActivityEntry> Activity,

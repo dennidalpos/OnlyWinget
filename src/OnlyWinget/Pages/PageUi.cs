@@ -41,4 +41,12 @@ internal static class PageUi
     {
         element.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    public static async Task RunWorkflowAsync(Func<Task> action)
+    {
+        var operation = action();
+        App.NotifyWorkflowChanged();
+        await operation;
+        App.NotifyWorkflowChanged();
+    }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using OnlyWinget.Application.Winget;
 
 namespace OnlyWinget.Infrastructure.Winget;
@@ -25,7 +26,14 @@ public sealed class ProcessWingetCommandRunner : IWingetCommandRunner
             process.StartInfo.ArgumentList.Add(argument);
         }
 
-        process.Start();
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception)
+        {
+            return new WingetCommandResult(9009, string.Empty, exception.Message);
+        }
 
         var standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var standardError = process.StandardError.ReadToEndAsync(cancellationToken);

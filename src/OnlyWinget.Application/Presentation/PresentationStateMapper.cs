@@ -23,7 +23,7 @@ public static class PresentationStateMapper
     private static DashboardPresentationState CreateDashboardState(OnlyWingetState state)
     {
         return new DashboardPresentationState(
-            state.IsWingetAvailable,
+            state.Capabilities.IsWingetAvailable,
             state.Workspace.Presets.Count,
             state.ActivePreset?.Packages.Count ?? 0,
             state.SearchResults.Count,
@@ -45,6 +45,7 @@ public static class PresentationStateMapper
         var hasPackages = active?.Packages.Count > 0;
         var hasSelectedPackages = state.SelectedPresetPackages.Count > 0;
         var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
+        var canUseWinget = state.Capabilities.CanUseWinget;
         var operationResults = CreateOperationResultRows(state);
 
         return new PresetsPresentationState(
@@ -68,8 +69,8 @@ public static class PresentationStateMapper
                 new("preset.import", "Command_Preset_Import", !isExecuting),
                 new("preset.export", "Command_Preset_Export", hasPreset && !isExecuting),
                 new("preset.save", "Command_Workspace_Save", !isExecuting),
-                new("preset.apply.install", "Command_Preset_ApplyInstall", hasPackages && !isExecuting),
-                new("preset.apply.uninstall", "Command_Preset_ApplyUninstall", hasPackages && !isExecuting),
+                new("preset.apply.install", "Command_Preset_ApplyInstall", hasPackages && canUseWinget && !isExecuting),
+                new("preset.apply.uninstall", "Command_Preset_ApplyUninstall", hasPackages && canUseWinget && !isExecuting),
                 new("operation.cancel", "Command_Operation_Cancel", isExecuting)
             ],
             isExecuting,
@@ -80,6 +81,7 @@ public static class PresentationStateMapper
     {
         var isLoading = state.BusyState == ApplicationBusyState.Searching;
         var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
+        var canUseWinget = state.Capabilities.CanUseWinget;
 
         return new SearchPresentationState(
             state.SearchResults
@@ -93,8 +95,8 @@ public static class PresentationStateMapper
                 .ToArray(),
             state.SearchSelectionHeader,
             [
-                new("search.execute", "Command_Search_Execute", !isLoading && !isExecuting),
-                new("search.addSelected", "Command_Search_AddSelected", state.SelectedSearchPackages.Count > 0 && !isLoading && !isExecuting)
+                new("search.execute", "Command_Search_Execute", canUseWinget && !isLoading && !isExecuting),
+                new("search.addSelected", "Command_Search_AddSelected", canUseWinget && state.SelectedSearchPackages.Count > 0 && !isLoading && !isExecuting)
             ],
             isLoading,
             state.UserVisibleError);
@@ -104,6 +106,7 @@ public static class PresentationStateMapper
     {
         var isLoading = state.BusyState == ApplicationBusyState.RefreshingUpdates;
         var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
+        var canUseWinget = state.Capabilities.CanUseWinget;
         var operationResults = CreateOperationResultRows(state);
         var operationResultsByPackage = operationResults
             .GroupBy(result => PackageFingerprint(result.PackageId, result.Source), StringComparer.Ordinal)
@@ -129,8 +132,8 @@ public static class PresentationStateMapper
             state.UpdatesSelectionHeader,
             operationResults,
             [
-                new("updates.refresh", "Command_Updates_Refresh", !isLoading && !isExecuting),
-                new("updates.applySelected", "Command_Updates_ApplySelected", state.SelectedUpdates.Count > 0 && !isLoading && !isExecuting),
+                new("updates.refresh", "Command_Updates_Refresh", canUseWinget && !isLoading && !isExecuting),
+                new("updates.applySelected", "Command_Updates_ApplySelected", canUseWinget && state.SelectedUpdates.Count > 0 && !isLoading && !isExecuting),
                 new("operation.cancel", "Command_Operation_Cancel", isExecuting)
             ],
             isLoading,
@@ -143,6 +146,7 @@ public static class PresentationStateMapper
         var isScanning = state.BusyState == ApplicationBusyState.ScanningWindowsUpdates;
         var isInstalling = state.BusyState == ApplicationBusyState.InstallingWindowsUpdates;
         var isBusy = isScanning || isInstalling;
+        var canUseWindowsUpdate = state.Capabilities.CanUseWindowsUpdate;
         var resultsByUpdate = state.LastWindowsUpdateResults
             .GroupBy(result => WindowsUpdateFingerprint(result.Identity), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
@@ -178,19 +182,20 @@ public static class PresentationStateMapper
                     result.Message))
                 .ToArray(),
             [
-                new("windowsUpdates.scan", "Command_WindowsUpdates_Scan", !isBusy),
-                new("windowsUpdates.installSelected", "Command_WindowsUpdates_InstallSelected", state.SelectedWindowsUpdates.Count > 0 && !isBusy),
+                new("windowsUpdates.scan", "Command_WindowsUpdates_Scan", canUseWindowsUpdate && !isBusy),
+                new("windowsUpdates.installSelected", "Command_WindowsUpdates_InstallSelected", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy),
                 new("operation.cancel", "Command_Operation_Cancel", isBusy)
             ],
             isScanning,
             isInstalling,
-            state.UserVisibleError);
+            state.UserVisibleError ?? (canUseWindowsUpdate ? null : state.Capabilities.WindowsUpdateUnavailableMessage));
     }
 
     private static SourcePresentationState CreateSourceState(OnlyWingetState state)
     {
-        var isLoading = state.BusyState is ApplicationBusyState.ManagingSources or ApplicationBusyState.CheckingWinget;
+        var isLoading = state.BusyState is ApplicationBusyState.ManagingSources or ApplicationBusyState.CheckingCapabilities;
         var hasSource = state.Sources.Count > 0;
+        var canUseWinget = state.Capabilities.CanUseWinget;
 
         return new SourcePresentationState(
             state.Sources
@@ -202,14 +207,14 @@ public static class PresentationStateMapper
                     source.Status.ToString()))
                 .ToArray(),
             [
-                new("sources.refresh", "Command_Sources_Refresh", !isLoading),
-                new("sources.update", "Command_Sources_Update", !isLoading),
-                new("sources.add", "Command_Sources_Add", !isLoading),
-                new("sources.remove", "Command_Sources_Remove", hasSource && !isLoading),
-                new("sources.reset", "Command_Sources_Reset", !isLoading)
+                new("sources.refresh", "Command_Sources_Refresh", canUseWinget && !isLoading),
+                new("sources.update", "Command_Sources_Update", canUseWinget && !isLoading),
+                new("sources.add", "Command_Sources_Add", canUseWinget && !isLoading),
+                new("sources.remove", "Command_Sources_Remove", canUseWinget && hasSource && !isLoading),
+                new("sources.reset", "Command_Sources_Reset", canUseWinget && !isLoading)
             ],
             isLoading,
-            state.SourceError?.Message ?? state.UserVisibleError);
+            state.SourceError?.Message ?? state.UserVisibleError ?? (canUseWinget ? null : state.Capabilities.WingetUnavailableMessage));
     }
 
     private static ActivityPresentationState CreateActivityState(OnlyWingetState state)

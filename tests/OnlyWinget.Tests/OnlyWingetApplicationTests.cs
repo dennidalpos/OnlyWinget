@@ -1,6 +1,7 @@
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.Storage;
+using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Operations;
@@ -40,6 +41,7 @@ public sealed class OnlyWingetApplicationTests
 
         app.AddPreset("Default");
         app.AddPackageToActivePreset(new PackageIdentity("Git.Git", "winget"));
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.SearchAsync("git", null, CancellationToken.None);
         app.ToggleAllSearchResults();
         var result = await app.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None);
@@ -58,6 +60,7 @@ public sealed class OnlyWingetApplicationTests
             new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null, true, null));
         var app = CreateApplication(search: search, resolver: resolver);
 
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.SearchAsync("git", null, CancellationToken.None);
         app.ToggleAllSearchResults();
         var result = await app.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None);
@@ -82,6 +85,7 @@ public sealed class OnlyWingetApplicationTests
                 ]));
         var app = CreateApplication(updates: updates, executor: executor);
 
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.RefreshUpdatesAsync(CancellationToken.None);
         app.ToggleAllUpdates();
         var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
@@ -93,13 +97,14 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
-    public async Task PresentationStateMapsRowsAndCommandAvailability()
+    public async Task PresentationStateMapsRowsAndCapabilityGating()
     {
         var search = new StubPackageSearch(
             new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "Moniker: git"));
         var app = CreateApplication(search: search);
 
         app.AddPreset("Default");
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.SearchAsync("git", null, CancellationToken.None);
         app.ToggleAllSearchResults();
 
@@ -126,6 +131,7 @@ public sealed class OnlyWingetApplicationTests
                 ]));
         var app = CreateApplication(updates: updates, executor: executor);
 
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.RefreshUpdatesAsync(CancellationToken.None);
         app.ToggleAllUpdates();
         var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
@@ -152,6 +158,7 @@ public sealed class OnlyWingetApplicationTests
             ]);
         var app = CreateApplication(windowsUpdates: windowsUpdates);
 
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.ScanWindowsUpdatesAsync(CancellationToken.None);
         app.ToggleAllWindowsUpdates();
         var result = await app.InstallSelectedWindowsUpdatesAsync(CancellationToken.None);
@@ -172,7 +179,7 @@ public sealed class OnlyWingetApplicationTests
 
         app.AddPreset("Default");
         app.AddPackageToActivePreset(new PackageIdentity("Git.Git", "winget"));
-        await app.CheckWingetAsync(CancellationToken.None);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.RefreshSourcesAsync(CancellationToken.None);
 
         var presentation = PresentationStateMapper.FromApplicationState(app.State);
@@ -186,7 +193,25 @@ public sealed class OnlyWingetApplicationTests
         Assert.True(presentation.Sources.Commands.Single(command => command.Id == "sources.update").IsEnabled);
     }
 
+    [Fact]
+    public async Task WingetOperationsFailBeforeCallingServicesWhenWingetIsUnavailable()
+    {
+        var search = new StubPackageSearch(new PackageSearchResult(new PackageIdentity("Git.Git"), "Git", "2.0.0", null));
+        var app = CreateApplication(
+            capabilities: new SystemCapabilities(true, false, true, true, null),
+            search: search);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+
+        var result = await app.SearchAsync("git", null, CancellationToken.None);
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("winget is not available", result.Error, StringComparison.Ordinal);
+        Assert.False(presentation.Search.Commands.Single(command => command.Id == "search.execute").IsEnabled);
+    }
+
     private static OnlyWingetApplication CreateApplication(
+        SystemCapabilities? capabilities = null,
         StubPackageSearch? search = null,
         StubPackageResolver? resolver = null,
         StubUpdateLoader? updates = null,
@@ -196,7 +221,7 @@ public sealed class OnlyWingetApplicationTests
     {
         return new OnlyWingetApplication(
             new MemoryWorkspaceStore(),
-            new StubCommandAvailability(),
+            new StubSystemCapabilityService(capabilities),
             search ?? new StubPackageSearch(),
             resolver ?? new StubPackageResolver(),
             updates ?? new StubUpdateLoader(),
@@ -218,9 +243,11 @@ public sealed class OnlyWingetApplicationTests
         }
     }
 
-    private sealed class StubCommandAvailability : ICommandAvailability
+    private sealed class StubSystemCapabilityService(
+        SystemCapabilities? capabilities = null) : ISystemCapabilityService
     {
-        public Task<bool> IsWingetAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+        public Task<SystemCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(capabilities ?? new SystemCapabilities(true, true, true, true, null));
     }
 
     private sealed class StubPackageSearch(params PackageSearchResult[] results) : IPackageSearchService

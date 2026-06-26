@@ -22,7 +22,7 @@ From a clean working tree:
 .\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
 ```
 
-Packaging resolves `WindowsAppRuntimeInstall.exe` from an explicit `-WindowsAppRuntimeInstallerPath`, `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`, local NuGet/cache paths, or the official Windows App Runtime redistributable download.
+Packaging resolves `WindowsAppRuntimeInstall.exe` from an explicit `-WindowsAppRuntimeInstallerPath`, `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`, local NuGet/cache paths, or the official Windows App Runtime redistributable download. Downloaded redistributables are cached in `dependencies/windowsappsdk/`, which is intentionally outside `artifacts` so cleanup does not remove reusable prerequisites.
 
 Then run the hosted GitHub Actions `build-gate` workflow for the exact release commit.
 

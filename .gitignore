@@ -6,6 +6,7 @@ out/
 publish/
 tmp/
 packages/
+dependencies/windowsappsdk/
 
 .vs/
 .vscode/

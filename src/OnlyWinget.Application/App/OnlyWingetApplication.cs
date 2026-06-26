@@ -2,6 +2,7 @@ using OnlyWinget.Application.Activity;
 using OnlyWinget.Application.Operations;
 using OnlyWinget.Application.Presets;
 using OnlyWinget.Application.Storage;
+using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Operations;
@@ -13,7 +14,7 @@ namespace OnlyWinget.Application.App;
 
 public sealed class OnlyWingetApplication(
     IWorkspaceStore workspaceStore,
-    ICommandAvailability commandAvailability,
+    ISystemCapabilityService capabilityService,
     IPackageSearchService packageSearch,
     IPackageResolver packageResolver,
     IUpdateLoader updateLoader,
@@ -39,7 +40,7 @@ public sealed class OnlyWingetApplication(
 
     private WorkspaceState workspace = WorkspaceState.Empty;
     private ApplicationBusyState busyState;
-    private bool? isWingetAvailable;
+    private SystemCapabilities capabilities = SystemCapabilities.Unknown;
     private ClassifiedWingetError? sourceError;
     private string? userVisibleError;
 
@@ -72,20 +73,19 @@ public sealed class OnlyWingetApplication(
             .ConfigureAwait(false);
     }
 
-    public async Task<ApplicationActionResult> CheckWingetAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> RefreshCapabilitiesAsync(CancellationToken cancellationToken)
     {
         return await RunAsync(
-                ApplicationBusyState.CheckingWinget,
+                ApplicationBusyState.CheckingCapabilities,
                 async () =>
                 {
-                    isWingetAvailable = await commandAvailability.IsWingetAvailableAsync(cancellationToken)
-                        .ConfigureAwait(false);
+                    capabilities = await capabilityService.GetCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
                     AddActivity(
-                        isWingetAvailable.Value ? ActivitySeverity.Success : ActivitySeverity.Error,
-                        "winget checked",
-                        isWingetAvailable.Value ? "winget is available." : "winget is not available on PATH.");
+                        capabilities.CanUseWinget ? ActivitySeverity.Success : ActivitySeverity.Error,
+                        "System capabilities checked",
+                        capabilities.CanUseWinget ? "winget is available." : capabilities.WingetUnavailableMessage);
                 },
-                "Unable to check winget availability.")
+                "Unable to check system capabilities.")
             .ConfigureAwait(false);
     }
 
@@ -190,7 +190,7 @@ public sealed class OnlyWingetApplication(
                 .Where(package => !selected.Any(selectedPackage => PackageEquals(selectedPackage, package)))
                 .ToArray();
             ReplacePreset(active.Name, new Preset(active.Name, packages), active.Name);
-            AddActivity(ActivitySeverity.Success, "Packages removed", selected.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            AddActivity(ActivitySeverity.Success, "Packages removed", selected.Length.ToString(global::System.Globalization.CultureInfo.InvariantCulture));
         });
 
     public ApplicationActionResult TogglePresetPackage(PackageIdentity package) => ToggleSelection(presetSelection, package);
@@ -203,6 +203,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.Searching,
                 async () =>
                 {
+                    RequireWinget();
                     var outcome = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
                         .ConfigureAwait(false);
                     if (!outcome.Succeeded)
@@ -229,6 +230,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.Searching,
                 async () =>
                 {
+                    RequireWinget();
                     var active = EnsureActivePreset();
                     var packages = active.Packages.ToList();
                     var added = 0;
@@ -260,6 +262,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.RefreshingUpdates,
                 async () =>
                 {
+                    RequireWinget();
                     var outcome = await updateLoader.LoadUpdatesAsync(cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded && outcome.Error?.Kind != WingetErrorKind.NoUpdates)
                     {
@@ -281,6 +284,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.ScanningWindowsUpdates,
                 async () =>
                 {
+                    RequireWindowsUpdate();
                     var outcome = await windowsUpdateService.ScanAsync(cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
@@ -308,6 +312,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.InstallingWindowsUpdates,
                 async () =>
                 {
+                    RequireWindowsUpdate();
                     if (selected.Length == 0)
                     {
                         throw new InvalidOperationException("Select at least one Windows update before installing.");
@@ -350,6 +355,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.ManagingSources,
                 async () =>
                 {
+                    RequireWinget();
                     var outcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
                     ApplySourceOutcome(outcome, updateRows: true);
                     AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{sources.Count} source(s).");
@@ -453,6 +459,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.ExecutingOperation,
                 async () =>
                 {
+                    RequireWinget();
                     if (!plan.HasWork)
                     {
                         throw new InvalidOperationException("Select at least one package before applying an operation.");
@@ -496,7 +503,7 @@ public sealed class OnlyWingetApplication(
             windowsUpdateSelection.Selected.ToArray(),
             windowsUpdateSelection.HeaderState,
             lastWindowsUpdateResults.ToArray(),
-            isWingetAvailable,
+            capabilities,
             sources.ToArray(),
             sourceError,
             activity.ToArray(),
@@ -515,6 +522,7 @@ public sealed class OnlyWingetApplication(
                 ApplicationBusyState.ManagingSources,
                 async () =>
                 {
+                    RequireWinget();
                     var outcome = await operation().ConfigureAwait(false);
                     ApplySourceOutcome(outcome, updateRows: false);
                     AddActivity(ActivitySeverity.Success, title, message);
@@ -608,6 +616,22 @@ public sealed class OnlyWingetApplication(
     private ApplicationActionResult ToggleSelection<TKey>(SelectionState<TKey> selection, TKey key)
         where TKey : notnull =>
         Run(() => selection.Toggle(key));
+
+    private void RequireWinget()
+    {
+        if (!capabilities.CanUseWinget)
+        {
+            throw new NotSupportedException(capabilities.WingetUnavailableMessage);
+        }
+    }
+
+    private void RequireWindowsUpdate()
+    {
+        if (!capabilities.CanUseWindowsUpdate)
+        {
+            throw new NotSupportedException(capabilities.WindowsUpdateUnavailableMessage);
+        }
+    }
 
     private ApplicationActionResult Fail(string error)
     {

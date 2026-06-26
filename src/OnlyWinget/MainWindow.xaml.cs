@@ -36,14 +36,17 @@ public sealed partial class MainWindow : Window
             await load;
             App.NotifyWorkflowChanged();
 
-            var checkWinget = App.Workflow.CheckWingetAsync(CancellationToken.None);
+            var capabilities = App.Workflow.RefreshCapabilitiesAsync(CancellationToken.None);
             App.NotifyWorkflowChanged();
-            await checkWinget;
+            await capabilities;
             App.NotifyWorkflowChanged();
 
-            var refreshSources = App.Workflow.RefreshSourcesAsync(CancellationToken.None);
-            App.NotifyWorkflowChanged();
-            await refreshSources;
+            if (App.Workflow.State.Capabilities.CanUseWinget)
+            {
+                var refreshSources = App.Workflow.RefreshSourcesAsync(CancellationToken.None);
+                App.NotifyWorkflowChanged();
+                await refreshSources;
+            }
         }
         catch (Exception exception)
         {

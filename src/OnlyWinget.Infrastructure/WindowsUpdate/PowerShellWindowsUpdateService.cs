@@ -1,12 +1,15 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OnlyWinget.Application.System;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Application.Winget;
 
 namespace OnlyWinget.Infrastructure.WindowsUpdate;
 
-public sealed class PowerShellWindowsUpdateService(IWingetCommandRunner commandRunner) : IWindowsUpdateService
+public sealed class PowerShellWindowsUpdateService(
+    IWingetCommandRunner commandRunner,
+    ISystemCapabilityService capabilityService) : IWindowsUpdateService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -15,6 +18,14 @@ public sealed class PowerShellWindowsUpdateService(IWingetCommandRunner commandR
 
     public async Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(CancellationToken cancellationToken)
     {
+        var unavailable = await GetUnavailableReasonAsync(cancellationToken).ConfigureAwait(false);
+        if (unavailable is not null)
+        {
+            return WindowsUpdateOperationOutcome<WindowsUpdateItem>.Failure(
+                new WindowsUpdateError(unavailable),
+                string.Empty);
+        }
+
         var result = await RunPowerShellAsync(ScanScript, cancellationToken).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateItemDto>(result);
         return envelope.Succeeded
@@ -31,6 +42,13 @@ public sealed class PowerShellWindowsUpdateService(IWingetCommandRunner commandR
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(updates);
+        var unavailable = await GetUnavailableReasonAsync(cancellationToken).ConfigureAwait(false);
+        if (unavailable is not null)
+        {
+            return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(
+                new WindowsUpdateError(unavailable),
+                string.Empty);
+        }
 
         var selectedJson = JsonSerializer.Serialize(
             updates.Select(update => new WindowsUpdateIdentityDto(update.UpdateId, update.RevisionNumber)),
@@ -55,6 +73,12 @@ public sealed class PowerShellWindowsUpdateService(IWingetCommandRunner commandR
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
                 cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async Task<string?> GetUnavailableReasonAsync(CancellationToken cancellationToken)
+    {
+        var capabilities = await capabilityService.GetCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
+        return capabilities.CanUseWindowsUpdate ? null : capabilities.WindowsUpdateUnavailableMessage;
     }
 
     private static WindowsUpdateEnvelope<T> ReadEnvelope<T>(WingetCommandResult result)

@@ -62,26 +62,17 @@ public sealed partial class SourcesPage : Page
 
     private async void OnRefreshSources(object sender, RoutedEventArgs args)
     {
-        var operation = App.Workflow.RefreshSourcesAsync(CancellationToken.None);
-        Notify();
-        await operation;
-        Notify();
+        await PageUi.RunWorkflowAsync(() => App.Workflow.RefreshSourcesAsync(CancellationToken.None));
     }
 
     private async void OnUpdateSources(object sender, RoutedEventArgs args)
     {
-        var operation = App.Workflow.UpdateSourcesAsync(CancellationToken.None);
-        Notify();
-        await operation;
-        Notify();
+        await PageUi.RunWorkflowAsync(() => App.Workflow.UpdateSourcesAsync(CancellationToken.None));
     }
 
     private async void OnAddSource(object sender, RoutedEventArgs args)
     {
-        var operation = App.Workflow.AddSourceAsync(SourceNameBox.Text, SourceArgumentBox.Text, CancellationToken.None);
-        Notify();
-        await operation;
-        Notify();
+        await PageUi.RunWorkflowAsync(() => App.Workflow.AddSourceAsync(SourceNameBox.Text, SourceArgumentBox.Text, CancellationToken.None));
     }
 
     private async void OnRemoveSource(object sender, RoutedEventArgs args)
@@ -92,10 +83,7 @@ public sealed partial class SourcesPage : Page
             return;
         }
 
-        var operation = App.Workflow.RemoveSourceAsync(row.Name, CancellationToken.None);
-        Notify();
-        await operation;
-        Notify();
+        await PageUi.RunWorkflowAsync(() => App.Workflow.RemoveSourceAsync(row.Name, CancellationToken.None));
     }
 
     private async void OnResetSources(object sender, RoutedEventArgs args)
@@ -105,10 +93,7 @@ public sealed partial class SourcesPage : Page
             return;
         }
 
-        var operation = App.Workflow.ResetSourcesAsync(CancellationToken.None);
-        Notify();
-        await operation;
-        Notify();
+        await PageUi.RunWorkflowAsync(() => App.Workflow.ResetSourcesAsync(CancellationToken.None));
     }
 
     private async Task<bool> ConfirmAsync(string title, string message)
@@ -126,8 +111,4 @@ public sealed partial class SourcesPage : Page
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
-    private static void Notify()
-    {
-        App.NotifyWorkflowChanged();
-    }
 }

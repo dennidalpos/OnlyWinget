@@ -1,7 +1,11 @@
 using OnlyWinget.Application.Operations;
+using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
+using OnlyWinget.Application.WindowsUpdate;
+using OnlyWinget.Infrastructure.System;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Presets;
+using OnlyWinget.Infrastructure.WindowsUpdate;
 using OnlyWinget.Infrastructure.Winget;
 
 namespace OnlyWinget.Tests;
@@ -9,17 +13,36 @@ namespace OnlyWinget.Tests;
 public sealed class WingetInfrastructureTests
 {
     [Fact]
-    public async Task CommandAvailabilityRunsWingetVersion()
+    public async Task SystemCapabilityServiceChecksRequiredCommandsAndWindowsUpdateCom()
     {
         var runner = new RecordingWingetCommandRunner(
-            new WingetCommandResult(0, "v1.9.0", string.Empty));
-        var availability = new CommandAvailability(runner);
+            new WingetCommandResult(0, "v1.9.0", string.Empty),
+            new WingetCommandResult(0, "5.1.0", string.Empty),
+            new WingetCommandResult(0, "available", string.Empty));
+        var availability = new SystemCapabilityService(runner);
 
-        var isAvailable = await availability.IsWingetAvailableAsync(CancellationToken.None);
+        var capabilities = await availability.GetCapabilitiesAsync(CancellationToken.None);
 
-        Assert.True(isAvailable);
-        Assert.Equal("winget", runner.LastCommand);
-        Assert.Equal(["--version"], runner.LastArguments);
+        Assert.True(capabilities.IsWingetAvailable);
+        Assert.True(capabilities.IsPowerShellAvailable);
+        Assert.True(capabilities.IsWindowsUpdateComAvailable);
+        Assert.Contains(runner.CommandCalls, call => call.Command == "winget" && call.Arguments.SequenceEqual(["--version"]));
+        Assert.Contains(runner.CommandCalls, call => call.Command == "powershell.exe");
+    }
+
+    [Fact]
+    public async Task WindowsUpdateServiceReturnsFailureWithoutRunningPowerShellWhenCapabilityIsMissing()
+    {
+        var runner = new RecordingWingetCommandRunner();
+        var service = new PowerShellWindowsUpdateService(
+            runner,
+            new StubSystemCapabilityService(new SystemCapabilities(true, true, false, false, null)));
+
+        var outcome = await service.ScanAsync(CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Contains("PowerShell is not available", outcome.Error?.Message, StringComparison.Ordinal);
+        Assert.Empty(runner.Calls);
     }
 
     [Fact]
@@ -203,6 +226,8 @@ public sealed class WingetInfrastructureTests
 
         public List<IReadOnlyList<string>> Calls { get; } = [];
 
+        public List<CommandCall> CommandCalls { get; } = [];
+
         public string? LastCommand { get; private set; }
 
         public IReadOnlyList<string>? LastArguments { get; private set; }
@@ -215,9 +240,18 @@ public sealed class WingetInfrastructureTests
             LastCommand = command;
             LastArguments = arguments.ToArray();
             Calls.Add(LastArguments);
+            CommandCalls.Add(new CommandCall(command, LastArguments));
             return Task.FromResult(results.Count == 0
                 ? new WingetCommandResult(0, string.Empty, string.Empty)
                 : results.Dequeue());
         }
+    }
+
+    private sealed record CommandCall(string Command, IReadOnlyList<string> Arguments);
+
+    private sealed class StubSystemCapabilityService(SystemCapabilities capabilities) : ISystemCapabilityService
+    {
+        public Task<SystemCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(capabilities);
     }
 }

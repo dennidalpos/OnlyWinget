@@ -66,20 +66,14 @@ public sealed partial class SearchPage : Page
         await SearchAsync();
     }
 
-    private async Task SearchAsync()
+    private Task SearchAsync()
     {
-        var search = App.Workflow.SearchAsync(QueryBox.Text, SourceBox.Text, CancellationToken.None);
-        Notify();
-        await search;
-        Notify();
+        return PageUi.RunWorkflowAsync(() => App.Workflow.SearchAsync(QueryBox.Text, SourceBox.Text, CancellationToken.None));
     }
 
     private async void OnAddSelected(object sender, RoutedEventArgs args)
     {
-        var addSelected = App.Workflow.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None);
-        Notify();
-        await addSelected;
-        Notify();
+        await PageUi.RunWorkflowAsync(() => App.Workflow.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None));
     }
 
     private void OnToggleAllResults(object sender, RoutedEventArgs args)
