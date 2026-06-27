@@ -18,13 +18,18 @@ $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
 Assert-Command -Name 'dotnet'
 Assert-Path -Path $solutionPath -Description 'Solution'
 
+if (-not $NoRestore) {
+    dotnet restore $solutionPath -r win-x64 --locked-mode
+    if ($LASTEXITCODE -ne 0) {
+        throw 'dotnet restore per il format fallito.'
+    }
+}
+
 $formatArgs = @($solutionPath)
 if (-not $Fix) {
     $formatArgs += '--verify-no-changes'
 }
-if ($NoRestore) {
-    $formatArgs += '--no-restore'
-}
+$formatArgs += '--no-restore'
 
 dotnet format @formatArgs
 if ($LASTEXITCODE -ne 0) {

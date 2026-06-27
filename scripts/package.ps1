@@ -18,6 +18,7 @@ if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -Scri
 }
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
+$solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
 $appIconPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget.ico'
 $bundleLogoPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget-icon.png'
@@ -335,9 +336,9 @@ function Invoke-X64Msi {
     New-Item -ItemType Directory -Path $msiOutputDir -Force | Out-Null
 
     if (-not $NoRestore) {
-        dotnet restore $projectPath --locked-mode
+        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode
         if ($LASTEXITCODE -ne 0) {
-            throw 'dotnet restore per il packaging x64 fallito.'
+            throw "dotnet restore per il packaging $runtimeIdentifier fallito."
         }
     }
 
@@ -487,6 +488,13 @@ function Invoke-PortablePackage {
     Reset-Directory -Path $portableStagingRoot
     New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
     New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
+
+    if (-not $NoRestore) {
+        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode
+        if ($LASTEXITCODE -ne 0) {
+            throw "dotnet restore per il packaging portable $runtimeIdentifier fallito."
+        }
+    }
 
     $publishArgs = @(
         'publish'

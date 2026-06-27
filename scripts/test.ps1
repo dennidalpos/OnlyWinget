@@ -25,9 +25,14 @@ Assert-Path -Path $testProjectPath -Description 'Test project'
 New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
 
 $testArgs = @($testProjectPath, '-c', $Configuration, '--results-directory', $testResultsPath, '--logger', 'trx;LogFileName=unit-tests.trx')
-if ($NoRestore) {
-    $testArgs += '--no-restore'
+if (-not $NoRestore) {
+    dotnet restore $testProjectPath -r win-x64 --locked-mode
+    if ($LASTEXITCODE -ne 0) {
+        throw 'dotnet restore per i test fallito.'
+    }
 }
+
+$testArgs += '--no-restore'
 if ($NoBuild) {
     $testArgs += '--no-build'
 }
