@@ -5,9 +5,13 @@
     Title="OnlyWinget">
     <NavigationView
         x:Name="RootNavigation"
+        CompactModeThresholdWidth="720"
+        ExpandedModeThresholdWidth="1100"
         IsBackButtonVisible="Collapsed"
         IsSettingsVisible="False"
-        PaneDisplayMode="Left"
+        PaneTitle="OnlyWinget"
+        PaneDisplayMode="Auto"
+        SelectionFollowsFocus="Enabled"
         SelectionChanged="OnSelectionChanged">
         <NavigationView.MenuItems>
             <NavigationViewItem Content="Dashboard" Tag="dashboard">
@@ -46,6 +50,10 @@
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
-        <Frame x:Name="ContentFrame" />
+        <Frame
+            x:Name="ContentFrame"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            HorizontalContentAlignment="Stretch"
+            VerticalContentAlignment="Stretch" />
     </NavigationView>
 </Window>

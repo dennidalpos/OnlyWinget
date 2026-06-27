@@ -56,15 +56,9 @@ public sealed partial class UpdatesPage : Page
     {
         TitleText.Text = TextResources.Get("Updates_Title");
         SelectAllUpdatesBox.Content = TextResources.Get("Command_Select_All");
-        RefreshButton.Label = TextResources.Get("Command_Updates_Refresh");
-        ApplySelectedButton.Label = TextResources.Get("Command_Updates_ApplySelected");
-        CancelButton.Label = TextResources.Get("Command_Operation_Cancel");
-        UpdateNameHeaderText.Text = TextResources.Get("Header_Name");
-        UpdatePackageHeaderText.Text = TextResources.Get("Header_PackageId");
-        UpdateInstalledHeaderText.Text = TextResources.Get("Header_Installed");
-        UpdateAvailableHeaderText.Text = TextResources.Get("Header_Available");
-        UpdateSourceHeaderText.Text = TextResources.Get("Header_Source");
-        UpdateStatusHeaderText.Text = TextResources.Get("Header_Status");
+        RefreshButton.Content = TextResources.Get("Command_Updates_Refresh");
+        ApplySelectedButton.Content = TextResources.Get("Command_Updates_ApplySelected");
+        CancelButton.Content = TextResources.Get("Command_Operation_Cancel");
     }
 
     private async void OnRefreshUpdates(object sender, RoutedEventArgs args)

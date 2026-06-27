@@ -40,6 +40,11 @@ public sealed partial class DashboardPage : Page
         SearchValueText.Text = state.SearchResultCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
         UpdateValueText.Text = state.UpdateCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
         SourceValueText.Text = state.SourceCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        WideWingetValueText.Text = WingetValueText.Text;
+        WidePresetValueText.Text = PresetValueText.Text;
+        WideSearchValueText.Text = SearchValueText.Text;
+        WideUpdateValueText.Text = UpdateValueText.Text;
+        WideSourceValueText.Text = SourceValueText.Text;
         ActivityList.ItemsSource = state.RecentActivity;
         StatusText.Text = state.Error ?? (state.RecentActivity.Count == 0 ? TextResources.Get("Empty_Activity") : string.Empty);
     }
@@ -53,9 +58,11 @@ public sealed partial class DashboardPage : Page
         SearchLabelText.Text = TextResources.Get("Dashboard_SearchResults");
         UpdateLabelText.Text = TextResources.Get("Dashboard_Updates");
         SourceLabelText.Text = TextResources.Get("Dashboard_Sources");
+        WideWingetLabelText.Text = WingetLabelText.Text;
+        WidePresetLabelText.Text = PresetLabelText.Text;
+        WideSearchLabelText.Text = SearchLabelText.Text;
+        WideUpdateLabelText.Text = UpdateLabelText.Text;
+        WideSourceLabelText.Text = SourceLabelText.Text;
         RecentActivityText.Text = TextResources.Get("Dashboard_RecentActivity");
-        RecentSeverityHeaderText.Text = TextResources.Get("Header_Severity");
-        RecentTitleHeaderText.Text = TextResources.Get("Header_Title");
-        RecentMessageHeaderText.Text = TextResources.Get("Header_Message");
     }
 }

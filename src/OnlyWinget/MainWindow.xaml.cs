@@ -2,13 +2,19 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using OnlyWinget.Pages;
+using System.Runtime.InteropServices;
+using Windows.Graphics;
 using WinRT.Interop;
 
 namespace OnlyWinget;
 
 public sealed partial class MainWindow : Window
 {
+    private const double InitialWidth = 1180;
+    private const double InitialHeight = 760;
+
     private readonly Dictionary<string, Type> pages = new(StringComparer.Ordinal)
     {
         ["dashboard"] = typeof(DashboardPage),
@@ -23,11 +29,25 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        SystemBackdrop = new MicaBackdrop();
+        ResizeWindow();
         ApplyWindowIcon();
         RootNavigation.Loaded += OnLoaded;
         ApplyText();
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
         ContentFrame.Navigate(typeof(DashboardPage));
+    }
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(nint windowHandle);
+
+    private void ResizeWindow()
+    {
+        var windowHandle = WindowNative.GetWindowHandle(this);
+        var scale = GetDpiForWindow(windowHandle) / 96d;
+        AppWindow.Resize(new SizeInt32(
+            (int)Math.Ceiling(InitialWidth * scale),
+            (int)Math.Ceiling(InitialHeight * scale)));
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs args)

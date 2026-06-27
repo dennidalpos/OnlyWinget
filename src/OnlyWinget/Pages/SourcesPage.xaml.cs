@@ -51,17 +51,15 @@ public sealed partial class SourcesPage : Page
     private void ApplyText()
     {
         TitleText.Text = TextResources.Get("Sources_Title");
+        AddSourceSectionText.Text = TextResources.Get("Section_AddSource");
+        ManageSourcesSectionText.Text = TextResources.Get("Section_ManageSources");
         SourceNameBox.Header = TextResources.Get("Source_Name");
         SourceArgumentBox.Header = TextResources.Get("Source_Argument");
         AddButton.Content = TextResources.Get("Command_Sources_Add");
-        RefreshButton.Label = TextResources.Get("Command_Sources_Refresh");
-        UpdateButton.Label = TextResources.Get("Command_Sources_Update");
-        RemoveButton.Label = TextResources.Get("Command_Sources_Remove");
-        ResetButton.Label = TextResources.Get("Command_Sources_Reset");
-        SourceNameHeaderText.Text = TextResources.Get("Header_Name");
-        SourceArgumentHeaderText.Text = TextResources.Get("Header_Argument");
-        SourceTypeHeaderText.Text = TextResources.Get("Header_Type");
-        SourceStatusHeaderText.Text = TextResources.Get("Header_Status");
+        RefreshButton.Content = TextResources.Get("Command_Sources_Refresh");
+        UpdateButton.Content = TextResources.Get("Command_Sources_Update");
+        RemoveButton.Content = TextResources.Get("Command_Sources_Remove");
+        ResetButton.Content = TextResources.Get("Command_Sources_Reset");
     }
 
     private async void OnRefreshSources(object sender, RoutedEventArgs args)
