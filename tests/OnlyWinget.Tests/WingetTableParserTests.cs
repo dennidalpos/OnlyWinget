@@ -37,4 +37,20 @@ public sealed class WingetTableParserTests
         Assert.Equal("2.54.0", row["Versione"]);
         Assert.Equal("winget", row["Origine"]);
     }
+
+    [Fact]
+    public void ParseIgnoresWingetSpinnerBeforeTable()
+    {
+        const string output = """
+               -
+               \
+            Name Id      Version
+            --------------------
+            Git  Git.Git 2.54.0
+            """;
+
+        var rows = new WingetTableParser().Parse(output);
+
+        Assert.Equal("Git.Git", Assert.Single(rows)["Id"]);
+    }
 }

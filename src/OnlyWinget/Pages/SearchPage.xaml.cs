@@ -2,16 +2,19 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Packages;
+using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Pages;
 
 public sealed partial class SearchPage : Page
 {
     private bool isRefreshing;
+    private readonly ObservableCollection<SearchResultRow> results = [];
 
     public SearchPage()
     {
         InitializeComponent();
+        ResultList.ItemsSource = results;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -19,16 +22,16 @@ public sealed partial class SearchPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged += OnWorkflowChanged;
+        App.Workflow.StateChanged += OnWorkflowChanged;
         Refresh();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged -= OnWorkflowChanged;
+        App.Workflow.StateChanged -= OnWorkflowChanged;
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => Refresh();
+    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
 
     private void Refresh()
     {
@@ -36,7 +39,11 @@ public sealed partial class SearchPage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Search;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        ResultList.ItemsSource = state.Results;
+        PageUi.ReplaceItems(results, state.Results.Select(row => row with
+        {
+            Architecture = TextResources.Get(row.Architecture),
+            Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version
+        }));
         PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Search"), state.Results.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsLoading);
         PageUi.ApplySelectionHeader(SelectAllResultsBox, state.HeaderState);
@@ -86,7 +93,6 @@ public sealed partial class SearchPage : Page
         }
 
         App.Workflow.ToggleAllSearchResults();
-        Notify();
     }
 
     private void OnResultSelectionClick(object sender, RoutedEventArgs args)
@@ -97,11 +103,5 @@ public sealed partial class SearchPage : Page
         }
 
         App.Workflow.ToggleSearchResult(new PackageIdentity(row.PackageId, row.Source));
-        Notify();
-    }
-
-    private static void Notify()
-    {
-        App.NotifyWorkflowChanged();
     }
 }

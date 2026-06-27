@@ -1,8 +1,9 @@
 <Page
     x:Class="OnlyWinget.Pages.PresetsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:presentation="using:OnlyWinget.Application.Presentation">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" AutomationProperties.AutomationId="PresetsScrollViewer">
         <Grid x:Name="PageContent" MaxWidth="1440" Padding="28" RowSpacing="20" HorizontalAlignment="Stretch">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
@@ -63,22 +64,23 @@
                         <Button x:Name="CancelPresetOperationButton" Style="{StaticResource CancelButtonStyle}" Click="OnCancelPresetOperation" AutomationProperties.AutomationId="PresetOperationCancelButton" />
                     </StackPanel>
                     <StackPanel Grid.Row="1" Spacing="4">
-                        <ProgressBar x:Name="OperationProgressBar" Minimum="0" Maximum="100" AutomationProperties.AutomationId="OperationProgressBar" />
-                        <TextBlock x:Name="OperationProgressText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                        <ProgressBar x:Name="OperationProgressBar" Minimum="0" Maximum="100" AutomationProperties.AutomationId="PresetOperationProgressBar" AutomationProperties.Name="Preset operation progress" />
+                        <TextBlock x:Name="OperationProgressText" AutomationProperties.AutomationId="PresetOperationProgressText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                     </StackPanel>
-                    <ListView x:Name="PackageList" Grid.Row="2" ItemContainerStyle="{StaticResource ListRowContainerStyle}" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                        <ListView.ItemTemplate><DataTemplate>
+                    <ListView x:Name="PackageList" Grid.Row="2" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="PresetPackageList" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <ListView.ItemTemplate><DataTemplate x:DataType="presentation:PresetPackageRow">
                             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <CheckBox
-                                    AutomationProperties.Name="{Binding PackageId}"
-                                    IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                    AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
+                                    AutomationProperties.Name="{x:Bind PackageId, Mode=OneTime}"
+                                    IsChecked="{x:Bind IsSelected, Mode=OneTime}"
                                     Click="OnPackageSelectionClick"
                                     VerticalAlignment="Top" />
                                 <StackPanel Grid.Column="1" Spacing="3">
-                                    <TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                    <TextBlock Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                    <TextBlock Text="{Binding Version}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                    <TextBlock Text="{Binding Architecture}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                    <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                    <TextBlock Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                    <TextBlock Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                    <TextBlock Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate></ListView.ItemTemplate>
@@ -100,14 +102,14 @@
                 <Grid RowSpacing="10">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <TextBlock x:Name="OperationResultsText" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                    <ListView x:Name="OperationResultList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                        <ListView.ItemTemplate><DataTemplate>
+                    <ListView x:Name="OperationResultList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="PresetOperationResultList" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <ListView.ItemTemplate><DataTemplate x:DataType="presentation:OperationResultRow">
                             <StackPanel Spacing="3">
-                                <TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                <TextBlock Text="{Binding Action}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                <TextBlock Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                <TextBlock Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                <TextBlock Text="{x:Bind Action, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                <TextBlock Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                <TextBlock Text="{x:Bind ErrorDetails, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                             </StackPanel>
                         </DataTemplate></ListView.ItemTemplate>
                     </ListView>

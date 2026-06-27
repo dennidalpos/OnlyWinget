@@ -23,7 +23,7 @@
                          Result="value" />
 
     <bal:Condition Message="OnlyWinget requires Windows 10 version 1809 build 17763 or newer, or Windows 11. Install on an updated Windows client and rerun setup. Verify with: winver">
-      VersionNT >= v10.0 AND WindowsBuildNumber >= 17763
+      VersionNT64 AND VersionNT >= v10.0 AND WindowsBuildNumber >= 17763
     </bal:Condition>
 
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
@@ -43,26 +43,11 @@
                   PerMachine="yes"
                   Permanent="yes"
                   Vital="yes" />
-      <ExePackage Id="WindowsAppRuntimeX86"
-                  SourceFile="$(var.WindowsAppRuntimeInstallerX86Path)"
-                  InstallCondition="NOT VersionNT64"
-                  InstallCommand="--quiet --force"
-                  RepairCommand="--quiet --force"
-                  PerMachine="yes"
-                  Permanent="yes"
-                  Vital="yes" />
       <MsiPackage Id="OnlyWingetX64"
                   SourceFile="$(var.X64MsiPath)"
                   Visible="yes"
                   ForcePerMachine="yes"
                   InstallCondition="VersionNT64">
-        <MsiProperty Name="INSTALLDESKTOPSHORTCUT" Value="[InstallDesktopShortcut]" />
-      </MsiPackage>
-      <MsiPackage Id="OnlyWingetX86"
-                  SourceFile="$(var.X86MsiPath)"
-                  Visible="yes"
-                  ForcePerMachine="yes"
-                  InstallCondition="NOT VersionNT64">
         <MsiProperty Name="INSTALLDESKTOPSHORTCUT" Value="[InstallDesktopShortcut]" />
       </MsiPackage>
     </Chain>

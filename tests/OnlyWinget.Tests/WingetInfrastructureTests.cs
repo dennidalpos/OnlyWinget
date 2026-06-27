@@ -61,9 +61,12 @@ public sealed class WingetInfrastructureTests
         Assert.True(outcome.Succeeded);
         var encoded = Assert.IsAssignableFrom<IReadOnlyList<string>>(runner.LastArguments).Last();
         var script = System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(encoded));
+        Assert.Contains("IsInstalled=0 and IsHidden=0", script, StringComparison.Ordinal);
         Assert.Contains("Type=\\u0027Driver\\u0027", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Type=\\u0027Software\\u0027", script, StringComparison.Ordinal);
         Assert.Contains("7971f918-a847-4430-9279-4a52d1efe18d", script, StringComparison.Ordinal);
+        Assert.Contains("$serviceManager.Services", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddService2", script, StringComparison.Ordinal);
         Assert.Contains("\"includePotentiallySupersededUpdates\":true", script, StringComparison.Ordinal);
     }
 
@@ -101,6 +104,9 @@ public sealed class WingetInfrastructureTests
     [InlineData("Installation 100%", WingetProgressPhase.Installing, 100, "Installation 100%")]
     [InlineData("Installing 101%", WingetProgressPhase.Installing, null, "Installing 101%")]
     [InlineData("Installing nope%", WingetProgressPhase.Installing, null, "Installing nope%")]
+    [InlineData("\rDownloading 42%\r", WingetProgressPhase.Downloading, 42, "Downloading 42%")]
+    [InlineData("Téléchargement 12%", WingetProgressPhase.Downloading, 12, "Téléchargement 12%")]
+    [InlineData("Herunterladen 9%", WingetProgressPhase.Downloading, 9, "Herunterladen 9%")]
     public void ProgressParserHandlesAnsiLocalizedAndMalformedLines(
         string line,
         WingetProgressPhase expectedPhase,
@@ -137,11 +143,29 @@ public sealed class WingetInfrastructureTests
 
         var outcome = await service.SearchAsync(new PackageSearchRequest("git", "winget"), CancellationToken.None);
 
-        Assert.Equal(["search", "git", "--accept-source-agreements", "--source", "winget"], runner.LastArguments);
+        Assert.Equal(
+            ["search", "git", "--count", "1000", "--accept-source-agreements", "--disable-interactivity", "--source", "winget"],
+            runner.LastArguments);
         Assert.True(outcome.Succeeded);
         Assert.Equal(2, outcome.Rows.Count);
         Assert.Equal("Git.Git", outcome.Rows[0].Package.Id);
         Assert.Equal("winget", outcome.Rows[0].Package.Source);
+    }
+
+    [Fact]
+    public async Task PackageSearchUsesRequestedSourceWhenWingetOmitsSourceColumn()
+    {
+        const string output = """
+            Name Id      Version
+            --------------------
+            Git  Git.Git 2.54.0
+            """;
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
+        var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var outcome = await service.SearchAsync(new PackageSearchRequest("git", "winget"), CancellationToken.None);
+
+        Assert.Equal("winget", Assert.Single(outcome.Rows).Package.Source);
     }
 
     [Fact]
@@ -275,6 +299,45 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(2, runner.Calls.Count);
     }
 
+    [Fact]
+    public async Task OperationExecutorAggregatesAndThrottlesMultiPackageProgress()
+    {
+        var runner = new RecordingWingetCommandRunner(
+            new WingetCommandResult(0, string.Empty, string.Empty),
+            new WingetCommandResult(0, string.Empty, string.Empty));
+        runner.ProgressUpdates.AddRange(
+        [
+            new WingetProgress(WingetProgressPhase.Downloading, 50, null),
+            new WingetProgress(WingetProgressPhase.Downloading, 50, null),
+            new WingetProgress(WingetProgressPhase.Installing, 100, null)
+        ]);
+        var progress = new RecordingProgress<OperationProgress>();
+        var plan = new OperationPlanner().CreatePresetPlan(
+            new Preset("Two", [new PackageIdentity("One.App"), new PackageIdentity("Two.App")]),
+            PackageAction.Install);
+
+        await new WingetOperationExecutor(runner, new WingetCommandBuilder(), new WingetErrorClassifier())
+            .ExecuteAsync(plan, CancellationToken.None, progress);
+
+        Assert.Equal([25, 50, 75, 100], progress.Values.Select(value => value.Percentage));
+    }
+
+    [Fact]
+    public async Task OperationExecutorHonorsCancellationBeforeRunningCommands()
+    {
+        var runner = new RecordingWingetCommandRunner();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var plan = new OperationPlanner().CreatePresetPlan(
+            new Preset("Cancelled", [new PackageIdentity("One.App")]),
+            PackageAction.Install);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new WingetOperationExecutor(runner, new WingetCommandBuilder(), new WingetErrorClassifier())
+                .ExecuteAsync(plan, cancellation.Token));
+        Assert.Empty(runner.Calls);
+    }
+
     private sealed class RecordingWingetCommandRunner(params WingetCommandResult[] results) : IWingetCommandRunner
     {
         private readonly Queue<WingetCommandResult> results = new(results);
@@ -287,6 +350,8 @@ public sealed class WingetInfrastructureTests
 
         public IReadOnlyList<string>? LastArguments { get; private set; }
 
+        public List<WingetProgress> ProgressUpdates { get; } = [];
+
         public Task<WingetCommandResult> RunAsync(
             string command,
             IReadOnlyList<string> arguments,
@@ -297,6 +362,11 @@ public sealed class WingetInfrastructureTests
             LastArguments = arguments.ToArray();
             Calls.Add(LastArguments);
             CommandCalls.Add(new CommandCall(command, LastArguments));
+            foreach (var update in ProgressUpdates)
+            {
+                progress?.Report(update);
+            }
+
             return Task.FromResult(results.Count == 0
                 ? new WingetCommandResult(0, string.Empty, string.Empty)
                 : results.Dequeue());
@@ -329,6 +399,13 @@ public sealed class WingetInfrastructureTests
     }
 
     private sealed record CommandCall(string Command, IReadOnlyList<string> Arguments);
+
+    private sealed class RecordingProgress<T> : IProgress<T>
+    {
+        public List<T> Values { get; } = [];
+
+        public void Report(T value) => Values.Add(value);
+    }
 
     private sealed class StubSystemCapabilityService(SystemCapabilities capabilities) : ISystemCapabilityService
     {

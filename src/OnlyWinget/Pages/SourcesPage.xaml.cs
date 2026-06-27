@@ -1,16 +1,19 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
+using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Pages;
 
 public sealed partial class SourcesPage : Page
 {
     private bool isRefreshing;
+    private readonly ObservableCollection<SourceRow> sources = [];
 
     public SourcesPage()
     {
         InitializeComponent();
+        SourceList.ItemsSource = sources;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -18,16 +21,16 @@ public sealed partial class SourcesPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged += OnWorkflowChanged;
+        App.Workflow.StateChanged += OnWorkflowChanged;
         Refresh();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged -= OnWorkflowChanged;
+        App.Workflow.StateChanged -= OnWorkflowChanged;
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => Refresh();
+    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
 
     private void Refresh()
     {
@@ -35,13 +38,13 @@ public sealed partial class SourcesPage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Sources;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        SourceList.ItemsSource = state.Sources
+        PageUi.ReplaceItems(sources, state.Sources
             .Select(source => source with
             {
                 Type = TextResources.Get(source.Type),
                 Status = TextResources.Get($"Source_Status_{source.Status}")
             })
-            .ToArray();
+            .ToArray());
         PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Sources"), state.Sources.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsLoading);
         PageUi.SetEnabled(RefreshButton, commands, "sources.refresh");

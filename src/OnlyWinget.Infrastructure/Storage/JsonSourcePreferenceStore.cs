@@ -40,18 +40,28 @@ public sealed class JsonSourcePreferenceStore(string filePath) : ISourcePreferen
         }
 
         var temporaryPath = filePath + ".tmp";
-        await using (var stream = File.Create(temporaryPath))
+        try
         {
-            var normalized = Normalize(preferences);
-            await JsonSerializer.SerializeAsync(
-                    stream,
-                    new SourcePreferencesDocument(1, normalized.DisabledSources),
-                    JsonOptions,
-                    cancellationToken)
-                .ConfigureAwait(false);
-        }
+            await using (var stream = File.Create(temporaryPath))
+            {
+                var normalized = Normalize(preferences);
+                await JsonSerializer.SerializeAsync(
+                        stream,
+                        new SourcePreferencesDocument(1, normalized.DisabledSources),
+                        JsonOptions,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
-        File.Move(temporaryPath, filePath, overwrite: true);
+            File.Move(temporaryPath, filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
     }
 
     private static SourcePreferences Normalize(SourcePreferences preferences) =>

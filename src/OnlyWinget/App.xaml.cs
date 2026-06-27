@@ -10,8 +10,6 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     public static OnlyWingetApplication Workflow { get; } = AppComposition.CreateWorkflow();
 
-    public static event EventHandler? WorkflowChanged;
-
     public App()
     {
         AppDiagnostics.Initialize();
@@ -32,7 +30,5 @@ public partial class App : Microsoft.UI.Xaml.Application
             throw;
         }
     }
-
-    public static void NotifyWorkflowChanged() => WorkflowChanged?.Invoke(null, EventArgs.Empty);
 
 }

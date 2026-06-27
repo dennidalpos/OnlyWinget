@@ -5,5 +5,6 @@ public sealed record SearchResultRow(
     string Name,
     string? Source,
     string? Version,
+    string Architecture,
     string? Match,
     bool IsSelected);

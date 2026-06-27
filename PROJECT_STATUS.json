@@ -1,16 +1,9 @@
 {
   "todos": [
-    "Add repeatable WinApp UI tests for mouse-wheel scrolling, keyboard navigation, source toggles, file-picker cancellation, progress accessibility, and compact, medium, and wide layouts.",
-    "Add startup orchestration tests for source-update ordering, cancellation, unavailable winget, partial update failure, and final list refresh.",
-    "Add transactional file-picker and filesystem failure tests for preset import and export, including malformed, duplicate, cancelled, and unwritable cases.",
-    "Expand package-validation tests for ambiguity across sources, disabled and unavailable sources, stale search results, mixed invalid imports, cancellation, and no-partial-mutation guarantees.",
-    "Resolve and display version and installer architectures for existing workspace packages and Search and Updates rows, including localized unknown and multi-architecture states.",
-    "Add progress parser tests for carriage returns, ANSI sequences, localized phases, malformed percentages, cancellation, multi-package aggregation, and throttling.",
-    "Replace global static workflow refresh events and repeated ItemsSource rebinding with page-scoped observable state and commands, then convert eligible templates to typed x:Bind.",
-    "Complete the accessibility audit for remaining templated and navigation controls, then validate Narrator, high contrast, text scaling, and keyboard-only flows.",
-    "Run live winget smoke tests for source toggles, multi-source search, remote validation, import and export, install, upgrade, uninstall, cancellation, progress, and native winget behavior.",
-    "Manually validate Windows Update software, driver, Microsoft product, superseded, cancellation, failure, and reboot-required flows on Windows 10 build 17763 and current Windows 11.",
-    "Validate the generated setup bundle, installed startup, Programs and Features entry, clean install, upgrade, uninstall, and Windows App Runtime chaining on clean x86 and x64 hosts.",
+    "Validate Windows Update software, driver, Microsoft-product, superseded, cancellation, failure, and reboot-required flows on clean Windows 10 build 17763 and current Windows 11 hosts.",
+    "Run the WinApp UI suite on an interactive desktop with Narrator, high contrast, 200% text scaling, keyboard-only input, and compact, medium, and wide layouts; fix any visual or accessibility failures.",
+    "Validate the x64 setup and portable ZIP lifecycle on a clean elevated x64 host, including Windows App Runtime chaining, installed and portable startup, Programs and Features, clean install, upgrade, and uninstall.",
+    "Run destructive live winget install, upgrade, uninstall, cancellation, and progress smoke tests on a disposable Windows host with test packages.",
     "Run the hosted GitHub Actions build gate for the exact release commit before tagging."
   ]
 }

@@ -40,6 +40,33 @@ public sealed class PresetDocumentServiceTests
     }
 
     [Theory]
+    [InlineData("{not-json")]
+    [InlineData("{\"format\":\"onlywinget.preset.v1\",\"preset\":null}")]
+    public void ImportRejectsMalformedDocuments(string json)
+    {
+        Assert.Throws<InvalidOperationException>(() => new PresetDocumentService().Import(json));
+    }
+
+    [Fact]
+    public void ImportRejectsDuplicatePackages()
+    {
+        const string json = """
+            {
+              "format": "onlywinget.preset.v1",
+              "preset": {
+                "name": "Duplicates",
+                "packages": [
+                  { "id": "Git.Git", "source": "winget" },
+                  { "id": "git.git", "source": "WINGET" }
+                ]
+              }
+            }
+            """;
+
+        Assert.Throws<InvalidOperationException>(() => new PresetDocumentService().Import(json));
+    }
+
+    [Theory]
     [InlineData("Work tools", "Work tools.onlywinget.json")]
     [InlineData("Bad:name", "Bad-name.onlywinget.json")]
     public void ExportFileNameUsesSanitizedPresetName(string name, string expected)

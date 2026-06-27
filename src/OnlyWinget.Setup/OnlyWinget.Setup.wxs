@@ -2,13 +2,8 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <?define ProductName = "OnlyWinget" ?>
   <?define Manufacturer = "Danny Perondi" ?>
-  <?if $(var.Platform) = x64 ?>
-    <?define ProgramFilesFolderId = "ProgramFiles64Folder" ?>
-    <?define Win64 = "yes" ?>
-  <?else ?>
-    <?define ProgramFilesFolderId = "ProgramFilesFolder" ?>
-    <?define Win64 = "no" ?>
-  <?endif ?>
+  <?define ProgramFilesFolderId = "ProgramFiles64Folder" ?>
+  <?define Win64 = "yes" ?>
 
   <Product Id="*"
            Name="$(var.ProductName)"
@@ -49,15 +44,9 @@
       Installed OR (WINDOWSBUILDNUMBER &gt;= 17763)
     </Condition>
 
-    <?if $(var.Platform) = x64 ?>
     <Condition Message="OnlyWinget x64 richiede un sistema operativo Windows a 64 bit.">
       VersionNT64
     </Condition>
-    <?else ?>
-    <Condition Message="OnlyWinget x86 e' destinato a Windows a 32 bit. Usa il setup unificato sui sistemi Windows a 64 bit.">
-      NOT VersionNT64
-    </Condition>
-    <?endif ?>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="DesktopFolder" />

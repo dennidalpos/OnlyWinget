@@ -25,12 +25,7 @@ $distPath = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
 $validationPath = Join-Path $artifactsPath "installer-validation/$Configuration"
 $reportPath = Join-Path $validationPath 'installer-lifecycle-report.txt'
 $productName = 'OnlyWinget'
-$installFolder = if ([Environment]::Is64BitOperatingSystem) {
-    Join-Path $env:ProgramFiles $productName
-}
-else {
-    Join-Path ${env:ProgramFiles(x86)} $productName
-}
+$installFolder = Join-Path $env:ProgramFiles $productName
 
 function Assert-Administrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -46,8 +41,7 @@ function Get-InstalledOnlyWingetProduct {
     )
 
     $roots = @(
-        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
-        'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
     )
 
     foreach ($root in $roots) {

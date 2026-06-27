@@ -128,7 +128,8 @@ public sealed class PowerShellWindowsUpdateService(
             types.Add("Type='Driver'");
         }
 
-        var criteria = $"IsInstalled=0 and IsHidden=0 and ({string.Join(" or ", types)})";
+        var typeCriteria = types.Count == 2 ? string.Empty : $" and {types[0]}";
+        var criteria = $"IsInstalled=0 and IsHidden=0{typeCriteria}";
         var optionsJson = JsonSerializer.Serialize(
             new WindowsUpdateOptionsDto(
                 criteria,
@@ -148,10 +149,19 @@ __OPTIONS_JSON__
     $searcher = $session.CreateUpdateSearcher()
     $searcher.IncludePotentiallySupersededUpdates = [bool]$options.includePotentiallySupersededUpdates
     if ([bool]$options.includeMicrosoftUpdates) {
-        $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
-        [void]$serviceManager.AddService2('7971f918-a847-4430-9279-4a52d1efe18d', 7, '')
-        $searcher.ServerSelection = 3
-        $searcher.ServiceID = '7971f918-a847-4430-9279-4a52d1efe18d'
+        try {
+            $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
+            $microsoftUpdate = @($serviceManager.Services) | Where-Object {
+                $_.ServiceID -eq '7971f918-a847-4430-9279-4a52d1efe18d'
+            } | Select-Object -First 1
+            if ($null -ne $microsoftUpdate) {
+                $searcher.ServerSelection = 3
+                $searcher.ServiceID = [string]$microsoftUpdate.ServiceID
+            }
+        }
+        catch {
+            # Continue with the default Windows Update service. Optional service discovery must not block scanning.
+        }
     }
     $search = $searcher.Search([string]$options.criteria)
     $rows = @()
@@ -210,10 +220,19 @@ __SELECTED_JSON__
     $searcher = $session.CreateUpdateSearcher()
     $searcher.IncludePotentiallySupersededUpdates = [bool]$options.includePotentiallySupersededUpdates
     if ([bool]$options.includeMicrosoftUpdates) {
-        $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
-        [void]$serviceManager.AddService2('7971f918-a847-4430-9279-4a52d1efe18d', 7, '')
-        $searcher.ServerSelection = 3
-        $searcher.ServiceID = '7971f918-a847-4430-9279-4a52d1efe18d'
+        try {
+            $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
+            $microsoftUpdate = @($serviceManager.Services) | Where-Object {
+                $_.ServiceID -eq '7971f918-a847-4430-9279-4a52d1efe18d'
+            } | Select-Object -First 1
+            if ($null -ne $microsoftUpdate) {
+                $searcher.ServerSelection = 3
+                $searcher.ServiceID = [string]$microsoftUpdate.ServiceID
+            }
+        }
+        catch {
+            # Continue with the default Windows Update service. Optional service discovery must not block scanning.
+        }
     }
     $search = $searcher.Search([string]$options.criteria)
     $collection = New-Object -ComObject Microsoft.Update.UpdateColl

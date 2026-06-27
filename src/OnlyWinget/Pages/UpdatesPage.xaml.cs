@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Packages;
+using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Pages;
 
@@ -9,10 +10,12 @@ public sealed partial class UpdatesPage : Page
 {
     private CancellationTokenSource? operationCancellation;
     private bool isRefreshing;
+    private readonly ObservableCollection<UpdateRow> updates = [];
 
     public UpdatesPage()
     {
         InitializeComponent();
+        UpdateList.ItemsSource = updates;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -20,20 +23,20 @@ public sealed partial class UpdatesPage : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged += OnWorkflowChanged;
+        App.Workflow.StateChanged += OnWorkflowChanged;
         Refresh();
         await RefreshUpdatesAsync();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged -= OnWorkflowChanged;
+        App.Workflow.StateChanged -= OnWorkflowChanged;
         operationCancellation?.Cancel();
         operationCancellation?.Dispose();
         operationCancellation = null;
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => Refresh();
+    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
 
     private void Refresh()
     {
@@ -41,7 +44,10 @@ public sealed partial class UpdatesPage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Updates;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        UpdateList.ItemsSource = state.Updates;
+        PageUi.ReplaceItems(updates, state.Updates.Select(row => row with
+        {
+            Architecture = TextResources.Get(row.Architecture)
+        }));
         PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Updates"), state.Updates.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsLoading || state.IsExecuting);
         ApplyOperationProgress(state.IsExecuting);
@@ -78,16 +84,12 @@ public sealed partial class UpdatesPage : Page
         operationCancellation = new CancellationTokenSource();
         try
         {
-            var progress = new Progress<OnlyWinget.Application.Winget.OperationProgress>(_ => Notify());
-            var apply = App.Workflow.ApplySelectedUpdatesAsync(operationCancellation.Token, progress);
-            Notify();
-            await apply;
+            await App.Workflow.ApplySelectedUpdatesAsync(operationCancellation.Token);
         }
         finally
         {
             operationCancellation.Dispose();
             operationCancellation = null;
-            Notify();
         }
     }
 
@@ -104,7 +106,6 @@ public sealed partial class UpdatesPage : Page
         }
 
         App.Workflow.ToggleAllUpdates();
-        Notify();
     }
 
     private void OnUpdateSelectionClick(object sender, RoutedEventArgs args)
@@ -115,12 +116,6 @@ public sealed partial class UpdatesPage : Page
         }
 
         App.Workflow.ToggleUpdate(new PackageIdentity(row.PackageId, row.Source));
-        Notify();
-    }
-
-    private static void Notify()
-    {
-        App.NotifyWorkflowChanged();
     }
 
     private void ApplyOperationProgress(bool isExecuting)

@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.Presets;
 using OnlyWinget.Domain.Packages;
+using System.Collections.ObjectModel;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 
@@ -12,30 +13,56 @@ public sealed partial class PresetsPage : Page
 {
     private CancellationTokenSource? operationCancellation;
     private bool isRefreshing;
+    private readonly ObservableCollection<string> presetNames = [];
+    private readonly ObservableCollection<PresetPackageRow> packages = [];
+    private readonly ObservableCollection<OperationResultRow> operationResults = [];
 
     public PresetsPage()
     {
         InitializeComponent();
+        PresetSelector.ItemsSource = presetNames;
+        PackageList.ItemsSource = packages;
+        OperationResultList.ItemsSource = operationResults;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        SizeChanged += OnSizeChanged;
         ApplyText();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged += OnWorkflowChanged;
+        App.Workflow.StateChanged += OnWorkflowChanged;
         Refresh();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged -= OnWorkflowChanged;
+        App.Workflow.StateChanged -= OnWorkflowChanged;
         operationCancellation?.Cancel();
         operationCancellation?.Dispose();
         operationCancellation = null;
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => Refresh();
+    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        var compact = args.NewSize.Width < 720;
+        ApplyActionLayout(PresetActions, compact, AddPresetButton, RenamePresetButton, SaveWorkspaceButton, RemovePresetButton);
+        ApplyActionLayout(PackageEditActions, compact, AddPackageButton, EditPackageButton, RemovePackageButton);
+        ApplyActionLayout(PackageActions, compact, InstallPresetButton, UninstallPresetButton, CancelPresetOperationButton);
+        ApplyActionLayout(ImportActions, compact, ImportPresetButton, ExportPresetButton);
+    }
+
+    private static void ApplyActionLayout(StackPanel panel, bool compact, params Button[] buttons)
+    {
+        panel.Orientation = compact ? Orientation.Vertical : Orientation.Horizontal;
+        panel.HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+        foreach (var button in buttons)
+        {
+            button.HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+        }
+    }
 
     private void Refresh()
     {
@@ -43,11 +70,15 @@ public sealed partial class PresetsPage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Presets;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        PresetSelector.ItemsSource = state.PresetNames;
+        PageUi.ReplaceItems(presetNames, state.PresetNames);
         PresetSelector.SelectedItem = state.ActivePresetName;
         PresetNameBox.Text = state.ActivePresetName ?? string.Empty;
-        PackageList.ItemsSource = state.Packages;
-        OperationResultList.ItemsSource = state.OperationResults;
+        PageUi.ReplaceItems(packages, state.Packages.Select(row => row with
+        {
+            Architecture = TextResources.Get(row.Architecture),
+            Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version
+        }));
+        PageUi.ReplaceItems(operationResults, state.OperationResults);
         StatusText.Text = state.Error ?? GetEmptyText(state);
         PageUi.SetVisible(OperationResultList, state.OperationResults.Count > 0);
         ApplyOperationProgress(state.IsExecuting);
@@ -106,25 +137,21 @@ public sealed partial class PresetsPage : Page
         }
 
         App.Workflow.SetActivePreset(presetName);
-        Notify();
     }
 
     private void OnAddPreset(object sender, RoutedEventArgs args)
     {
         App.Workflow.AddPreset(PresetNameBox.Text);
-        Notify();
     }
 
     private void OnRenamePreset(object sender, RoutedEventArgs args)
     {
         App.Workflow.RenameActivePreset(PresetNameBox.Text);
-        Notify();
     }
 
     private void OnRemovePreset(object sender, RoutedEventArgs args)
     {
         App.Workflow.RemoveActivePreset();
-        Notify();
     }
 
     private async void OnAddPackage(object sender, RoutedEventArgs args)
@@ -148,7 +175,6 @@ public sealed partial class PresetsPage : Page
     private void OnRemovePackages(object sender, RoutedEventArgs args)
     {
         App.Workflow.RemoveSelectedPackagesFromActivePreset();
-        Notify();
     }
 
     private void OnToggleAllPackages(object sender, RoutedEventArgs args)
@@ -159,7 +185,6 @@ public sealed partial class PresetsPage : Page
         }
 
         App.Workflow.ToggleAllPresetPackages();
-        Notify();
     }
 
     private void OnPackageSelectionClick(object sender, RoutedEventArgs args)
@@ -170,7 +195,6 @@ public sealed partial class PresetsPage : Page
         }
 
         App.Workflow.TogglePresetPackage(new PackageIdentity(row.PackageId, row.Source));
-        Notify();
     }
 
     private async void OnInstallPreset(object sender, RoutedEventArgs args)
@@ -189,16 +213,12 @@ public sealed partial class PresetsPage : Page
         operationCancellation = new CancellationTokenSource();
         try
         {
-            var progress = new Progress<OnlyWinget.Application.Winget.OperationProgress>(_ => Notify());
-            var operation = App.Workflow.ApplyActivePresetAsync(action, operationCancellation.Token, progress);
-            Notify();
-            await operation;
+            await App.Workflow.ApplyActivePresetAsync(action, operationCancellation.Token);
         }
         finally
         {
             operationCancellation.Dispose();
             operationCancellation = null;
-            Notify();
         }
     }
 
@@ -209,10 +229,7 @@ public sealed partial class PresetsPage : Page
 
     private async void OnSaveWorkspace(object sender, RoutedEventArgs args)
     {
-        var save = App.Workflow.SaveWorkspaceAsync(CancellationToken.None);
-        Notify();
-        await save;
-        Notify();
+        await App.Workflow.SaveWorkspaceAsync(CancellationToken.None);
     }
 
     private async void OnImportPreset(object sender, RoutedEventArgs args)
@@ -226,8 +243,15 @@ public sealed partial class PresetsPage : Page
             return;
         }
 
-        var json = await FileIO.ReadTextAsync(file);
-        await PageUi.RunWorkflowAsync(() => App.Workflow.ImportPresetAsync(json, CancellationToken.None));
+        try
+        {
+            var json = await FileIO.ReadTextAsync(file);
+            await PageUi.RunWorkflowAsync(() => App.Workflow.ImportPresetAsync(json, CancellationToken.None));
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            App.Workflow.ReportExternalFailure(TextResources.Get("Error_PresetImportRead"));
+        }
     }
 
     private async void OnExportPreset(object sender, RoutedEventArgs args)
@@ -250,7 +274,14 @@ public sealed partial class PresetsPage : Page
             return;
         }
 
-        await FileIO.WriteTextAsync(file, App.Workflow.ExportActivePreset());
+        try
+        {
+            await FileIO.WriteTextAsync(file, App.Workflow.ExportActivePreset());
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            App.Workflow.ReportExternalFailure(TextResources.Get("Error_PresetExportWrite"));
+        }
     }
 
     private PackageIdentity CreatePackageFromInputs() => new(PackageIdBox.Text, PackageSourceBox.Text);
@@ -276,8 +307,4 @@ public sealed partial class PresetsPage : Page
         return state.Packages.Count == 0 ? TextResources.Get("Empty_Packages") : string.Empty;
     }
 
-    private static void Notify()
-    {
-        App.NotifyWorkflowChanged();
-    }
 }

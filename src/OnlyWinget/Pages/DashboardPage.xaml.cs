@@ -1,14 +1,18 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
+using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Pages;
 
 public sealed partial class DashboardPage : Page
 {
+    private readonly ObservableCollection<ActivityRow> recentActivity = [];
+
     public DashboardPage()
     {
         InitializeComponent();
+        ActivityList.ItemsSource = recentActivity;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -16,16 +20,16 @@ public sealed partial class DashboardPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged += OnWorkflowChanged;
+        App.Workflow.StateChanged += OnWorkflowChanged;
         Refresh();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged -= OnWorkflowChanged;
+        App.Workflow.StateChanged -= OnWorkflowChanged;
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => Refresh();
+    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
 
     private void Refresh()
     {
@@ -45,7 +49,7 @@ public sealed partial class DashboardPage : Page
         WideSearchValueText.Text = SearchValueText.Text;
         WideUpdateValueText.Text = UpdateValueText.Text;
         WideSourceValueText.Text = SourceValueText.Text;
-        ActivityList.ItemsSource = state.RecentActivity;
+        PageUi.ReplaceItems(recentActivity, state.RecentActivity);
         StatusText.Text = state.Error ?? (state.RecentActivity.Count == 0 ? TextResources.Get("Empty_Activity") : string.Empty);
     }
 

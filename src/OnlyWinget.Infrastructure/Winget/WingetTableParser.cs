@@ -15,7 +15,7 @@ public sealed class WingetTableParser
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
-        var separatorIndex = Array.FindIndex(lines, line => line.All(character => character == '-' || char.IsWhiteSpace(character)));
+        var separatorIndex = FindSeparatorIndex(lines);
         if (separatorIndex <= 0)
         {
             return [];
@@ -37,6 +37,27 @@ public sealed class WingetTableParser
             .Select(line => ParseRow(line, starts, headers))
             .Where(row => row.Count > 0)
             .ToArray();
+    }
+
+    private static int FindSeparatorIndex(IReadOnlyList<string> lines)
+    {
+        for (var index = 1; index < lines.Count; index++)
+        {
+            var line = lines[index];
+            if (line.Count(character => character == '-') < 3 ||
+                !line.All(character => character == '-' || char.IsWhiteSpace(character)))
+            {
+                continue;
+            }
+
+            var header = lines[index - 1];
+            if (GetColumnStarts(header).Skip(1).Any())
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static IEnumerable<int> GetColumnStarts(string header)

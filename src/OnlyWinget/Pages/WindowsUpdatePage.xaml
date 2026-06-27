@@ -1,7 +1,8 @@
 <Page
     x:Class="OnlyWinget.Pages.WindowsUpdatePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:presentation="using:OnlyWinget.Application.Presentation">
     <Grid x:Name="PageContent" MaxWidth="1440" Padding="28" RowSpacing="20" HorizontalAlignment="Stretch">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
@@ -21,34 +22,35 @@
                     <StackPanel x:Name="WindowsUpdateActions" Style="{StaticResource ActionBarStyle}">
                         <CheckBox x:Name="SelectAllWindowsUpdatesBox" Click="OnToggleAllWindowsUpdates" VerticalAlignment="Center" AutomationProperties.AutomationId="WindowsUpdatesSelectAllCheckBox" />
                         <CheckBox x:Name="SoftwareUpdatesBox" IsChecked="True" AutomationProperties.AutomationId="SoftwareUpdatesBox" />
-                        <CheckBox x:Name="DriverUpdatesBox" AutomationProperties.AutomationId="DriverUpdatesBox" />
+                        <CheckBox x:Name="DriverUpdatesBox" IsChecked="True" AutomationProperties.AutomationId="DriverUpdatesBox" />
                         <CheckBox x:Name="MicrosoftUpdatesBox" AutomationProperties.AutomationId="MicrosoftUpdatesBox" />
                         <CheckBox x:Name="SupersededUpdatesBox" AutomationProperties.AutomationId="SupersededUpdatesBox" />
-                        <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
+                        <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="WindowsUpdatesLoadingRing" AutomationProperties.Name="Scanning Windows Update" />
                         <Button x:Name="ScanButton" Style="{StaticResource RefreshButtonStyle}" Click="OnScanWindowsUpdates" AutomationProperties.AutomationId="WindowsUpdatesScanButton" />
                         <Button x:Name="InstallSelectedButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnInstallSelected" AutomationProperties.AutomationId="WindowsUpdatesInstallSelectedButton" />
                         <Button x:Name="CancelButton" Style="{StaticResource CancelButtonStyle}" Click="OnCancel" AutomationProperties.AutomationId="WindowsUpdatesCancelButton" />
                     </StackPanel>
                     <ListView x:Name="WindowsUpdateList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="WindowsUpdateList">
                         <ListView.ItemTemplate>
-                            <DataTemplate>
+                            <DataTemplate x:DataType="presentation:WindowsUpdateRow">
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <CheckBox
-                                        AutomationProperties.Name="{Binding Title}"
-                                        IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                        AutomationProperties.AutomationId="{x:Bind UpdateId, Mode=OneTime}"
+                                        AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
+                                        IsChecked="{x:Bind IsSelected, Mode=OneTime}"
                                         Click="OnWindowsUpdateSelectionClick"
                                         VerticalAlignment="Top" />
                                     <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{Binding Title}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                        <TextBlock Text="{Binding Severity}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Text="{Binding Categories}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Text="{Binding IsDownloaded}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Text="{Binding RebootRequired}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Text="{Binding UpdateId}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                        <TextBlock Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{x:Bind Title, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind Severity, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind Categories, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind IsDownloaded, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind RebootRequired, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind UpdateId, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind Message, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{x:Bind Description, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

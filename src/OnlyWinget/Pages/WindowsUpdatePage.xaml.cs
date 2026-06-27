@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.WindowsUpdate;
+using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Pages;
 
@@ -9,10 +10,12 @@ public sealed partial class WindowsUpdatePage : Page
 {
     private CancellationTokenSource? operationCancellation;
     private bool isRefreshing;
+    private readonly ObservableCollection<WindowsUpdateRow> updates = [];
 
     public WindowsUpdatePage()
     {
         InitializeComponent();
+        WindowsUpdateList.ItemsSource = updates;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -20,19 +23,19 @@ public sealed partial class WindowsUpdatePage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged += OnWorkflowChanged;
+        App.Workflow.StateChanged += OnWorkflowChanged;
         Refresh();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.WorkflowChanged -= OnWorkflowChanged;
+        App.Workflow.StateChanged -= OnWorkflowChanged;
         operationCancellation?.Cancel();
         operationCancellation?.Dispose();
         operationCancellation = null;
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => Refresh();
+    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
 
     private void Refresh()
     {
@@ -40,7 +43,7 @@ public sealed partial class WindowsUpdatePage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).WindowsUpdates;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        WindowsUpdateList.ItemsSource = state.Updates;
+        PageUi.ReplaceItems(updates, state.Updates);
         PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_WindowsUpdates"), state.Updates.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsScanning || state.IsInstalling);
         PageUi.ApplySelectionHeader(SelectAllWindowsUpdatesBox, state.HeaderState);
@@ -85,15 +88,12 @@ public sealed partial class WindowsUpdatePage : Page
                 return;
             }
 
-            var install = App.Workflow.InstallSelectedWindowsUpdatesAsync(CreateOptions(), operationCancellation.Token);
-            Notify();
-            await install;
+            await App.Workflow.InstallSelectedWindowsUpdatesAsync(CreateOptions(), operationCancellation.Token);
         }
         finally
         {
             operationCancellation.Dispose();
             operationCancellation = null;
-            Notify();
         }
     }
 
@@ -110,7 +110,6 @@ public sealed partial class WindowsUpdatePage : Page
         }
 
         App.Workflow.ToggleAllWindowsUpdates();
-        Notify();
     }
 
     private void OnWindowsUpdateSelectionClick(object sender, RoutedEventArgs args)
@@ -121,7 +120,6 @@ public sealed partial class WindowsUpdatePage : Page
         }
 
         App.Workflow.ToggleWindowsUpdate(new WindowsUpdateIdentity(row.UpdateId, row.RevisionNumber));
-        Notify();
     }
 
     private static Task ScanWindowsUpdatesAsync(WindowsUpdateOptions options, CancellationToken cancellationToken)
@@ -154,8 +152,4 @@ public sealed partial class WindowsUpdatePage : Page
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
-    private static void Notify()
-    {
-        App.NotifyWorkflowChanged();
-    }
 }

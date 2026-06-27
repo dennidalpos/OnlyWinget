@@ -1,5 +1,6 @@
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.WindowsUpdate;
+using OnlyWinget.Application.Winget;
 using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Application.Presentation;
@@ -59,7 +60,7 @@ public static class PresentationStateMapper
                         package.Id,
                         package.Source,
                         metadata?.Version,
-                        metadata?.Architectures is { Count: > 0 } architectures ? string.Join(", ", architectures) : string.Empty,
+                        FormatArchitectures(metadata),
                         state.SelectedPresetPackages.Any(selected => PackageEquals(selected, package)));
                 })
                 .ToArray() ?? [],
@@ -91,13 +92,18 @@ public static class PresentationStateMapper
 
         return new SearchPresentationState(
             state.SearchResults
-                .Select(result => new SearchResultRow(
-                    result.Package.Id,
-                    result.Name,
-                    result.Package.Source,
-                    result.Version,
-                    result.Match,
-                    state.SelectedSearchPackages.Any(selected => PackageEquals(selected, result.Package))))
+                .Select(result =>
+                {
+                    state.PackageMetadata.TryGetValue(PackageFingerprint(result.Package), out var metadata);
+                    return new SearchResultRow(
+                        result.Package.Id,
+                        result.Name,
+                        result.Package.Source,
+                        result.Version,
+                        FormatArchitectures(metadata),
+                        result.Match,
+                        state.SelectedSearchPackages.Any(selected => PackageEquals(selected, result.Package)));
+                })
                 .ToArray(),
             state.SearchSelectionHeader,
             [
@@ -129,6 +135,9 @@ public static class PresentationStateMapper
                         update.Package.Source,
                         update.InstalledVersion,
                         update.AvailableVersion,
+                        state.PackageMetadata.TryGetValue(PackageFingerprint(update.Package), out var metadata)
+                            ? FormatArchitectures(metadata)
+                            : "Value_Unknown",
                         state.SelectedUpdates.Any(selected => PackageEquals(selected, update.Package)),
                         result?.Status,
                         result?.ErrorDetails,
@@ -249,6 +258,11 @@ public static class PresentationStateMapper
 
     private static string? EmptyToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string FormatArchitectures(PackageResolution? metadata) =>
+        metadata?.Architectures is { Count: > 0 } architectures
+            ? string.Join(", ", architectures)
+            : "Value_Unknown";
 
     private static bool PackageEquals(PackageIdentity left, PackageIdentity right) =>
         string.Equals(left.Id, right.Id, StringComparison.OrdinalIgnoreCase) &&

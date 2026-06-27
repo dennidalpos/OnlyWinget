@@ -26,9 +26,17 @@ public sealed class JsonWorkspaceStore(string filePath) : IWorkspaceStore
             return WorkspaceState.Empty;
         }
 
-        await using var stream = File.OpenRead(filePath);
-        var document = await JsonSerializer.DeserializeAsync<WorkspaceDocument>(stream, JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
+        WorkspaceDocument? document;
+        try
+        {
+            await using var stream = File.OpenRead(filePath);
+            document = await JsonSerializer.DeserializeAsync<WorkspaceDocument>(stream, JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (JsonException)
+        {
+            return WorkspaceState.Empty;
+        }
 
         if (document is null || document.SchemaVersion != WorkspaceState.CurrentSchemaVersion)
         {
@@ -53,8 +61,23 @@ public sealed class JsonWorkspaceStore(string filePath) : IWorkspaceStore
             state.Presets,
             state.ActivePresetName);
 
-        await using var stream = File.Create(filePath);
-        await JsonSerializer.SerializeAsync(stream, document, JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
+        var temporaryPath = filePath + ".tmp";
+        try
+        {
+            await using (var stream = File.Create(temporaryPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, document, JsonOptions, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            File.Move(temporaryPath, filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
     }
 }

@@ -145,21 +145,28 @@ Invoke-Step 'setup package' {
 
 Invoke-Step 'artifact analysis' {
     New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
-    $artifact = Get-Item (Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/OnlyWinget.exe")
+    $artifact = Get-Item (Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe")
     $distPath = Join-Path $repoRoot "artifacts/dist/OnlyWinget/$Configuration"
     $setup = Get-ChildItem -Path $distPath -Filter '*-setup.exe' |
         Sort-Object LastWriteTimeUtc -Descending |
         Select-Object -First 1
-    $msis = @(Get-ChildItem -Path (Join-Path $distPath 'msi') -Filter '*.msi' |
+    $msis = @(Get-ChildItem -Path (Join-Path $distPath 'msi') -Filter '*-x64.msi' |
         Sort-Object LastWriteTimeUtc -Descending |
-        Select-Object -First 2)
+        Select-Object -First 1)
+    $portable = Get-ChildItem -Path $distPath -Filter '*-portable-x64.zip' |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
 
     if ($null -eq $setup) {
         throw 'Setup unificato non trovato dopo il packaging.'
     }
 
-    if ($msis.Count -lt 2) {
-        throw 'MSI interni x86/x64 non trovati dopo il packaging.'
+    if ($msis.Count -ne 1) {
+        throw 'MSI interno x64 non trovato dopo il packaging.'
+    }
+
+    if ($null -eq $portable) {
+        throw 'Archivio portable x64 non trovato dopo il packaging.'
     }
 
     @(
@@ -170,6 +177,8 @@ Invoke-Step 'artifact analysis' {
         "UnifiedSetupSizeBytes: $($setup.Length)"
         "InternalMsiArtifacts: $($msis.FullName -join '; ')"
         "InternalMsiSizeBytes: $(($msis | ForEach-Object { $_.Length }) -join '; ')"
+        "PortableArtifact: $($portable.FullName)"
+        "PortableSizeBytes: $($portable.Length)"
         "SmokeTests: $smokeTestStatus"
         "GeneratedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     ) | Set-Content -Path $reportPath -Encoding UTF8

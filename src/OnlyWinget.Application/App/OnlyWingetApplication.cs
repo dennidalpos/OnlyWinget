@@ -51,6 +51,8 @@ public sealed class OnlyWingetApplication(
 
     public OnlyWingetState State => CreateState();
 
+    public event EventHandler? StateChanged;
+
     public async Task<ApplicationActionResult> LoadWorkspaceAsync(CancellationToken cancellationToken)
     {
         return await RunAsync(
@@ -226,16 +228,23 @@ public sealed class OnlyWingetApplication(
                     }
 
                     searchResults.Clear();
+                    var sourceErrors = new List<string>();
                     foreach (var source in enabledSources)
                     {
                         var outcome = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
                             .ConfigureAwait(false);
                         if (!outcome.Succeeded)
                         {
-                            throw new InvalidOperationException(outcome.Error?.Message ?? $"winget search failed for source '{source}'.");
+                            sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget search failed."}");
+                            continue;
                         }
 
                         searchResults.AddRange(outcome.Rows);
+                    }
+
+                    if (searchResults.Count == 0 && sourceErrors.Count > 0)
+                    {
+                        throw new InvalidOperationException(string.Join(Environment.NewLine, sourceErrors));
                     }
 
                     var distinctResults = searchResults
@@ -247,6 +256,13 @@ public sealed class OnlyWingetApplication(
                     searchResults.AddRange(distinctResults);
                     searchSelection.ReplaceAvailable(searchResults.Select(result => result.Package));
                     AddActivity(ActivitySeverity.Information, "Search completed", $"{searchResults.Count} result(s).");
+                    if (sourceErrors.Count > 0)
+                    {
+                        AddActivity(
+                            ActivitySeverity.Warning,
+                            "Some sources could not be searched",
+                            string.Join(Environment.NewLine, sourceErrors));
+                    }
                 },
                 "Unable to search packages.")
             .ConfigureAwait(false);
@@ -270,14 +286,8 @@ public sealed class OnlyWingetApplication(
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        var resolution = await packageResolver.ResolveAsync(selected, cancellationToken).ConfigureAwait(false);
-                        if (!resolution.IsResolved)
-                        {
-                            throw new InvalidOperationException(resolution.Error?.Message ?? $"Package '{selected.Id}' was not found.");
-                        }
-
+                        var resolution = await ValidatePackageAsync(selected, cancellationToken).ConfigureAwait(false);
                         var package = resolution.Package;
-                        packageMetadata[PackageFingerprint(package)] = resolution;
                         if (ContainsPackage(packages, package))
                         {
                             continue;
@@ -325,6 +335,15 @@ public sealed class OnlyWingetApplication(
                         .ToArray();
                     updates.Clear();
                     updates.AddRange(distinctUpdates);
+                    foreach (var update in updates)
+                    {
+                        var resolution = await packageResolver.ResolveAsync(update.Package, cancellationToken).ConfigureAwait(false);
+                        if (resolution.IsResolved)
+                        {
+                            packageMetadata[PackageFingerprint(update.Package)] = resolution;
+                        }
+                    }
+
                     updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
                 },
@@ -419,6 +438,33 @@ public sealed class OnlyWingetApplication(
                     AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{sources.Count} source(s).");
                 },
                 "Unable to refresh winget sources.")
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> RefreshWorkspacePackageMetadataAsync(CancellationToken cancellationToken)
+    {
+        return await RunAsync(
+                ApplicationBusyState.ValidatingPackages,
+                async () =>
+                {
+                    RequireWinget();
+                    var packages = workspace.Presets
+                        .SelectMany(preset => preset.Packages)
+                        .DistinctBy(PackageFingerprint)
+                        .ToArray();
+                    foreach (var package in packages)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var resolution = await packageResolver.ResolveAsync(package, cancellationToken).ConfigureAwait(false);
+                        if (resolution.IsResolved)
+                        {
+                            packageMetadata[PackageFingerprint(package)] = resolution;
+                        }
+                    }
+
+                    AddActivity(ActivitySeverity.Information, "Package metadata refreshed", $"{packageMetadata.Count} package(s).");
+                },
+                "Unable to refresh package metadata.")
             .ConfigureAwait(false);
     }
 
@@ -539,6 +585,10 @@ public sealed class OnlyWingetApplication(
             userVisibleError = null;
         });
 
+    public ApplicationActionResult ReportExternalFailure(string message) =>
+        Run(() => throw new InvalidOperationException(
+            string.IsNullOrWhiteSpace(message) ? "External operation failed." : message.Trim()));
+
     public string ExportActivePreset()
     {
         var active = RequireActivePreset();
@@ -597,6 +647,7 @@ public sealed class OnlyWingetApplication(
                     {
                         operationProgress = update;
                         progress?.Report(update);
+                        NotifyStateChanged();
                     });
                     var summary = await operationExecutor.ExecuteAsync(validatedPlan, cancellationToken, forwardingProgress).ConfigureAwait(false);
                     lastOperationResults.AddRange(summary.Results);
@@ -798,6 +849,7 @@ public sealed class OnlyWingetApplication(
     {
         busyState = state;
         userVisibleError = null;
+        NotifyStateChanged();
         try
         {
             await action().ConfigureAwait(false);
@@ -818,6 +870,7 @@ public sealed class OnlyWingetApplication(
         finally
         {
             busyState = ApplicationBusyState.Idle;
+            NotifyStateChanged();
         }
     }
 
@@ -833,7 +886,13 @@ public sealed class OnlyWingetApplication(
         {
             return Fail(exception.Message);
         }
+        finally
+        {
+            NotifyStateChanged();
+        }
     }
+
+    private void NotifyStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 
     private ApplicationActionResult ToggleSelection<TKey>(SelectionState<TKey> selection, TKey key)
         where TKey : notnull =>

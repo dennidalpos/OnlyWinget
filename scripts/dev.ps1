@@ -17,7 +17,7 @@ if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -Scri
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $targetFramework = 'net10.0-windows10.0.17763.0'
-$exePath = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/OnlyWinget.exe"
+$exePath = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe"
 
 if ($Build) {
     $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'

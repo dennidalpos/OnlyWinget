@@ -18,7 +18,10 @@ public sealed class WingetPackageSearchService(
         {
             "search",
             request.Query,
-            "--accept-source-agreements"
+            "--count",
+            "1000",
+            "--accept-source-agreements",
+            "--disable-interactivity"
         };
 
         if (!string.IsNullOrWhiteSpace(request.Source))
@@ -39,14 +42,16 @@ public sealed class WingetPackageSearchService(
         }
 
         var rows = tableParser.Parse(result.StandardOutput)
-            .Select(ToSearchResult)
+            .Select(row => ToSearchResult(row, request.Source))
             .Where(searchResult => searchResult is not null)
             .Cast<PackageSearchResult>()
             .ToArray();
         return WingetOperationOutcome<PackageSearchResult>.Success(rows, rawOutput);
     }
 
-    private static PackageSearchResult? ToSearchResult(IReadOnlyDictionary<string, string> row)
+    private static PackageSearchResult? ToSearchResult(
+        IReadOnlyDictionary<string, string> row,
+        string? requestedSource)
     {
         if (!TryGetAny(row, out var id, "Id") || string.IsNullOrWhiteSpace(id))
         {
@@ -59,7 +64,7 @@ public sealed class WingetPackageSearchService(
         TryGetAny(row, out var source, "Source", "Origine");
 
         return new PackageSearchResult(
-            new PackageIdentity(id, source),
+            new PackageIdentity(id, string.IsNullOrWhiteSpace(source) ? requestedSource : source),
             string.IsNullOrWhiteSpace(name) ? id : name,
             EmptyToNull(version),
             EmptyToNull(match));

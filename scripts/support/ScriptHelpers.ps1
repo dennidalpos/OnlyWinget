@@ -190,10 +190,10 @@ function Enter-InteractiveModeIfNoParameter {
 
 function Install-WindowsAppRuntimeRedist {
     param(
-        [string]$WindowsAppSdkVersion,
-        [ValidateSet('x86', 'x64')]
-        [string]$Architecture
+        [string]$WindowsAppSdkVersion
     )
+
+    $architecture = 'x64'
 
     if ($env:ONLYWINGET_SKIP_AUTO_INSTALL -eq '1') {
         throw "Windows App Runtime redist $WindowsAppSdkVersion mancante. Download automatico disabilitato da ONLYWINGET_SKIP_AUTO_INSTALL=1."
@@ -210,10 +210,10 @@ function Install-WindowsAppRuntimeRedist {
     $zipPath = Join-Path $dependencyRoot "Microsoft.WindowsAppRuntime.Redist.$WindowsAppSdkVersion.zip"
 
     New-Item -ItemType Directory -Path $dependencyRoot -Force | Out-Null
-    Write-Host "Windows App Runtime redist $WindowsAppSdkVersion ($Architecture): cache $dependencyRoot" -ForegroundColor Cyan
+    Write-Host "Windows App Runtime redist $WindowsAppSdkVersion ($architecture): cache $dependencyRoot" -ForegroundColor Cyan
 
     if (Test-Path -LiteralPath $extractRoot) {
-        $existingInstaller = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File -ErrorAction SilentlyContinue |
+        $existingInstaller = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$architecture.exe" -File -ErrorAction SilentlyContinue |
             Select-Object -First 1
         if ($null -ne $existingInstaller) {
             Write-Host "Uso redist in cache: $($existingInstaller.FullName)" -ForegroundColor Green
@@ -263,7 +263,7 @@ function Install-WindowsAppRuntimeRedist {
 
     Write-Host "Estrazione Windows App Runtime redist: $extractRoot" -ForegroundColor Cyan
     Expand-Archive -LiteralPath $zipPath -DestinationPath $extractRoot -Force
-    $installer = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File |
+    $installer = Get-ChildItem -Path $extractRoot -Recurse -Filter "WindowsAppRuntimeInstall-$architecture.exe" -File |
         Select-Object -First 1
     if ($null -eq $installer) {
         $installer = Get-ChildItem -Path $extractRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File |
@@ -271,10 +271,10 @@ function Install-WindowsAppRuntimeRedist {
     }
 
     if ($null -eq $installer) {
-        throw "WindowsAppRuntimeInstall-$Architecture.exe non trovato nel redist $WindowsAppSdkVersion."
+        throw "WindowsAppRuntimeInstall-$architecture.exe non trovato nel redist $WindowsAppSdkVersion."
     }
 
-    Write-Host "Redist risolto ($Architecture): $($installer.FullName)" -ForegroundColor Green
+    Write-Host "Redist risolto ($architecture): $($installer.FullName)" -ForegroundColor Green
     return $installer.FullName
 }
 

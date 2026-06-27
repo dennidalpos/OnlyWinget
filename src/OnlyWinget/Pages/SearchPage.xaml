@@ -1,7 +1,8 @@
 <Page
     x:Class="OnlyWinget.Pages.SearchPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:presentation="using:OnlyWinget.Application.Presentation">
     <Grid x:Name="PageContent" MaxWidth="1440" Padding="28" RowSpacing="20" HorizontalAlignment="Stretch">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
@@ -43,28 +44,29 @@
                     <StackPanel x:Name="ResultsHeader" Style="{StaticResource ActionBarStyle}" Spacing="10">
                         <TextBlock x:Name="ResultsSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
                         <CheckBox x:Name="SelectAllResultsBox" Click="OnToggleAllResults" VerticalAlignment="Center" AutomationProperties.AutomationId="SearchSelectAllCheckBox" />
-                        <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
+                        <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SearchLoadingRing" AutomationProperties.Name="Searching packages" />
                         <Button x:Name="AddSelectedButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSelected" AutomationProperties.AutomationId="SearchAddSelectedButton" />
                     </StackPanel>
                     <ListView x:Name="ResultList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SearchResultList">
                         <ListView.ItemTemplate>
-                            <DataTemplate>
+                            <DataTemplate x:DataType="presentation:SearchResultRow">
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <CheckBox
-                                        AutomationProperties.AutomationId="{Binding PackageId}"
-                                        AutomationProperties.Name="{Binding Name}"
-                                        IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                        AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
+                                        AutomationProperties.Name="{x:Bind Name, Mode=OneTime}"
+                                        IsChecked="{x:Bind IsSelected, Mode=OneTime}"
                                         Click="OnResultSelectionClick"
                                         VerticalAlignment="Top" />
                                     <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{Binding Name}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                        <TextBlock Text="{Binding PackageId}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
                                         <StackPanel Spacing="3">
-                                            <TextBlock Text="{Binding Version}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            <TextBlock Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                            <TextBlock Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                            <TextBlock Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                            <TextBlock Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Match}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{x:Bind Match, Mode=OneTime}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

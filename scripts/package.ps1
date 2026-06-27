@@ -5,8 +5,6 @@ param(
     [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [switch]$NoRestore,
     [switch]$StopRunningInstance,
-    [ValidateSet('x86', 'x64', 'All')]
-    [string]$Architecture = 'All',
     [switch]$SkipBundle,
     [switch]$NonInteractive
 )
@@ -38,7 +36,6 @@ $upgradeCode = '{B6E2D6FC-56ED-4A5C-A766-01F3FE71D7E6}'
 $bundleUpgradeCode = '{A34AF980-F5F1-4E4D-8124-8DC5E889C74D}'
 $builtMsiPaths = @{}
 $suppressedValidationIces = @('ICE61')
-$resolvedWindowsAppRuntimeInstallerX86Path = $null
 $resolvedWindowsAppRuntimeInstallerX64Path = $null
 $attemptedWixInstall = $false
 
@@ -186,10 +183,10 @@ function Get-WindowsAppSdkVersion {
 function Resolve-WindowsAppRuntimeInstaller {
     param(
         [string]$ExplicitPath,
-        [string]$WindowsAppSdkVersion,
-        [ValidateSet('x86', 'x64')]
-        [string]$Architecture
+        [string]$WindowsAppSdkVersion
     )
+
+    $architecture = 'x64'
 
     if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
         Assert-Path -Path $ExplicitPath -Description 'Windows App Runtime installer'
@@ -213,7 +210,7 @@ function Resolve-WindowsAppRuntimeInstaller {
                 continue
             }
 
-            $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File -ErrorAction SilentlyContinue |
+            $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter "WindowsAppRuntimeInstall-$architecture.exe" -File -ErrorAction SilentlyContinue |
                 Select-Object -First 1
             if ($null -eq $candidate) {
                 $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
@@ -232,7 +229,7 @@ function Resolve-WindowsAppRuntimeInstaller {
                 continue
             }
 
-            $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter "WindowsAppRuntimeInstall-$Architecture.exe" -File -ErrorAction SilentlyContinue |
+            $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter "WindowsAppRuntimeInstall-$architecture.exe" -File -ErrorAction SilentlyContinue |
                 Sort-Object FullName -Descending |
                 Select-Object -First 1
             if ($null -eq $candidate) {
@@ -246,7 +243,7 @@ function Resolve-WindowsAppRuntimeInstaller {
         }
     }
 
-    return Install-WindowsAppRuntimeRedist -WindowsAppSdkVersion $WindowsAppSdkVersion -Architecture $Architecture
+    return Install-WindowsAppRuntimeRedist -WindowsAppSdkVersion $WindowsAppSdkVersion
 }
 
 function Convert-ToInstallerVersion {
@@ -292,15 +289,6 @@ function Reset-Directory {
     New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
 }
 
-function Get-RuntimeIdentifier {
-    param(
-        [ValidateSet('x86', 'x64')]
-        [string]$MsiArchitecture
-    )
-
-    return "win-$MsiArchitecture"
-}
-
 function Copy-WinUiPublishResource {
     param(
         [string]$RuntimeIdentifier,
@@ -331,21 +319,15 @@ function Copy-WinUiPublishResource {
     }
 }
 
-function Invoke-ArchitectureMsi {
-    param(
-        [ValidateSet('x86', 'x64')]
-        [string]$MsiArchitecture
-    )
-
-    $runtimeIdentifier = Get-RuntimeIdentifier -MsiArchitecture $MsiArchitecture
+function Invoke-X64Msi {
+    $runtimeIdentifier = 'win-x64'
     $architectureStagingRoot = Join-Path $stagingRoot $runtimeIdentifier
     $publishDir = Join-Path $architectureStagingRoot 'publish'
     $wixObjDir = Join-Path $architectureStagingRoot 'wixobj'
     $harvestFilePath = Join-Path $architectureStagingRoot 'OnlyWinget.Harvest.wxs'
     $setupObjectPath = Join-Path $wixObjDir 'OnlyWinget.Setup.wixobj'
     $harvestObjectPath = Join-Path $wixObjDir 'OnlyWinget.Harvest.wixobj'
-    $msiFilePath = Join-Path $msiOutputDir "OnlyWinget-$installerVersion-$MsiArchitecture.msi"
-    $componentWin64 = if ($MsiArchitecture -eq 'x64') { 'yes' } else { 'no' }
+    $msiFilePath = Join-Path $msiOutputDir "OnlyWinget-$installerVersion-x64.msi"
 
     Reset-Directory -Path $architectureStagingRoot
     New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
@@ -355,7 +337,7 @@ function Invoke-ArchitectureMsi {
     if (-not $NoRestore) {
         dotnet restore $projectPath --locked-mode
         if ($LASTEXITCODE -ne 0) {
-            throw "dotnet restore per il packaging $MsiArchitecture fallito."
+            throw 'dotnet restore per il packaging x64 fallito.'
         }
     }
 
@@ -381,11 +363,11 @@ function Invoke-ArchitectureMsi {
 
     dotnet @publishArgs
     if ($LASTEXITCODE -ne 0) {
-        throw "dotnet publish $MsiArchitecture fallito."
+        throw 'dotnet publish x64 fallito.'
     }
 
     $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
-    Assert-Path -Path $publishedExePath -Description "Published executable $MsiArchitecture"
+    Assert-Path -Path $publishedExePath -Description 'Published executable x64'
     Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
 
     & $heatExe dir $publishDir `
@@ -401,7 +383,7 @@ function Invoke-ArchitectureMsi {
         -out $harvestFilePath
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Harvest WiX $MsiArchitecture fallito."
+        throw 'Harvest WiX x64 fallito.'
     }
 
     [xml]$harvestXml = Get-Content -Path $harvestFilePath
@@ -409,18 +391,18 @@ function Invoke-ArchitectureMsi {
     $namespaceManager.AddNamespace('wix', 'http://schemas.microsoft.com/wix/2006/wi')
 
     foreach ($componentNode in $harvestXml.SelectNodes('//wix:Component', $namespaceManager)) {
-        $null = $componentNode.SetAttribute('Win64', $componentWin64)
+        $null = $componentNode.SetAttribute('Win64', 'yes')
     }
 
     $harvestXml.Save($harvestFilePath)
 
     & $candleExe `
         -nologo `
-        -arch $MsiArchitecture `
+        -arch x64 `
         -ext $uiExtension `
         "-dPublishDir=$publishDir" `
         "-dProductVersion=$installerVersion" `
-        "-dPlatform=$MsiArchitecture" `
+        "-dPlatform=x64" `
         "-dAppIconPath=$appIconPath" `
         "-dLicenseRtfPath=$licenseRtfPath" `
         "-dInstallerDialogBmpPath=$installerDialogBmpPath" `
@@ -431,7 +413,7 @@ function Invoke-ArchitectureMsi {
         $harvestFilePath
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Compilazione WiX $MsiArchitecture fallita."
+        throw 'Compilazione WiX x64 fallita.'
     }
 
     & $lightExe `
@@ -443,11 +425,11 @@ function Invoke-ArchitectureMsi {
         $harvestObjectPath
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Link WiX $MsiArchitecture fallito."
+        throw 'Link WiX x64 fallito.'
     }
 
-    $builtMsiPaths[$MsiArchitecture] = $msiFilePath
-    Write-Host "MSI $MsiArchitecture generato: $msiFilePath" -ForegroundColor Green
+    $builtMsiPaths['x64'] = $msiFilePath
+    Write-Host "MSI x64 generato: $msiFilePath" -ForegroundColor Green
 }
 
 function Invoke-UnifiedSetup {
@@ -455,8 +437,8 @@ function Invoke-UnifiedSetup {
     $bundleObjectPath = Join-Path $bundleObjDir 'OnlyWinget.Bundle.wixobj'
     $setupFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-setup.exe"
 
-    if (-not $builtMsiPaths.ContainsKey('x86') -or -not $builtMsiPaths.ContainsKey('x64')) {
-        throw 'Il setup unificato richiede sia MSI x86 sia MSI x64. Usa -Architecture All.'
+    if (-not $builtMsiPaths.ContainsKey('x64')) {
+        throw 'Il setup x64 richiede il relativo MSI.'
     }
 
     Reset-Directory -Path $bundleObjDir
@@ -472,9 +454,7 @@ function Invoke-UnifiedSetup {
         "-dLicenseRtfPath=$licenseRtfPath" `
         "-dBundleThemePath=$bundleThemePath" `
         "-dBundleThemeLocalizationPath=$bundleThemeLocalizationPath" `
-        "-dX86MsiPath=$($builtMsiPaths['x86'])" `
         "-dX64MsiPath=$($builtMsiPaths['x64'])" `
-        "-dWindowsAppRuntimeInstallerX86Path=$resolvedWindowsAppRuntimeInstallerX86Path" `
         "-dWindowsAppRuntimeInstallerX64Path=$resolvedWindowsAppRuntimeInstallerX64Path" `
         "-dBundleUpgradeCode=$bundleUpgradeCode" `
         -out $bundleObjDir\ `
@@ -496,6 +476,53 @@ function Invoke-UnifiedSetup {
     }
 
     Write-Host "Setup unificato generato: $setupFilePath" -ForegroundColor Green
+}
+
+function Invoke-PortablePackage {
+    $runtimeIdentifier = 'win-x64'
+    $portableStagingRoot = Join-Path $stagingRoot 'portable-win-x64'
+    $publishDir = Join-Path $portableStagingRoot 'OnlyWinget'
+    $portableFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-portable-x64.zip"
+
+    Reset-Directory -Path $portableStagingRoot
+    New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
+
+    $publishArgs = @(
+        'publish'
+        $projectPath
+        '-c'
+        $Configuration
+        '-f'
+        'net10.0-windows10.0.17763.0'
+        '-r'
+        $runtimeIdentifier
+        '--self-contained'
+        'true'
+        '--output'
+        $publishDir
+        '--no-restore'
+        '/p:UseAppHost=true'
+        '/p:WindowsAppSDKSelfContained=true'
+        '/p:DebugSymbols=false'
+        '/p:DebugType=None'
+    )
+
+    dotnet @publishArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw 'dotnet publish portable x64 fallito.'
+    }
+
+    Assert-Path -Path (Join-Path $publishDir 'OnlyWinget.exe') -Description 'Portable x64 executable'
+    Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
+
+    if (Test-Path -LiteralPath $portableFilePath) {
+        Remove-Item -LiteralPath $portableFilePath -Force -ErrorAction Stop
+    }
+
+    Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $portableFilePath -CompressionLevel Optimal
+    Assert-Path -Path $portableFilePath -Description 'Portable x64 archive'
+    Write-Host "Portable x64 generata: $portableFilePath" -ForegroundColor Green
 }
 
 Assert-Command -Name 'dotnet'
@@ -529,14 +556,9 @@ $installerVersion = Convert-ToInstallerVersion -RawVersion $rawVersion
 
 if (-not $SkipBundle) {
     $windowsAppSdkVersion = Get-WindowsAppSdkVersion
-    $resolvedWindowsAppRuntimeInstallerX86Path = Resolve-WindowsAppRuntimeInstaller `
-        -ExplicitPath $WindowsAppRuntimeInstallerPath `
-        -WindowsAppSdkVersion $windowsAppSdkVersion `
-        -Architecture 'x86'
     $resolvedWindowsAppRuntimeInstallerX64Path = Resolve-WindowsAppRuntimeInstaller `
         -ExplicitPath $WindowsAppRuntimeInstallerPath `
-        -WindowsAppSdkVersion $windowsAppSdkVersion `
-        -Architecture 'x64'
+        -WindowsAppSdkVersion $windowsAppSdkVersion
 }
 
 if ($StopRunningInstance) {
@@ -548,11 +570,8 @@ if ($StopRunningInstance) {
     }
 }
 
-$architecturesToBuild = if ($Architecture -eq 'All') { @('x86', 'x64') } else { @($Architecture) }
-
-foreach ($architectureToBuild in $architecturesToBuild) {
-    Invoke-ArchitectureMsi -MsiArchitecture $architectureToBuild
-}
+Invoke-X64Msi
+Invoke-PortablePackage
 
 if (-not $SkipBundle) {
     Invoke-UnifiedSetup

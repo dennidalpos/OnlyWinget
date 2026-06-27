@@ -240,6 +240,67 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task SearchKeepsSuccessfulResultsWhenAnotherSourceFails()
+    {
+        var sources = new StubSourceService(
+            new WingetSource("msstore", "https://store", false, WingetSourceStatus.Available),
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+        var search = new StubPackageSearch(
+            new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.54.0", null));
+        search.FailingSources.Add("msstore");
+        var app = CreateApplication(search: search, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        var result = await app.SearchAsync("git", CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Git.Git", Assert.Single(app.State.SearchResults).Package.Id);
+        Assert.Contains(app.State.Activity, entry => entry.Title == "Some sources could not be searched");
+    }
+
+    [Fact]
+    public async Task StartupSkipsSourcesWhenWingetIsUnavailable()
+    {
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+        var app = CreateApplication(
+            capabilities: new SystemCapabilities(true, false, true, true, null),
+            sources: sources);
+
+        await new ApplicationStartupOrchestrator(app).InitializeAsync(CancellationToken.None);
+
+        Assert.Empty(sources.Calls);
+    }
+
+    [Fact]
+    public async Task StartupRefreshesFinalSourceListWhenSourceUpdateFails()
+    {
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available))
+        {
+            FailUpdate = true
+        };
+        var app = CreateApplication(sources: sources);
+
+        await new ApplicationStartupOrchestrator(app).InitializeAsync(CancellationToken.None);
+
+        Assert.Equal(["update", "list"], sources.Calls);
+        Assert.Equal("winget", Assert.Single(app.State.Sources).Name);
+    }
+
+    [Fact]
+    public async Task StartupHonorsCancellationBetweenStages()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var app = CreateApplication();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new ApplicationStartupOrchestrator(app).InitializeAsync(cancellation.Token));
+    }
+
+    [Fact]
     public async Task ManualPackageIsNotAddedWhenRemoteValidationFails()
     {
         var resolver = new StubPackageResolver(
@@ -261,6 +322,73 @@ public sealed class OnlyWingetApplicationTests
 
         Assert.False(result.Succeeded);
         Assert.Empty(app.State.ActivePreset?.Packages ?? []);
+    }
+
+    [Fact]
+    public async Task PackageWithoutSourceIsRejectedWhenMultipleSourcesResolveIt()
+    {
+        var sources = new StubSourceService(
+            new WingetSource("msstore", "https://store", false, WingetSourceStatus.Available),
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Shared.App", "msstore"), "Shared", "1", null, true, null),
+            new PackageResolution(new PackageIdentity("Shared.App", "winget"), "Shared", "1", null, true, null));
+        var app = CreateApplication(sources: sources, resolver: resolver);
+        app.AddPreset("Default");
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+
+        var result = await app.AddPackageToActivePresetAsync(new PackageIdentity("Shared.App"), CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("multiple", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(app.State.ActivePreset?.Packages ?? []);
+    }
+
+    [Fact]
+    public async Task StaleSearchSelectionFromDisabledSourceDoesNotMutatePreset()
+    {
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+        var search = new StubPackageSearch(
+            new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2", null));
+        var app = CreateApplication(search: search, sources: sources);
+        app.AddPreset("Default");
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.SearchAsync("git", CancellationToken.None);
+        app.ToggleAllSearchResults();
+        await app.SetSourceEnabledAsync("winget", false, CancellationToken.None);
+
+        var result = await app.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(app.State.ActivePreset?.Packages ?? []);
+    }
+
+    [Fact]
+    public async Task ImportWithMixedValidAndInvalidPackagesHasNoPartialMutation()
+    {
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Valid.App", "winget"), "Valid", "1", null, true, null),
+            new PackageResolution(
+                new PackageIdentity("Invalid.App", "winget"),
+                null,
+                null,
+                null,
+                false,
+                new ClassifiedWingetError(WingetErrorKind.NotFound, "Package was not found.")));
+        var app = CreateApplication(resolver: resolver);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        const string json = """
+            {"format":"onlywinget.preset.v1","preset":{"name":"Mixed","packages":[{"id":"Valid.App","source":"winget"},{"id":"Invalid.App","source":"winget"}]}}
+            """;
+
+        var result = await app.ImportPresetAsync(json, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(app.State.Workspace.Presets);
     }
 
     private static OnlyWingetApplication CreateApplication(
@@ -322,11 +450,20 @@ public sealed class OnlyWingetApplicationTests
     {
         public List<PackageSearchRequest> Requests { get; } = [];
 
+        public HashSet<string> FailingSources { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         public Task<WingetOperationOutcome<PackageSearchResult>> SearchAsync(
             PackageSearchRequest request,
             CancellationToken cancellationToken)
         {
             Requests.Add(request);
+            if (request.Source is not null && FailingSources.Contains(request.Source))
+            {
+                return Task.FromResult(WingetOperationOutcome<PackageSearchResult>.Failure(
+                    new ClassifiedWingetError(WingetErrorKind.SourceUnavailable, "Source unavailable."),
+                    string.Empty));
+            }
+
             return Task.FromResult(WingetOperationOutcome<PackageSearchResult>.Success(results, string.Empty));
         }
     }
@@ -336,7 +473,9 @@ public sealed class OnlyWingetApplicationTests
         public Task<PackageResolution> ResolveAsync(PackageIdentity package, CancellationToken cancellationToken)
         {
             var resolution = resolutions.FirstOrDefault(candidate =>
-                string.Equals(candidate.Package.Id, package.Id, StringComparison.OrdinalIgnoreCase));
+                string.Equals(candidate.Package.Id, package.Id, StringComparison.OrdinalIgnoreCase) &&
+                (package.Source is null || candidate.Package.Source is null ||
+                    string.Equals(candidate.Package.Source, package.Source, StringComparison.OrdinalIgnoreCase)));
             return Task.FromResult(resolution ?? new PackageResolution(package, null, null, null, true, null));
         }
     }
@@ -370,11 +509,25 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class StubSourceService(params WingetSource[] sources) : IWingetSourceService
     {
-        public Task<WingetOperationOutcome<WingetSource>> ListSourcesAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+        public bool FailUpdate { get; init; }
 
-        public Task<WingetOperationOutcome<WingetSource>> UpdateSourcesAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+        public List<string> Calls { get; } = [];
+
+        public Task<WingetOperationOutcome<WingetSource>> ListSourcesAsync(CancellationToken cancellationToken)
+        {
+            Calls.Add("list");
+            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+        }
+
+        public Task<WingetOperationOutcome<WingetSource>> UpdateSourcesAsync(CancellationToken cancellationToken)
+        {
+            Calls.Add("update");
+            return Task.FromResult(FailUpdate
+                ? WingetOperationOutcome<WingetSource>.Failure(
+                    new ClassifiedWingetError(WingetErrorKind.SourceUnavailable, "Update failed."),
+                    string.Empty)
+                : WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+        }
 
         public Task<WingetOperationOutcome<WingetSource>> AddSourceAsync(
             string name,

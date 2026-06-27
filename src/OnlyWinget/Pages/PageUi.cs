@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System.Collections.ObjectModel;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Selection;
 
@@ -44,9 +45,26 @@ internal static class PageUi
 
     public static async Task RunWorkflowAsync(Func<Task> action)
     {
-        var operation = action();
-        App.NotifyWorkflowChanged();
-        await operation;
-        App.NotifyWorkflowChanged();
+        await action();
+    }
+
+    public static void RefreshOnUiThread(Page page, Action refresh)
+    {
+        if (page.DispatcherQueue.HasThreadAccess)
+        {
+            refresh();
+            return;
+        }
+
+        _ = page.DispatcherQueue.TryEnqueue(() => refresh());
+    }
+
+    public static void ReplaceItems<T>(ObservableCollection<T> target, IEnumerable<T> items)
+    {
+        target.Clear();
+        foreach (var item in items)
+        {
+            target.Add(item);
+        }
     }
 }

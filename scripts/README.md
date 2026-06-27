@@ -26,9 +26,10 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `lint.ps1` | Direct PowerShell lint action; without parameters opens the menu. |
 | `typecheck.ps1` | Direct warnings-as-errors build action; without parameters opens the menu. |
 | `test.ps1` | Direct xUnit action; without parameters opens the menu. |
+| `ui-test.ps1` | Repeatable WinApp UI navigation, accessibility, picker, source-toggle, scrolling, and responsive-layout checks against a running app PID. |
 | `build.ps1` | Direct WinUI build action; without parameters opens the menu. |
 | `dev.ps1` | Direct app launch action; without parameters opens the menu. |
-| `package.ps1` | Direct MSI/setup packaging action; without parameters opens the menu. |
+| `package.ps1` | Direct x64 MSI/setup and self-contained portable ZIP packaging action; without parameters opens the menu. |
 | `check.ps1` | Direct full gate action; without parameters opens the menu. |
 | `clean.ps1` | Direct guarded cleanup action; without parameters opens the menu. |
 | `validate-installer-lifecycle.ps1` | Direct elevated clean-host lifecycle validation; without parameters opens the menu. |

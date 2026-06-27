@@ -1,35 +1,40 @@
-# AGENTS.md
+# AGENTS.md — OnlyWinget
 
-Repository instructions for Codex in OnlyWinget.
+## Product contract
 
-## Project Contract
+- Work from the repository root on Windows with PowerShell.
+- Target WinUI 3, .NET 10 LTS, stable Windows App SDK, and Windows 10 build 17763 or newer.
+- Ship x64 only: WiX Burn/MSI installer plus a self-contained portable ZIP. Keep the installer’s Windows App Runtime x64 chain and the portable package’s `WindowsAppSDKSelfContained` publish.
+- Treat the product as greenfield. Remove obsolete x86, pre-WinUI, compatibility, migration, dead-code, and historical scaffolding instead of extending it.
+- Preserve English and Italian visible strings.
 
-- Environment: Windows, PowerShell, run commands from the repository root.
-- Treat OnlyWinget as greenfield unless a user request says otherwise.
-- Product target: WinUI 3 desktop app on .NET 10 LTS, Windows App SDK stable, Windows 10 1809 build 17763 minimum.
-- Installer target: keep WiX Burn/MSI packaging and chain the Windows App Runtime redistributable required by `Microsoft.WindowsAppSDK`.
-- Architecture target: Domain, Application, Infrastructure, and WinUI Presentation layers with one-way dependencies:
+## Architecture
+
+Dependencies remain one-way:
 
 ```text
 WinUI Presentation -> Application -> Domain
 Infrastructure -----> Application -> Domain
 ```
 
-- Setup sources live in `src/OnlyWinget.Setup` and are packaged by `scripts/package.ps1`; do not add a WiX project to the solution unless it builds cleanly in the current SDK workflow.
+- Keep OS, API, PowerShell, winget, and Windows Update availability in `ISystemCapabilityService`.
+- Guard external processes and COM calls, return structured failures, and keep actionable errors visible.
+- Application state changes are instance-scoped through `OnlyWingetApplication.StateChanged`; do not add global static refresh events or manual page refresh broadcasts.
+- Keep page item sources stable and update their collections. Prefer typed `x:Bind` for immutable presentation rows.
+- Keep Windows Update scans explicit. Do not scan on page load or require elevation for read-only discovery.
+- Preserve the workspace schema and preset exchange format unless the request explicitly changes them.
+- Keep batch selection in reusable state logic; select-all must handle checked, unchecked, and mixed states.
 
-## Current Design Rules
+## Packaging and setup
 
-- Centralize OS/API/tool availability in the system capability service. Do not scatter direct checks for OS build, `winget`, PowerShell, or Windows Update COM across UI or feature code.
-- Guard feature execution before invoking external processes or Windows APIs. Return structured failures and user-visible fallback messages instead of crashing.
-- Keep Windows Update explicit: do not auto-scan on page load.
-- Preserve the current workspace schema and preset exchange format. Do not add migrations, compatibility shims, or transitional code unless explicitly requested.
-- Preserve Italian and English visible UI strings.
-- Keep batch selection in reusable state logic. Header select-all must work from checked, unchecked, and mixed states.
-- Prefer removing obsolete pre-WinUI compatibility code, dead abstractions, unused types, and historical notes over preserving them.
+- Setup sources: `src/OnlyWinget.Setup`.
+- Packaging entrypoint: `scripts/package.ps1`.
+- Do not add a WiX project to the solution unless it builds in the current SDK workflow.
+- Do not reintroduce x86 or `AnyCPU` artifacts.
 
 ## Backlog
 
-`PROJECT_STATUS.json` is the complete prioritized residual backlog and must stay todo-only JSON:
+`PROJECT_STATUS.json` is the complete, prioritized, residual-only backlog:
 
 ```json
 {
@@ -39,21 +44,18 @@ Infrastructure -----> Application -> Domain
 }
 ```
 
-Keep todos in execution order. Remove completed, obsolete, duplicate, historical, or non-actionable items. Add only real residual blockers discovered by inspection.
+Remove completed, obsolete, duplicate, historical, and non-actionable entries. Keep only verified residual work in execution order. External or manual blockers must name the required environment.
 
 ## Workflow
 
-1. Inspect relevant files and applicable instructions.
-2. Check `git status --short` before edits.
-3. Preserve user work; never overwrite unrelated dirty files.
-4. Make focused changes consistent with the current architecture.
-5. Add or update tests when behavior changes.
-6. Use repository scripts before ad hoc commands.
-7. Before the final response, run `git status --short` and `git ls-files`.
+1. Read applicable instructions and inspect only relevant files.
+2. Run `git status --short`; preserve all existing user changes.
+3. Make the smallest coherent change and add tests for behavior changes.
+4. Use repository scripts, not ad hoc equivalents.
+5. For WinUI changes, build, launch, verify a responsive top-level window, and leave the final verified app running.
+6. Before handoff, run `git status --short` and `git ls-files`.
 
 ## Commands
-
-Use these entrypoints:
 
 ```powershell
 .\scripts\run.ps1 -Task Setup -NonInteractive
@@ -66,14 +68,19 @@ Use these entrypoints:
 .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```
 
-Run live `winget` smoke tests only when explicitly needed and the host has `winget` installed/configured:
+Live discovery tests, when winget and Windows Update are available:
 
 ```powershell
 .\scripts\run.ps1 -Task Test -Configuration Release -RunWingetSmoke -NonInteractive
-.\scripts\run.ps1 -Task Check -Configuration Release -RunWingetSmoke -NonInteractive
 ```
 
-Run installer lifecycle validation only on a clean elevated Windows host:
+UI automation against a running app:
+
+```powershell
+.\scripts\ui-test.ps1 -AppPid <PID> -NonInteractive
+```
+
+Installer lifecycle validation requires a clean elevated x64 Windows host:
 
 ```powershell
 .\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
@@ -81,20 +88,11 @@ Run installer lifecycle validation only on a clean elevated Windows host:
 
 ## Guardrails
 
-- No unrelated refactors, dependencies, migrations, config churn, or broad rewrites.
-- No secrets in source, docs, examples, logs, or status files.
-- Use `.env.example` only when environment configuration must be documented.
-- Use repository-relative paths and cross-platform path APIs in code.
-- Avoid Bash, WSL, GNU-only flags, `/tmp`, `/home`, `chmod`, `sed -i`, and `rm -rf` assumptions.
-- Do not stage, commit, force-push, rewrite history, or run destructive Git commands unless explicitly asked.
+- No unrelated refactors, dependencies, schema migrations, compatibility shims, secrets, or destructive Git commands.
+- Use repository-relative paths in code and PowerShell-compatible commands in documentation.
+- Validate external input and keep persistence writes transactional.
+- Do not stage, commit, push, or rewrite history unless explicitly requested.
 
-## Final Response
+## Handoff
 
-For implementation work, report:
-
-- what changed;
-- files changed;
-- checks run and results;
-- cleanliness result;
-- `PROJECT_STATUS.json` update, if any;
-- remaining risks or manual follow-ups.
+Report changes, files, checks and results, worktree cleanliness, `PROJECT_STATUS.json` changes, and remaining manual or external blockers.

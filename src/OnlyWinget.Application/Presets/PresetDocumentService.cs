@@ -24,12 +24,33 @@ public sealed class PresetDocumentService
             throw new ArgumentException("Preset document is required.", nameof(json));
         }
 
-        var document = JsonSerializer.Deserialize<OnlyWingetPresetDocument>(json, JsonOptions)
-            ?? throw new InvalidOperationException("Preset document is invalid.");
+        OnlyWingetPresetDocument document;
+        try
+        {
+            document = JsonSerializer.Deserialize<OnlyWingetPresetDocument>(json, JsonOptions)
+                ?? throw new InvalidOperationException("Preset document is invalid.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException("Preset document is invalid.", exception);
+        }
 
         if (!string.Equals(document.Format, OnlyWingetPresetDocument.CurrentFormat, StringComparison.Ordinal))
         {
             throw new NotSupportedException("Only onlywinget.preset.v1 documents are supported.");
+        }
+
+        if (document.Preset is null)
+        {
+            throw new InvalidOperationException("Preset document does not contain a preset.");
+        }
+
+        var duplicate = document.Preset.Packages
+            .GroupBy(package => $"{package.Source?.ToUpperInvariant()}|{package.Id.ToUpperInvariant()}", StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new InvalidOperationException($"Preset contains duplicate package '{duplicate.First().Id}'.");
         }
 
         return document.Preset;

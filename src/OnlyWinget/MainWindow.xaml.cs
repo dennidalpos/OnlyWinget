@@ -3,6 +3,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using OnlyWinget.Application.App;
 using OnlyWinget.Pages;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
@@ -55,30 +56,11 @@ public sealed partial class MainWindow : Window
         RootNavigation.Loaded -= OnLoaded;
         try
         {
-            var load = App.Workflow.LoadWorkspaceAsync(CancellationToken.None);
-            App.NotifyWorkflowChanged();
-            await load;
-            App.NotifyWorkflowChanged();
-
-            var capabilities = App.Workflow.RefreshCapabilitiesAsync(CancellationToken.None);
-            App.NotifyWorkflowChanged();
-            await capabilities;
-            App.NotifyWorkflowChanged();
-
-            if (App.Workflow.State.Capabilities.CanUseWinget)
-            {
-                var refreshSources = App.Workflow.UpdateSourcesAsync(CancellationToken.None);
-                App.NotifyWorkflowChanged();
-                await refreshSources;
-            }
+            await new ApplicationStartupOrchestrator(App.Workflow).InitializeAsync(CancellationToken.None);
         }
         catch (Exception exception)
         {
             AppDiagnostics.WriteException("MainWindow.OnLoaded", exception);
-        }
-        finally
-        {
-            App.NotifyWorkflowChanged();
         }
     }
 
