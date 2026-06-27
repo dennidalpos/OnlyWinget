@@ -4,7 +4,9 @@ namespace OnlyWinget;
 
 public partial class App : Microsoft.UI.Xaml.Application
 {
-    private Microsoft.UI.Xaml.Window? window;
+    private static Microsoft.UI.Xaml.Window? window;
+
+    internal static nint WindowHandle => window is null ? 0 : WinRT.Interop.WindowNative.GetWindowHandle(window);
 
     public static OnlyWingetApplication Workflow { get; } = AppComposition.CreateWorkflow();
 

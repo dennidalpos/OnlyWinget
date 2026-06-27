@@ -6,6 +6,8 @@ namespace OnlyWinget.Pages;
 
 public sealed partial class SourcesPage : Page
 {
+    private bool isRefreshing;
+
     public SourcesPage()
     {
         InitializeComponent();
@@ -29,6 +31,7 @@ public sealed partial class SourcesPage : Page
 
     private void Refresh()
     {
+        isRefreshing = true;
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Sources;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
@@ -46,6 +49,7 @@ public sealed partial class SourcesPage : Page
         PageUi.SetEnabled(AddButton, commands, "sources.add");
         PageUi.SetEnabled(RemoveButton, commands, "sources.remove");
         PageUi.SetEnabled(ResetButton, commands, "sources.reset");
+        isRefreshing = false;
     }
 
     private void ApplyText()
@@ -96,6 +100,17 @@ public sealed partial class SourcesPage : Page
         }
 
         await PageUi.RunWorkflowAsync(() => App.Workflow.ResetSourcesAsync(CancellationToken.None));
+    }
+
+    private async void OnSourceEnabledToggled(object sender, RoutedEventArgs args)
+    {
+        if (isRefreshing || sender is not ToggleSwitch { DataContext: SourceRow row } toggle)
+        {
+            return;
+        }
+
+        await PageUi.RunWorkflowAsync(() =>
+            App.Workflow.SetSourceEnabledAsync(row.Name, toggle.IsOn, CancellationToken.None));
     }
 
     private async Task<bool> ConfirmAsync(string title, string message)

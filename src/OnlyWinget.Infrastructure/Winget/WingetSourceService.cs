@@ -18,7 +18,7 @@ public sealed class WingetSourceService(
     {
         var result = await commandRunner.RunAsync(
                 "winget",
-                ["source", "update", "--accept-source-agreements"],
+                ["source", "update"],
                 cancellationToken)
             .ConfigureAwait(false);
         return CreateOutcome(result, parseSources: false);

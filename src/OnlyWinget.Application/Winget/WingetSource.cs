@@ -4,4 +4,5 @@ public sealed record WingetSource(
     string Name,
     string Argument,
     bool IsExplicit,
-    WingetSourceStatus Status);
+    WingetSourceStatus Status,
+    bool IsEnabled = true);

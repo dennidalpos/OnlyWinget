@@ -1,14 +1,16 @@
 {
   "todos": [
-    "Fix scripts\\check.ps1 so -NonInteractive is forwarded to every nested repository script.",
-    "Manually validate the redesigned WinUI shell at minimum, default, and maximized window sizes in Italian and English.",
-    "Manually validate all seven pages at compact, intermediate, and wide widths in Italian and English and in light and dark themes, including empty, loading, error, mixed-selection, disabled-command, and operation-result states, with no overlap, truncation, or page-level horizontal scrolling.",
-    "Manually validate preset, search, update, safe source refresh/update/add/remove/reset with confirmations, activity, cancellation, and select-all flows on a Windows host with winget installed.",
-    "Manually validate capability-gated Windows Update scan, select-all, selected install, cancellation, and reboot-required reporting on Windows 10 1809 or newer.",
-    "Run winget smoke tests with .\\scripts\\test.ps1 -RunWingetSmoke on a machine with winget installed and configured.",
-    "Manually validate the setup wizard layout and OnlyWinget visibility in Programs and Features after installing the generated bundle.",
-    "Run scripts\\validate-installed-startup.ps1 against the installed app and confirm no new WER/Application Error events for OnlyWinget.exe.",
-    "Run elevated package lifecycle validation on a clean or dedicated Windows host, including install, uninstall, upgrade, winget source update, and startup smoke validation.",
-    "Run the hosted GitHub Actions build-gate workflow for the exact release commit before tagging."
+    "Add repeatable WinApp UI tests for mouse-wheel scrolling, keyboard navigation, source toggles, file-picker cancellation, progress accessibility, and compact, medium, and wide layouts.",
+    "Add startup orchestration tests for source-update ordering, cancellation, unavailable winget, partial update failure, and final list refresh.",
+    "Add transactional file-picker and filesystem failure tests for preset import and export, including malformed, duplicate, cancelled, and unwritable cases.",
+    "Expand package-validation tests for ambiguity across sources, disabled and unavailable sources, stale search results, mixed invalid imports, cancellation, and no-partial-mutation guarantees.",
+    "Resolve and display version and installer architectures for existing workspace packages and Search and Updates rows, including localized unknown and multi-architecture states.",
+    "Add progress parser tests for carriage returns, ANSI sequences, localized phases, malformed percentages, cancellation, multi-package aggregation, and throttling.",
+    "Replace global static workflow refresh events and repeated ItemsSource rebinding with page-scoped observable state and commands, then convert eligible templates to typed x:Bind.",
+    "Complete the accessibility audit for remaining templated and navigation controls, then validate Narrator, high contrast, text scaling, and keyboard-only flows.",
+    "Run live winget smoke tests for source toggles, multi-source search, remote validation, import and export, install, upgrade, uninstall, cancellation, progress, and native winget behavior.",
+    "Manually validate Windows Update software, driver, Microsoft product, superseded, cancellation, failure, and reboot-required flows on Windows 10 build 17763 and current Windows 11.",
+    "Validate the generated setup bundle, installed startup, Programs and Features entry, clean install, upgrade, uninstall, and Windows App Runtime chaining on clean x86 and x64 hosts.",
+    "Run the hosted GitHub Actions build gate for the exact release commit before tagging."
   ]
 }

@@ -10,10 +10,11 @@ internal static class AppComposition
 {
     public static OnlyWingetApplication CreateWorkflow()
     {
-        var runner = new ProcessWingetCommandRunner();
+        var processRunner = new ProcessExternalProcessRunner();
+        var runner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
         var parser = new WingetTableParser();
         var classifier = new WingetErrorClassifier();
-        var capabilityService = new SystemCapabilityService(runner);
+        var capabilityService = new SystemCapabilityService(processRunner);
 
         return new OnlyWingetApplication(
             new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath),
@@ -21,8 +22,9 @@ internal static class AppComposition
             new WingetPackageSearchService(runner, parser, classifier),
             new WingetPackageResolver(runner, classifier),
             new WingetUpdateLoader(runner, parser, classifier),
-            new PowerShellWindowsUpdateService(runner, capabilityService),
+            new PowerShellWindowsUpdateService(processRunner, capabilityService),
             new WingetSourceService(runner, parser, classifier),
-            new WingetOperationExecutor(runner, new WingetCommandBuilder(), classifier));
+            new WingetOperationExecutor(runner, new WingetCommandBuilder(), classifier),
+            sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath));
     }
 }

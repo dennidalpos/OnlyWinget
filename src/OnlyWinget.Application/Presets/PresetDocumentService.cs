@@ -34,4 +34,13 @@ public sealed class PresetDocumentService
 
         return document.Preset;
     }
+
+    public static string GetExportFileName(string presetName)
+    {
+        var normalized = new string(presetName.Trim()
+            .Select(character => Path.GetInvalidFileNameChars().Contains(character) ? '-' : character)
+            .ToArray())
+            .Trim('.', ' ');
+        return $"{(string.IsNullOrWhiteSpace(normalized) ? "preset" : normalized)}.onlywinget.json";
+    }
 }

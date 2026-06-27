@@ -1,70 +1,44 @@
-using System.Diagnostics;
-using System.ComponentModel;
+using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
 
 namespace OnlyWinget.Infrastructure.Winget;
 
-public sealed class ProcessWingetCommandRunner : IWingetCommandRunner
+public sealed class ProcessWingetCommandRunner(
+    IExternalProcessRunner processRunner,
+    WingetProgressParser progressParser) : IWingetCommandRunner
 {
+    public ProcessWingetCommandRunner()
+        : this(new global::OnlyWinget.Infrastructure.System.ProcessExternalProcessRunner(), new WingetProgressParser())
+    {
+    }
+
     public async Task<WingetCommandResult> RunAsync(
         string command,
         IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IProgress<WingetProgress>? progress = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(command);
-        ArgumentNullException.ThrowIfNull(arguments);
-
-        using var process = new Process();
-        process.StartInfo.FileName = command;
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.CreateNoWindow = true;
-        process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
-
-        foreach (var argument in arguments)
-        {
-            process.StartInfo.ArgumentList.Add(argument);
-        }
-
-        try
-        {
-            process.Start();
-        }
-        catch (Win32Exception exception)
-        {
-            return new WingetCommandResult(9009, string.Empty, exception.Message);
-        }
-
-        var standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var standardError = process.StandardError.ReadToEndAsync(cancellationToken);
-
-        try
-        {
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            TryKill(process);
-            throw;
-        }
-
-        return new WingetCommandResult(
-            process.ExitCode,
-            await standardOutput.ConfigureAwait(false),
-            await standardError.ConfigureAwait(false));
+        progress?.Report(new WingetProgress(WingetProgressPhase.Starting, 0, null));
+        var lineProgress = progress is null
+            ? null
+            : new InlineProgress<string>(line =>
+            {
+                if (progressParser.Parse(line) is { } parsed)
+                {
+                    progress.Report(parsed);
+                }
+            });
+        var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress)
+            .ConfigureAwait(false);
+        progress?.Report(new WingetProgress(
+            result.Succeeded ? WingetProgressPhase.Completed : WingetProgressPhase.Failed,
+            result.Succeeded ? 100 : null,
+            null));
+        return new WingetCommandResult(result.ExitCode, result.StandardOutput, result.StandardError);
     }
 
-    private static void TryKill(Process process)
+    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
     {
-        try
-        {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-            }
-        }
-        catch (InvalidOperationException)
-        {
-        }
+        public void Report(T value) => report(value);
     }
 }

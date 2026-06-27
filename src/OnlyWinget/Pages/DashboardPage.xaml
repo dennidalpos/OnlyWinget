@@ -73,7 +73,7 @@
                 <Grid RowSpacing="10">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <TextBlock x:Name="RecentActivityText" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                    <ListView x:Name="ActivityList" Grid.Row="1" MaxHeight="420" ItemContainerStyle="{StaticResource ListRowContainerStyle}">
+                    <ListView x:Name="ActivityList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Spacing="3">

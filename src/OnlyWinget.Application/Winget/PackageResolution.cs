@@ -8,4 +8,5 @@ public sealed record PackageResolution(
     string? Version,
     string? Publisher,
     bool IsResolved,
-    ClassifiedWingetError? Error);
+    ClassifiedWingetError? Error,
+    IReadOnlyList<string>? Architectures = null);

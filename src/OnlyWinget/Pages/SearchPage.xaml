@@ -2,8 +2,7 @@
     x:Class="OnlyWinget.Pages.SearchPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <Grid x:Name="PageContent" MaxWidth="1440" Padding="28" RowSpacing="20" HorizontalAlignment="Stretch">
+    <Grid x:Name="PageContent" MaxWidth="1440" Padding="28" RowSpacing="20" HorizontalAlignment="Stretch">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
                     <VisualState x:Name="Wide"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1100" /></VisualState.StateTriggers></VisualState>
@@ -23,7 +22,7 @@
                     </VisualState>
                 </VisualStateGroup>
             </VisualStateManager.VisualStateGroups>
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 
             <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
 
@@ -32,28 +31,28 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <TextBlock x:Name="SearchSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                     <StackPanel x:Name="SearchForm" Grid.Row="1" Spacing="8">
-                        <AutoSuggestBox x:Name="QueryBox" QuerySubmitted="OnQuerySubmitted" />
-                        <TextBox x:Name="SourceBox" Style="{StaticResource FormTextBoxStyle}" />
-                        <Button x:Name="SearchButton" Style="{StaticResource SearchPrimaryButtonStyle}" Click="OnSearch" />
+                        <AutoSuggestBox x:Name="QueryBox" QuerySubmitted="OnQuerySubmitted" AutomationProperties.AutomationId="SearchQueryBox" />
+                        <Button x:Name="SearchButton" Style="{StaticResource SearchPrimaryButtonStyle}" Click="OnSearch" AutomationProperties.AutomationId="SearchButton" />
                     </StackPanel>
                 </Grid>
             </Border>
 
             <Border Grid.Row="2" Style="{StaticResource CardStyle}">
                 <Grid RowSpacing="10">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <StackPanel x:Name="ResultsHeader" Style="{StaticResource ActionBarStyle}" Spacing="10">
                         <TextBlock x:Name="ResultsSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                        <CheckBox x:Name="SelectAllResultsBox" Click="OnToggleAllResults" VerticalAlignment="Center" />
+                        <CheckBox x:Name="SelectAllResultsBox" Click="OnToggleAllResults" VerticalAlignment="Center" AutomationProperties.AutomationId="SearchSelectAllCheckBox" />
                         <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
-                        <Button x:Name="AddSelectedButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSelected" />
+                        <Button x:Name="AddSelectedButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSelected" AutomationProperties.AutomationId="SearchAddSelectedButton" />
                     </StackPanel>
-                    <ListView x:Name="ResultList" Grid.Row="1" MaxHeight="560" ItemContainerStyle="{StaticResource ListRowContainerStyle}">
+                    <ListView x:Name="ResultList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SearchResultList">
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <CheckBox
+                                        AutomationProperties.AutomationId="{Binding PackageId}"
                                         AutomationProperties.Name="{Binding Name}"
                                         IsChecked="{Binding IsSelected, Mode=OneWay}"
                                         Click="OnResultSelectionClick"
@@ -75,6 +74,5 @@
                 </Grid>
             </Border>
 
-        </Grid>
-    </ScrollViewer>
+    </Grid>
 </Page>

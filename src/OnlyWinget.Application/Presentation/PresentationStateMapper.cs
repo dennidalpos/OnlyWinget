@@ -44,7 +44,7 @@ public static class PresentationStateMapper
         var hasPreset = active is not null;
         var hasPackages = active?.Packages.Count > 0;
         var hasSelectedPackages = state.SelectedPresetPackages.Count > 0;
-        var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
+        var isExecuting = state.BusyState is ApplicationBusyState.ExecutingOperation or ApplicationBusyState.ValidatingPackages;
         var canUseWinget = state.Capabilities.CanUseWinget;
         var operationResults = CreateOperationResultRows(state);
 
@@ -52,10 +52,16 @@ public static class PresentationStateMapper
             state.Workspace.Presets.Select(preset => preset.Name).ToArray(),
             active?.Name,
             active?.Packages
-                .Select(package => new PresetPackageRow(
-                    package.Id,
-                    package.Source,
-                    state.SelectedPresetPackages.Any(selected => PackageEquals(selected, package))))
+                .Select(package =>
+                {
+                    state.PackageMetadata.TryGetValue(PackageFingerprint(package), out var metadata);
+                    return new PresetPackageRow(
+                        package.Id,
+                        package.Source,
+                        metadata?.Version,
+                        metadata?.Architectures is { Count: > 0 } architectures ? string.Join(", ", architectures) : string.Empty,
+                        state.SelectedPresetPackages.Any(selected => PackageEquals(selected, package)));
+                })
                 .ToArray() ?? [],
             state.PresetSelectionHeader,
             operationResults,
@@ -204,7 +210,8 @@ public static class PresentationStateMapper
                     source.Argument,
                     source.IsExplicit,
                     source.IsExplicit ? "Source_Type_User" : "Source_Type_Default",
-                    source.Status.ToString()))
+                    source.Status.ToString(),
+                    source.IsEnabled))
                 .ToArray(),
             [
                 new("sources.refresh", "Command_Sources_Refresh", canUseWinget && !isLoading),

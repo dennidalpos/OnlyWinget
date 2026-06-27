@@ -1,9 +1,8 @@
 using OnlyWinget.Application.System;
-using OnlyWinget.Application.Winget;
 
 namespace OnlyWinget.Infrastructure.System;
 
-public sealed class SystemCapabilityService(IWingetCommandRunner commandRunner) : ISystemCapabilityService
+public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner) : ISystemCapabilityService
 {
     private const int MinimumSupportedBuild = 17763;
 

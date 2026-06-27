@@ -24,10 +24,12 @@ public sealed record OnlyWingetState(
     IReadOnlyList<WindowsUpdateIdentity> SelectedWindowsUpdates,
     SelectionHeaderState WindowsUpdatesSelectionHeader,
     IReadOnlyList<WindowsUpdateInstallResult> LastWindowsUpdateResults,
+    IReadOnlyDictionary<string, PackageResolution> PackageMetadata,
     SystemCapabilities Capabilities,
     IReadOnlyList<WingetSource> Sources,
     ClassifiedWingetError? SourceError,
     IReadOnlyList<ActivityEntry> Activity,
     IReadOnlyList<OperationExecutionResult> LastOperationResults,
+    OperationProgress? OperationProgress,
     ApplicationBusyState BusyState,
     string? UserVisibleError);

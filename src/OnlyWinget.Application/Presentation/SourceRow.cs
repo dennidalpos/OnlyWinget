@@ -5,4 +5,5 @@ public sealed record SourceRow(
     string Argument,
     bool IsExplicit,
     string Type,
-    string Status);
+    string Status,
+    bool IsEnabled);

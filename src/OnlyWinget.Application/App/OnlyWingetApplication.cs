@@ -21,7 +21,8 @@ public sealed class OnlyWingetApplication(
     IWindowsUpdateService windowsUpdateService,
     IWingetSourceService sourceService,
     IOperationExecutor operationExecutor,
-    TimeProvider? timeProvider = null)
+    TimeProvider? timeProvider = null,
+    ISourcePreferenceStore? sourcePreferenceStore = null)
 {
     private readonly PresetDocumentService presetDocuments = new();
     private readonly OperationPlanner operationPlanner = new();
@@ -35,14 +36,18 @@ public sealed class OnlyWingetApplication(
     private readonly List<WingetSource> sources = [];
     private readonly List<ActivityEntry> activity = [];
     private readonly List<OperationExecutionResult> lastOperationResults = [];
+    private readonly Dictionary<string, PackageResolution> packageMetadata = new(StringComparer.Ordinal);
     private readonly List<WindowsUpdateInstallResult> lastWindowsUpdateResults = [];
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
+    private readonly ISourcePreferenceStore sourcePreferences = sourcePreferenceStore ?? new EmptySourcePreferenceStore();
+    private readonly HashSet<string> disabledSources = new(StringComparer.OrdinalIgnoreCase);
 
     private WorkspaceState workspace = WorkspaceState.Empty;
     private ApplicationBusyState busyState;
     private SystemCapabilities capabilities = SystemCapabilities.Unknown;
     private ClassifiedWingetError? sourceError;
     private string? userVisibleError;
+    private OperationProgress? operationProgress;
 
     public OnlyWingetState State => CreateState();
 
@@ -53,6 +58,9 @@ public sealed class OnlyWingetApplication(
                 async () =>
                 {
                     workspace = NormalizeWorkspace(await workspaceStore.LoadAsync(cancellationToken).ConfigureAwait(false));
+                    var preferences = await sourcePreferences.LoadAsync(cancellationToken).ConfigureAwait(false);
+                    disabledSources.Clear();
+                    disabledSources.UnionWith(preferences.DisabledSources);
                     RefreshPresetSelection();
                     AddActivity(ActivitySeverity.Success, "Workspace loaded", "Workspace state is ready.");
                 },
@@ -139,42 +147,49 @@ public sealed class OnlyWingetApplication(
             RefreshPresetSelection();
         });
 
-    public ApplicationActionResult AddPackageToActivePreset(PackageIdentity package) =>
-        Run(() =>
+    public async Task<ApplicationActionResult> AddPackageToActivePresetAsync(
+        PackageIdentity package,
+        CancellationToken cancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
         {
             ArgumentNullException.ThrowIfNull(package);
+            var validated = await ValidatePackageAsync(package, cancellationToken).ConfigureAwait(false);
             var active = RequireActivePreset();
-            if (ContainsPackage(active.Packages, package))
+            if (ContainsPackage(active.Packages, validated.Package))
             {
                 throw new InvalidOperationException("Package is already in the active preset.");
             }
 
-            ReplacePreset(active.Name, new Preset(active.Name, [.. active.Packages, package]), active.Name);
-            AddActivity(ActivitySeverity.Success, "Package added", package.Id);
-        });
+            ReplacePreset(active.Name, new Preset(active.Name, [.. active.Packages, validated.Package]), active.Name);
+            AddActivity(ActivitySeverity.Success, "Package added", validated.Package.Id);
+        }, "Unable to validate the package.").ConfigureAwait(false);
 
-    public ApplicationActionResult ReplacePackageInActivePreset(PackageIdentity current, PackageIdentity replacement) =>
-        Run(() =>
+    public async Task<ApplicationActionResult> ReplacePackageInActivePresetAsync(
+        PackageIdentity current,
+        PackageIdentity replacement,
+        CancellationToken cancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
         {
             ArgumentNullException.ThrowIfNull(current);
             ArgumentNullException.ThrowIfNull(replacement);
+            var validated = await ValidatePackageAsync(replacement, cancellationToken).ConfigureAwait(false);
             var active = RequireActivePreset();
             if (!ContainsPackage(active.Packages, current))
             {
                 throw new InvalidOperationException("Package was not found in the active preset.");
             }
 
-            if (!PackageEquals(current, replacement) && ContainsPackage(active.Packages, replacement))
+            if (!PackageEquals(current, validated.Package) && ContainsPackage(active.Packages, validated.Package))
             {
                 throw new InvalidOperationException("Package is already in the active preset.");
             }
 
             var packages = active.Packages
-                .Select(package => PackageEquals(package, current) ? replacement : package)
+                .Select(package => PackageEquals(package, current) ? validated.Package : package)
                 .ToArray();
             ReplacePreset(active.Name, new Preset(active.Name, packages), active.Name);
-            AddActivity(ActivitySeverity.Success, "Package updated", replacement.Id);
-        });
+            AddActivity(ActivitySeverity.Success, "Package updated", validated.Package.Id);
+        }, "Unable to validate the package.").ConfigureAwait(false);
 
     public ApplicationActionResult RemoveSelectedPackagesFromActivePreset() =>
         Run(() =>
@@ -197,22 +212,39 @@ public sealed class OnlyWingetApplication(
 
     public ApplicationActionResult ToggleAllPresetPackages() => Run(presetSelection.ToggleAll);
 
-    public async Task<ApplicationActionResult> SearchAsync(string query, string? source, CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> SearchAsync(string query, CancellationToken cancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.Searching,
                 async () =>
                 {
                     RequireWinget();
-                    var outcome = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
-                        .ConfigureAwait(false);
-                    if (!outcome.Succeeded)
+                    var enabledSources = GetEnabledSourceNames();
+                    if (enabledSources.Count == 0)
                     {
-                        throw new InvalidOperationException(outcome.Error?.Message ?? "winget search failed.");
+                        throw new InvalidOperationException("Enable at least one winget source before searching.");
                     }
 
                     searchResults.Clear();
-                    searchResults.AddRange(outcome.Rows.DistinctBy(result => PackageFingerprint(result.Package)));
+                    foreach (var source in enabledSources)
+                    {
+                        var outcome = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
+                            .ConfigureAwait(false);
+                        if (!outcome.Succeeded)
+                        {
+                            throw new InvalidOperationException(outcome.Error?.Message ?? $"winget search failed for source '{source}'.");
+                        }
+
+                        searchResults.AddRange(outcome.Rows);
+                    }
+
+                    var distinctResults = searchResults
+                        .DistinctBy(result => PackageFingerprint(result.Package))
+                        .OrderBy(result => result.Name, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(result => result.Package.Id, StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                    searchResults.Clear();
+                    searchResults.AddRange(distinctResults);
                     searchSelection.ReplaceAvailable(searchResults.Select(result => result.Package));
                     AddActivity(ActivitySeverity.Information, "Search completed", $"{searchResults.Count} result(s).");
                 },
@@ -239,7 +271,13 @@ public sealed class OnlyWingetApplication(
                         cancellationToken.ThrowIfCancellationRequested();
 
                         var resolution = await packageResolver.ResolveAsync(selected, cancellationToken).ConfigureAwait(false);
-                        var package = resolution.IsResolved ? resolution.Package : selected;
+                        if (!resolution.IsResolved)
+                        {
+                            throw new InvalidOperationException(resolution.Error?.Message ?? $"Package '{selected.Id}' was not found.");
+                        }
+
+                        var package = resolution.Package;
+                        packageMetadata[PackageFingerprint(package)] = resolution;
                         if (ContainsPackage(packages, package))
                         {
                             continue;
@@ -263,14 +301,30 @@ public sealed class OnlyWingetApplication(
                 async () =>
                 {
                     RequireWinget();
-                    var outcome = await updateLoader.LoadUpdatesAsync(cancellationToken).ConfigureAwait(false);
-                    if (!outcome.Succeeded && outcome.Error?.Kind != WingetErrorKind.NoUpdates)
+                    var enabledSources = GetEnabledSourceNames();
+                    if (enabledSources.Count == 0)
                     {
-                        throw new InvalidOperationException(outcome.Error?.Message ?? "winget upgrade failed.");
+                        throw new InvalidOperationException("Enable at least one winget source before refreshing updates.");
                     }
 
                     updates.Clear();
-                    updates.AddRange(outcome.Rows.DistinctBy(update => PackageFingerprint(update.Package)));
+                    foreach (var source in enabledSources)
+                    {
+                        var outcome = await updateLoader.LoadUpdatesAsync(source, cancellationToken).ConfigureAwait(false);
+                        if (!outcome.Succeeded && outcome.Error?.Kind != WingetErrorKind.NoUpdates)
+                        {
+                            throw new InvalidOperationException(outcome.Error?.Message ?? $"winget upgrade failed for source '{source}'.");
+                        }
+
+                        updates.AddRange(outcome.Rows);
+                    }
+
+                    var distinctUpdates = updates
+                        .DistinctBy(update => PackageFingerprint(update.Package))
+                        .OrderBy(update => update.Name, StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                    updates.Clear();
+                    updates.AddRange(distinctUpdates);
                     updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
                 },
@@ -278,14 +332,16 @@ public sealed class OnlyWingetApplication(
             .ConfigureAwait(false);
     }
 
-    public async Task<ApplicationActionResult> ScanWindowsUpdatesAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> ScanWindowsUpdatesAsync(
+        WindowsUpdateOptions options,
+        CancellationToken cancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.ScanningWindowsUpdates,
                 async () =>
                 {
                     RequireWindowsUpdate();
-                    var outcome = await windowsUpdateService.ScanAsync(cancellationToken).ConfigureAwait(false);
+                    var outcome = await windowsUpdateService.ScanAsync(options, cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
                         throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update scan failed.");
@@ -305,7 +361,9 @@ public sealed class OnlyWingetApplication(
 
     public ApplicationActionResult ToggleAllWindowsUpdates() => Run(windowsUpdateSelection.ToggleAll);
 
-    public async Task<ApplicationActionResult> InstallSelectedWindowsUpdatesAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> InstallSelectedWindowsUpdatesAsync(
+        WindowsUpdateOptions options,
+        CancellationToken cancellationToken)
     {
         var selected = windowsUpdateSelection.Selected.ToArray();
         return await RunAsync(
@@ -320,7 +378,7 @@ public sealed class OnlyWingetApplication(
 
                     lastWindowsUpdateResults.Clear();
                     AddActivity(ActivitySeverity.Information, "Windows Update install started", $"{selected.Length} update(s).");
-                    var outcome = await windowsUpdateService.InstallAsync(selected, cancellationToken).ConfigureAwait(false);
+                    var outcome = await windowsUpdateService.InstallAsync(selected, options, cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
                         throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update install failed.");
@@ -399,11 +457,54 @@ public sealed class OnlyWingetApplication(
 
     public async Task<ApplicationActionResult> ResetSourcesAsync(CancellationToken cancellationToken)
     {
-        return await RunSourceMutationAsync(
+        var result = await RunSourceMutationAsync(
                 () => sourceService.ResetSourcesAsync(cancellationToken),
                 "Sources reset",
                 "winget sources reset to defaults.",
                 cancellationToken)
+            .ConfigureAwait(false);
+        if (result.Succeeded)
+        {
+            disabledSources.Clear();
+            ApplySourcePreferences();
+            await sourcePreferences.SaveAsync(SourcePreferences.Empty, cancellationToken).ConfigureAwait(false);
+        }
+
+        return result;
+    }
+
+    public async Task<ApplicationActionResult> SetSourceEnabledAsync(
+        string name,
+        bool isEnabled,
+        CancellationToken cancellationToken)
+    {
+        return await RunAsync(
+                ApplicationBusyState.ManagingSources,
+                async () =>
+                {
+                    RequireWinget();
+                    if (!sources.Any(source => string.Equals(source.Name, name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        throw new InvalidOperationException("The winget source was not found.");
+                    }
+
+                    if (isEnabled)
+                    {
+                        disabledSources.Remove(name);
+                    }
+                    else
+                    {
+                        disabledSources.Add(name);
+                    }
+
+                    await sourcePreferences.SaveAsync(
+                            new SourcePreferences(disabledSources.ToArray()),
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    ApplySourcePreferences();
+                    AddActivity(ActivitySeverity.Information, "Source preference changed", $"{name}: {(isEnabled ? "enabled" : "disabled")}");
+                },
+                "Unable to save the source preference.")
             .ConfigureAwait(false);
     }
 
@@ -411,19 +512,24 @@ public sealed class OnlyWingetApplication(
 
     public ApplicationActionResult ToggleAllUpdates() => Run(updateSelection.ToggleAll);
 
-    public async Task<ApplicationActionResult> ApplySelectedUpdatesAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> ApplySelectedUpdatesAsync(
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress = null)
     {
         var selections = updateSelection.Selected
             .Select(package => new PackageSelection(package, PackageAction.Upgrade))
             .ToArray();
-        return await ExecutePlanAsync(new OperationPlan("Selected updates", selections), cancellationToken)
+        return await ExecutePlanAsync(new OperationPlan("Selected updates", selections), cancellationToken, progress)
             .ConfigureAwait(false);
     }
 
-    public async Task<ApplicationActionResult> ApplyActivePresetAsync(PackageAction action, CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> ApplyActivePresetAsync(
+        PackageAction action,
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress = null)
     {
         var plan = operationPlanner.CreatePresetPlan(RequireActivePreset(), action);
-        return await ExecutePlanAsync(plan, cancellationToken).ConfigureAwait(false);
+        return await ExecutePlanAsync(plan, cancellationToken, progress).ConfigureAwait(false);
     }
 
     public ApplicationActionResult ClearActivity() =>
@@ -439,8 +545,8 @@ public sealed class OnlyWingetApplication(
         return presetDocuments.Export(active);
     }
 
-    public ApplicationActionResult ImportPreset(string json) =>
-        Run(() =>
+    public async Task<ApplicationActionResult> ImportPresetAsync(string json, CancellationToken cancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
         {
             var preset = presetDocuments.Import(json);
             if (FindPreset(preset.Name) is not null)
@@ -448,12 +554,23 @@ public sealed class OnlyWingetApplication(
                 throw new InvalidOperationException("A preset with the same name already exists.");
             }
 
-            workspace = new WorkspaceState([.. workspace.Presets, preset], preset.Name);
-            RefreshPresetSelection();
-            AddActivity(ActivitySeverity.Success, "Preset imported", preset.Name);
-        });
+            var validatedPackages = new List<PackageIdentity>();
+            foreach (var package in preset.Packages)
+            {
+                var validated = await ValidatePackageAsync(package, cancellationToken).ConfigureAwait(false);
+                validatedPackages.Add(validated.Package);
+            }
 
-    private async Task<ApplicationActionResult> ExecutePlanAsync(OperationPlan plan, CancellationToken cancellationToken)
+            var validatedPreset = new Preset(preset.Name, validatedPackages);
+            workspace = new WorkspaceState([.. workspace.Presets, validatedPreset], validatedPreset.Name);
+            RefreshPresetSelection();
+            AddActivity(ActivitySeverity.Success, "Preset imported", validatedPreset.Name);
+        }, "Unable to import and validate the preset.").ConfigureAwait(false);
+
+    private async Task<ApplicationActionResult> ExecutePlanAsync(
+        OperationPlan plan,
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress)
     {
         return await RunAsync(
                 ApplicationBusyState.ExecutingOperation,
@@ -465,9 +582,23 @@ public sealed class OnlyWingetApplication(
                         throw new InvalidOperationException("Select at least one package before applying an operation.");
                     }
 
+                    var validatedSelections = new List<PackageSelection>();
+                    foreach (var selection in plan.Selections)
+                    {
+                        var validated = await ValidatePackageAsync(selection.Package, cancellationToken).ConfigureAwait(false);
+                        validatedSelections.Add(new PackageSelection(validated.Package, selection.Action));
+                    }
+
+                    var validatedPlan = new OperationPlan(plan.Name, validatedSelections);
                     lastOperationResults.Clear();
                     AddActivity(ActivitySeverity.Information, "Operation started", plan.Name);
-                    var summary = await operationExecutor.ExecuteAsync(plan, cancellationToken).ConfigureAwait(false);
+                    operationProgress = new OperationProgress(string.Empty, WingetProgressPhase.Starting, 0, 0, validatedPlan.Selections.Count);
+                    var forwardingProgress = new InlineProgress<OperationProgress>(update =>
+                    {
+                        operationProgress = update;
+                        progress?.Report(update);
+                    });
+                    var summary = await operationExecutor.ExecuteAsync(validatedPlan, cancellationToken, forwardingProgress).ConfigureAwait(false);
                     lastOperationResults.AddRange(summary.Results);
                     foreach (var result in summary.Results)
                     {
@@ -480,6 +611,9 @@ public sealed class OnlyWingetApplication(
                     {
                         throw new InvalidOperationException("One or more winget operations failed.");
                     }
+
+                    operationProgress = operationProgress with { Phase = WingetProgressPhase.Completed, Percentage = 100, CompletedPackages = validatedPlan.Selections.Count };
+                    progress?.Report(operationProgress);
                 },
                 "Unable to complete the operation.")
             .ConfigureAwait(false);
@@ -503,11 +637,13 @@ public sealed class OnlyWingetApplication(
             windowsUpdateSelection.Selected.ToArray(),
             windowsUpdateSelection.HeaderState,
             lastWindowsUpdateResults.ToArray(),
+            new Dictionary<string, PackageResolution>(packageMetadata, StringComparer.Ordinal),
             capabilities,
             sources.ToArray(),
             sourceError,
             activity.ToArray(),
             lastOperationResults.ToArray(),
+            operationProgress,
             busyState,
             userVisibleError);
     }
@@ -529,6 +665,10 @@ public sealed class OnlyWingetApplication(
 
                     var refresh = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
                     ApplySourceOutcome(refresh, updateRows: true);
+                    await sourcePreferences.SaveAsync(
+                            new SourcePreferences(disabledSources.ToArray()),
+                            cancellationToken)
+                        .ConfigureAwait(false);
                 },
                 "Unable to manage winget sources.")
             .ConfigureAwait(false);
@@ -547,6 +687,88 @@ public sealed class OnlyWingetApplication(
         {
             sources.Clear();
             sources.AddRange(outcome.Rows);
+            ReconcileSourcePreferences();
+            ApplySourcePreferences();
+        }
+    }
+
+    private IReadOnlyList<string> GetEnabledSourceNames() =>
+        sources.Where(source => source.IsEnabled)
+            .Select(source => source.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private async Task<PackageResolution> ValidatePackageAsync(
+        PackageIdentity package,
+        CancellationToken cancellationToken)
+    {
+        var enabledSources = GetEnabledSourceNames();
+        if (enabledSources.Count == 0)
+        {
+            throw new InvalidOperationException("Enable at least one winget source before adding packages.");
+        }
+
+        if (package.Source is { } requestedSource)
+        {
+            if (!enabledSources.Contains(requestedSource, StringComparer.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Source '{requestedSource}' is disabled or unavailable.");
+            }
+
+            var resolution = await packageResolver.ResolveAsync(package, cancellationToken).ConfigureAwait(false);
+            if (!resolution.IsResolved)
+            {
+                throw new InvalidOperationException(resolution.Error?.Message ?? $"Package '{package.Id}' was not found in source '{requestedSource}'.");
+            }
+
+            packageMetadata[PackageFingerprint(resolution.Package)] = resolution;
+            return resolution;
+        }
+
+        var matches = new List<PackageResolution>();
+        foreach (var source in enabledSources)
+        {
+            var resolution = await packageResolver.ResolveAsync(
+                    new PackageIdentity(package.Id, source),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (resolution.IsResolved)
+            {
+                matches.Add(resolution);
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            throw new InvalidOperationException($"Package '{package.Id}' was not found in any enabled source.");
+        }
+
+        if (matches.Count > 1)
+        {
+            throw new InvalidOperationException($"Package '{package.Id}' exists in multiple enabled sources. Specify a source.");
+        }
+
+        var match = matches[0];
+        packageMetadata[PackageFingerprint(match.Package)] = match;
+        return match;
+    }
+
+    public PackageResolution? GetPackageMetadata(PackageIdentity package) =>
+        packageMetadata.GetValueOrDefault(PackageFingerprint(package));
+
+    private void ReconcileSourcePreferences()
+    {
+        var currentNames = sources.Select(source => source.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        disabledSources.RemoveWhere(name => !currentNames.Contains(name));
+    }
+
+    private void ApplySourcePreferences()
+    {
+        for (var index = 0; index < sources.Count; index++)
+        {
+            var source = sources[index];
+            sources[index] = source with { IsEnabled = !disabledSources.Contains(source.Name) };
         }
     }
 
@@ -711,4 +933,18 @@ public sealed class OnlyWingetApplication(
 
     private static bool PresetNameEquals(string left, string right) =>
         string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private sealed class EmptySourcePreferenceStore : ISourcePreferenceStore
+    {
+        public Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(SourcePreferences.Empty);
+
+        public Task SaveAsync(SourcePreferences preferences, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
 }

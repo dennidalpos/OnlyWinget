@@ -3,12 +3,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.WindowsUpdate;
-using OnlyWinget.Application.Winget;
 
 namespace OnlyWinget.Infrastructure.WindowsUpdate;
 
 public sealed class PowerShellWindowsUpdateService(
-    IWingetCommandRunner commandRunner,
+    IExternalProcessRunner commandRunner,
     ISystemCapabilityService capabilityService) : IWindowsUpdateService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -16,7 +15,9 @@ public sealed class PowerShellWindowsUpdateService(
         PropertyNameCaseInsensitive = true
     };
 
-    public async Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(CancellationToken cancellationToken)
+    public async Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(
+        WindowsUpdateOptions options,
+        CancellationToken cancellationToken)
     {
         var unavailable = await GetUnavailableReasonAsync(cancellationToken).ConfigureAwait(false);
         if (unavailable is not null)
@@ -26,7 +27,8 @@ public sealed class PowerShellWindowsUpdateService(
                 string.Empty);
         }
 
-        var result = await RunPowerShellAsync(ScanScript, cancellationToken).ConfigureAwait(false);
+        var script = ApplyOptions(ScanScript, options);
+        var result = await RunPowerShellAsync(script, cancellationToken).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateItemDto>(result);
         return envelope.Succeeded
             ? WindowsUpdateOperationOutcome<WindowsUpdateItem>.Success(
@@ -39,6 +41,7 @@ public sealed class PowerShellWindowsUpdateService(
 
     public async Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
         IReadOnlyList<WindowsUpdateIdentity> updates,
+        WindowsUpdateOptions options,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(updates);
@@ -53,7 +56,8 @@ public sealed class PowerShellWindowsUpdateService(
         var selectedJson = JsonSerializer.Serialize(
             updates.Select(update => new WindowsUpdateIdentityDto(update.UpdateId, update.RevisionNumber)),
             JsonOptions);
-        var script = InstallScript.Replace("__SELECTED_JSON__", EscapePowerShellHereString(selectedJson), StringComparison.Ordinal);
+        var script = ApplyOptions(InstallScript, options)
+            .Replace("__SELECTED_JSON__", EscapePowerShellHereString(selectedJson), StringComparison.Ordinal);
         var result = await RunPowerShellAsync(script, cancellationToken).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateInstallResultDto>(result);
         return envelope.Succeeded
@@ -65,7 +69,7 @@ public sealed class PowerShellWindowsUpdateService(
                 result.StandardOutput);
     }
 
-    private async Task<WingetCommandResult> RunPowerShellAsync(string script, CancellationToken cancellationToken)
+    private async Task<ExternalProcessResult> RunPowerShellAsync(string script, CancellationToken cancellationToken)
     {
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         return await commandRunner.RunAsync(
@@ -81,7 +85,7 @@ public sealed class PowerShellWindowsUpdateService(
         return capabilities.CanUseWindowsUpdate ? null : capabilities.WindowsUpdateUnavailableMessage;
     }
 
-    private static WindowsUpdateEnvelope<T> ReadEnvelope<T>(WingetCommandResult result)
+    private static WindowsUpdateEnvelope<T> ReadEnvelope<T>(ExternalProcessResult result)
     {
         if (string.IsNullOrWhiteSpace(result.StandardOutput))
         {
@@ -105,12 +109,51 @@ public sealed class PowerShellWindowsUpdateService(
     private static string EscapePowerShellHereString(string value) =>
         value.Replace("'@", "' + \"@\" + '", StringComparison.Ordinal);
 
+    private static string ApplyOptions(string script, WindowsUpdateOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (!options.IncludeSoftware && !options.IncludeDrivers)
+        {
+            throw new ArgumentException("Select software updates, drivers, or both.", nameof(options));
+        }
+
+        var types = new List<string>();
+        if (options.IncludeSoftware)
+        {
+            types.Add("Type='Software'");
+        }
+
+        if (options.IncludeDrivers)
+        {
+            types.Add("Type='Driver'");
+        }
+
+        var criteria = $"IsInstalled=0 and IsHidden=0 and ({string.Join(" or ", types)})";
+        var optionsJson = JsonSerializer.Serialize(
+            new WindowsUpdateOptionsDto(
+                criteria,
+                options.IncludeMicrosoftUpdates,
+                options.IncludePotentiallySupersededUpdates),
+            JsonOptions);
+        return script.Replace("__OPTIONS_JSON__", EscapePowerShellHereString(optionsJson), StringComparison.Ordinal);
+    }
+
     private const string ScanScript = """
 $ErrorActionPreference = 'Stop'
 try {
+    $options = @'
+__OPTIONS_JSON__
+'@ | ConvertFrom-Json
     $session = New-Object -ComObject Microsoft.Update.Session
     $searcher = $session.CreateUpdateSearcher()
-    $search = $searcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
+    $searcher.IncludePotentiallySupersededUpdates = [bool]$options.includePotentiallySupersededUpdates
+    if ([bool]$options.includeMicrosoftUpdates) {
+        $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
+        [void]$serviceManager.AddService2('7971f918-a847-4430-9279-4a52d1efe18d', 7, '')
+        $searcher.ServerSelection = 3
+        $searcher.ServiceID = '7971f918-a847-4430-9279-4a52d1efe18d'
+    }
+    $search = $searcher.Search([string]$options.criteria)
     $rows = @()
     foreach ($update in $search.Updates) {
         $categories = @()
@@ -150,6 +193,9 @@ catch {
     private const string InstallScript = """
 $ErrorActionPreference = 'Stop'
 try {
+    $options = @'
+__OPTIONS_JSON__
+'@ | ConvertFrom-Json
     $selected = @'
 __SELECTED_JSON__
 '@ | ConvertFrom-Json
@@ -162,7 +208,14 @@ __SELECTED_JSON__
 
     $session = New-Object -ComObject Microsoft.Update.Session
     $searcher = $session.CreateUpdateSearcher()
-    $search = $searcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
+    $searcher.IncludePotentiallySupersededUpdates = [bool]$options.includePotentiallySupersededUpdates
+    if ([bool]$options.includeMicrosoftUpdates) {
+        $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
+        [void]$serviceManager.AddService2('7971f918-a847-4430-9279-4a52d1efe18d', 7, '')
+        $searcher.ServerSelection = 3
+        $searcher.ServiceID = '7971f918-a847-4430-9279-4a52d1efe18d'
+    }
+    $search = $searcher.Search([string]$options.criteria)
     $collection = New-Object -ComObject Microsoft.Update.UpdateColl
     $metadata = @()
 
@@ -239,6 +292,11 @@ catch {
     private sealed record WindowsUpdateIdentityDto(
         [property: JsonPropertyName("updateId")] string UpdateId,
         [property: JsonPropertyName("revisionNumber")] int RevisionNumber);
+
+    private sealed record WindowsUpdateOptionsDto(
+        [property: JsonPropertyName("criteria")] string Criteria,
+        [property: JsonPropertyName("includeMicrosoftUpdates")] bool IncludeMicrosoftUpdates,
+        [property: JsonPropertyName("includePotentiallySupersededUpdates")] bool IncludePotentiallySupersededUpdates);
 
     private sealed record WindowsUpdateItemDto(
         [property: JsonPropertyName("updateId")] string UpdateId,

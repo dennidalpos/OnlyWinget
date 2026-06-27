@@ -18,7 +18,9 @@ public sealed class OnlyWingetApplicationTests
         var app = CreateApplication();
 
         Assert.True(app.AddPreset("Default").Succeeded);
-        Assert.True(app.AddPackageToActivePreset(new PackageIdentity("Git.Git", "winget")).Succeeded);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        Assert.True((await app.AddPackageToActivePresetAsync(new PackageIdentity("Git.Git", "winget"), CancellationToken.None)).Succeeded);
         Assert.True(app.TogglePresetPackage(new PackageIdentity("Git.Git", "winget")).Succeeded);
         Assert.True(app.RemoveSelectedPackagesFromActivePreset().Succeeded);
         await app.SaveWorkspaceAsync(CancellationToken.None);
@@ -40,9 +42,10 @@ public sealed class OnlyWingetApplicationTests
         var app = CreateApplication(search: search, resolver: resolver);
 
         app.AddPreset("Default");
-        app.AddPackageToActivePreset(new PackageIdentity("Git.Git", "winget"));
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
-        await app.SearchAsync("git", null, CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(new PackageIdentity("Git.Git", "winget"), CancellationToken.None);
+        await app.SearchAsync("git", CancellationToken.None);
         app.ToggleAllSearchResults();
         var result = await app.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None);
 
@@ -61,7 +64,8 @@ public sealed class OnlyWingetApplicationTests
         var app = CreateApplication(search: search, resolver: resolver);
 
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
-        await app.SearchAsync("git", null, CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.SearchAsync("git", CancellationToken.None);
         app.ToggleAllSearchResults();
         var result = await app.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None);
 
@@ -86,6 +90,7 @@ public sealed class OnlyWingetApplicationTests
         var app = CreateApplication(updates: updates, executor: executor);
 
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
         await app.RefreshUpdatesAsync(CancellationToken.None);
         app.ToggleAllUpdates();
         var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
@@ -105,7 +110,8 @@ public sealed class OnlyWingetApplicationTests
 
         app.AddPreset("Default");
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
-        await app.SearchAsync("git", null, CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.SearchAsync("git", CancellationToken.None);
         app.ToggleAllSearchResults();
 
         var presentation = PresentationStateMapper.FromApplicationState(app.State);
@@ -132,6 +138,7 @@ public sealed class OnlyWingetApplicationTests
         var app = CreateApplication(updates: updates, executor: executor);
 
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
         await app.RefreshUpdatesAsync(CancellationToken.None);
         app.ToggleAllUpdates();
         var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
@@ -159,9 +166,9 @@ public sealed class OnlyWingetApplicationTests
         var app = CreateApplication(windowsUpdates: windowsUpdates);
 
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
-        await app.ScanWindowsUpdatesAsync(CancellationToken.None);
+        await app.ScanWindowsUpdatesAsync(new WindowsUpdateOptions(), CancellationToken.None);
         app.ToggleAllWindowsUpdates();
-        var result = await app.InstallSelectedWindowsUpdatesAsync(CancellationToken.None);
+        var result = await app.InstallSelectedWindowsUpdatesAsync(new WindowsUpdateOptions(), CancellationToken.None);
         var presentation = PresentationStateMapper.FromApplicationState(app.State);
 
         Assert.True(result.Succeeded);
@@ -178,9 +185,9 @@ public sealed class OnlyWingetApplicationTests
         var app = CreateApplication(sources: sources);
 
         app.AddPreset("Default");
-        app.AddPackageToActivePreset(new PackageIdentity("Git.Git", "winget"));
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(new PackageIdentity("Git.Git", "winget"), CancellationToken.None);
 
         var presentation = PresentationStateMapper.FromApplicationState(app.State);
 
@@ -202,12 +209,58 @@ public sealed class OnlyWingetApplicationTests
             search: search);
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
 
-        var result = await app.SearchAsync("git", null, CancellationToken.None);
+        var result = await app.SearchAsync("git", CancellationToken.None);
         var presentation = PresentationStateMapper.FromApplicationState(app.State);
 
         Assert.False(result.Succeeded);
         Assert.Contains("winget is not available", result.Error, StringComparison.Ordinal);
         Assert.False(presentation.Search.Commands.Single(command => command.Id == "search.execute").IsEnabled);
+    }
+
+    [Fact]
+    public async Task SourceEnabledPreferencePersistsAndFiltersSearch()
+    {
+        var preferences = new MemorySourcePreferenceStore();
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available),
+            new WingetSource("msstore", "https://store", false, WingetSourceStatus.Available));
+        var search = new StubPackageSearch(new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "1", null));
+        var app = CreateApplication(search: search, sources: sources, sourcePreferences: preferences);
+
+        await app.LoadWorkspaceAsync(CancellationToken.None);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        var result = await app.SetSourceEnabledAsync("msstore", false, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(["msstore"], preferences.State.DisabledSources);
+        Assert.False(app.State.Sources.Single(source => source.Name == "msstore").IsEnabled);
+        await app.SearchAsync("git", CancellationToken.None);
+        Assert.Equal(["winget"], search.Requests.Select(request => request.Source));
+    }
+
+    [Fact]
+    public async Task ManualPackageIsNotAddedWhenRemoteValidationFails()
+    {
+        var resolver = new StubPackageResolver(
+            new PackageResolution(
+                new PackageIdentity("Not.Real", "winget"),
+                null,
+                null,
+                null,
+                false,
+                new ClassifiedWingetError(WingetErrorKind.NotFound, "Package was not found.")));
+        var app = CreateApplication(resolver: resolver);
+        app.AddPreset("Default");
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+
+        var result = await app.AddPackageToActivePresetAsync(
+            new PackageIdentity("Not.Real", "winget"),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(app.State.ActivePreset?.Packages ?? []);
     }
 
     private static OnlyWingetApplication CreateApplication(
@@ -217,7 +270,8 @@ public sealed class OnlyWingetApplicationTests
         StubUpdateLoader? updates = null,
         StubWindowsUpdateService? windowsUpdates = null,
         StubSourceService? sources = null,
-        RecordingOperationExecutor? executor = null)
+        RecordingOperationExecutor? executor = null,
+        ISourcePreferenceStore? sourcePreferences = null)
     {
         return new OnlyWingetApplication(
             new MemoryWorkspaceStore(),
@@ -226,8 +280,9 @@ public sealed class OnlyWingetApplicationTests
             resolver ?? new StubPackageResolver(),
             updates ?? new StubUpdateLoader(),
             windowsUpdates ?? new StubWindowsUpdateService([], []),
-            sources ?? new StubSourceService(),
-            executor ?? new RecordingOperationExecutor(new OperationExecutionSummary([])));
+            sources ?? new StubSourceService(new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available)),
+            executor ?? new RecordingOperationExecutor(new OperationExecutionSummary([])),
+            sourcePreferenceStore: sourcePreferences);
     }
 
     private sealed class MemoryWorkspaceStore : IWorkspaceStore
@@ -243,6 +298,19 @@ public sealed class OnlyWingetApplicationTests
         }
     }
 
+    private sealed class MemorySourcePreferenceStore : ISourcePreferenceStore
+    {
+        public SourcePreferences State { get; private set; } = SourcePreferences.Empty;
+
+        public Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(State);
+
+        public Task SaveAsync(SourcePreferences preferences, CancellationToken cancellationToken)
+        {
+            State = preferences;
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class StubSystemCapabilityService(
         SystemCapabilities? capabilities = null) : ISystemCapabilityService
     {
@@ -252,10 +320,15 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class StubPackageSearch(params PackageSearchResult[] results) : IPackageSearchService
     {
+        public List<PackageSearchRequest> Requests { get; } = [];
+
         public Task<WingetOperationOutcome<PackageSearchResult>> SearchAsync(
             PackageSearchRequest request,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(WingetOperationOutcome<PackageSearchResult>.Success(results, string.Empty));
+            CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.FromResult(WingetOperationOutcome<PackageSearchResult>.Success(results, string.Empty));
+        }
     }
 
     private sealed class StubPackageResolver(params PackageResolution[] resolutions) : IPackageResolver
@@ -270,7 +343,7 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class StubUpdateLoader(params PackageUpdate[] updates) : IUpdateLoader
     {
-        public Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(CancellationToken cancellationToken) =>
+        public Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(string source, CancellationToken cancellationToken) =>
             Task.FromResult(WingetOperationOutcome<PackageUpdate>.Success(updates, string.Empty));
     }
 
@@ -280,11 +353,14 @@ public sealed class OnlyWingetApplicationTests
     {
         public IReadOnlyList<WindowsUpdateIdentity>? LastInstallSelection { get; private set; }
 
-        public Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(CancellationToken cancellationToken) =>
+        public Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(
+            WindowsUpdateOptions options,
+            CancellationToken cancellationToken) =>
             Task.FromResult(WindowsUpdateOperationOutcome<WindowsUpdateItem>.Success(updates, string.Empty));
 
         public Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
             IReadOnlyList<WindowsUpdateIdentity> selectedUpdates,
+            WindowsUpdateOptions options,
             CancellationToken cancellationToken)
         {
             LastInstallSelection = selectedUpdates.ToArray();
@@ -319,7 +395,10 @@ public sealed class OnlyWingetApplicationTests
     {
         public OperationPlan? LastPlan { get; private set; }
 
-        public Task<OperationExecutionSummary> ExecuteAsync(OperationPlan plan, CancellationToken cancellationToken)
+        public Task<OperationExecutionSummary> ExecuteAsync(
+            OperationPlan plan,
+            CancellationToken cancellationToken,
+            IProgress<OperationProgress>? progress = null)
         {
             LastPlan = plan;
             return Task.FromResult(summary);

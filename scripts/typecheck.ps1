@@ -15,4 +15,4 @@ if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -Scri
 }
 
 $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
-& $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -WarnAsError
+& $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -WarnAsError -NonInteractive:$NonInteractive

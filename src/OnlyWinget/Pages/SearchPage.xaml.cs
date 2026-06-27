@@ -53,7 +53,6 @@ public sealed partial class SearchPage : Page
         ResultsSectionText.Text = TextResources.Get("Section_SearchResults");
         QueryBox.PlaceholderText = TextResources.Get("Search_Query");
         QueryBox.Header = TextResources.Get("Search_Query");
-        SourceBox.Header = TextResources.Get("Package_Source");
         SelectAllResultsBox.Content = TextResources.Get("Command_Select_All");
         SearchButton.Content = TextResources.Get("Command_Search_Execute");
         AddSelectedButton.Content = TextResources.Get("Command_Search_AddSelected");
@@ -71,7 +70,7 @@ public sealed partial class SearchPage : Page
 
     private Task SearchAsync()
     {
-        return PageUi.RunWorkflowAsync(() => App.Workflow.SearchAsync(QueryBox.Text, SourceBox.Text, CancellationToken.None));
+        return PageUi.RunWorkflowAsync(() => App.Workflow.SearchAsync(QueryBox.Text, CancellationToken.None));
     }
 
     private async void OnAddSelected(object sender, RoutedEventArgs args)

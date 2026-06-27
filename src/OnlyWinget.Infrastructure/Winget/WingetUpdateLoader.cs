@@ -8,11 +8,12 @@ public sealed class WingetUpdateLoader(
     WingetTableParser tableParser,
     WingetErrorClassifier errorClassifier) : IUpdateLoader
 {
-    public async Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(CancellationToken cancellationToken)
+    public async Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(string source, CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
         var result = await commandRunner.RunAsync(
                 "winget",
-                ["upgrade", "--accept-source-agreements"],
+                ["upgrade", "--source", source, "--accept-source-agreements"],
                 cancellationToken)
             .ConfigureAwait(false);
 

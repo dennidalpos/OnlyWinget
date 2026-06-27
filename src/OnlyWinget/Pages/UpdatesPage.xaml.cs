@@ -44,6 +44,7 @@ public sealed partial class UpdatesPage : Page
         UpdateList.ItemsSource = state.Updates;
         PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Updates"), state.Updates.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsLoading || state.IsExecuting);
+        ApplyOperationProgress(state.IsExecuting);
         PageUi.ApplySelectionHeader(SelectAllUpdatesBox, state.HeaderState);
 
         PageUi.SetEnabled(RefreshButton, commands, "updates.refresh");
@@ -77,7 +78,8 @@ public sealed partial class UpdatesPage : Page
         operationCancellation = new CancellationTokenSource();
         try
         {
-            var apply = App.Workflow.ApplySelectedUpdatesAsync(operationCancellation.Token);
+            var progress = new Progress<OnlyWinget.Application.Winget.OperationProgress>(_ => Notify());
+            var apply = App.Workflow.ApplySelectedUpdatesAsync(operationCancellation.Token, progress);
             Notify();
             await apply;
         }
@@ -119,5 +121,16 @@ public sealed partial class UpdatesPage : Page
     private static void Notify()
     {
         App.NotifyWorkflowChanged();
+    }
+
+    private void ApplyOperationProgress(bool isExecuting)
+    {
+        var progress = App.Workflow.State.OperationProgress;
+        PageUi.SetVisible(OperationProgressBar, isExecuting);
+        PageUi.SetVisible(OperationProgressText, isExecuting);
+        OperationProgressBar.Value = progress?.Percentage ?? 0;
+        OperationProgressText.Text = progress is null
+            ? TextResources.Get("Progress_Starting")
+            : $"{TextResources.Get($"Progress_{progress.Phase}")} · {progress.Percentage}% · {progress.PackageId}";
     }
 }

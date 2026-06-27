@@ -38,4 +38,12 @@ public sealed class PresetDocumentServiceTests
 
         Assert.Throws<NotSupportedException>(() => service.Import(unsupportedJson));
     }
+
+    [Theory]
+    [InlineData("Work tools", "Work tools.onlywinget.json")]
+    [InlineData("Bad:name", "Bad-name.onlywinget.json")]
+    public void ExportFileNameUsesSanitizedPresetName(string name, string expected)
+    {
+        Assert.Equal(expected, PresetDocumentService.GetExportFileName(name));
+    }
 }

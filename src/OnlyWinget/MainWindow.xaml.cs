@@ -67,7 +67,7 @@ public sealed partial class MainWindow : Window
 
             if (App.Workflow.State.Capabilities.CanUseWinget)
             {
-                var refreshSources = App.Workflow.RefreshSourcesAsync(CancellationToken.None);
+                var refreshSources = App.Workflow.UpdateSourcesAsync(CancellationToken.None);
                 App.NotifyWorkflowChanged();
                 await refreshSources;
             }

@@ -90,15 +90,15 @@ Invoke-Step 'restore' {
 }
 
 Invoke-Step 'format' {
-    & $formatScriptPath -NoRestore
+    & $formatScriptPath -NoRestore -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'script lint' {
-    & $scriptLintPath
+    & $scriptLintPath -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'typecheck' {
-    & $typecheckScriptPath -Configuration $Configuration -NoRestore
+    & $typecheckScriptPath -Configuration $Configuration -NoRestore -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'unit test' {
@@ -126,13 +126,14 @@ Invoke-Step 'integration/e2e test' {
 }
 
 Invoke-Step 'build' {
-    & $buildScriptPath -Configuration $Configuration -NoRestore
+    & $buildScriptPath -Configuration $Configuration -NoRestore -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'setup package' {
     $packageParameters = @{
         Configuration = $Configuration
         NoRestore = $true
+        NonInteractive = $NonInteractive
     }
 
     if (-not [string]::IsNullOrWhiteSpace($WindowsAppRuntimeInstallerPath)) {

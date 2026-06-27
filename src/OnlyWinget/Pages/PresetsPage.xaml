@@ -25,14 +25,14 @@
                 <StackPanel Spacing="12">
                     <TextBlock x:Name="PresetManagementText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                     <StackPanel Spacing="8">
-                        <ComboBox x:Name="PresetSelector" MinWidth="0" SelectionChanged="OnPresetChanged" />
-                        <TextBox x:Name="PresetNameBox" Style="{StaticResource FormTextBoxStyle}" />
+                        <ComboBox x:Name="PresetSelector" MinWidth="0" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector" />
+                        <TextBox x:Name="PresetNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="PresetNameTextBox" />
                     </StackPanel>
                     <StackPanel x:Name="PresetActions" Style="{StaticResource ActionBarStyle}">
-                        <Button x:Name="AddPresetButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddPreset" />
-                        <Button x:Name="RenamePresetButton" Style="{StaticResource EditButtonStyle}" Click="OnRenamePreset" />
-                        <Button x:Name="SaveWorkspaceButton" Style="{StaticResource SaveButtonStyle}" Click="OnSaveWorkspace" />
-                        <Button x:Name="RemovePresetButton" Style="{StaticResource DeleteButtonStyle}" Click="OnRemovePreset" />
+                        <Button x:Name="AddPresetButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddPreset" AutomationProperties.AutomationId="PresetAddButton" />
+                        <Button x:Name="RenamePresetButton" Style="{StaticResource EditButtonStyle}" Click="OnRenamePreset" AutomationProperties.AutomationId="PresetRenameButton" />
+                        <Button x:Name="SaveWorkspaceButton" Style="{StaticResource SaveButtonStyle}" Click="OnSaveWorkspace" AutomationProperties.AutomationId="WorkspaceSaveButton" />
+                        <Button x:Name="RemovePresetButton" Style="{StaticResource DeleteButtonStyle}" Click="OnRemovePreset" AutomationProperties.AutomationId="PresetRemoveButton" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -41,29 +41,32 @@
                 <StackPanel Spacing="12">
                     <TextBlock x:Name="PackageManagementText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                     <StackPanel Spacing="8">
-                        <TextBox x:Name="PackageIdBox" Style="{StaticResource FormTextBoxStyle}" />
-                        <TextBox x:Name="PackageSourceBox" Style="{StaticResource FormTextBoxStyle}" />
+                        <TextBox x:Name="PackageIdBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="PresetPackageIdTextBox" />
+                        <TextBox x:Name="PackageSourceBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="PresetPackageSourceTextBox" />
                     </StackPanel>
                     <StackPanel x:Name="PackageEditActions" Style="{StaticResource ActionBarStyle}">
-                        <Button x:Name="AddPackageButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddPackage" />
-                        <Button x:Name="EditPackageButton" Style="{StaticResource EditButtonStyle}" Click="OnEditPackage" />
-                        <Button x:Name="RemovePackageButton" Style="{StaticResource DeleteButtonStyle}" Click="OnRemovePackages" />
+                        <Button x:Name="AddPackageButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddPackage" AutomationProperties.AutomationId="PresetPackageAddButton" />
+                        <Button x:Name="EditPackageButton" Style="{StaticResource EditButtonStyle}" Click="OnEditPackage" AutomationProperties.AutomationId="PresetPackageEditButton" />
+                        <Button x:Name="RemovePackageButton" Style="{StaticResource DeleteButtonStyle}" Click="OnRemovePackages" AutomationProperties.AutomationId="PresetPackageRemoveButton" />
                     </StackPanel>
                 </StackPanel>
             </Border>
 
             <Border Grid.Row="3" Style="{StaticResource CardStyle}">
                 <Grid RowSpacing="10">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <StackPanel x:Name="PackageActions" Style="{StaticResource ActionBarStyle}">
                         <TextBlock x:Name="PackagesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                        <CheckBox x:Name="SelectAllPackagesBox" Click="OnToggleAllPackages" VerticalAlignment="Center" />
-                        <ProgressRing x:Name="OperationRing" Width="24" Height="24" />
-                        <Button x:Name="InstallPresetButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnInstallPreset" />
-                        <Button x:Name="UninstallPresetButton" Style="{StaticResource DeleteButtonStyle}" Click="OnUninstallPreset" />
-                        <Button x:Name="CancelPresetOperationButton" Style="{StaticResource CancelButtonStyle}" Click="OnCancelPresetOperation" />
+                        <CheckBox x:Name="SelectAllPackagesBox" Click="OnToggleAllPackages" VerticalAlignment="Center" AutomationProperties.AutomationId="PresetPackagesSelectAllCheckBox" />
+                        <Button x:Name="InstallPresetButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnInstallPreset" AutomationProperties.AutomationId="PresetInstallButton" />
+                        <Button x:Name="UninstallPresetButton" Style="{StaticResource DeleteButtonStyle}" Click="OnUninstallPreset" AutomationProperties.AutomationId="PresetUninstallButton" />
+                        <Button x:Name="CancelPresetOperationButton" Style="{StaticResource CancelButtonStyle}" Click="OnCancelPresetOperation" AutomationProperties.AutomationId="PresetOperationCancelButton" />
                     </StackPanel>
-                    <ListView x:Name="PackageList" Grid.Row="1" MaxHeight="420" ItemContainerStyle="{StaticResource ListRowContainerStyle}">
+                    <StackPanel Grid.Row="1" Spacing="4">
+                        <ProgressBar x:Name="OperationProgressBar" Minimum="0" Maximum="100" AutomationProperties.AutomationId="OperationProgressBar" />
+                        <TextBlock x:Name="OperationProgressText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                    </StackPanel>
+                    <ListView x:Name="PackageList" Grid.Row="2" ItemContainerStyle="{StaticResource ListRowContainerStyle}" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                         <ListView.ItemTemplate><DataTemplate>
                             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <CheckBox
@@ -71,7 +74,12 @@
                                     IsChecked="{Binding IsSelected, Mode=OneWay}"
                                     Click="OnPackageSelectionClick"
                                     VerticalAlignment="Top" />
-                                <StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" /><TextBlock Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" /></StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="3">
+                                    <TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                    <TextBlock Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                    <TextBlock Text="{Binding Version}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                    <TextBlock Text="{Binding Architecture}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                </StackPanel>
                             </Grid>
                         </DataTemplate></ListView.ItemTemplate>
                     </ListView>
@@ -81,10 +89,9 @@
             <Border Grid.Row="4" Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="10">
                     <TextBlock x:Name="ImportExportText" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                    <TextBox x:Name="ImportJsonBox" AcceptsReturn="True" MinHeight="96" MaxHeight="180" TextWrapping="Wrap" />
                     <StackPanel x:Name="ImportActions" Style="{StaticResource ActionBarStyle}">
-                        <Button x:Name="ImportPresetButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnImportPreset" />
-                        <Button x:Name="ExportPresetButton" Style="{StaticResource SaveButtonStyle}" Click="OnExportPreset" />
+                        <Button x:Name="ImportPresetButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnImportPreset" AutomationProperties.AutomationId="ImportPresetButton" />
+                        <Button x:Name="ExportPresetButton" Style="{StaticResource SaveButtonStyle}" Click="OnExportPreset" AutomationProperties.AutomationId="ExportPresetButton" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -93,7 +100,7 @@
                 <Grid RowSpacing="10">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <TextBlock x:Name="OperationResultsText" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                    <ListView x:Name="OperationResultList" Grid.Row="1" MaxHeight="360" ItemContainerStyle="{StaticResource ListRowContainerStyle}">
+                    <ListView x:Name="OperationResultList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                         <ListView.ItemTemplate><DataTemplate>
                             <StackPanel Spacing="3">
                                 <TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
@@ -101,7 +108,6 @@
                                 <TextBlock Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                 <TextBlock Text="{Binding Source}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                 <TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                                <TextBlock Text="{Binding Output}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                             </StackPanel>
                         </DataTemplate></ListView.ItemTemplate>
                     </ListView>

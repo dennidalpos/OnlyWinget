@@ -1,7 +1,10 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
+using OnlyWinget.Application.Presets;
 using OnlyWinget.Domain.Packages;
+using Windows.Storage;
+using Windows.Storage.Pickers;
 
 namespace OnlyWinget.Pages;
 
@@ -47,7 +50,7 @@ public sealed partial class PresetsPage : Page
         OperationResultList.ItemsSource = state.OperationResults;
         StatusText.Text = state.Error ?? GetEmptyText(state);
         PageUi.SetVisible(OperationResultList, state.OperationResults.Count > 0);
-        PageUi.ApplyLoading(OperationRing, state.IsExecuting);
+        ApplyOperationProgress(state.IsExecuting);
 
         PageUi.ApplySelectionHeader(SelectAllPackagesBox, state.HeaderState);
 
@@ -63,6 +66,10 @@ public sealed partial class PresetsPage : Page
         PageUi.SetEnabled(InstallPresetButton, commands, "preset.apply.install");
         PageUi.SetEnabled(UninstallPresetButton, commands, "preset.apply.uninstall");
         PageUi.SetEnabled(CancelPresetOperationButton, commands, "operation.cancel");
+        ExportPresetButton.Content = string.Format(
+            global::System.Globalization.CultureInfo.CurrentCulture,
+            TextResources.Get("Command_Preset_ExportNamed"),
+            state.ActivePresetName ?? TextResources.Get("Preset_DefaultFileName"));
         isRefreshing = false;
     }
 
@@ -76,7 +83,6 @@ public sealed partial class PresetsPage : Page
         PresetNameBox.Header = TextResources.Get("Preset_Name");
         PackageIdBox.Header = TextResources.Get("Package_Id");
         PackageSourceBox.Header = TextResources.Get("Package_Source");
-        ImportJsonBox.Header = TextResources.Get("Import_Json");
         ImportExportText.Text = TextResources.Get("Section_ImportExport");
         AddPresetButton.Content = TextResources.Get("Command_Preset_Add");
         RenamePresetButton.Content = TextResources.Get("Command_Preset_Rename");
@@ -85,7 +91,6 @@ public sealed partial class PresetsPage : Page
         EditPackageButton.Content = TextResources.Get("Command_PresetPackage_Edit");
         RemovePackageButton.Content = TextResources.Get("Command_PresetPackage_Remove");
         ImportPresetButton.Content = TextResources.Get("Command_Preset_Import");
-        ExportPresetButton.Content = TextResources.Get("Command_Preset_Export");
         SaveWorkspaceButton.Content = TextResources.Get("Command_Workspace_Save");
         InstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyInstall");
         UninstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyUninstall");
@@ -122,13 +127,13 @@ public sealed partial class PresetsPage : Page
         Notify();
     }
 
-    private void OnAddPackage(object sender, RoutedEventArgs args)
+    private async void OnAddPackage(object sender, RoutedEventArgs args)
     {
-        App.Workflow.AddPackageToActivePreset(CreatePackageFromInputs());
-        Notify();
+        await PageUi.RunWorkflowAsync(() =>
+            App.Workflow.AddPackageToActivePresetAsync(CreatePackageFromInputs(), CancellationToken.None));
     }
 
-    private void OnEditPackage(object sender, RoutedEventArgs args)
+    private async void OnEditPackage(object sender, RoutedEventArgs args)
     {
         var selected = App.Workflow.State.SelectedPresetPackages.SingleOrDefault();
         if (selected is null)
@@ -136,8 +141,8 @@ public sealed partial class PresetsPage : Page
             return;
         }
 
-        App.Workflow.ReplacePackageInActivePreset(selected, CreatePackageFromInputs());
-        Notify();
+        await PageUi.RunWorkflowAsync(() =>
+            App.Workflow.ReplacePackageInActivePresetAsync(selected, CreatePackageFromInputs(), CancellationToken.None));
     }
 
     private void OnRemovePackages(object sender, RoutedEventArgs args)
@@ -184,7 +189,8 @@ public sealed partial class PresetsPage : Page
         operationCancellation = new CancellationTokenSource();
         try
         {
-            var operation = App.Workflow.ApplyActivePresetAsync(action, operationCancellation.Token);
+            var progress = new Progress<OnlyWinget.Application.Winget.OperationProgress>(_ => Notify());
+            var operation = App.Workflow.ApplyActivePresetAsync(action, operationCancellation.Token, progress);
             Notify();
             await operation;
         }
@@ -209,19 +215,56 @@ public sealed partial class PresetsPage : Page
         Notify();
     }
 
-    private void OnImportPreset(object sender, RoutedEventArgs args)
+    private async void OnImportPreset(object sender, RoutedEventArgs args)
     {
-        App.Workflow.ImportPreset(ImportJsonBox.Text);
-        Notify();
+        var picker = new FileOpenPicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.WindowHandle);
+        picker.FileTypeFilter.Add(".json");
+        var file = await picker.PickSingleFileAsync();
+        if (file is null)
+        {
+            return;
+        }
+
+        var json = await FileIO.ReadTextAsync(file);
+        await PageUi.RunWorkflowAsync(() => App.Workflow.ImportPresetAsync(json, CancellationToken.None));
     }
 
-    private void OnExportPreset(object sender, RoutedEventArgs args)
+    private async void OnExportPreset(object sender, RoutedEventArgs args)
     {
-        ImportJsonBox.Text = App.Workflow.ExportActivePreset();
-        Notify();
+        var active = App.Workflow.State.ActivePreset;
+        if (active is null)
+        {
+            return;
+        }
+
+        var picker = new FileSavePicker
+        {
+            SuggestedFileName = PresetDocumentService.GetExportFileName(active.Name)
+        };
+        picker.FileTypeChoices.Add(TextResources.Get("Preset_FileType"), [".json"]);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, App.WindowHandle);
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            return;
+        }
+
+        await FileIO.WriteTextAsync(file, App.Workflow.ExportActivePreset());
     }
 
     private PackageIdentity CreatePackageFromInputs() => new(PackageIdBox.Text, PackageSourceBox.Text);
+
+    private void ApplyOperationProgress(bool isExecuting)
+    {
+        var progress = App.Workflow.State.OperationProgress;
+        PageUi.SetVisible(OperationProgressBar, isExecuting);
+        PageUi.SetVisible(OperationProgressText, isExecuting);
+        OperationProgressBar.Value = progress?.Percentage ?? 0;
+        OperationProgressText.Text = progress is null
+            ? TextResources.Get("Progress_Starting")
+            : $"{TextResources.Get($"Progress_{progress.Phase}")} · {progress.Percentage}% · {progress.PackageId}";
+    }
 
     private static string GetEmptyText(PresetsPresentationState state)
     {

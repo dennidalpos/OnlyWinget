@@ -23,9 +23,9 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <TextBlock x:Name="AddSourceSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                     <StackPanel Grid.Row="1" Spacing="8">
-                        <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" />
-                        <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" />
-                        <Button x:Name="AddButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSource" />
+                        <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" />
+                        <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" />
+                        <Button x:Name="AddButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSource" AutomationProperties.AutomationId="SourceAddButton" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -36,26 +36,30 @@
                     <TextBlock x:Name="ManageSourcesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                     <StackPanel x:Name="SourceActions" Grid.Row="1" Style="{StaticResource ActionBarStyle}">
                         <ProgressRing x:Name="LoadingRing" Width="24" Height="24" />
-                        <Button x:Name="RefreshButton" Style="{StaticResource RefreshButtonStyle}" Click="OnRefreshSources" />
-                        <Button x:Name="UpdateButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnUpdateSources" />
+                        <Button x:Name="RefreshButton" Style="{StaticResource RefreshButtonStyle}" Click="OnRefreshSources" AutomationProperties.AutomationId="SourcesRefreshButton" />
+                        <Button x:Name="UpdateButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnUpdateSources" AutomationProperties.AutomationId="SourcesUpdateButton" />
                     </StackPanel>
-                    <ListView x:Name="SourceList" Grid.Row="2" MaxHeight="520" SelectionMode="Single" ItemContainerStyle="{StaticResource ListRowContainerStyle}">
+                    <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SourceList" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                         <ListView.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Spacing="3">
-                                    <TextBlock Text="{Binding Name}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                    <TextBlock Text="{Binding Argument}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                    <TextBlock Text="{Binding Type}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                    <TextBlock Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                </StackPanel>
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                        <TextBlock Text="{Binding Argument}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{Binding Type}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Text="{Binding Status}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                    </StackPanel>
+                                    <ToggleSwitch Grid.Column="1" AutomationProperties.Name="{Binding Name}" IsOn="{Binding IsEnabled, Mode=OneWay}" Toggled="OnSourceEnabledToggled" VerticalAlignment="Center" />
+                                </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
                     <StackPanel Grid.Row="3" Spacing="10">
                         <TextBlock x:Name="StatusText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource EmptyStateTextBlockStyle}" />
                         <StackPanel x:Name="DestructiveActions" Style="{StaticResource ActionBarStyle}">
-                            <Button x:Name="RemoveButton" Style="{StaticResource DeleteButtonStyle}" Click="OnRemoveSource" />
-                            <Button x:Name="ResetButton" Style="{StaticResource DeleteButtonStyle}" Click="OnResetSources" />
+                            <Button x:Name="RemoveButton" Style="{StaticResource DeleteButtonStyle}" Click="OnRemoveSource" AutomationProperties.AutomationId="SourceRemoveButton" />
+                            <Button x:Name="ResetButton" Style="{StaticResource DeleteButtonStyle}" Click="OnResetSources" AutomationProperties.AutomationId="SourcesResetButton" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>

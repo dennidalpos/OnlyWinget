@@ -83,6 +83,9 @@ public static class TextResources
         ["Command_PresetPackage_Remove"] = "Remove selected",
         ["Command_Preset_Import"] = "Import",
         ["Command_Preset_Export"] = "Export",
+        ["Command_Preset_ExportNamed"] = "Export {0}",
+        ["Preset_DefaultFileName"] = "preset",
+        ["Preset_FileType"] = "OnlyWinget preset",
         ["Command_Workspace_Save"] = "Save workspace",
         ["Command_Preset_ApplyInstall"] = "Install preset",
         ["Command_Preset_ApplyUninstall"] = "Uninstall preset",
@@ -105,7 +108,18 @@ public static class TextResources
         ["Dialog_ResetSources_Title"] = "Reset sources",
         ["Dialog_ResetSources_Message"] = "Reset winget sources to defaults?",
         ["Dialog_Confirm"] = "Confirm",
-        ["Dialog_Cancel"] = "Cancel"
+        ["Dialog_Cancel"] = "Cancel",
+        ["Progress_Starting"] = "Preparing",
+        ["Progress_Downloading"] = "Downloading",
+        ["Progress_Installing"] = "Installing",
+        ["Progress_Completed"] = "Completed",
+        ["Progress_Failed"] = "Failed",
+        ["WindowsUpdates_IncludeSoftware"] = "Software",
+        ["WindowsUpdates_IncludeDrivers"] = "Drivers",
+        ["WindowsUpdates_IncludeMicrosoft"] = "Microsoft products",
+        ["WindowsUpdates_IncludeSuperseded"] = "Include superseded (force)",
+        ["Dialog_SupersededUpdates_Title"] = "Include superseded updates?",
+        ["Dialog_SupersededUpdates_Message"] = "Superseded updates can replace newer recommendations. Continue only when troubleshooting a specific update."
     };
 
     private static readonly IReadOnlyDictionary<string, string> Italian = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -187,6 +201,9 @@ public static class TextResources
         ["Command_PresetPackage_Remove"] = "Rimuovi selezionati",
         ["Command_Preset_Import"] = "Importa",
         ["Command_Preset_Export"] = "Esporta",
+        ["Command_Preset_ExportNamed"] = "Esporta {0}",
+        ["Preset_DefaultFileName"] = "preset",
+        ["Preset_FileType"] = "Preset OnlyWinget",
         ["Command_Workspace_Save"] = "Salva workspace",
         ["Command_Preset_ApplyInstall"] = "Installa preset",
         ["Command_Preset_ApplyUninstall"] = "Disinstalla preset",
@@ -209,7 +226,18 @@ public static class TextResources
         ["Dialog_ResetSources_Title"] = "Ripristina sorgenti",
         ["Dialog_ResetSources_Message"] = "Ripristinare le sorgenti winget predefinite?",
         ["Dialog_Confirm"] = "Conferma",
-        ["Dialog_Cancel"] = "Annulla"
+        ["Dialog_Cancel"] = "Annulla",
+        ["Progress_Starting"] = "Preparazione",
+        ["Progress_Downloading"] = "Download",
+        ["Progress_Installing"] = "Installazione",
+        ["Progress_Completed"] = "Completato",
+        ["Progress_Failed"] = "Errore",
+        ["WindowsUpdates_IncludeSoftware"] = "Software",
+        ["WindowsUpdates_IncludeDrivers"] = "Driver",
+        ["WindowsUpdates_IncludeMicrosoft"] = "Prodotti Microsoft",
+        ["WindowsUpdates_IncludeSuperseded"] = "Includi sostituiti (forzata)",
+        ["Dialog_SupersededUpdates_Title"] = "Includere aggiornamenti sostituiti?",
+        ["Dialog_SupersededUpdates_Message"] = "Gli aggiornamenti sostituiti possono non essere quelli consigliati. Continua solo per risolvere un problema specifico."
     };
 
     public static string Get(string key)

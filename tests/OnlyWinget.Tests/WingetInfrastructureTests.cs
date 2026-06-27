@@ -15,10 +15,10 @@ public sealed class WingetInfrastructureTests
     [Fact]
     public async Task SystemCapabilityServiceChecksRequiredCommandsAndWindowsUpdateCom()
     {
-        var runner = new RecordingWingetCommandRunner(
-            new WingetCommandResult(0, "v1.9.0", string.Empty),
-            new WingetCommandResult(0, "5.1.0", string.Empty),
-            new WingetCommandResult(0, "available", string.Empty));
+        var runner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, "v1.9.0", string.Empty),
+            new ExternalProcessResult(0, "5.1.0", string.Empty),
+            new ExternalProcessResult(0, "available", string.Empty));
         var availability = new SystemCapabilityService(runner);
 
         var capabilities = await availability.GetCapabilitiesAsync(CancellationToken.None);
@@ -33,16 +33,38 @@ public sealed class WingetInfrastructureTests
     [Fact]
     public async Task WindowsUpdateServiceReturnsFailureWithoutRunningPowerShellWhenCapabilityIsMissing()
     {
-        var runner = new RecordingWingetCommandRunner();
+        var runner = new RecordingExternalProcessRunner();
         var service = new PowerShellWindowsUpdateService(
             runner,
             new StubSystemCapabilityService(new SystemCapabilities(true, true, false, false, null)));
 
-        var outcome = await service.ScanAsync(CancellationToken.None);
+        var outcome = await service.ScanAsync(new WindowsUpdateOptions(), CancellationToken.None);
 
         Assert.False(outcome.Succeeded);
         Assert.Contains("PowerShell is not available", outcome.Error?.Message, StringComparison.Ordinal);
         Assert.Empty(runner.Calls);
+    }
+
+    [Fact]
+    public async Task WindowsUpdateOptionsConfigureDriversMicrosoftUpdateAndSupersededContent()
+    {
+        var runner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, "{\"succeeded\":true,\"rows\":[],\"error\":null}", string.Empty));
+        var service = new PowerShellWindowsUpdateService(
+            runner,
+            new StubSystemCapabilityService(new SystemCapabilities(true, true, true, true, null)));
+
+        var outcome = await service.ScanAsync(
+            new WindowsUpdateOptions(false, true, true, true),
+            CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        var encoded = Assert.IsAssignableFrom<IReadOnlyList<string>>(runner.LastArguments).Last();
+        var script = System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(encoded));
+        Assert.Contains("Type=\\u0027Driver\\u0027", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Type=\\u0027Software\\u0027", script, StringComparison.Ordinal);
+        Assert.Contains("7971f918-a847-4430-9279-4a52d1efe18d", script, StringComparison.Ordinal);
+        Assert.Contains("\"includePotentiallySupersededUpdates\":true", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -71,6 +93,34 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(WingetErrorKind.NotFound, notFound?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdates?.Kind);
         Assert.Equal(WingetErrorKind.SourceUnavailable, source?.Kind);
+    }
+
+    [Theory]
+    [InlineData("\u001b[32mDownloading 42%\u001b[0m", WingetProgressPhase.Downloading, 42, "Downloading 42%")]
+    [InlineData("Scaricamento 7%", WingetProgressPhase.Downloading, 7, "Scaricamento 7%")]
+    [InlineData("Installation 100%", WingetProgressPhase.Installing, 100, "Installation 100%")]
+    [InlineData("Installing 101%", WingetProgressPhase.Installing, null, "Installing 101%")]
+    [InlineData("Installing nope%", WingetProgressPhase.Installing, null, "Installing nope%")]
+    public void ProgressParserHandlesAnsiLocalizedAndMalformedLines(
+        string line,
+        WingetProgressPhase expectedPhase,
+        int? expectedPercentage,
+        string expectedMessage)
+    {
+        var parsed = Assert.IsType<WingetProgress>(new WingetProgressParser().Parse(line));
+
+        Assert.Equal(expectedPhase, parsed.Phase);
+        Assert.Equal(expectedPercentage, parsed.Percentage);
+        Assert.Equal(expectedMessage, parsed.Message);
+    }
+
+    [Fact]
+    public void ProgressParserIgnoresEmptyAndAnsiOnlyLines()
+    {
+        var parser = new WingetProgressParser();
+
+        Assert.Null(parser.Parse("\r\n"));
+        Assert.Null(parser.Parse("\u001b[0m"));
     }
 
     [Fact]
@@ -133,6 +183,8 @@ public sealed class WingetInfrastructureTests
             Version: 2.0.0
             Publisher: The Git Development Community
             Source: winget
+            Architecture: x64
+            Architecture: arm64
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
         var resolver = new WingetPackageResolver(runner, new WingetErrorClassifier());
@@ -143,6 +195,7 @@ public sealed class WingetInfrastructureTests
         Assert.True(resolution.IsResolved);
         Assert.Equal("2.0.0", resolution.Version);
         Assert.Equal("winget", resolution.Package.Source);
+        Assert.Equal(["x64", "arm64"], resolution.Architectures);
         Assert.Null(resolution.Error);
     }
 
@@ -157,9 +210,9 @@ public sealed class WingetInfrastructureTests
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
         var loader = new WingetUpdateLoader(runner, new WingetTableParser(), new WingetErrorClassifier());
 
-        var outcome = await loader.LoadUpdatesAsync(CancellationToken.None);
+        var outcome = await loader.LoadUpdatesAsync("winget", CancellationToken.None);
 
-        Assert.Equal(["upgrade", "--accept-source-agreements"], runner.LastArguments);
+        Assert.Equal(["upgrade", "--source", "winget", "--accept-source-agreements"], runner.LastArguments);
         var update = Assert.Single(outcome.Rows);
         Assert.Equal("Git.Git", update.Package.Id);
         Assert.Equal("2.0.0", update.InstalledVersion);
@@ -170,9 +223,11 @@ public sealed class WingetInfrastructureTests
     public async Task SourceServiceRunsSourceCommandsAndMapsLocalizedRows()
     {
         const string output = """
-            Nome   Argomento                              Contenuti espliciti
-            -----------------------------------------------------------------
-            winget https://cdn.winget.microsoft.com/cache false
+            Nome        Argomento                                     Contenuti espliciti
+            -----------------------------------------------------------------------------
+            msstore     https://storeedgefd.dsx.mp.microsoft.com/v9.0 false
+            winget      https://cdn.winget.microsoft.com/cache        false
+            winget-font https://cdn.winget.microsoft.com/fonts        true
             """;
         var runner = new RecordingWingetCommandRunner(
             new WingetCommandResult(0, output, string.Empty),
@@ -188,11 +243,11 @@ public sealed class WingetInfrastructureTests
         await service.RemoveSourceAsync("custom", CancellationToken.None);
         await service.ResetSourcesAsync(CancellationToken.None);
 
-        var source = Assert.Single(sources.Rows);
+        var source = sources.Rows.Single(source => source.Name == "winget");
         Assert.Equal("winget", source.Name);
         Assert.Equal("https://cdn.winget.microsoft.com/cache", source.Argument);
         Assert.Equal(["source", "reset", "--force"], runner.LastArguments);
-        Assert.Contains(runner.Calls, call => call.SequenceEqual(["source", "update", "--accept-source-agreements"]));
+        Assert.Contains(runner.Calls, call => call.SequenceEqual(["source", "update"]));
         Assert.Contains(runner.Calls, call => call.SequenceEqual(["source", "add", "--name", "custom", "--arg", "https://example.test", "--accept-source-agreements"]));
         Assert.Contains(runner.Calls, call => call.SequenceEqual(["source", "remove", "--name", "custom"]));
     }
@@ -235,7 +290,8 @@ public sealed class WingetInfrastructureTests
         public Task<WingetCommandResult> RunAsync(
             string command,
             IReadOnlyList<string> arguments,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IProgress<WingetProgress>? progress = null)
         {
             LastCommand = command;
             LastArguments = arguments.ToArray();
@@ -243,6 +299,31 @@ public sealed class WingetInfrastructureTests
             CommandCalls.Add(new CommandCall(command, LastArguments));
             return Task.FromResult(results.Count == 0
                 ? new WingetCommandResult(0, string.Empty, string.Empty)
+                : results.Dequeue());
+        }
+    }
+
+    private sealed class RecordingExternalProcessRunner(params ExternalProcessResult[] results) : IExternalProcessRunner
+    {
+        private readonly Queue<ExternalProcessResult> results = new(results);
+
+        public List<IReadOnlyList<string>> Calls { get; } = [];
+
+        public List<CommandCall> CommandCalls { get; } = [];
+
+        public IReadOnlyList<string>? LastArguments { get; private set; }
+
+        public Task<ExternalProcessResult> RunAsync(
+            string command,
+            IReadOnlyList<string> arguments,
+            CancellationToken cancellationToken,
+            IProgress<string>? standardOutputLines = null)
+        {
+            LastArguments = arguments.ToArray();
+            Calls.Add(LastArguments);
+            CommandCalls.Add(new CommandCall(command, LastArguments));
+            return Task.FromResult(results.Count == 0
+                ? new ExternalProcessResult(0, string.Empty, string.Empty)
                 : results.Dequeue());
         }
     }

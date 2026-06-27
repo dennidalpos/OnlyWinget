@@ -58,11 +58,20 @@ public sealed partial class WindowsUpdatePage : Page
         ScanButton.Content = TextResources.Get("Command_WindowsUpdates_Scan");
         InstallSelectedButton.Content = TextResources.Get("Command_WindowsUpdates_InstallSelected");
         CancelButton.Content = TextResources.Get("Command_Operation_Cancel");
+        SoftwareUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeSoftware");
+        DriverUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeDrivers");
+        MicrosoftUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeMicrosoft");
+        SupersededUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeSuperseded");
     }
 
     private async void OnScanWindowsUpdates(object sender, RoutedEventArgs args)
     {
-        await ScanWindowsUpdatesAsync(CancellationToken.None);
+        if (!await ConfirmSupersededAsync())
+        {
+            return;
+        }
+
+        await ScanWindowsUpdatesAsync(CreateOptions(), CancellationToken.None);
     }
 
     private async void OnInstallSelected(object sender, RoutedEventArgs args)
@@ -71,7 +80,12 @@ public sealed partial class WindowsUpdatePage : Page
         operationCancellation = new CancellationTokenSource();
         try
         {
-            var install = App.Workflow.InstallSelectedWindowsUpdatesAsync(operationCancellation.Token);
+            if (!await ConfirmSupersededAsync())
+            {
+                return;
+            }
+
+            var install = App.Workflow.InstallSelectedWindowsUpdatesAsync(CreateOptions(), operationCancellation.Token);
             Notify();
             await install;
         }
@@ -110,9 +124,34 @@ public sealed partial class WindowsUpdatePage : Page
         Notify();
     }
 
-    private static Task ScanWindowsUpdatesAsync(CancellationToken cancellationToken)
+    private static Task ScanWindowsUpdatesAsync(WindowsUpdateOptions options, CancellationToken cancellationToken)
     {
-        return PageUi.RunWorkflowAsync(() => App.Workflow.ScanWindowsUpdatesAsync(cancellationToken));
+        return PageUi.RunWorkflowAsync(() => App.Workflow.ScanWindowsUpdatesAsync(options, cancellationToken));
+    }
+
+    private WindowsUpdateOptions CreateOptions() => new(
+        SoftwareUpdatesBox.IsChecked == true,
+        DriverUpdatesBox.IsChecked == true,
+        MicrosoftUpdatesBox.IsChecked == true,
+        SupersededUpdatesBox.IsChecked == true);
+
+    private async Task<bool> ConfirmSupersededAsync()
+    {
+        if (SupersededUpdatesBox.IsChecked != true)
+        {
+            return true;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = TextResources.Get("Dialog_SupersededUpdates_Title"),
+            Content = TextResources.Get("Dialog_SupersededUpdates_Message"),
+            PrimaryButtonText = TextResources.Get("Dialog_Confirm"),
+            CloseButtonText = TextResources.Get("Dialog_Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     private static void Notify()

@@ -5,5 +5,6 @@ public interface IWingetCommandRunner
     Task<WingetCommandResult> RunAsync(
         string command,
         IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IProgress<WingetProgress>? progress = null);
 }

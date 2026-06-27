@@ -542,7 +542,7 @@ if (-not $SkipBundle) {
 if ($StopRunningInstance) {
     $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
     Assert-Path -Path $buildScriptPath -Description 'Build script'
-    & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance
+    & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance -NonInteractive:$NonInteractive
     if ($LASTEXITCODE -ne 0) {
         throw 'Preparazione build fallita prima del publish MSI.'
     }

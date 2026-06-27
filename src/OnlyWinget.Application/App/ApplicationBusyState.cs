@@ -11,5 +11,6 @@ public enum ApplicationBusyState
     ScanningWindowsUpdates,
     InstallingWindowsUpdates,
     ManagingSources,
+    ValidatingPackages,
     ExecutingOperation
 }
