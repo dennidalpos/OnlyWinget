@@ -7,6 +7,8 @@ public sealed record WindowsUpdateRow(
     string? Description,
     string? Severity,
     string Categories,
+    string KnowledgeBaseArticles,
+    ulong MaxDownloadSize,
     bool IsDownloaded,
     bool RebootRequired,
     bool IsSelected,

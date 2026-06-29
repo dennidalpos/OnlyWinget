@@ -47,32 +47,67 @@
                         <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SearchLoadingRing" AutomationProperties.Name="Searching packages" />
                         <Button x:Name="AddSelectedButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSelected" AutomationProperties.AutomationId="SearchAddSelectedButton" />
                     </StackPanel>
-                    <ListView x:Name="ResultList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SearchResultList">
+                    <ListView
+                        x:Name="ResultList"
+                        Grid.Row="1"
+                        ItemContainerStyle="{StaticResource ListRowContainerStyle}"
+                        AutomationProperties.AutomationId="SearchResultList"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollMode="Enabled"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.VerticalScrollMode="Enabled">
+                        <ListView.Header>
+                            <Grid MinWidth="760" Padding="12,8" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.7*" />
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="1.1*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1.5*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="SearchNameHeader" Grid.Column="1" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchPackageIdHeader" Grid.Column="2" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchSourceHeader" Grid.Column="3" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchVersionHeader" Grid.Column="4" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchArchitectureHeader" Grid.Column="5" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchMatchHeader" Grid.Column="6" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                            </Grid>
+                        </ListView.Header>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="presentation:SearchResultRow">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid MinWidth="760" ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="1.7*" />
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                    </Grid.ColumnDefinitions>
                                     <CheckBox
                                         AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
                                         AutomationProperties.Name="{x:Bind Name, Mode=OneTime}"
                                         IsChecked="{x:Bind IsSelected, Mode=OneTime}"
                                         Click="OnResultSelectionClick"
-                                        VerticalAlignment="Top" />
-                                    <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                        <StackPanel Spacing="3">
-                                            <TextBlock Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            <TextBlock Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            <TextBlock Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        </StackPanel>
-                                        <TextBlock Text="{x:Bind Match, Mode=OneTime}" TextWrapping="Wrap" />
-                                    </StackPanel>
+                                        VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    <TextBlock Grid.Column="2" Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                    <TextBlock Grid.Column="3" Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="4" Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="5" Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="6" Text="{x:Bind Match, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
-                    <TextBlock x:Name="StatusText" Grid.Row="2" AutomationProperties.LiveSetting="Polite" Style="{StaticResource EmptyStateTextBlockStyle}" />
+                    <StackPanel Grid.Row="2" Spacing="4">
+                        <ProgressBar x:Name="SearchProgressBar" IsIndeterminate="True" Visibility="Collapsed" AutomationProperties.AutomationId="SearchProgressBar" />
+                        <TextBlock x:Name="LoadingStatusText" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                        <TextBlock x:Name="StatusText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource EmptyStateTextBlockStyle}" />
+                    </StackPanel>
                 </Grid>
             </Border>
 

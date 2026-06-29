@@ -71,6 +71,26 @@ public sealed class WingetInfrastructureTests
     }
 
     [Fact]
+    public async Task WindowsUpdateServiceMapsPatchMetadata()
+    {
+        const string output = """
+            {"succeeded":true,"rows":[{"updateId":"update-1","revisionNumber":3,"title":"Security update","description":"Fixes","severity":"Critical","categories":["Security"],"knowledgeBaseArticles":["5000001"],"maxDownloadSize":12345678,"isDownloaded":false,"rebootRequired":true}],"error":null}
+            """;
+        var runner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, output, string.Empty));
+        var service = new PowerShellWindowsUpdateService(
+            runner,
+            new StubSystemCapabilityService(new SystemCapabilities(true, true, true, true, null)));
+
+        var outcome = await service.ScanAsync(new WindowsUpdateOptions(), CancellationToken.None);
+
+        var update = Assert.Single(outcome.Rows);
+        Assert.Equal(["5000001"], update.KnowledgeBaseArticles);
+        Assert.Equal(12_345_678UL, update.MaxDownloadSize);
+        Assert.True(update.RebootRequired);
+    }
+
+    [Fact]
     public void OperationPlannerCreatesPresetPlan()
     {
         var planner = new OperationPlanner();

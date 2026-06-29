@@ -70,14 +70,16 @@ public sealed partial class PresetsPage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Presets;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        PageUi.ReplaceItems(presetNames, state.PresetNames);
+        PageUi.SynchronizeItems(presetNames, state.PresetNames, name => name);
         PresetSelector.SelectedItem = state.ActivePresetName;
         PresetNameBox.Text = state.ActivePresetName ?? string.Empty;
-        PageUi.ReplaceItems(packages, state.Packages.Select(row => row with
+        var localizedPackages = state.Packages.Select(row => row with
         {
             Architecture = TextResources.Get(row.Architecture),
+            Name = string.IsNullOrWhiteSpace(row.Name) ? TextResources.Get("Value_Unknown") : row.Name,
             Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version
-        }));
+        });
+        PageUi.SynchronizeItems(packages, localizedPackages, PackageKey);
         PageUi.ReplaceItems(operationResults, state.OperationResults);
         StatusText.Text = state.Error ?? GetEmptyText(state);
         PageUi.SetVisible(OperationResultList, state.OperationResults.Count > 0);
@@ -127,6 +129,11 @@ public sealed partial class PresetsPage : Page
         UninstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyUninstall");
         CancelPresetOperationButton.Content = TextResources.Get("Command_Operation_Cancel");
         SelectAllPackagesBox.Content = TextResources.Get("Command_Select_All");
+        PresetNameHeader.Text = TextResources.Get("Header_Name");
+        PresetPackageIdHeader.Text = TextResources.Get("Header_PackageId");
+        PresetSourceHeader.Text = TextResources.Get("Header_Source");
+        PresetVersionHeader.Text = TextResources.Get("Header_Version");
+        PresetArchitectureHeader.Text = TextResources.Get("Header_Architecture");
     }
 
     private void OnPresetChanged(object sender, SelectionChangedEventArgs args)
@@ -307,4 +314,6 @@ public sealed partial class PresetsPage : Page
         return state.Packages.Count == 0 ? TextResources.Get("Empty_Packages") : string.Empty;
     }
 
+    private static string PackageKey(PresetPackageRow row) =>
+        $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";
 }

@@ -67,4 +67,63 @@ internal static class PageUi
             target.Add(item);
         }
     }
+
+    public static void SynchronizeItems<T, TKey>(
+        ObservableCollection<T> target,
+        IEnumerable<T> items,
+        Func<T, TKey> keySelector)
+        where TKey : notnull
+    {
+        var desired = items.ToArray();
+        var desiredKeys = desired.Select(keySelector).ToHashSet();
+
+        for (var index = target.Count - 1; index >= 0; index--)
+        {
+            if (!desiredKeys.Contains(keySelector(target[index])))
+            {
+                target.RemoveAt(index);
+            }
+        }
+
+        for (var index = 0; index < desired.Length; index++)
+        {
+            var desiredItem = desired[index];
+            var desiredKey = keySelector(desiredItem);
+            var currentIndex = FindIndex(target, desiredKey, keySelector, index);
+
+            if (currentIndex < 0)
+            {
+                target.Insert(index, desiredItem);
+                continue;
+            }
+
+            if (currentIndex != index)
+            {
+                target.Move(currentIndex, index);
+            }
+
+            if (!EqualityComparer<T>.Default.Equals(target[index], desiredItem))
+            {
+                target[index] = desiredItem;
+            }
+        }
+    }
+
+    private static int FindIndex<T, TKey>(
+        ObservableCollection<T> items,
+        TKey key,
+        Func<T, TKey> keySelector,
+        int startIndex)
+        where TKey : notnull
+    {
+        for (var index = startIndex; index < items.Count; index++)
+        {
+            if (EqualityComparer<TKey>.Default.Equals(keySelector(items[index]), key))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
 }

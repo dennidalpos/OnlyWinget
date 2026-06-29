@@ -26,35 +26,69 @@
                         <Button x:Name="ApplySelectedButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnApplySelected" AutomationProperties.AutomationId="UpdatesApplySelectedButton" />
                         <Button x:Name="CancelButton" Style="{StaticResource CancelButtonStyle}" Click="OnCancel" AutomationProperties.AutomationId="UpdatesCancelButton" />
                     </StackPanel>
-                    <ListView x:Name="UpdateList" Grid.Row="1" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="UpdateList">
+                    <ListView
+                        x:Name="UpdateList"
+                        Grid.Row="1"
+                        ItemContainerStyle="{StaticResource ListRowContainerStyle}"
+                        AutomationProperties.AutomationId="UpdateList"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollMode="Enabled"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.VerticalScrollMode="Enabled">
+                        <ListView.Header>
+                            <Grid MinWidth="760" Padding="12,8" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.6*" />
+                                    <ColumnDefinition Width="1.8*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1.5*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="UpdatesNameHeader" Grid.Column="1" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="UpdatesPackageIdHeader" Grid.Column="2" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="UpdatesSourceHeader" Grid.Column="3" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="UpdatesInstalledHeader" Grid.Column="4" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="UpdatesAvailableHeader" Grid.Column="5" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="UpdatesArchitectureHeader" Grid.Column="6" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="UpdatesStatusHeader" Grid.Column="7" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                            </Grid>
+                        </ListView.Header>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="presentation:UpdateRow">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid MinWidth="760" ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="1.6*" />
+                                        <ColumnDefinition Width="1.8*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                    </Grid.ColumnDefinitions>
                                     <CheckBox
                                         AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
                                         AutomationProperties.Name="{x:Bind Name, Mode=OneTime}"
                                         IsChecked="{x:Bind IsSelected, Mode=OneTime}"
                                         Click="OnUpdateSelectionClick"
-                                        VerticalAlignment="Top" />
-                                    <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                        <StackPanel Spacing="3">
-                                            <TextBlock Text="{x:Bind InstalledVersion, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            <TextBlock Text="→" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            <TextBlock Text="{x:Bind AvailableVersion, Mode=OneTime}" />
-                                            <TextBlock Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            <TextBlock Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        </StackPanel>
-                                        <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind ErrorDetails, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                                    </StackPanel>
+                                        VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    <TextBlock Grid.Column="2" Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                    <TextBlock Grid.Column="3" Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="4" Text="{x:Bind InstalledVersion, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="5" Text="{x:Bind AvailableVersion, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="6" Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="7" Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" ToolTipService.ToolTip="{x:Bind ErrorDetails, Mode=OneTime}" />
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
                     <StackPanel Grid.Row="2" Spacing="4">
+                        <ProgressBar x:Name="DiscoveryProgressBar" IsIndeterminate="True" Visibility="Collapsed" AutomationProperties.AutomationId="UpdatesDiscoveryProgressBar" />
+                        <TextBlock x:Name="LoadingStatusText" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                         <ProgressBar x:Name="OperationProgressBar" Minimum="0" Maximum="100" AutomationProperties.AutomationId="UpdateOperationProgressBar" AutomationProperties.Name="Update operation progress" />
                         <TextBlock x:Name="OperationProgressText" AutomationProperties.AutomationId="UpdateOperationProgressText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                     </StackPanel>

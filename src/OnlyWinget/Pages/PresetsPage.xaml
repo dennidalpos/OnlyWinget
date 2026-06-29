@@ -67,21 +67,53 @@
                         <ProgressBar x:Name="OperationProgressBar" Minimum="0" Maximum="100" AutomationProperties.AutomationId="PresetOperationProgressBar" AutomationProperties.Name="Preset operation progress" />
                         <TextBlock x:Name="OperationProgressText" AutomationProperties.AutomationId="PresetOperationProgressText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                     </StackPanel>
-                    <ListView x:Name="PackageList" Grid.Row="2" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="PresetPackageList" ScrollViewer.VerticalScrollMode="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                    <ListView
+                        x:Name="PackageList"
+                        Grid.Row="2"
+                        ItemContainerStyle="{StaticResource ListRowContainerStyle}"
+                        AutomationProperties.AutomationId="PresetPackageList"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollMode="Enabled"
+                        ScrollViewer.VerticalScrollMode="Disabled"
+                        ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <ListView.Header>
+                            <Grid MinWidth="760" Padding="12,8" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.5*" />
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="1.2*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="PresetNameHeader" Grid.Column="1" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="PresetPackageIdHeader" Grid.Column="2" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="PresetSourceHeader" Grid.Column="3" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="PresetVersionHeader" Grid.Column="4" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="PresetArchitectureHeader" Grid.Column="5" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                            </Grid>
+                        </ListView.Header>
                         <ListView.ItemTemplate><DataTemplate x:DataType="presentation:PresetPackageRow">
-                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Grid MinWidth="760" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.5*" />
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="1.2*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="1*" />
+                                </Grid.ColumnDefinitions>
                                 <CheckBox
                                     AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
                                     AutomationProperties.Name="{x:Bind PackageId, Mode=OneTime}"
                                     IsChecked="{x:Bind IsSelected, Mode=OneTime}"
                                     Click="OnPackageSelectionClick"
-                                    VerticalAlignment="Top" />
-                                <StackPanel Grid.Column="1" Spacing="3">
-                                    <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                    <TextBlock Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                    <TextBlock Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                    <TextBlock Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                </StackPanel>
+                                    VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                <TextBlock Grid.Column="2" Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                <TextBlock Grid.Column="3" Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                <TextBlock Grid.Column="4" Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                <TextBlock Grid.Column="5" Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
                             </Grid>
                         </DataTemplate></ListView.ItemTemplate>
                     </ListView>

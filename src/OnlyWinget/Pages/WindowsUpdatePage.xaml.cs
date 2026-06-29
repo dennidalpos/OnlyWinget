@@ -43,9 +43,29 @@ public sealed partial class WindowsUpdatePage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).WindowsUpdates;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        PageUi.ReplaceItems(updates, state.Updates);
-        PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_WindowsUpdates"), state.Updates.Count > 0);
+        var localizedUpdates = state.Updates.Select(row => row with
+        {
+            Severity = string.IsNullOrWhiteSpace(row.Severity) ? TextResources.Get("Value_Unknown") : row.Severity,
+            Categories = string.IsNullOrWhiteSpace(row.Categories) ? TextResources.Get("Value_Unknown") : row.Categories,
+            KnowledgeBaseArticles = string.IsNullOrWhiteSpace(row.KnowledgeBaseArticles)
+                ? TextResources.Get("Value_Unknown")
+                : row.KnowledgeBaseArticles,
+            Status = string.IsNullOrWhiteSpace(row.Status) ? TextResources.Get("Value_Unknown") : row.Status
+        });
+        PageUi.SynchronizeItems(updates, localizedUpdates, UpdateKey);
+        PageUi.ApplyStatus(
+            StatusText,
+            state.Error,
+            state.IsScanning ? string.Empty : TextResources.Get("Empty_WindowsUpdates"),
+            state.Updates.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsScanning || state.IsInstalling);
+        PageUi.SetVisible(WindowsUpdateProgressBar, state.IsScanning || state.IsInstalling);
+        PageUi.SetVisible(LoadingStatusText, state.IsScanning || state.IsInstalling);
+        LoadingStatusText.Text = state.IsInstalling
+            ? TextResources.Get("Progress_InstallingWindowsUpdates")
+            : state.IsScanning
+                ? TextResources.Get("Progress_ScanningWindowsUpdates")
+                : string.Empty;
         PageUi.ApplySelectionHeader(SelectAllWindowsUpdatesBox, state.HeaderState);
 
         PageUi.SetEnabled(ScanButton, commands, "windowsUpdates.scan");
@@ -65,6 +85,15 @@ public sealed partial class WindowsUpdatePage : Page
         DriverUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeDrivers");
         MicrosoftUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeMicrosoft");
         SupersededUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeSuperseded");
+        WindowsTitleHeader.Text = TextResources.Get("Header_Title");
+        WindowsKbHeader.Text = TextResources.Get("Header_KnowledgeBase");
+        WindowsSeverityHeader.Text = TextResources.Get("Header_Severity");
+        WindowsCategoriesHeader.Text = TextResources.Get("Header_Categories");
+        WindowsSizeHeader.Text = TextResources.Get("Header_Size");
+        WindowsDownloadedHeader.Text = TextResources.Get("Header_Downloaded");
+        WindowsRebootHeader.Text = TextResources.Get("Header_Reboot");
+        WindowsRevisionHeader.Text = TextResources.Get("Header_Revision");
+        WindowsStatusHeader.Text = TextResources.Get("Header_Status");
     }
 
     private async void OnScanWindowsUpdates(object sender, RoutedEventArgs args)
@@ -152,4 +181,23 @@ public sealed partial class WindowsUpdatePage : Page
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
+    public static string FormatBoolean(bool value) =>
+        TextResources.Get(value ? "Value_Yes" : "Value_No");
+
+    public static string FormatSize(ulong bytes)
+    {
+        if (bytes == 0)
+        {
+            return TextResources.Get("Value_Unknown");
+        }
+
+        const double megabyte = 1024d * 1024d;
+        const double gigabyte = megabyte * 1024d;
+        return bytes >= gigabyte
+            ? $"{bytes / gigabyte:0.##} GB"
+            : $"{bytes / megabyte:0.##} MB";
+    }
+
+    private static string UpdateKey(WindowsUpdateRow row) =>
+        $"{row.UpdateId.ToUpperInvariant()}|{row.RevisionNumber}";
 }

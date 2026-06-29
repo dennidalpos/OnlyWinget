@@ -39,13 +39,22 @@ public sealed partial class SearchPage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Search;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        PageUi.ReplaceItems(results, state.Results.Select(row => row with
+        var localizedResults = state.Results.Select(row => row with
         {
             Architecture = TextResources.Get(row.Architecture),
-            Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version
-        }));
-        PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Search"), state.Results.Count > 0);
+            Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version,
+            Match = string.IsNullOrWhiteSpace(row.Match) ? TextResources.Get("Value_Unknown") : row.Match
+        });
+        PageUi.SynchronizeItems(results, localizedResults, PackageKey);
+        PageUi.ApplyStatus(
+            StatusText,
+            state.Error,
+            state.IsLoading ? string.Empty : TextResources.Get("Empty_Search"),
+            state.Results.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsLoading);
+        PageUi.SetVisible(SearchProgressBar, state.IsLoading);
+        PageUi.SetVisible(LoadingStatusText, state.IsLoading);
+        LoadingStatusText.Text = state.IsLoading ? TextResources.Get("Progress_Searching") : string.Empty;
         PageUi.ApplySelectionHeader(SelectAllResultsBox, state.HeaderState);
 
         PageUi.SetEnabled(SearchButton, commands, "search.execute");
@@ -63,6 +72,12 @@ public sealed partial class SearchPage : Page
         SelectAllResultsBox.Content = TextResources.Get("Command_Select_All");
         SearchButton.Content = TextResources.Get("Command_Search_Execute");
         AddSelectedButton.Content = TextResources.Get("Command_Search_AddSelected");
+        SearchNameHeader.Text = TextResources.Get("Header_Name");
+        SearchPackageIdHeader.Text = TextResources.Get("Header_PackageId");
+        SearchSourceHeader.Text = TextResources.Get("Header_Source");
+        SearchVersionHeader.Text = TextResources.Get("Header_Version");
+        SearchArchitectureHeader.Text = TextResources.Get("Header_Architecture");
+        SearchMatchHeader.Text = TextResources.Get("Header_Match");
     }
 
     private async void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
@@ -104,4 +119,7 @@ public sealed partial class SearchPage : Page
 
         App.Workflow.ToggleSearchResult(new PackageIdentity(row.PackageId, row.Source));
     }
+
+    private static string PackageKey(SearchResultRow row) =>
+        $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";
 }

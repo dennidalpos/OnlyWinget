@@ -58,6 +58,7 @@ public static class PresentationStateMapper
                     state.PackageMetadata.TryGetValue(PackageFingerprint(package), out var metadata);
                     return new PresetPackageRow(
                         package.Id,
+                        metadata?.Name,
                         package.Source,
                         metadata?.Version,
                         FormatArchitectures(metadata),
@@ -178,6 +179,8 @@ public static class PresentationStateMapper
                         update.Description,
                         update.Severity,
                         string.Join(", ", update.Categories),
+                        string.Join(", ", update.KnowledgeBaseArticles.Select(article => $"KB{article}")),
+                        update.MaxDownloadSize,
                         update.IsDownloaded,
                         update.RebootRequired,
                         state.SelectedWindowsUpdates.Any(selected => WindowsUpdateEquals(selected, update.Identity)),

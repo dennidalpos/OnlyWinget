@@ -180,6 +180,8 @@ __OPTIONS_JSON__
             description = [string]$update.Description
             severity = [string]$update.MsrcSeverity
             categories = $categories
+            knowledgeBaseArticles = @($update.KBArticleIDs | ForEach-Object { [string]$_ })
+            maxDownloadSize = [uint64]$update.MaxDownloadSize
             isDownloaded = [bool]$update.IsDownloaded
             rebootRequired = [bool]$update.RebootRequired
         }
@@ -324,6 +326,8 @@ catch {
         [property: JsonPropertyName("description")] string? Description,
         [property: JsonPropertyName("severity")] string? Severity,
         [property: JsonPropertyName("categories")] IReadOnlyList<string>? Categories,
+        [property: JsonPropertyName("knowledgeBaseArticles")] IReadOnlyList<string>? KnowledgeBaseArticles,
+        [property: JsonPropertyName("maxDownloadSize")] ulong MaxDownloadSize,
         [property: JsonPropertyName("isDownloaded")] bool IsDownloaded,
         [property: JsonPropertyName("rebootRequired")] bool RebootRequired)
     {
@@ -334,6 +338,8 @@ catch {
                 Description,
                 Severity,
                 Categories ?? [],
+                KnowledgeBaseArticles ?? [],
+                MaxDownloadSize,
                 IsDownloaded,
                 RebootRequired);
     }

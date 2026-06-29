@@ -44,12 +44,21 @@ public sealed partial class UpdatesPage : Page
         var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Updates;
         var commands = state.Commands.ToDictionary(command => command.Id, StringComparer.Ordinal);
 
-        PageUi.ReplaceItems(updates, state.Updates.Select(row => row with
+        var localizedUpdates = state.Updates.Select(row => row with
         {
-            Architecture = TextResources.Get(row.Architecture)
-        }));
-        PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Updates"), state.Updates.Count > 0);
+            Architecture = TextResources.Get(row.Architecture),
+            Status = string.IsNullOrWhiteSpace(row.Status) ? TextResources.Get("Value_Unknown") : row.Status
+        });
+        PageUi.SynchronizeItems(updates, localizedUpdates, PackageKey);
+        PageUi.ApplyStatus(
+            StatusText,
+            state.Error,
+            state.IsLoading ? string.Empty : TextResources.Get("Empty_Updates"),
+            state.Updates.Count > 0);
         PageUi.ApplyLoading(LoadingRing, state.IsLoading || state.IsExecuting);
+        PageUi.SetVisible(DiscoveryProgressBar, state.IsLoading);
+        PageUi.SetVisible(LoadingStatusText, state.IsLoading);
+        LoadingStatusText.Text = state.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : string.Empty;
         ApplyOperationProgress(state.IsExecuting);
         PageUi.ApplySelectionHeader(SelectAllUpdatesBox, state.HeaderState);
 
@@ -66,6 +75,13 @@ public sealed partial class UpdatesPage : Page
         RefreshButton.Content = TextResources.Get("Command_Updates_Refresh");
         ApplySelectedButton.Content = TextResources.Get("Command_Updates_ApplySelected");
         CancelButton.Content = TextResources.Get("Command_Operation_Cancel");
+        UpdatesNameHeader.Text = TextResources.Get("Header_Name");
+        UpdatesPackageIdHeader.Text = TextResources.Get("Header_PackageId");
+        UpdatesSourceHeader.Text = TextResources.Get("Header_Source");
+        UpdatesInstalledHeader.Text = TextResources.Get("Header_Installed");
+        UpdatesAvailableHeader.Text = TextResources.Get("Header_Available");
+        UpdatesArchitectureHeader.Text = TextResources.Get("Header_Architecture");
+        UpdatesStatusHeader.Text = TextResources.Get("Header_Status");
     }
 
     private async void OnRefreshUpdates(object sender, RoutedEventArgs args)
@@ -128,4 +144,7 @@ public sealed partial class UpdatesPage : Page
             ? TextResources.Get("Progress_Starting")
             : $"{TextResources.Get($"Progress_{progress.Phase}")} · {progress.Percentage}% · {progress.PackageId}";
     }
+
+    private static string PackageKey(UpdateRow row) =>
+        $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";
 }

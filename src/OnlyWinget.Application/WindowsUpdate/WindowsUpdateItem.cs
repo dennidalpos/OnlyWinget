@@ -6,5 +6,7 @@ public sealed record WindowsUpdateItem(
     string? Description,
     string? Severity,
     IReadOnlyList<string> Categories,
+    IReadOnlyList<string> KnowledgeBaseArticles,
+    ulong MaxDownloadSize,
     bool IsDownloaded,
     bool RebootRequired);

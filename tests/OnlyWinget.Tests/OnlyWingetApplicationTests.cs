@@ -158,7 +158,7 @@ public sealed class OnlyWingetApplicationTests
         var identity = new WindowsUpdateIdentity("update-1", 100);
         var windowsUpdates = new StubWindowsUpdateService(
             [
-                new WindowsUpdateItem(identity, "Security update", "Fixes", "Critical", ["Security"], false, false)
+                new WindowsUpdateItem(identity, "Security update", "Fixes", "Critical", ["Security"], ["5000001"], 12_345_678, false, false)
             ],
             [
                 new WindowsUpdateInstallResult(identity, "Security update", true, true, "2", null)
@@ -173,7 +173,9 @@ public sealed class OnlyWingetApplicationTests
 
         Assert.True(result.Succeeded);
         Assert.True(windowsUpdates.LastInstallSelection?.Single() == identity);
-        Assert.Single(presentation.WindowsUpdates.Updates);
+        var update = Assert.Single(presentation.WindowsUpdates.Updates);
+        Assert.Equal("KB5000001", update.KnowledgeBaseArticles);
+        Assert.Equal(12_345_678UL, update.MaxDownloadSize);
         Assert.True(Assert.Single(presentation.WindowsUpdates.Results).RebootRequired);
     }
 
