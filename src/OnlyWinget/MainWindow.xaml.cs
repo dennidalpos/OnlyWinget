@@ -16,16 +16,17 @@ public sealed partial class MainWindow : Window
     private const double InitialWidth = 1180;
     private const double InitialHeight = 760;
 
-    private readonly Dictionary<string, Type> pages = new(StringComparer.Ordinal)
+    private readonly Dictionary<string, Func<Page>> pageFactories = new(StringComparer.Ordinal)
     {
-        ["dashboard"] = typeof(DashboardPage),
-        ["presets"] = typeof(PresetsPage),
-        ["search"] = typeof(SearchPage),
-        ["updates"] = typeof(UpdatesPage),
-        ["windowsUpdates"] = typeof(WindowsUpdatePage),
-        ["sources"] = typeof(SourcesPage),
-        ["activity"] = typeof(ActivityPage)
+        ["dashboard"] = static () => new DashboardPage(),
+        ["presets"] = static () => new PresetsPage(),
+        ["search"] = static () => new SearchPage(),
+        ["updates"] = static () => new UpdatesPage(),
+        ["windowsUpdates"] = static () => new WindowsUpdatePage(),
+        ["sources"] = static () => new SourcesPage(),
+        ["activity"] = static () => new ActivityPage()
     };
+    private readonly Dictionary<string, Page> pageCache = new(StringComparer.Ordinal);
 
     public MainWindow()
     {
@@ -36,7 +37,7 @@ public sealed partial class MainWindow : Window
         RootNavigation.Loaded += OnLoaded;
         ApplyText();
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
-        ContentFrame.Navigate(typeof(DashboardPage));
+        ShowPage("dashboard");
     }
 
     [DllImport("user32.dll")]
@@ -68,12 +69,26 @@ public sealed partial class MainWindow : Window
     {
         if (args.SelectedItem is not NavigationViewItem item ||
             item.Tag is not string tag ||
-            !pages.TryGetValue(tag, out var pageType))
+            !pageFactories.ContainsKey(tag))
         {
             return;
         }
 
-        ContentFrame.Navigate(pageType);
+        ShowPage(tag);
+    }
+
+    private void ShowPage(string tag)
+    {
+        if (!pageCache.TryGetValue(tag, out var page))
+        {
+            page = pageFactories[tag]();
+            pageCache[tag] = page;
+        }
+
+        if (!ReferenceEquals(PageHost.Content, page))
+        {
+            PageHost.Content = page;
+        }
     }
 
     private void ApplyText()

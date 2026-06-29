@@ -19,7 +19,8 @@ public sealed class WingetPackageResolver(
             "--id",
             package.Id,
             "--exact",
-            "--accept-source-agreements"
+            "--accept-source-agreements",
+            "--disable-interactivity"
         };
 
         if (!string.IsNullOrWhiteSpace(package.Source))

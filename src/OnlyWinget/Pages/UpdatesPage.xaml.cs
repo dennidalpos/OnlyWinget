@@ -9,6 +9,7 @@ namespace OnlyWinget.Pages;
 public sealed partial class UpdatesPage : Page
 {
     private CancellationTokenSource? operationCancellation;
+    private bool initialRefreshStarted;
     private bool isRefreshing;
     private readonly ObservableCollection<UpdateRow> updates = [];
 
@@ -25,15 +26,18 @@ public sealed partial class UpdatesPage : Page
     {
         App.Workflow.StateChanged += OnWorkflowChanged;
         Refresh();
-        await RefreshUpdatesAsync();
+        if (!initialRefreshStarted &&
+            App.Workflow.State.Updates.Count == 0 &&
+            App.Workflow.State.BusyState == OnlyWinget.Application.App.ApplicationBusyState.Idle)
+        {
+            initialRefreshStarted = true;
+            await RefreshUpdatesAsync();
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
         App.Workflow.StateChanged -= OnWorkflowChanged;
-        operationCancellation?.Cancel();
-        operationCancellation?.Dispose();
-        operationCancellation = null;
     }
 
     private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
@@ -47,7 +51,7 @@ public sealed partial class UpdatesPage : Page
         var localizedUpdates = state.Updates.Select(row => row with
         {
             Architecture = TextResources.Get(row.Architecture),
-            Status = string.IsNullOrWhiteSpace(row.Status) ? TextResources.Get("Value_Unknown") : row.Status
+            Status = TextResources.Get(row.Status ?? "Update_Status_Available")
         });
         PageUi.SynchronizeItems(updates, localizedUpdates, PackageKey);
         PageUi.ApplyStatus(

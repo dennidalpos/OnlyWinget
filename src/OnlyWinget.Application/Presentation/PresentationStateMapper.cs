@@ -140,7 +140,7 @@ public static class PresentationStateMapper
                             ? FormatArchitectures(metadata)
                             : "Value_Unknown",
                         state.SelectedUpdates.Any(selected => PackageEquals(selected, update.Package)),
-                        result?.Status,
+                        result?.Status ?? "Update_Status_Available",
                         result?.ErrorDetails,
                         result?.Output);
                 })
@@ -265,7 +265,7 @@ public static class PresentationStateMapper
     private static string FormatArchitectures(PackageResolution? metadata) =>
         metadata?.Architectures is { Count: > 0 } architectures
             ? string.Join(", ", architectures)
-            : "Value_Unknown";
+            : "Architecture_Automatic";
 
     private static bool PackageEquals(PackageIdentity left, PackageIdentity right) =>
         string.Equals(left.Id, right.Id, StringComparison.OrdinalIgnoreCase) &&

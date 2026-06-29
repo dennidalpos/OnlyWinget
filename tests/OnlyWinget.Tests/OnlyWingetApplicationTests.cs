@@ -102,6 +102,42 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task RefreshUpdatesKeepsSuccessfulSourcesAndReportsPartialFailures()
+    {
+        var updates = new StubUpdateLoader(
+            new PackageUpdate(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "2.1.0"));
+        updates.FailingSources.Add("msstore");
+        var sources = new StubSourceService(
+            new WingetSource("msstore", "https://store", false, WingetSourceStatus.Available),
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+        var app = CreateApplication(updates: updates, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        var result = await app.RefreshUpdatesAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Git.Git", Assert.Single(app.State.Updates).Package.Id);
+        Assert.Contains(app.State.Activity, entry => entry.Title == "Some sources could not be refreshed");
+    }
+
+    [Fact]
+    public async Task UpdatePresentationUsesActionableDefaultsBeforeExecution()
+    {
+        var updates = new StubUpdateLoader(
+            new PackageUpdate(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "2.1.0"));
+        var app = CreateApplication(updates: updates);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+
+        var row = Assert.Single(PresentationStateMapper.FromApplicationState(app.State).Updates.Updates);
+        Assert.Equal("Architecture_Automatic", row.Architecture);
+        Assert.Equal("Update_Status_Available", row.Status);
+    }
+
+    [Fact]
     public async Task PresentationStateMapsRowsAndCapabilityGating()
     {
         var search = new StubPackageSearch(
@@ -484,8 +520,14 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class StubUpdateLoader(params PackageUpdate[] updates) : IUpdateLoader
     {
+        public HashSet<string> FailingSources { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         public Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(string source, CancellationToken cancellationToken) =>
-            Task.FromResult(WingetOperationOutcome<PackageUpdate>.Success(updates, string.Empty));
+            Task.FromResult(FailingSources.Contains(source)
+                ? WingetOperationOutcome<PackageUpdate>.Failure(
+                    new ClassifiedWingetError(WingetErrorKind.SourceUnavailable, "Source unavailable."),
+                    string.Empty)
+                : WingetOperationOutcome<PackageUpdate>.Success(updates, string.Empty));
     }
 
     private sealed class StubWindowsUpdateService(

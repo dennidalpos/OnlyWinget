@@ -55,6 +55,8 @@ public static class TextResources
         ["Header_Source"] = "Source",
         ["Header_Version"] = "Version",
         ["Header_Architecture"] = "Architecture",
+        ["Architecture_Automatic"] = "Automatic",
+        ["Update_Status_Available"] = "Available",
         ["Value_Unknown"] = "Unknown",
         ["Header_Installed"] = "Installed",
         ["Header_Available"] = "Available",
@@ -130,10 +132,7 @@ public static class TextResources
         ["Progress_InstallingWindowsUpdates"] = "Installing Windows updates...",
         ["WindowsUpdates_IncludeSoftware"] = "Software",
         ["WindowsUpdates_IncludeDrivers"] = "Drivers",
-        ["WindowsUpdates_IncludeMicrosoft"] = "Microsoft products",
-        ["WindowsUpdates_IncludeSuperseded"] = "Include superseded (force)",
-        ["Dialog_SupersededUpdates_Title"] = "Include superseded updates?",
-        ["Dialog_SupersededUpdates_Message"] = "Superseded updates can replace newer recommendations. Continue only when troubleshooting a specific update."
+        ["WindowsUpdates_IncludeMicrosoft"] = "Microsoft products"
     };
 
     private static readonly IReadOnlyDictionary<string, string> Italian = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -187,6 +186,8 @@ public static class TextResources
         ["Header_Source"] = "Origine",
         ["Header_Version"] = "Versione",
         ["Header_Architecture"] = "Architettura",
+        ["Architecture_Automatic"] = "Automatica",
+        ["Update_Status_Available"] = "Disponibile",
         ["Value_Unknown"] = "Sconosciuta",
         ["Header_Installed"] = "Installata",
         ["Header_Available"] = "Disponibile",
@@ -262,10 +263,7 @@ public static class TextResources
         ["Progress_InstallingWindowsUpdates"] = "Installazione aggiornamenti Windows...",
         ["WindowsUpdates_IncludeSoftware"] = "Software",
         ["WindowsUpdates_IncludeDrivers"] = "Driver",
-        ["WindowsUpdates_IncludeMicrosoft"] = "Prodotti Microsoft",
-        ["WindowsUpdates_IncludeSuperseded"] = "Includi sostituiti (forzata)",
-        ["Dialog_SupersededUpdates_Title"] = "Includere aggiornamenti sostituiti?",
-        ["Dialog_SupersededUpdates_Message"] = "Gli aggiornamenti sostituiti possono non essere quelli consigliati. Continua solo per risolvere un problema specifico."
+        ["WindowsUpdates_IncludeMicrosoft"] = "Prodotti Microsoft"
     };
 
     public static string Get(string key)

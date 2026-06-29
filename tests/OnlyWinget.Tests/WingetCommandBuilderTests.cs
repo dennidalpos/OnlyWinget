@@ -22,6 +22,7 @@ public sealed class WingetCommandBuilderTests
                 "Microsoft.VisualStudioCode",
                 "--exact",
                 "--accept-source-agreements",
+                "--disable-interactivity",
                 "--accept-package-agreements",
                 "--source",
                 "winget"

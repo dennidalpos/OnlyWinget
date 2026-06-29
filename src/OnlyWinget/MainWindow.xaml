@@ -51,8 +51,8 @@
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
-        <Frame
-            x:Name="ContentFrame"
+        <ContentControl
+            x:Name="PageHost"
             Background="{ThemeResource LayerFillColorDefaultBrush}"
             HorizontalContentAlignment="Stretch"
             VerticalContentAlignment="Stretch" />

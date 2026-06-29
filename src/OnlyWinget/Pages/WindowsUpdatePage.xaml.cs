@@ -30,9 +30,6 @@ public sealed partial class WindowsUpdatePage : Page
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
         App.Workflow.StateChanged -= OnWorkflowChanged;
-        operationCancellation?.Cancel();
-        operationCancellation?.Dispose();
-        operationCancellation = null;
     }
 
     private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
@@ -84,7 +81,6 @@ public sealed partial class WindowsUpdatePage : Page
         SoftwareUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeSoftware");
         DriverUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeDrivers");
         MicrosoftUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeMicrosoft");
-        SupersededUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeSuperseded");
         WindowsTitleHeader.Text = TextResources.Get("Header_Title");
         WindowsKbHeader.Text = TextResources.Get("Header_KnowledgeBase");
         WindowsSeverityHeader.Text = TextResources.Get("Header_Severity");
@@ -98,11 +94,6 @@ public sealed partial class WindowsUpdatePage : Page
 
     private async void OnScanWindowsUpdates(object sender, RoutedEventArgs args)
     {
-        if (!await ConfirmSupersededAsync())
-        {
-            return;
-        }
-
         await ScanWindowsUpdatesAsync(CreateOptions(), CancellationToken.None);
     }
 
@@ -112,11 +103,6 @@ public sealed partial class WindowsUpdatePage : Page
         operationCancellation = new CancellationTokenSource();
         try
         {
-            if (!await ConfirmSupersededAsync())
-            {
-                return;
-            }
-
             await App.Workflow.InstallSelectedWindowsUpdatesAsync(CreateOptions(), operationCancellation.Token);
         }
         finally
@@ -159,27 +145,7 @@ public sealed partial class WindowsUpdatePage : Page
     private WindowsUpdateOptions CreateOptions() => new(
         SoftwareUpdatesBox.IsChecked == true,
         DriverUpdatesBox.IsChecked == true,
-        MicrosoftUpdatesBox.IsChecked == true,
-        SupersededUpdatesBox.IsChecked == true);
-
-    private async Task<bool> ConfirmSupersededAsync()
-    {
-        if (SupersededUpdatesBox.IsChecked != true)
-        {
-            return true;
-        }
-
-        var dialog = new ContentDialog
-        {
-            Title = TextResources.Get("Dialog_SupersededUpdates_Title"),
-            Content = TextResources.Get("Dialog_SupersededUpdates_Message"),
-            PrimaryButtonText = TextResources.Get("Dialog_Confirm"),
-            CloseButtonText = TextResources.Get("Dialog_Cancel"),
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = XamlRoot
-        };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
-    }
+        MicrosoftUpdatesBox.IsChecked == true);
 
     public static string FormatBoolean(bool value) =>
         TextResources.Get(value ? "Value_Yes" : "Value_No");

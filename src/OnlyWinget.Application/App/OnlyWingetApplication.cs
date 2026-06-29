@@ -318,15 +318,22 @@ public sealed class OnlyWingetApplication(
                     }
 
                     updates.Clear();
+                    var sourceErrors = new List<string>();
                     foreach (var source in enabledSources)
                     {
                         var outcome = await updateLoader.LoadUpdatesAsync(source, cancellationToken).ConfigureAwait(false);
                         if (!outcome.Succeeded && outcome.Error?.Kind != WingetErrorKind.NoUpdates)
                         {
-                            throw new InvalidOperationException(outcome.Error?.Message ?? $"winget upgrade failed for source '{source}'.");
+                            sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget upgrade failed."}");
+                            continue;
                         }
 
                         updates.AddRange(outcome.Rows);
+                    }
+
+                    if (updates.Count == 0 && sourceErrors.Count > 0)
+                    {
+                        throw new InvalidOperationException(string.Join(Environment.NewLine, sourceErrors));
                     }
 
                     var distinctUpdates = updates
@@ -346,6 +353,13 @@ public sealed class OnlyWingetApplication(
 
                     updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
+                    if (sourceErrors.Count > 0)
+                    {
+                        AddActivity(
+                            ActivitySeverity.Warning,
+                            "Some sources could not be refreshed",
+                            string.Join(Environment.NewLine, sourceErrors));
+                    }
                 },
                 "Unable to refresh updates.")
             .ConfigureAwait(false);

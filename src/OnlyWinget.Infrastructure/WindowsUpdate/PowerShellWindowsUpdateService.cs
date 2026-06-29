@@ -133,8 +133,7 @@ public sealed class PowerShellWindowsUpdateService(
         var optionsJson = JsonSerializer.Serialize(
             new WindowsUpdateOptionsDto(
                 criteria,
-                options.IncludeMicrosoftUpdates,
-                options.IncludePotentiallySupersededUpdates),
+                options.IncludeMicrosoftUpdates),
             JsonOptions);
         return script.Replace("__OPTIONS_JSON__", EscapePowerShellHereString(optionsJson), StringComparison.Ordinal);
     }
@@ -147,7 +146,6 @@ __OPTIONS_JSON__
 '@ | ConvertFrom-Json
     $session = New-Object -ComObject Microsoft.Update.Session
     $searcher = $session.CreateUpdateSearcher()
-    $searcher.IncludePotentiallySupersededUpdates = [bool]$options.includePotentiallySupersededUpdates
     if ([bool]$options.includeMicrosoftUpdates) {
         try {
             $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
@@ -220,7 +218,6 @@ __SELECTED_JSON__
 
     $session = New-Object -ComObject Microsoft.Update.Session
     $searcher = $session.CreateUpdateSearcher()
-    $searcher.IncludePotentiallySupersededUpdates = [bool]$options.includePotentiallySupersededUpdates
     if ([bool]$options.includeMicrosoftUpdates) {
         try {
             $serviceManager = New-Object -ComObject Microsoft.Update.ServiceManager
@@ -316,8 +313,7 @@ catch {
 
     private sealed record WindowsUpdateOptionsDto(
         [property: JsonPropertyName("criteria")] string Criteria,
-        [property: JsonPropertyName("includeMicrosoftUpdates")] bool IncludeMicrosoftUpdates,
-        [property: JsonPropertyName("includePotentiallySupersededUpdates")] bool IncludePotentiallySupersededUpdates);
+        [property: JsonPropertyName("includeMicrosoftUpdates")] bool IncludeMicrosoftUpdates);
 
     private sealed record WindowsUpdateItemDto(
         [property: JsonPropertyName("updateId")] string UpdateId,

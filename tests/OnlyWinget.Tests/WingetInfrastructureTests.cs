@@ -46,7 +46,7 @@ public sealed class WingetInfrastructureTests
     }
 
     [Fact]
-    public async Task WindowsUpdateOptionsConfigureDriversMicrosoftUpdateAndSupersededContent()
+    public async Task WindowsUpdateOptionsConfigureDriversAndMicrosoftUpdateWithoutSupersededContent()
     {
         var runner = new RecordingExternalProcessRunner(
             new ExternalProcessResult(0, "{\"succeeded\":true,\"rows\":[],\"error\":null}", string.Empty));
@@ -55,7 +55,7 @@ public sealed class WingetInfrastructureTests
             new StubSystemCapabilityService(new SystemCapabilities(true, true, true, true, null)));
 
         var outcome = await service.ScanAsync(
-            new WindowsUpdateOptions(false, true, true, true),
+            new WindowsUpdateOptions(false, true, true),
             CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
@@ -67,7 +67,7 @@ public sealed class WingetInfrastructureTests
         Assert.Contains("7971f918-a847-4430-9279-4a52d1efe18d", script, StringComparison.Ordinal);
         Assert.Contains("$serviceManager.Services", script, StringComparison.Ordinal);
         Assert.DoesNotContain("AddService2", script, StringComparison.Ordinal);
-        Assert.Contains("\"includePotentiallySupersededUpdates\":true", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("includePotentiallySupersededUpdates", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public sealed class WingetInfrastructureTests
 
         var resolution = await resolver.ResolveAsync(new PackageIdentity("Git.Git"), CancellationToken.None);
 
-        Assert.Equal(["show", "--id", "Git.Git", "--exact", "--accept-source-agreements"], runner.LastArguments);
+        Assert.Equal(["show", "--id", "Git.Git", "--exact", "--accept-source-agreements", "--disable-interactivity"], runner.LastArguments);
         Assert.True(resolution.IsResolved);
         Assert.Equal("2.0.0", resolution.Version);
         Assert.Equal("winget", resolution.Package.Source);
@@ -247,18 +247,19 @@ public sealed class WingetInfrastructureTests
     public async Task UpdateLoaderRunsWingetUpgradeAndMapsRows()
     {
         const string output = """
-            Name  Id       Version  Available  Source
-            ------------------------------------------
-            Git   Git.Git  2.0.0    2.1.0      winget
+            Name  Id       Version  Available
+            ----------------------------------
+            Git   Git.Git  2.0.0    2.1.0
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
         var loader = new WingetUpdateLoader(runner, new WingetTableParser(), new WingetErrorClassifier());
 
         var outcome = await loader.LoadUpdatesAsync("winget", CancellationToken.None);
 
-        Assert.Equal(["upgrade", "--source", "winget", "--accept-source-agreements"], runner.LastArguments);
+        Assert.Equal(["upgrade", "--source", "winget", "--accept-source-agreements", "--disable-interactivity"], runner.LastArguments);
         var update = Assert.Single(outcome.Rows);
         Assert.Equal("Git.Git", update.Package.Id);
+        Assert.Equal("winget", update.Package.Source);
         Assert.Equal("2.0.0", update.InstalledVersion);
         Assert.Equal("2.1.0", update.AvailableVersion);
     }

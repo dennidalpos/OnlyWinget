@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using System.Collections.ObjectModel;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Selection;
@@ -8,6 +9,33 @@ namespace OnlyWinget.Pages;
 
 internal static class PageUi
 {
+    public static void ForwardMouseWheelToOuterScroller(UIElement nestedControl, ScrollViewer outerScroller)
+    {
+        nestedControl.AddHandler(
+            UIElement.PointerWheelChangedEvent,
+            new PointerEventHandler((_, args) =>
+            {
+                var properties = args.GetCurrentPoint(outerScroller).Properties;
+                if (properties.IsHorizontalMouseWheel || properties.MouseWheelDelta == 0 || outerScroller.ScrollableHeight <= 0)
+                {
+                    return;
+                }
+
+                var targetOffset = Math.Clamp(
+                    outerScroller.VerticalOffset - properties.MouseWheelDelta,
+                    0,
+                    outerScroller.ScrollableHeight);
+                if (Math.Abs(targetOffset - outerScroller.VerticalOffset) < double.Epsilon)
+                {
+                    return;
+                }
+
+                outerScroller.ChangeView(null, targetOffset, null, disableAnimation: true);
+                args.Handled = true;
+            }),
+            handledEventsToo: true);
+    }
+
     public static void ApplySelectionHeader(CheckBox checkBox, SelectionHeaderState state)
     {
         checkBox.IsThreeState = true;

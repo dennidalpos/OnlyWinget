@@ -22,7 +22,8 @@ public sealed class WingetCommandBuilder
             "--id",
             selection.Package.Id,
             "--exact",
-            "--accept-source-agreements"
+            "--accept-source-agreements",
+            "--disable-interactivity"
         };
 
         if (selection.Action is PackageAction.Install or PackageAction.Upgrade)

@@ -25,7 +25,6 @@
                         <CheckBox x:Name="SoftwareUpdatesBox" IsChecked="True" AutomationProperties.AutomationId="SoftwareUpdatesBox" />
                         <CheckBox x:Name="DriverUpdatesBox" IsChecked="True" AutomationProperties.AutomationId="DriverUpdatesBox" />
                         <CheckBox x:Name="MicrosoftUpdatesBox" AutomationProperties.AutomationId="MicrosoftUpdatesBox" />
-                        <CheckBox x:Name="SupersededUpdatesBox" AutomationProperties.AutomationId="SupersededUpdatesBox" />
                         <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="WindowsUpdatesLoadingRing" AutomationProperties.Name="Scanning Windows Update" />
                         <Button x:Name="ScanButton" Style="{StaticResource RefreshButtonStyle}" Click="OnScanWindowsUpdates" AutomationProperties.AutomationId="WindowsUpdatesScanButton" />
                         <Button x:Name="InstallSelectedButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnInstallSelected" AutomationProperties.AutomationId="WindowsUpdatesInstallSelectedButton" />

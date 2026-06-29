@@ -23,6 +23,7 @@ public sealed partial class PresetsPage : Page
         PresetSelector.ItemsSource = presetNames;
         PackageList.ItemsSource = packages;
         OperationResultList.ItemsSource = operationResults;
+        PageUi.ForwardMouseWheelToOuterScroller(PackageTableScroller, PageScroller);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
@@ -38,9 +39,6 @@ public sealed partial class PresetsPage : Page
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
         App.Workflow.StateChanged -= OnWorkflowChanged;
-        operationCancellation?.Cancel();
-        operationCancellation?.Dispose();
-        operationCancellation = null;
     }
 
     private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);

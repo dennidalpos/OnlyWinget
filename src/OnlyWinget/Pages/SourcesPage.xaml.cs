@@ -14,6 +14,7 @@ public sealed partial class SourcesPage : Page
     {
         InitializeComponent();
         SourceList.ItemsSource = sources;
+        PageUi.ForwardMouseWheelToOuterScroller(SourceList, PageScroller);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();

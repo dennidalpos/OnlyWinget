@@ -13,7 +13,7 @@ public sealed class WingetUpdateLoader(
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         var result = await commandRunner.RunAsync(
                 "winget",
-                ["upgrade", "--source", source, "--accept-source-agreements"],
+                ["upgrade", "--source", source, "--accept-source-agreements", "--disable-interactivity"],
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -26,14 +26,14 @@ public sealed class WingetUpdateLoader(
         }
 
         var rows = tableParser.Parse(result.StandardOutput)
-            .Select(ToUpdate)
+            .Select(row => ToUpdate(row, source))
             .Where(update => update is not null)
             .Cast<PackageUpdate>()
             .ToArray();
         return WingetOperationOutcome<PackageUpdate>.Success(rows, rawOutput);
     }
 
-    private static PackageUpdate? ToUpdate(IReadOnlyDictionary<string, string> row)
+    private static PackageUpdate? ToUpdate(IReadOnlyDictionary<string, string> row, string requestedSource)
     {
         if (!TryGetAny(row, out var id, "Id") ||
             !TryGetAny(row, out var version, "Version", "Versione") ||
@@ -46,7 +46,7 @@ public sealed class WingetUpdateLoader(
         TryGetAny(row, out var source, "Source", "Origine");
 
         return new PackageUpdate(
-            new PackageIdentity(id, source),
+            new PackageIdentity(id, string.IsNullOrWhiteSpace(source) ? requestedSource : source),
             string.IsNullOrWhiteSpace(name) ? id : name,
             version,
             available);
