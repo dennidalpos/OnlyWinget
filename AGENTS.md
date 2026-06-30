@@ -6,8 +6,16 @@
 - Target WinUI 3, .NET 10 LTS, the stable Windows App SDK, and Windows 10 build 17763+.
 - Ship x64 only: a WiX Burn/MSI installer and a self-contained portable ZIP.
 - Keep the installer Windows App Runtime x64 chain and portable `WindowsAppSDKSelfContained` publish.
-- This is a greenfield product. Remove obsolete x86, pre-WinUI, compatibility, migration, dead-code, and historical scaffolding rather than extending it.
 - Preserve visible English and Italian strings.
+
+## Greenfield policy
+
+- Treat the product, UI, navigation, and presentation architecture as greenfield. Existing UI structure and public presentation types are not compatibility contracts.
+- Prefer the clean target architecture over incremental compatibility. Destructive refactors, file and folder reorganization, replacement of presentation models, and deletion of superseded code are allowed when they produce a smaller coherent design.
+- Do not add adapters, shims, deprecated aliases, parallel old/new implementations, feature flags, or migration scaffolding for the current UI unless the user explicitly requires a staged rollout.
+- Remove obsolete x86, pre-WinUI, compatibility, migration, dead-code, duplicated UI, and historical scaffolding rather than extending or preserving it.
+- Preserve only explicit product contracts: the dependency direction, workspace schema, preset exchange format, platform and packaging targets, behavioral guardrails below, and visible English and Italian strings.
+- A broad redesign request authorizes coherent cross-cutting changes inside that redesign; it does not authorize unrelated product features or changes to the explicit contracts above.
 
 ## Architecture and behavior
 
@@ -92,7 +100,7 @@ For mouse-wheel UI tests, place the pointer over the target and, when it is scro
 
 ## Repository guardrails
 
-- No unrelated refactors, new dependencies, schema migrations, compatibility shims, or secrets.
+- No refactors unrelated to the requested outcome, new dependencies without need, schema migrations, compatibility shims, or secrets.
 - Use repository-relative paths in code and PowerShell-compatible commands in documentation.
 - Validate external input and keep persistence writes transactional.
 - Do not stage, commit, push, or rewrite history unless explicitly requested.
