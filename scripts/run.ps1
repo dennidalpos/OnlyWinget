@@ -19,6 +19,7 @@ param(
     [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [string]$InstalledExePath = 'C:\Program Files\OnlyWinget\OnlyWinget.exe',
     [switch]$Fix,
+    [switch]$ForceEvaluate,
     [switch]$NoRestore,
     [switch]$NoBuild,
     [switch]$RunWingetSmoke,
@@ -85,7 +86,7 @@ function Invoke-OnlyWingetTask {
 
     switch ($SelectedTask) {
         'Setup' {
-            & (Join-Path $PSScriptRoot 'setup.ps1') -NonInteractive
+            & (Join-Path $PSScriptRoot 'setup.ps1') -ForceEvaluate:$ForceEvaluate -NonInteractive
         }
         'Format' {
             & (Join-Path $PSScriptRoot 'format.ps1') -Fix:$Fix -NoRestore:$NoRestore -NonInteractive

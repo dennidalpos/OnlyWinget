@@ -9,28 +9,28 @@ namespace OnlyWinget.Pages;
 
 internal static class PageUi
 {
-    public static void ForwardMouseWheelToOuterScroller(UIElement nestedControl, ScrollViewer outerScroller)
+    public static void RouteVerticalMouseWheel(ScrollViewer scroller)
     {
-        nestedControl.AddHandler(
+        scroller.AddHandler(
             UIElement.PointerWheelChangedEvent,
             new PointerEventHandler((_, args) =>
             {
-                var properties = args.GetCurrentPoint(outerScroller).Properties;
-                if (properties.IsHorizontalMouseWheel || properties.MouseWheelDelta == 0 || outerScroller.ScrollableHeight <= 0)
+                var properties = args.GetCurrentPoint(scroller).Properties;
+                if (properties.IsHorizontalMouseWheel || properties.MouseWheelDelta == 0 || scroller.ScrollableHeight <= 0)
                 {
                     return;
                 }
 
                 var targetOffset = Math.Clamp(
-                    outerScroller.VerticalOffset - properties.MouseWheelDelta,
+                    scroller.VerticalOffset - properties.MouseWheelDelta,
                     0,
-                    outerScroller.ScrollableHeight);
-                if (Math.Abs(targetOffset - outerScroller.VerticalOffset) < double.Epsilon)
+                    scroller.ScrollableHeight);
+                if (Math.Abs(targetOffset - scroller.VerticalOffset) < double.Epsilon)
                 {
                     return;
                 }
 
-                outerScroller.ChangeView(null, targetOffset, null, disableAnimation: true);
+                scroller.ChangeView(null, targetOffset, null, disableAnimation: true);
                 args.Handled = true;
             }),
             handledEventsToo: true);

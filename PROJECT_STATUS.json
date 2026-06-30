@@ -1,9 +1,10 @@
 {
   "todos": [
-    "Validate Windows Update software, driver, Microsoft-product, cancellation, failure, and reboot-required flows on clean Windows 10 build 17763 and current Windows 11 hosts.",
-    "Run the WinApp UI suite on an interactive desktop with Narrator, high contrast, 200% text scaling, keyboard-only input, and compact, medium, and wide layouts; fix any visual or accessibility failures.",
-    "Validate the x64 setup and portable ZIP lifecycle on a clean elevated x64 host, including Windows App Runtime chaining, installed and portable startup, Programs and Features, clean install, upgrade, and uninstall.",
-    "Run destructive live winget install, upgrade, uninstall, cancellation, and progress smoke tests on a disposable Windows host with test packages.",
+    "On an interactive Windows desktop, manually verify that vertical mouse-wheel offset changes over rows, checkboxes, selectable text, table headers, and horizontal scrollers on Dashboard, Presets, Search, Updates, Windows Update, Sources, and Activity in compact, medium, and wide layouts, without breaking horizontal scrolling; the automated winapp UI suite already passes.",
+    "On the same interactive Windows desktop, complete keyboard-only, focus, Narrator, high-contrast, and 200% text-scaling checks for every page and fix any visual or accessibility failures.",
+    "Validate Windows Update software, driver, Microsoft-product, cancellation during scan and install, malformed-output, COM-failure, partial-failure, and reboot-required flows on clean Windows 10 build 17763 and current Windows 11 hosts.",
+    "Run destructive live winget install, upgrade, uninstall, cancellation, concurrent-command rejection, progress, localized-output, Unicode, variable-column, and multiple-source smoke tests on a disposable Windows host with controlled test packages.",
+    "Validate the MSI, Burn setup, and self-contained portable ZIP lifecycle on a clean elevated x64 Windows host, including Windows App Runtime chaining, installed and portable startup, Programs and Features registration, clean install, upgrade, uninstall, and artifact architecture checks.",
     "Run the hosted GitHub Actions build gate for the exact release commit before tagging."
   ]
 }

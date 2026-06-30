@@ -94,21 +94,33 @@ public sealed partial class WindowsUpdatePage : Page
 
     private async void OnScanWindowsUpdates(object sender, RoutedEventArgs args)
     {
-        await ScanWindowsUpdatesAsync(CreateOptions(), CancellationToken.None);
+        await RunCancellableAsync(token => ScanWindowsUpdatesAsync(CreateOptions(), token));
     }
 
     private async void OnInstallSelected(object sender, RoutedEventArgs args)
     {
-        operationCancellation?.Dispose();
-        operationCancellation = new CancellationTokenSource();
+        await RunCancellableAsync(token => App.Workflow.InstallSelectedWindowsUpdatesAsync(CreateOptions(), token));
+    }
+
+    private async Task RunCancellableAsync(Func<CancellationToken, Task> action)
+    {
+        if (operationCancellation is not null)
+        {
+            return;
+        }
+
+        using var cancellation = new CancellationTokenSource();
+        operationCancellation = cancellation;
         try
         {
-            await App.Workflow.InstallSelectedWindowsUpdatesAsync(CreateOptions(), operationCancellation.Token);
+            await action(cancellation.Token);
         }
         finally
         {
-            operationCancellation.Dispose();
-            operationCancellation = null;
+            if (ReferenceEquals(operationCancellation, cancellation))
+            {
+                operationCancellation = null;
+            }
         }
     }
 

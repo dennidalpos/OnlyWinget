@@ -1,36 +1,40 @@
 # AGENTS.md — OnlyWinget
 
-## Product contract
+## Product and platform
 
-- Work from the repository root on Windows with PowerShell.
-- Target WinUI 3, .NET 10 LTS, stable Windows App SDK, and Windows 10 build 17763 or newer.
-- Ship x64 only: WiX Burn/MSI installer plus a self-contained portable ZIP. Keep the installer’s Windows App Runtime x64 chain and the portable package’s `WindowsAppSDKSelfContained` publish.
-- Treat the product as greenfield. Remove obsolete x86, pre-WinUI, compatibility, migration, dead-code, and historical scaffolding instead of extending it.
-- Preserve English and Italian visible strings.
+- Work from the repository root with PowerShell.
+- Target WinUI 3, .NET 10 LTS, the stable Windows App SDK, and Windows 10 build 17763+.
+- Ship x64 only: a WiX Burn/MSI installer and a self-contained portable ZIP.
+- Keep the installer Windows App Runtime x64 chain and portable `WindowsAppSDKSelfContained` publish.
+- This is a greenfield product. Remove obsolete x86, pre-WinUI, compatibility, migration, dead-code, and historical scaffolding rather than extending it.
+- Preserve visible English and Italian strings.
 
-## Architecture
+## Architecture and behavior
 
-Dependencies remain one-way:
+Dependencies are one-way:
 
 ```text
 WinUI Presentation -> Application -> Domain
 Infrastructure -----> Application -> Domain
 ```
 
-- Keep OS, API, PowerShell, winget, and Windows Update availability in `ISystemCapabilityService`.
-- Guard external processes and COM calls, return structured failures, and keep actionable errors visible.
-- Application state changes are instance-scoped through `OnlyWingetApplication.StateChanged`; do not add global static refresh events or manual page refresh broadcasts.
+- Centralize OS, API, PowerShell, winget, and Windows Update availability in `ISystemCapabilityService`.
+- Guard external processes and COM calls. Return structured failures and show actionable errors.
+- Publish state changes through the instance-scoped `OnlyWingetApplication.StateChanged`; do not add static refresh events or manual page broadcasts.
+- Serialize asynchronous operations in `OnlyWingetApplication`; disabled UI commands are not an application-layer concurrency guard.
 - Keep page item sources stable and update their collections. Prefer typed `x:Bind` for immutable presentation rows.
-- Keep Windows Update scans explicit. Do not scan on page load or require elevation for read-only discovery.
-- Preserve the workspace schema and preset exchange format unless the request explicitly changes them.
-- Keep batch selection in reusable state logic; select-all must handle checked, unchecked, and mixed states.
+- Run Windows Update scans only on explicit user action. Read-only discovery must not require elevation.
+- Pass a real `CancellationToken` to every cancellable operation. Never enable cancellation for work started with `CancellationToken.None`.
+- Preserve the workspace schema and preset exchange format unless explicitly requested otherwise.
+- Keep batch selection in reusable state logic; select-all must support checked, unchecked, and mixed states.
 
-## Packaging and setup
+## Packaging and restore
 
-- Setup sources: `src/OnlyWinget.Setup`.
-- Packaging entrypoint: `scripts/package.ps1`.
-- Do not add a WiX project to the solution unless it builds in the current SDK workflow.
-- Do not reintroduce x86 or `AnyCPU` artifacts.
+- Setup sources: `src/OnlyWinget.Setup`; packaging entrypoint: `scripts/package.ps1`.
+- Do not add the WiX project to the solution unless it builds in the current SDK workflow.
+- Do not introduce x86 or `AnyCPU` artifacts.
+- Keep solution restore RID-neutral; the WinUI project and packaging scripts select `win-x64`.
+- Keep the root NuGet cache ignore anchored as `/packages/`; `packages/` would also hide `src/OnlyWinget.Domain/Packages` on Windows.
 
 ## Backlog
 
@@ -38,22 +42,19 @@ Infrastructure -----> Application -> Domain
 
 ```json
 {
-  "todos": [
-    "Short actionable task"
-  ]
+  "todos": ["Short actionable task"]
 }
 ```
 
-Remove completed, obsolete, duplicate, historical, and non-actionable entries. Keep only verified residual work in execution order. External or manual blockers must name the required environment.
+Keep only verified, actionable residual work in execution order. Remove completed, obsolete, duplicate, and historical entries. Manual or external blockers must name the required environment.
 
 ## Workflow
 
-1. Read applicable instructions and inspect only relevant files.
-2. Run `git status --short`; preserve all existing user changes.
-3. Make the smallest coherent change and add tests for behavior changes.
-4. Use repository scripts, not ad hoc equivalents.
-5. For WinUI changes, build, launch, verify a responsive top-level window, and leave the final verified app running.
-6. Before handoff, run `git status --short` and `git ls-files`.
+1. Inspect applicable instructions, relevant files, and `git status --short`; preserve existing changes.
+2. Make the smallest coherent change. Add or update tests for behavior changes.
+3. Use `scripts/run.ps1` tasks instead of ad hoc equivalents.
+4. For WinUI changes, build, launch, confirm a responsive top-level window, and leave the verified app running.
+5. Before handoff, run `git status --short` and `git ls-files`.
 
 ## Commands
 
@@ -68,31 +69,34 @@ Remove completed, obsolete, duplicate, historical, and non-actionable entries. K
 .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```
 
-Live discovery tests, when winget and Windows Update are available:
+After an intentional dependency, target-framework, or RID change, regenerate stale locked-restore files once:
 
 ```powershell
+.\scripts\run.ps1 -Task Setup -ForceEvaluate -NonInteractive
+```
+
+Optional environment-dependent checks:
+
+```powershell
+# Requires winget and Windows Update
 .\scripts\run.ps1 -Task Test -Configuration Release -RunWingetSmoke -NonInteractive
-```
 
-UI automation against a running app:
-
-```powershell
+# Requires a running app and the winapp CLI
 .\scripts\ui-test.ps1 -AppPid <PID> -NonInteractive
-```
 
-Installer lifecycle validation requires a clean elevated x64 Windows host:
-
-```powershell
+# Requires a clean, elevated x64 Windows host
 .\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
 ```
 
-## Guardrails
+For mouse-wheel UI tests, place the pointer over the target and, when it is scrollable, assert that its vertical scroll percentage changes. A wheel event alone is insufficient.
 
-- No unrelated refactors, dependencies, schema migrations, compatibility shims, secrets, or destructive Git commands.
+## Repository guardrails
+
+- No unrelated refactors, new dependencies, schema migrations, compatibility shims, or secrets.
 - Use repository-relative paths in code and PowerShell-compatible commands in documentation.
 - Validate external input and keep persistence writes transactional.
 - Do not stage, commit, push, or rewrite history unless explicitly requested.
 
 ## Handoff
 
-Report changes, files, checks and results, worktree cleanliness, `PROJECT_STATUS.json` changes, and remaining manual or external blockers.
+Report changed files, checks and results, worktree state, any `PROJECT_STATUS.json` update, and remaining manual or external blockers.

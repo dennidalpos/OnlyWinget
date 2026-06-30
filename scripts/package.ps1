@@ -18,7 +18,6 @@ if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -Scri
 }
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
 $appIconPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget.ico'
 $bundleLogoPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget-icon.png'

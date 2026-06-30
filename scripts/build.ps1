@@ -29,7 +29,7 @@ Assert-Path -Path $projectPath -Description 'Project file'
 Assert-ExecutableNotLocked -KillProcess:$StopRunningInstance -ActionName 'Build'
 
 if (-not $NoRestore) {
-    dotnet restore $solutionPath -r win-x64 --locked-mode
+    dotnet restore $solutionPath --locked-mode
     if ($LASTEXITCODE -ne 0) {
         throw 'dotnet restore fallito.'
     }

@@ -13,6 +13,7 @@ public sealed partial class DashboardPage : Page
     {
         InitializeComponent();
         ActivityList.ItemsSource = recentActivity;
+        PageUi.RouteVerticalMouseWheel(PageScroller);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();

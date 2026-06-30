@@ -85,7 +85,7 @@ Invoke-Step 'clean generated outputs' {
 }
 
 Invoke-Step 'restore' {
-    dotnet restore $solutionPath -r win-x64 --locked-mode
+    dotnet restore $solutionPath --locked-mode
     Assert-LastExitCode 'dotnet restore fallito.'
 }
 

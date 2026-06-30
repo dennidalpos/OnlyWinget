@@ -5,7 +5,7 @@ dist/
 out/
 publish/
 tmp/
-packages/
+/packages/
 dependencies/windowsappsdk/
 
 .vs/

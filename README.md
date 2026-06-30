@@ -22,7 +22,7 @@ OnlyWinget is a Windows desktop app for managing local `winget` workflows from a
 | Search | Search local `winget` sources, resolve package identity, and add selected results in batches. |
 | Updates | Review available upgrades, select all or specific rows, and apply selected updates. |
 | Safety | Clean architecture boundaries, cancellable operation design, current-format-only import, and local-only workspace storage. |
-| Installer | Unified Windows setup EXE with x86 and x64 self-contained MSI payloads. |
+| Installer | Unified Windows setup EXE with an x64 self-contained MSI payload. |
 
 ## Metrics
 
@@ -31,7 +31,7 @@ OnlyWinget is a Windows desktop app for managing local `winget` workflows from a
 | App framework | `net10.0-windows10.0.17763.0` WinUI 3 |
 | Test suite | xUnit tests under `tests/OnlyWinget.Tests` |
 | UI languages | English, Italian |
-| Release artifacts | 1 setup EXE, 2 internal MSI architectures |
+| Release artifacts | 1 x64 setup EXE, 1 internal x64 MSI, and 1 x64 portable ZIP |
 | Local data root | `%LOCALAPPDATA%\OnlyWinget` |
 
 ## Requirements

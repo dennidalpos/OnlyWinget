@@ -23,7 +23,7 @@ public sealed partial class PresetsPage : Page
         PresetSelector.ItemsSource = presetNames;
         PackageList.ItemsSource = packages;
         OperationResultList.ItemsSource = operationResults;
-        PageUi.ForwardMouseWheelToOuterScroller(PackageTableScroller, PageScroller);
+        PageUi.RouteVerticalMouseWheel(PageScroller);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;

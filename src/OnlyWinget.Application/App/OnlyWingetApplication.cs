@@ -48,6 +48,7 @@ public sealed class OnlyWingetApplication(
     private ClassifiedWingetError? sourceError;
     private string? userVisibleError;
     private OperationProgress? operationProgress;
+    private int operationInProgress;
 
     public OnlyWingetState State => CreateState();
 
@@ -861,6 +862,11 @@ public sealed class OnlyWingetApplication(
         Func<Task> action,
         string fallbackError)
     {
+        if (Interlocked.CompareExchange(ref operationInProgress, 1, 0) != 0)
+        {
+            return ApplicationActionResult.Failure("Another operation is already in progress.");
+        }
+
         busyState = state;
         userVisibleError = null;
         NotifyStateChanged();
@@ -884,6 +890,7 @@ public sealed class OnlyWingetApplication(
         finally
         {
             busyState = ApplicationBusyState.Idle;
+            Interlocked.Exchange(ref operationInProgress, 0);
             NotifyStateChanged();
         }
     }

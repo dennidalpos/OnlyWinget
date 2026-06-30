@@ -26,7 +26,7 @@ New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
 
 $testArgs = @($testProjectPath, '-c', $Configuration, '--results-directory', $testResultsPath, '--logger', 'trx;LogFileName=unit-tests.trx')
 if (-not $NoRestore) {
-    dotnet restore $testProjectPath -r win-x64 --locked-mode
+    dotnet restore $testProjectPath --locked-mode
     if ($LASTEXITCODE -ne 0) {
         throw 'dotnet restore per i test fallito.'
     }

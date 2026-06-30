@@ -429,6 +429,26 @@ public sealed class OnlyWingetApplicationTests
         Assert.Empty(app.State.Workspace.Presets);
     }
 
+    [Fact]
+    public async Task ConcurrentAsyncOperationIsRejectedWithoutReplacingBusyState()
+    {
+        var capabilities = new BlockingSystemCapabilityService();
+        var app = CreateApplication(capabilityService: capabilities);
+
+        var first = app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await capabilities.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var concurrent = await app.LoadWorkspaceAsync(CancellationToken.None);
+
+        Assert.False(concurrent.Succeeded);
+        Assert.Equal("Another operation is already in progress.", concurrent.Error);
+        Assert.Equal(ApplicationBusyState.CheckingCapabilities, app.State.BusyState);
+
+        capabilities.Complete();
+        Assert.True((await first).Succeeded);
+        Assert.Equal(ApplicationBusyState.Idle, app.State.BusyState);
+    }
+
     private static OnlyWingetApplication CreateApplication(
         SystemCapabilities? capabilities = null,
         StubPackageSearch? search = null,
@@ -437,11 +457,12 @@ public sealed class OnlyWingetApplicationTests
         StubWindowsUpdateService? windowsUpdates = null,
         StubSourceService? sources = null,
         RecordingOperationExecutor? executor = null,
-        ISourcePreferenceStore? sourcePreferences = null)
+        ISourcePreferenceStore? sourcePreferences = null,
+        ISystemCapabilityService? capabilityService = null)
     {
         return new OnlyWingetApplication(
             new MemoryWorkspaceStore(),
-            new StubSystemCapabilityService(capabilities),
+            capabilityService ?? new StubSystemCapabilityService(capabilities),
             search ?? new StubPackageSearch(),
             resolver ?? new StubPackageResolver(),
             updates ?? new StubUpdateLoader(),
@@ -482,6 +503,22 @@ public sealed class OnlyWingetApplicationTests
     {
         public Task<SystemCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken) =>
             Task.FromResult(capabilities ?? new SystemCapabilities(true, true, true, true, null));
+    }
+
+    private sealed class BlockingSystemCapabilityService : ISystemCapabilityService
+    {
+        private readonly TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<SystemCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken)
+        {
+            Started.TrySetResult();
+            await completion.Task.WaitAsync(cancellationToken);
+            return new SystemCapabilities(true, true, true, true, null);
+        }
+
+        public void Complete() => completion.TrySetResult();
     }
 
     private sealed class StubPackageSearch(params PackageSearchResult[] results) : IPackageSearchService

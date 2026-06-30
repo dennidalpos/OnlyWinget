@@ -41,7 +41,7 @@ Application startup checks OS support, `winget`, PowerShell, and Windows Update 
 
 ## Installer
 
-The release artifact is a WiX Burn setup EXE with x86 and x64 MSI payloads. The bundle chains the matching Windows App Runtime redistributable before installing the WinUI app MSI.
+The release artifact is an x64 WiX Burn setup EXE with one x64 MSI payload. The bundle chains the x64 Windows App Runtime redistributable before installing the WinUI app MSI. Packaging also produces a self-contained x64 portable ZIP.
 
 ## Notes
 

@@ -50,8 +50,23 @@ public static class OnlyWingetUiTestNative {
     public static extern bool MoveWindow(IntPtr hWnd, int x, int y, int width, int height, bool repaint);
     [DllImport("user32.dll")]
     public static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extraInfo);
+    [DllImport("user32.dll")]
+    public static extern bool SetCursorPos(int x, int y);
 }
 '@
+
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+
+function Get-ScrollElement {
+    param([string]$AutomationId)
+
+    $root = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
+    $condition = [System.Windows.Automation.PropertyCondition]::new(
+        [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+        $AutomationId)
+    return $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+}
 
 $window = winapp ui list-windows -a $AppPid --json 2>$null | ConvertFrom-Json |
     Where-Object { $_.processId -eq $AppPid -and $_.className -ne '#32770' } |
@@ -80,8 +95,28 @@ Test-Ui 'Keyboard focus moves through navigation' {
 Test-Ui 'Mouse wheel reaches the presets scroll surface' {
     winapp ui invoke 'NavPresets' -a $AppPid -q
     winapp ui wait-for 'PresetsScrollViewer' -a $AppPid -t 3000 -q
-    winapp ui focus 'PresetsScrollViewer' -a $AppPid -q
-    [OnlyWingetUiTestNative]::mouse_event(0x0800, 0, 0, -120, [UIntPtr]::Zero)
+    $scrollElement = Get-ScrollElement -AutomationId 'PresetsScrollViewer'
+    if ($null -eq $scrollElement) {
+        throw 'Superficie di scorrimento Presets non trovata tramite UI Automation.'
+    }
+
+    $scrollPattern = $scrollElement.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+    if ($scrollPattern.Current.VerticallyScrollable) {
+        $before = $scrollPattern.Current.VerticalScrollPercent
+        $bounds = $scrollElement.Current.BoundingRectangle
+        if (-not [OnlyWingetUiTestNative]::SetCursorPos(
+            [int]($bounds.Left + ($bounds.Width / 2)),
+            [int]($bounds.Top + ($bounds.Height / 2)))) {
+            throw 'Impossibile posizionare il puntatore sulla superficie Presets.'
+        }
+
+        [OnlyWingetUiTestNative]::mouse_event(0x0800, 0, 0, -360, [UIntPtr]::Zero)
+        Start-Sleep -Milliseconds 300
+        $after = $scrollPattern.Current.VerticalScrollPercent
+        if ($after -le $before) {
+            throw "La rotella non ha modificato la percentuale verticale: $before -> $after"
+        }
+    }
 }
 
 Test-Ui 'Source toggle can be changed and restored' {
