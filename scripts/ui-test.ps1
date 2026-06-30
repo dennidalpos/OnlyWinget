@@ -79,7 +79,7 @@ $hwnd = [IntPtr]::new([int64]$window.hwnd)
 
 Test-Ui 'Navigation shell is accessible' {
     winapp ui wait-for 'RootNavigation' -a $AppPid -t 5000 -q
-    foreach ($navigationId in @('NavDashboard', 'NavPresets', 'NavSearch', 'NavUpdates', 'NavWindowsUpdates', 'NavSources', 'NavActivity')) {
+    foreach ($navigationId in @('NavHome', 'NavPackages', 'NavUpdates', 'NavSources', 'NavActivity', 'SettingsItem')) {
         winapp ui wait-for $navigationId -a $AppPid -t 3000 -q
     }
 }
@@ -93,7 +93,7 @@ Test-Ui 'Keyboard focus moves through navigation' {
 }
 
 Test-Ui 'Mouse wheel reaches the presets scroll surface' {
-    winapp ui invoke 'NavPresets' -a $AppPid -q
+    winapp ui invoke 'NavPackages' -a $AppPid -q
     winapp ui wait-for 'PresetsScrollViewer' -a $AppPid -t 3000 -q
     $scrollElement = Get-ScrollElement -AutomationId 'PresetsScrollViewer'
     if ($null -eq $scrollElement) {
@@ -127,7 +127,7 @@ Test-Ui 'Source toggle can be changed and restored' {
 }
 
 Test-Ui 'Import picker can be cancelled without mutation' {
-    winapp ui invoke 'NavPresets' -a $AppPid -q
+    winapp ui invoke 'NavPackages' -a $AppPid -q
     winapp ui invoke 'ImportPresetButton' -a $AppPid -q
     Start-Sleep -Seconds 2
     $picker = winapp ui list-windows --json 2>$null | ConvertFrom-Json |
@@ -154,8 +154,8 @@ Test-Ui 'Import picker can be cancelled without mutation' {
 }
 
 Test-Ui 'Progress controls expose automation metadata' {
-    $presetXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Pages/PresetsPage.xaml')
-    $updatesXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Pages/UpdatesPage.xaml')
+    $presetXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Packages/PresetsPage.xaml')
+    $updatesXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Updates/UpdatesPage.xaml')
     if ($presetXaml -notmatch 'PresetOperationProgressBar' -or
         $presetXaml -notmatch 'PresetOperationProgressText' -or
         $updatesXaml -notmatch 'UpdateOperationProgressBar' -or

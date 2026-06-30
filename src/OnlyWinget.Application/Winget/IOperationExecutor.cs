@@ -7,5 +7,6 @@ public interface IOperationExecutor
     Task<OperationExecutionSummary> ExecuteAsync(
         OperationPlan plan,
         CancellationToken cancellationToken,
-        IProgress<OperationProgress>? progress = null);
+        IProgress<OperationProgress>? progress = null,
+        bool continueAfterFailure = false);
 }

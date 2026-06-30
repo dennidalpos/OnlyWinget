@@ -6,6 +6,8 @@ internal static class AppDiagnostics
     private static readonly object Sync = new();
     private static string? logFilePath;
 
+    public static bool IsEnabled { get; set; } = true;
+
     public static void Initialize()
     {
         if (logFilePath is not null)
@@ -49,6 +51,11 @@ internal static class AppDiagnostics
 
     public static void Write(string message, [CallerMemberName] string caller = "")
     {
+        if (!IsEnabled)
+        {
+            return;
+        }
+
         try
         {
             Initialize();

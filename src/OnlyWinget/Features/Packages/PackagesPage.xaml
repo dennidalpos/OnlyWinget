@@ -1,0 +1,16 @@
+<Page
+    x:Class="OnlyWinget.Features.Packages.PackagesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:packages="using:OnlyWinget.Features.Packages">
+    <TabView x:Name="Modes" TabWidthMode="Equal" IsAddTabButtonVisible="False" AutomationProperties.AutomationId="PackagesModes">
+        <TabViewItem x:Name="PresetTab" IsClosable="False" AutomationProperties.AutomationId="PackagesPresetTab">
+            <TabViewItem.IconSource><SymbolIconSource Symbol="Library" /></TabViewItem.IconSource>
+            <packages:PresetsPage />
+        </TabViewItem>
+        <TabViewItem x:Name="SearchTab" IsClosable="False" AutomationProperties.AutomationId="PackagesSearchTab">
+            <TabViewItem.IconSource><SymbolIconSource Symbol="Find" /></TabViewItem.IconSource>
+            <packages:SearchPage />
+        </TabViewItem>
+    </TabView>
+</Page>

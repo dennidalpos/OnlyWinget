@@ -2,9 +2,10 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Media;
 using OnlyWinget.Application.App;
-using OnlyWinget.Pages;
+using OnlyWinget.Shell;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
 using WinRT.Interop;
@@ -16,16 +17,9 @@ public sealed partial class MainWindow : Window
     private const double InitialWidth = 1180;
     private const double InitialHeight = 760;
 
-    private readonly Dictionary<string, Func<Page>> pageFactories = new(StringComparer.Ordinal)
-    {
-        ["dashboard"] = static () => new DashboardPage(),
-        ["presets"] = static () => new PresetsPage(),
-        ["search"] = static () => new SearchPage(),
-        ["updates"] = static () => new UpdatesPage(),
-        ["windowsUpdates"] = static () => new WindowsUpdatePage(),
-        ["sources"] = static () => new SourcesPage(),
-        ["activity"] = static () => new ActivityPage()
-    };
+    private readonly IReadOnlyList<NavigationRoute> routeDefinitions = App.UiServices.Navigation.Routes;
+    private readonly IReadOnlyDictionary<string, NavigationRoute> routes = App.UiServices.Navigation.Routes
+        .ToDictionary(route => route.Id, StringComparer.Ordinal);
     private readonly Dictionary<string, Page> pageCache = new(StringComparer.Ordinal);
 
     public MainWindow()
@@ -34,10 +28,61 @@ public sealed partial class MainWindow : Window
         SystemBackdrop = new MicaBackdrop();
         ResizeWindow();
         ApplyWindowIcon();
+        App.UiServices.Settings.Changed += OnSettingsChanged;
+        Closed += OnClosed;
         RootNavigation.Loaded += OnLoaded;
-        ApplyText();
+        ApplyTheme();
+        BuildNavigation();
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
-        ShowPage("dashboard");
+        ShowPage("home");
+    }
+
+    private void OnClosed(object sender, WindowEventArgs args)
+    {
+        App.UiServices.Settings.Changed -= OnSettingsChanged;
+        Closed -= OnClosed;
+    }
+
+    private void OnSettingsChanged(object? sender, EventArgs args)
+    {
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            var selectedRoute = RootNavigation.SelectedItem is NavigationViewItem selected
+                ? selected.Tag?.ToString()
+                : null;
+            selectedRoute ??= routeDefinitions.Single(route => route.IsSettings).Id;
+
+            App.ApplySettings();
+            ApplyTheme();
+            pageCache.Clear();
+            BuildNavigation();
+            SelectRoute(selectedRoute);
+            ShowPage(selectedRoute);
+        });
+    }
+
+    private void ApplyTheme()
+    {
+        RootNavigation.RequestedTheme = App.UiServices.Settings.Current.Theme switch
+        {
+            "light" => ElementTheme.Light,
+            "dark" => ElementTheme.Dark,
+            _ => ElementTheme.Default
+        };
+    }
+
+    private void SelectRoute(string routeId)
+    {
+        var route = routeDefinitions.Single(item => item.Id == routeId);
+        if (route.IsSettings)
+        {
+            RootNavigation.SelectedItem = RootNavigation.SettingsItem;
+            return;
+        }
+
+        RootNavigation.SelectedItem = RootNavigation.MenuItems
+            .OfType<NavigationViewItem>()
+            .Single(item => string.Equals(item.Tag?.ToString(), routeId, StringComparison.Ordinal));
     }
 
     [DllImport("user32.dll")]
@@ -67,9 +112,10 @@ public sealed partial class MainWindow : Window
 
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (args.SelectedItem is not NavigationViewItem item ||
-            item.Tag is not string tag ||
-            !pageFactories.ContainsKey(tag))
+        var tag = args.IsSettingsSelected
+            ? routeDefinitions.Single(route => route.IsSettings).Id
+            : (args.SelectedItem as NavigationViewItem)?.Tag as string;
+        if (tag is null || !routes.ContainsKey(tag))
         {
             return;
         }
@@ -81,7 +127,7 @@ public sealed partial class MainWindow : Window
     {
         if (!pageCache.TryGetValue(tag, out var page))
         {
-            page = pageFactories[tag]();
+            page = routes[tag].CreatePage();
             pageCache[tag] = page;
         }
 
@@ -91,21 +137,30 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ApplyText()
+    private void BuildNavigation()
     {
-        foreach (var item in RootNavigation.MenuItems.OfType<NavigationViewItem>())
+        RootNavigation.MenuItems.Clear();
+        foreach (var route in routeDefinitions)
         {
-            item.Content = item.Tag switch
+            if (route.IsSettings)
             {
-                "dashboard" => TextResources.Get("Nav_Dashboard"),
-                "presets" => TextResources.Get("Nav_Presets"),
-                "search" => TextResources.Get("Nav_Search"),
-                "updates" => TextResources.Get("Nav_Updates"),
-                "windowsUpdates" => TextResources.Get("Nav_WindowsUpdates"),
-                "sources" => TextResources.Get("Nav_Sources"),
-                "activity" => TextResources.Get("Nav_Activity"),
-                _ => item.Content
+                if (RootNavigation.SettingsItem is NavigationViewItem settingsItem)
+                {
+                    settingsItem.Content = TextResources.Get(route.LabelResourceKey);
+                    settingsItem.Tag = route.Id;
+                    settingsItem.Icon = new SymbolIcon(route.Icon);
+                }
+                continue;
+            }
+
+            var item = new NavigationViewItem
+            {
+                Content = TextResources.Get(route.LabelResourceKey),
+                Tag = route.Id,
+                Icon = new SymbolIcon(route.Icon)
             };
+            AutomationProperties.SetAutomationId(item, $"Nav{char.ToUpperInvariant(route.Id[0])}{route.Id[1..]}");
+            RootNavigation.MenuItems.Add(item);
         }
     }
 

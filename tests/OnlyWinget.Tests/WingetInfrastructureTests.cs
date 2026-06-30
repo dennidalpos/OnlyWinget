@@ -329,13 +329,34 @@ public sealed class WingetInfrastructureTests
             new Preset("Default", [new PackageIdentity("Git.Git"), new PackageIdentity("Missing.App")]),
             PackageAction.Install);
 
-        var summary = await executor.ExecuteAsync(plan, CancellationToken.None);
+        var summary = await executor.ExecuteAsync(plan, CancellationToken.None, continueAfterFailure: true);
 
         Assert.False(summary.Succeeded);
         Assert.Equal(2, summary.Results.Count);
         Assert.Equal(WingetErrorKind.NotFound, summary.Results[1].Error?.Kind);
         Assert.Equal("Missing.App", summary.Results[1].Selection.Package.Id);
         Assert.Equal(2, runner.Calls.Count);
+    }
+
+    [Fact]
+    public async Task OperationExecutorStopsAfterFailureByDefault()
+    {
+        var runner = new RecordingWingetCommandRunner(
+            new WingetCommandResult(1, string.Empty, "failure"),
+            new WingetCommandResult(0, "installed", string.Empty));
+        var plan = new OperationPlanner().CreatePresetPlan(
+            new Preset("Default", [new PackageIdentity("Broken.App"), new PackageIdentity("Next.App")]),
+            PackageAction.Install);
+
+        var summary = await new WingetOperationExecutor(
+                runner,
+                new WingetCommandBuilder(),
+                new WingetErrorClassifier())
+            .ExecuteAsync(plan, CancellationToken.None);
+
+        Assert.Single(summary.Results);
+        Assert.Single(runner.Calls);
+        Assert.Equal("Broken.App", summary.Results[0].Selection.Package.Id);
     }
 
     [Fact]

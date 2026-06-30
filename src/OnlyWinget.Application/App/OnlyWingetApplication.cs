@@ -24,6 +24,8 @@ public sealed class OnlyWingetApplication(
     TimeProvider? timeProvider = null,
     ISourcePreferenceStore? sourcePreferenceStore = null)
 {
+    public bool ContinueOperationsAfterFailure { get; set; }
+
     private readonly PresetDocumentService presetDocuments = new();
     private readonly OperationPlanner operationPlanner = new();
     private readonly SelectionState<PackageIdentity> presetSelection = new();
@@ -664,7 +666,11 @@ public sealed class OnlyWingetApplication(
                         progress?.Report(update);
                         NotifyStateChanged();
                     });
-                    var summary = await operationExecutor.ExecuteAsync(validatedPlan, cancellationToken, forwardingProgress).ConfigureAwait(false);
+                    var summary = await operationExecutor.ExecuteAsync(
+                        validatedPlan,
+                        cancellationToken,
+                        forwardingProgress,
+                        ContinueOperationsAfterFailure).ConfigureAwait(false);
                     lastOperationResults.AddRange(summary.Results);
                     foreach (var result in summary.Results)
                     {

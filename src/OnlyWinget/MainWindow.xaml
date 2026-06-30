@@ -8,49 +8,12 @@
         CompactModeThresholdWidth="720"
         ExpandedModeThresholdWidth="1100"
         IsBackButtonVisible="Collapsed"
-        IsSettingsVisible="False"
+        IsSettingsVisible="True"
         PaneTitle="OnlyWinget"
         PaneDisplayMode="Auto"
         AutomationProperties.AutomationId="RootNavigation"
         SelectionFollowsFocus="Enabled"
         SelectionChanged="OnSelectionChanged">
-        <NavigationView.MenuItems>
-            <NavigationViewItem Content="Dashboard" Tag="dashboard" AutomationProperties.AutomationId="NavDashboard">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Home" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="Presets" Tag="presets" AutomationProperties.AutomationId="NavPresets">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Library" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="Search" Tag="search" AutomationProperties.AutomationId="NavSearch">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Find" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="Updates" Tag="updates" AutomationProperties.AutomationId="NavUpdates">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Sync" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="Windows Update" Tag="windowsUpdates" AutomationProperties.AutomationId="NavWindowsUpdates">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Download" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="Sources" Tag="sources" AutomationProperties.AutomationId="NavSources">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Globe" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="Activity" Tag="activity" AutomationProperties.AutomationId="NavActivity">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Clock" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-        </NavigationView.MenuItems>
         <ContentControl
             x:Name="PageHost"
             Background="{ThemeResource LayerFillColorDefaultBrush}"

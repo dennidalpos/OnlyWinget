@@ -11,7 +11,8 @@ public sealed class WingetOperationExecutor(
     public async Task<OperationExecutionSummary> ExecuteAsync(
         OperationPlan plan,
         CancellationToken cancellationToken,
-        IProgress<OperationProgress>? progress = null)
+        IProgress<OperationProgress>? progress = null,
+        bool continueAfterFailure = false)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
@@ -56,6 +57,10 @@ public sealed class WingetOperationExecutor(
                 selection,
                 commandResult,
                 errorClassifier.Classify(commandResult)));
+            if (!results[^1].Succeeded && !continueAfterFailure)
+            {
+                break;
+            }
         }
 
         return new OperationExecutionSummary(results);

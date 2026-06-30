@@ -6,7 +6,7 @@ public sealed record UpdatesPresentationState(
     IReadOnlyList<UpdateRow> Updates,
     SelectionHeaderState HeaderState,
     IReadOnlyList<OperationResultRow> OperationResults,
-    IReadOnlyList<PresentationCommand> Commands,
+    IReadOnlyList<UiCommand> Commands,
     bool IsLoading,
     bool IsExecuting,
     string? Error);

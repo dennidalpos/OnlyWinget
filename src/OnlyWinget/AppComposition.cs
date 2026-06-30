@@ -3,11 +3,24 @@ using OnlyWinget.Infrastructure.Storage;
 using OnlyWinget.Infrastructure.System;
 using OnlyWinget.Infrastructure.Winget;
 using OnlyWinget.Infrastructure.WindowsUpdate;
+using OnlyWinget.Services;
+using OnlyWinget.Shell;
 
 namespace OnlyWinget;
 
 internal static class AppComposition
 {
+    public static UiServiceCollection CreateUiServices()
+    {
+        var settings = new JsonAppSettingsService(JsonAppSettingsService.DefaultFilePath);
+        return new(
+            settings,
+            new ConfirmationService(settings),
+            new FilePickerService(),
+            new ClipboardService(),
+            new NavigationRegistry());
+    }
+
     public static OnlyWingetApplication CreateWorkflow()
     {
         var processRunner = new ProcessExternalProcessRunner();

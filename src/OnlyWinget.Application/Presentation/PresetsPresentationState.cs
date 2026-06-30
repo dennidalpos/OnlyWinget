@@ -8,6 +8,6 @@ public sealed record PresetsPresentationState(
     IReadOnlyList<PresetPackageRow> Packages,
     SelectionHeaderState HeaderState,
     IReadOnlyList<OperationResultRow> OperationResults,
-    IReadOnlyList<PresentationCommand> Commands,
+    IReadOnlyList<UiCommand> Commands,
     bool IsExecuting,
     string? Error);

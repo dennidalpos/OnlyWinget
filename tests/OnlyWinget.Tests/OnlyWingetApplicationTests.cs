@@ -188,8 +188,8 @@ public sealed class OnlyWingetApplicationTests
 
         Assert.Equal("Default", presentation.Presets.ActivePresetName);
         Assert.Single(presentation.Search.Results);
-        Assert.True(presentation.Search.Commands.Single(command => command.Id == "search.addSelected").IsEnabled);
-        Assert.False(presentation.Updates.Commands.Single(command => command.Id == "operation.cancel").IsEnabled);
+        Assert.True(presentation.Search.Commands.Single(command => command.Id == UiCommandId.AddSearchResults).IsEnabled);
+        Assert.False(presentation.Updates.Commands.Single(command => command.Id == UiCommandId.CancelOperation).IsEnabled);
     }
 
     [Fact]
@@ -269,7 +269,7 @@ public sealed class OnlyWingetApplicationTests
         var source = Assert.Single(presentation.Sources.Sources);
         Assert.Equal("winget", source.Name);
         Assert.Equal("Source_Type_Default", source.Type);
-        Assert.True(presentation.Sources.Commands.Single(command => command.Id == "sources.update").IsEnabled);
+        Assert.True(presentation.Sources.Commands.Single(command => command.Id == UiCommandId.UpdateSources).IsEnabled);
     }
 
     [Fact]
@@ -286,7 +286,7 @@ public sealed class OnlyWingetApplicationTests
 
         Assert.False(result.Succeeded);
         Assert.Contains("winget is not available", result.Error, StringComparison.Ordinal);
-        Assert.False(presentation.Search.Commands.Single(command => command.Id == "search.execute").IsEnabled);
+        Assert.False(presentation.Search.Commands.Single(command => command.Id == UiCommandId.SearchPackages).IsEnabled);
     }
 
     [Fact]
@@ -666,7 +666,8 @@ public sealed class OnlyWingetApplicationTests
         public Task<OperationExecutionSummary> ExecuteAsync(
             OperationPlan plan,
             CancellationToken cancellationToken,
-            IProgress<OperationProgress>? progress = null)
+            IProgress<OperationProgress>? progress = null,
+            bool continueAfterFailure = false)
         {
             LastPlan = plan;
             return Task.FromResult(summary);

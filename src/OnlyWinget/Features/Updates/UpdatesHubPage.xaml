@@ -1,0 +1,16 @@
+<Page
+    x:Class="OnlyWinget.Features.Updates.UpdatesHubPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:updates="using:OnlyWinget.Features.Updates">
+    <TabView x:Name="Modes" TabWidthMode="Equal" IsAddTabButtonVisible="False" AutomationProperties.AutomationId="UpdatesModes">
+        <TabViewItem x:Name="WingetTab" IsClosable="False" AutomationProperties.AutomationId="UpdatesWingetTab">
+            <TabViewItem.IconSource><SymbolIconSource Symbol="Sync" /></TabViewItem.IconSource>
+            <updates:UpdatesPage />
+        </TabViewItem>
+        <TabViewItem x:Name="WindowsTab" IsClosable="False" AutomationProperties.AutomationId="UpdatesWindowsTab">
+            <TabViewItem.IconSource><SymbolIconSource Symbol="Download" /></TabViewItem.IconSource>
+            <updates:WindowsUpdatePage />
+        </TabViewItem>
+    </TabView>
+</Page>

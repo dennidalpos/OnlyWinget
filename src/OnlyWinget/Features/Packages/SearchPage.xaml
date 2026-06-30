@@ -1,0 +1,123 @@
+<Page
+    x:Class="OnlyWinget.Features.Packages.SearchPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:presentation="using:OnlyWinget.Application.Presentation">
+    <Grid x:Name="PageContent" MaxWidth="{StaticResource PageMaxWidth}" Padding="{StaticResource PageWidePadding}" RowSpacing="{StaticResource PageSectionSpacing}" HorizontalAlignment="Stretch">
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup>
+                    <VisualState x:Name="Wide"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1100" /></VisualState.StateTriggers></VisualState>
+                    <VisualState x:Name="Medium">
+                        <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="720" /></VisualState.StateTriggers>
+                        <VisualState.Setters><Setter Target="PageContent.Padding" Value="{StaticResource PageMediumPadding}" /></VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Compact">
+                        <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="PageContent.Padding" Value="{StaticResource PageCompactPadding}" />
+                            <Setter Target="SearchButton.HorizontalAlignment" Value="Stretch" />
+                            <Setter Target="ResultsHeader.Orientation" Value="Vertical" />
+                            <Setter Target="ResultsHeader.HorizontalAlignment" Value="Stretch" />
+                            <Setter Target="AddSelectedButton.HorizontalAlignment" Value="Stretch" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+
+            <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+
+            <Border Grid.Row="1" Style="{StaticResource CardStyle}">
+                <Grid RowSpacing="12">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <TextBlock x:Name="SearchSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                    <StackPanel x:Name="SearchForm" Grid.Row="1" Spacing="8">
+                        <AutoSuggestBox x:Name="QueryBox" QuerySubmitted="OnQuerySubmitted" AutomationProperties.AutomationId="SearchQueryBox" />
+                        <Button x:Name="SearchButton" Style="{StaticResource SearchPrimaryButtonStyle}" Click="OnSearch" AutomationProperties.AutomationId="SearchButton" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                <Grid RowSpacing="10">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <StackPanel x:Name="ResultsHeader" Style="{StaticResource ActionBarStyle}" Spacing="10">
+                        <TextBlock x:Name="ResultsSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
+                        <CheckBox x:Name="SelectAllResultsBox" Click="OnToggleAllResults" VerticalAlignment="Center" AutomationProperties.AutomationId="SearchSelectAllCheckBox" />
+                        <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SearchLoadingRing" AutomationProperties.Name="Searching packages" />
+                        <Button x:Name="AddSelectedButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSelected" AutomationProperties.AutomationId="SearchAddSelectedButton" />
+                    </StackPanel>
+                    <ListView
+                        x:Name="ResultList"
+                        Grid.Row="1"
+                        ItemContainerStyle="{StaticResource TableRowContainerStyle}"
+                        AutomationProperties.AutomationId="SearchResultList"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollMode="Enabled"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.VerticalScrollMode="Enabled">
+                        <ListView.Header>
+                            <Border Style="{StaticResource TableHeaderSurfaceStyle}">
+                            <Grid Padding="12,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="{Binding Column0Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column1Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column2Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column3Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column4Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column5Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column6Width, Source={StaticResource SearchColumnLayout}}" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="SearchNameHeader" Grid.Column="1" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchPackageIdHeader" Grid.Column="2" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchSourceHeader" Grid.Column="3" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchVersionHeader" Grid.Column="4" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchArchitectureHeader" Grid.Column="5" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                                <TextBlock x:Name="SearchMatchHeader" Grid.Column="6" Style="{StaticResource TableHeaderTextBlockStyle}" />
+                            </Grid>
+                            </Border>
+                        </ListView.Header>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="presentation:SearchResultRow">
+                                <Grid Padding="12,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{Binding Column0Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column1Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column2Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column3Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column4Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column5Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column6Width, Source={StaticResource SearchColumnLayout}}" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox
+                                        AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
+                                        AutomationProperties.Name="{x:Bind Name, Mode=OneTime}"
+                                        IsChecked="{x:Bind IsSelected, Mode=OneTime}"
+                                        Click="OnResultSelectionClick"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    <TextBlock Grid.Column="2" Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                    <TextBlock Grid.Column="3" Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="4" Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="5" Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <TextBlock Grid.Column="6" Text="{x:Bind Match, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <Border Grid.ColumnSpan="7" Style="{StaticResource TableRowDividerStyle}" />
+                                    <Border Grid.Column="1" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="2" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="3" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="4" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="5" Style="{StaticResource TableCellDividerStyle}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel Grid.Row="2" Spacing="4">
+                        <ProgressBar x:Name="SearchProgressBar" IsIndeterminate="True" Visibility="Collapsed" AutomationProperties.AutomationId="SearchProgressBar" />
+                        <TextBlock x:Name="LoadingStatusText" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                        <TextBlock x:Name="StatusText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource EmptyStateTextBlockStyle}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+    </Grid>
+</Page>

@@ -1,4 +1,6 @@
 using OnlyWinget.Application.App;
+using OnlyWinget.Services;
+using System.Globalization;
 
 namespace OnlyWinget;
 
@@ -8,13 +10,31 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     internal static nint WindowHandle => window is null ? 0 : WinRT.Interop.WindowNative.GetWindowHandle(window);
 
+    internal static Microsoft.UI.WindowId WindowId => Microsoft.UI.Win32Interop.GetWindowIdFromWindow(WindowHandle);
+
+    internal static UiServiceCollection UiServices { get; } = AppComposition.CreateUiServices();
+
     public static OnlyWingetApplication Workflow { get; } = AppComposition.CreateWorkflow();
 
     public App()
     {
+        ApplySettings();
         AppDiagnostics.Initialize();
         AppDiagnostics.Register(this);
         InitializeComponent();
+    }
+
+    internal static void ApplySettings()
+    {
+        var settings = UiServices.Settings.Current;
+        TextResources.OverrideCulture = settings.Language switch
+        {
+            "en" => CultureInfo.GetCultureInfo("en"),
+            "it" => CultureInfo.GetCultureInfo("it"),
+            _ => null
+        };
+        AppDiagnostics.IsEnabled = settings.DiagnosticLogging;
+        Workflow.ContinueOperationsAfterFailure = settings.ContinueOperationsAfterFailure;
     }
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)

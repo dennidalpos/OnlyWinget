@@ -1,0 +1,55 @@
+<Page
+    x:Class="OnlyWinget.Features.Home.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:design="using:OnlyWinget.DesignSystem.Controls"
+    xmlns:home="using:OnlyWinget.Features.Home"
+    xmlns:presentation="using:OnlyWinget.Application.Presentation">
+    <design:PageScaffold x:Name="Scaffold">
+        <design:PageScaffold.Body>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid RowSpacing="{StaticResource PageSectionSpacing}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ItemsRepeater x:Name="MetricRepeater">
+                        <ItemsRepeater.Layout>
+                            <UniformGridLayout MaximumRowsOrColumns="5" MinItemWidth="170" MinColumnSpacing="12" MinRowSpacing="12" ItemsStretch="Fill" Orientation="Horizontal" />
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate x:DataType="home:DashboardMetric">
+                                <Border Style="{StaticResource MetricCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                    <Border Grid.Row="1" Style="{StaticResource CardStyle}">
+                        <Grid RowSpacing="10">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <TextBlock x:Name="RecentActivityText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                            <ItemsControl x:Name="ActivityList" Grid.Row="1" AutomationProperties.AutomationId="DashboardActivityList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="presentation:ActivityRow">
+                                        <StackPanel Padding="12,8" Spacing="3">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Text="{x:Bind Severity, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                                <TextBlock Text="{x:Bind Title, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                            </StackPanel>
+                                            <TextBlock Text="{x:Bind Message, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="StatusText" Grid.Row="2" AutomationProperties.LiveSetting="Polite" Style="{StaticResource EmptyStateTextBlockStyle}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+        </design:PageScaffold.Body>
+    </design:PageScaffold>
+</Page>

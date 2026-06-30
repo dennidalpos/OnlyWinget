@@ -6,7 +6,7 @@ public sealed record WindowsUpdatePresentationState(
     IReadOnlyList<WindowsUpdateRow> Updates,
     SelectionHeaderState HeaderState,
     IReadOnlyList<WindowsUpdateResultRow> Results,
-    IReadOnlyList<PresentationCommand> Commands,
+    IReadOnlyList<UiCommand> Commands,
     bool IsScanning,
     bool IsInstalling,
     string? Error);

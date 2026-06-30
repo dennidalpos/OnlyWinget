@@ -68,18 +68,18 @@ public static class PresentationStateMapper
             state.PresetSelectionHeader,
             operationResults,
             [
-                new("preset.add", "Command_Preset_Add", !isExecuting),
-                new("preset.rename", "Command_Preset_Rename", hasPreset && !isExecuting),
-                new("preset.remove", "Command_Preset_Remove", hasPreset && !isExecuting),
-                new("preset.package.add", "Command_PresetPackage_Add", hasPreset && !isExecuting),
-                new("preset.package.edit", "Command_PresetPackage_Edit", state.SelectedPresetPackages.Count == 1 && !isExecuting),
-                new("preset.package.remove", "Command_PresetPackage_Remove", hasSelectedPackages && !isExecuting),
-                new("preset.import", "Command_Preset_Import", !isExecuting),
-                new("preset.export", "Command_Preset_Export", hasPreset && !isExecuting),
-                new("preset.save", "Command_Workspace_Save", !isExecuting),
-                new("preset.apply.install", "Command_Preset_ApplyInstall", hasPackages && canUseWinget && !isExecuting),
-                new("preset.apply.uninstall", "Command_Preset_ApplyUninstall", hasPackages && canUseWinget && !isExecuting),
-                new("operation.cancel", "Command_Operation_Cancel", isExecuting)
+                new(UiCommandId.AddPreset, "Command_Preset_Add", !isExecuting, UiCommandKind.Primary, Icon: "Add"),
+                new(UiCommandId.RenamePreset, "Command_Preset_Rename", hasPreset && !isExecuting, Icon: "Edit"),
+                new(UiCommandId.RemovePreset, "Command_Preset_Remove", hasPreset && !isExecuting, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_RemovePreset_Message"),
+                new(UiCommandId.AddPresetPackage, "Command_PresetPackage_Add", hasPreset && !isExecuting, UiCommandKind.Primary, Icon: "Add"),
+                new(UiCommandId.EditPresetPackage, "Command_PresetPackage_Edit", state.SelectedPresetPackages.Count == 1 && !isExecuting, Icon: "Edit"),
+                new(UiCommandId.RemovePresetPackages, "Command_PresetPackage_Remove", hasSelectedPackages && !isExecuting, UiCommandKind.Destructive),
+                new(UiCommandId.ImportPreset, "Command_Preset_Import", !isExecuting, Placement: UiCommandPlacement.Overflow),
+                new(UiCommandId.ExportPreset, "Command_Preset_Export", hasPreset && !isExecuting, Placement: UiCommandPlacement.Overflow),
+                new(UiCommandId.SaveWorkspace, "Command_Workspace_Save", !isExecuting, Placement: UiCommandPlacement.Overflow, Icon: "Save"),
+                new(UiCommandId.InstallPreset, "Command_Preset_ApplyInstall", hasPackages && canUseWinget && !isExecuting, UiCommandKind.Primary, Icon: "Download"),
+                new(UiCommandId.UninstallPreset, "Command_Preset_ApplyUninstall", hasPackages && canUseWinget && !isExecuting, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_UninstallPreset_Message"),
+                new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isExecuting, UiCommandKind.Cancel, Icon: "Cancel")
             ],
             isExecuting,
             state.UserVisibleError);
@@ -108,8 +108,8 @@ public static class PresentationStateMapper
                 .ToArray(),
             state.SearchSelectionHeader,
             [
-                new("search.execute", "Command_Search_Execute", canUseWinget && !isLoading && !isExecuting),
-                new("search.addSelected", "Command_Search_AddSelected", canUseWinget && state.SelectedSearchPackages.Count > 0 && !isLoading && !isExecuting)
+                new(UiCommandId.SearchPackages, "Command_Search_Execute", canUseWinget && !isLoading && !isExecuting, UiCommandKind.Primary, Icon: "Find"),
+                new(UiCommandId.AddSearchResults, "Command_Search_AddSelected", canUseWinget && state.SelectedSearchPackages.Count > 0 && !isLoading && !isExecuting, Icon: "Add")
             ],
             isLoading,
             state.UserVisibleError);
@@ -148,9 +148,9 @@ public static class PresentationStateMapper
             state.UpdatesSelectionHeader,
             operationResults,
             [
-                new("updates.refresh", "Command_Updates_Refresh", canUseWinget && !isLoading && !isExecuting),
-                new("updates.applySelected", "Command_Updates_ApplySelected", canUseWinget && state.SelectedUpdates.Count > 0 && !isLoading && !isExecuting),
-                new("operation.cancel", "Command_Operation_Cancel", isExecuting)
+                new(UiCommandId.RefreshUpdates, "Command_Updates_Refresh", canUseWinget && !isLoading && !isExecuting, UiCommandKind.Primary, Icon: "Refresh"),
+                new(UiCommandId.ApplyUpdates, "Command_Updates_ApplySelected", canUseWinget && state.SelectedUpdates.Count > 0 && !isLoading && !isExecuting, Icon: "Download"),
+                new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isExecuting, UiCommandKind.Cancel, Icon: "Cancel")
             ],
             isLoading,
             isExecuting,
@@ -200,9 +200,9 @@ public static class PresentationStateMapper
                     result.Message))
                 .ToArray(),
             [
-                new("windowsUpdates.scan", "Command_WindowsUpdates_Scan", canUseWindowsUpdate && !isBusy),
-                new("windowsUpdates.installSelected", "Command_WindowsUpdates_InstallSelected", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy),
-                new("operation.cancel", "Command_Operation_Cancel", isBusy)
+                new(UiCommandId.ScanWindowsUpdates, "Command_WindowsUpdates_Scan", canUseWindowsUpdate && !isBusy, UiCommandKind.Primary, Icon: "Refresh"),
+                new(UiCommandId.InstallWindowsUpdates, "Command_WindowsUpdates_InstallSelected", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy, Icon: "Download"),
+                new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isBusy, UiCommandKind.Cancel, Icon: "Cancel")
             ],
             isScanning,
             isInstalling,
@@ -226,11 +226,11 @@ public static class PresentationStateMapper
                     source.IsEnabled))
                 .ToArray(),
             [
-                new("sources.refresh", "Command_Sources_Refresh", canUseWinget && !isLoading),
-                new("sources.update", "Command_Sources_Update", canUseWinget && !isLoading),
-                new("sources.add", "Command_Sources_Add", canUseWinget && !isLoading),
-                new("sources.remove", "Command_Sources_Remove", canUseWinget && hasSource && !isLoading),
-                new("sources.reset", "Command_Sources_Reset", canUseWinget && !isLoading)
+                new(UiCommandId.RefreshSources, "Command_Sources_Refresh", canUseWinget && !isLoading, UiCommandKind.Primary, Icon: "Refresh"),
+                new(UiCommandId.UpdateSources, "Command_Sources_Update", canUseWinget && !isLoading),
+                new(UiCommandId.AddSource, "Command_Sources_Add", canUseWinget && !isLoading, Icon: "Add"),
+                new(UiCommandId.RemoveSource, "Command_Sources_Remove", canUseWinget && hasSource && !isLoading, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_RemoveSource_Message"),
+                new(UiCommandId.ResetSources, "Command_Sources_Reset", canUseWinget && !isLoading, UiCommandKind.Destructive, UiCommandPlacement.Overflow, ConfirmationResourceKey: "Dialog_ResetSources_Message")
             ],
             isLoading,
             state.SourceError?.Message ?? state.UserVisibleError ?? (canUseWinget ? null : state.Capabilities.WingetUnavailableMessage));
@@ -243,7 +243,7 @@ public static class PresentationStateMapper
                 .Select(entry => new ActivityRow(entry.Timestamp, entry.Severity, entry.Title, entry.Message))
                 .ToArray(),
             [
-                new("activity.clear", "Command_Activity_Clear", state.Activity.Count > 0)
+                new(UiCommandId.ClearActivity, "Command_Activity_Clear", state.Activity.Count > 0, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_ClearActivity_Message")
             ]);
     }
 

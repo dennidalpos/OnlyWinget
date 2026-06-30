@@ -4,8 +4,13 @@ namespace OnlyWinget;
 
 public static class TextResources
 {
+    public static CultureInfo? OverrideCulture { get; set; }
+
     private static readonly IReadOnlyDictionary<string, string> English = new Dictionary<string, string>(StringComparer.Ordinal)
     {
+        ["Nav_Home"] = "Home",
+        ["Nav_Packages"] = "Packages",
+        ["Nav_Settings"] = "Settings",
         ["Nav_Dashboard"] = "Dashboard",
         ["Nav_Presets"] = "Presets",
         ["Nav_Search"] = "Search",
@@ -132,11 +137,38 @@ public static class TextResources
         ["Progress_InstallingWindowsUpdates"] = "Installing Windows updates...",
         ["WindowsUpdates_IncludeSoftware"] = "Software",
         ["WindowsUpdates_IncludeDrivers"] = "Drivers",
-        ["WindowsUpdates_IncludeMicrosoft"] = "Microsoft products"
+        ["WindowsUpdates_IncludeMicrosoft"] = "Microsoft products",
+        ["Packages_PresetsMode"] = "Preset",
+        ["Packages_SearchMode"] = "Search",
+        ["Updates_WingetMode"] = "App updates",
+        ["Updates_WindowsMode"] = "Windows Update",
+        ["Settings_Title"] = "Settings",
+        ["Settings_Subtitle"] = "Appearance, safety, diagnostics, and installation preferences.",
+        ["Settings_Language"] = "Language",
+        ["Settings_LanguageDescription"] = "Choose the language used by OnlyWinget.",
+        ["Settings_Theme"] = "Theme",
+        ["Settings_ThemeDescription"] = "Use the system theme or select a light or dark appearance.",
+        ["Settings_ConfirmDestructive"] = "Confirm destructive actions",
+        ["Settings_Diagnostics"] = "Write diagnostic logs",
+        ["Settings_InstallBehavior"] = "Continue independent package operations after a failure",
+        ["Settings_Reset"] = "Reset configuration",
+        ["Settings_ResetDescription"] = "Restore appearance and behavior preferences. Presets are not changed.",
+        ["Settings_ResetAction"] = "Reset preferences",
+        ["Settings_ResetConfirmation"] = "Reset OnlyWinget preferences to their defaults?",
+        ["Dialog_RemovePreset_Message"] = "Remove the active preset?",
+        ["Dialog_UninstallPreset_Message"] = "Uninstall every package in the active preset?",
+        ["Dialog_ClearActivity_Message"] = "Clear the activity history?",
+        ["State_Error"] = "Something went wrong",
+        ["Activity_Subtitle"] = "Inspect operations, warnings, and diagnostic details.",
+        ["Activity_Search"] = "Search activity",
+        ["Activity_AllSeverities"] = "All severities"
     };
 
     private static readonly IReadOnlyDictionary<string, string> Italian = new Dictionary<string, string>(StringComparer.Ordinal)
     {
+        ["Nav_Home"] = "Home",
+        ["Nav_Packages"] = "Pacchetti",
+        ["Nav_Settings"] = "Impostazioni",
         ["Nav_Dashboard"] = "Dashboard",
         ["Nav_Presets"] = "Preset",
         ["Nav_Search"] = "Cerca",
@@ -263,12 +295,36 @@ public static class TextResources
         ["Progress_InstallingWindowsUpdates"] = "Installazione aggiornamenti Windows...",
         ["WindowsUpdates_IncludeSoftware"] = "Software",
         ["WindowsUpdates_IncludeDrivers"] = "Driver",
-        ["WindowsUpdates_IncludeMicrosoft"] = "Prodotti Microsoft"
+        ["WindowsUpdates_IncludeMicrosoft"] = "Prodotti Microsoft",
+        ["Packages_PresetsMode"] = "Preset",
+        ["Packages_SearchMode"] = "Ricerca",
+        ["Updates_WingetMode"] = "App winget",
+        ["Updates_WindowsMode"] = "Windows Update",
+        ["Settings_Title"] = "Impostazioni",
+        ["Settings_Subtitle"] = "Aspetto, sicurezza, diagnostica e preferenze di installazione.",
+        ["Settings_Language"] = "Lingua",
+        ["Settings_LanguageDescription"] = "Scegli la lingua usata da OnlyWinget.",
+        ["Settings_Theme"] = "Tema",
+        ["Settings_ThemeDescription"] = "Usa il tema di sistema oppure scegli l'aspetto chiaro o scuro.",
+        ["Settings_ConfirmDestructive"] = "Conferma le azioni distruttive",
+        ["Settings_Diagnostics"] = "Scrivi log diagnostici",
+        ["Settings_InstallBehavior"] = "Continua le operazioni indipendenti dopo un errore",
+        ["Settings_Reset"] = "Reimposta configurazione",
+        ["Settings_ResetDescription"] = "Ripristina le preferenze di aspetto e comportamento. I preset non vengono modificati.",
+        ["Settings_ResetAction"] = "Reimposta preferenze",
+        ["Settings_ResetConfirmation"] = "Ripristinare le preferenze predefinite di OnlyWinget?",
+        ["Dialog_RemovePreset_Message"] = "Rimuovere il preset attivo?",
+        ["Dialog_UninstallPreset_Message"] = "Disinstallare tutti i pacchetti del preset attivo?",
+        ["Dialog_ClearActivity_Message"] = "Svuotare la cronologia attività?",
+        ["State_Error"] = "Si è verificato un errore",
+        ["Activity_Subtitle"] = "Controlla operazioni, avvisi e dettagli diagnostici.",
+        ["Activity_Search"] = "Cerca nelle attività",
+        ["Activity_AllSeverities"] = "Tutte le gravità"
     };
 
     public static string Get(string key)
     {
-        var resources = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("it", StringComparison.OrdinalIgnoreCase)
+        var resources = (OverrideCulture ?? CultureInfo.CurrentUICulture).TwoLetterISOLanguageName.Equals("it", StringComparison.OrdinalIgnoreCase)
             ? Italian
             : English;
         return resources.TryGetValue(key, out var value) ? value : key;
