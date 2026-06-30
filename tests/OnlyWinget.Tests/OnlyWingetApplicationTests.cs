@@ -98,7 +98,41 @@ public sealed class OnlyWingetApplicationTests
         Assert.True(result.Succeeded);
         Assert.Equal(PackageAction.Upgrade, executor.LastPlan?.Selections.Single().Action);
         Assert.Single(app.State.LastOperationResults);
+        Assert.Empty(app.State.Updates);
         Assert.Contains(app.State.Activity, entry => entry.Title == "Git.Git" && entry.Message == "upgraded");
+    }
+
+    [Fact]
+    public async Task ApplySelectedUpdatesRemovesSuccessfulRowsAndKeepsFailuresVisible()
+    {
+        var updates = new StubUpdateLoader(
+            new PackageUpdate(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "2.1.0"),
+            new PackageUpdate(new PackageIdentity("Missing.App", "winget"), "Missing", "1.0.0", "1.1.0"));
+        var executor = new RecordingOperationExecutor(
+            new OperationExecutionSummary(
+                [
+                    new OperationExecutionResult(
+                        new PackageSelection(new PackageIdentity("Git.Git", "winget"), PackageAction.Upgrade),
+                        new WingetCommandResult(0, "upgraded", string.Empty),
+                        null),
+                    new OperationExecutionResult(
+                        new PackageSelection(new PackageIdentity("Missing.App", "winget"), PackageAction.Upgrade),
+                        new WingetCommandResult(1, string.Empty, "No package found."),
+                        new ClassifiedWingetError(WingetErrorKind.NotFound, "Package was not found."))
+                ]));
+        var app = CreateApplication(updates: updates, executor: executor);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Missing.App", Assert.Single(app.State.Updates).Package.Id);
+        var row = Assert.Single(PresentationStateMapper.FromApplicationState(app.State).Updates.Updates);
+        Assert.Equal("Failed", row.Status);
+        Assert.Equal("Package was not found.", row.ErrorDetails);
     }
 
     [Fact]

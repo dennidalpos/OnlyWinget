@@ -265,6 +265,24 @@ public sealed class WingetInfrastructureTests
     }
 
     [Fact]
+    public async Task UpdateLoaderIgnoresLocalizedMessagesAfterTheTable()
+    {
+        const string output = """
+            Nome      Id                        Versione  Disponibile     Origine
+            ---------------------------------------------------------------------
+            CCleaner  Piriform.CCleaner.Slim    6.41      6.41.0.11567   winget
+            Per i pacchetti seguenti è disponibile un aggiornamento, ma è necessario un targeting esplicito.
+            """;
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
+        var loader = new WingetUpdateLoader(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var outcome = await loader.LoadUpdatesAsync("winget", CancellationToken.None);
+
+        var update = Assert.Single(outcome.Rows);
+        Assert.Equal("Piriform.CCleaner.Slim", update.Package.Id);
+    }
+
+    [Fact]
     public async Task SourceServiceRunsSourceCommandsAndMapsLocalizedRows()
     {
         const string output = """

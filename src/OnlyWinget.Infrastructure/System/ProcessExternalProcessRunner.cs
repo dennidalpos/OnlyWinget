@@ -22,6 +22,8 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
+        process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
+        process.StartInfo.StandardErrorEncoding = Encoding.UTF8;
         foreach (var argument in arguments)
         {
             process.StartInfo.ArgumentList.Add(argument);

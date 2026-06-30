@@ -673,6 +673,13 @@ public sealed class OnlyWingetApplication(
                         AddActivity(severity, result.Selection.Package.Id, string.IsNullOrWhiteSpace(message) ? "Completed." : message);
                     }
 
+                    var succeededPackages = summary.Results
+                        .Where(result => result.Succeeded)
+                        .Select(result => result.Selection.Package)
+                        .ToArray();
+                    updates.RemoveAll(update => succeededPackages.Any(package => PackageEquals(package, update.Package)));
+                    updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
+
                     if (!summary.Succeeded)
                     {
                         throw new InvalidOperationException("One or more winget operations failed.");

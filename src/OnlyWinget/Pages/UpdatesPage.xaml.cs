@@ -1,6 +1,9 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using OnlyWinget.Application.Presentation;
+using OnlyWinget.Controls;
 using OnlyWinget.Domain.Packages;
 using System.Collections.ObjectModel;
 
@@ -143,11 +146,44 @@ public sealed partial class UpdatesPage : Page
         var progress = App.Workflow.State.OperationProgress;
         PageUi.SetVisible(OperationProgressBar, isExecuting);
         PageUi.SetVisible(OperationProgressText, isExecuting);
+        OperationProgressBar.IsIndeterminate = isExecuting &&
+            (progress is null || progress.Phase == OnlyWinget.Application.Winget.WingetProgressPhase.Starting);
         OperationProgressBar.Value = progress?.Percentage ?? 0;
         OperationProgressText.Text = progress is null
             ? TextResources.Get("Progress_Starting")
             : $"{TextResources.Get($"Progress_{progress.Phase}")} · {progress.Percentage}% · {progress.PackageId}";
     }
+
+    private void OnColumnSplitterDragDelta(object sender, DragDeltaEventArgs args)
+    {
+        if (TryGetColumnIndex(sender, out var index))
+        {
+            ResizeColumn(index, args.HorizontalChange);
+        }
+    }
+
+    private void OnColumnSplitterKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (!TryGetColumnIndex(sender, out var index) ||
+            args.Key is not (Windows.System.VirtualKey.Left or Windows.System.VirtualKey.Right))
+        {
+            return;
+        }
+
+        ResizeColumn(index, args.Key == Windows.System.VirtualKey.Left ? -12 : 12);
+        args.Handled = true;
+    }
+
+    private void ResizeColumn(int index, double delta)
+    {
+        if (Microsoft.UI.Xaml.Application.Current.Resources["UpdatesColumnLayout"] is TableColumnLayout layout)
+        {
+            layout.SetWidth(index, layout.GetWidth(index).Value + delta);
+        }
+    }
+
+    private static bool TryGetColumnIndex(object sender, out int index) =>
+        int.TryParse((sender as FrameworkElement)?.Tag?.ToString(), out index);
 
     private static string PackageKey(UpdateRow row) =>
         $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";

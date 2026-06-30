@@ -37,7 +37,8 @@ public sealed class WingetUpdateLoader(
     {
         if (!TryGetAny(row, out var id, "Id") ||
             !TryGetAny(row, out var version, "Version", "Versione") ||
-            !TryGetAny(row, out var available, "Available", "Disponibile"))
+            !TryGetAny(row, out var available, "Available", "Disponibile") ||
+            id.Any(char.IsWhiteSpace))
         {
             return null;
         }

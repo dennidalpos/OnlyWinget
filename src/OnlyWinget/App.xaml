@@ -1,7 +1,8 @@
 <Application
     x:Class="OnlyWinget.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:OnlyWinget.Controls">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -9,6 +10,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <Thickness x:Key="CardPadding">20</Thickness>
+            <controls:TableColumnLayout x:Key="UpdatesColumnLayout" />
 
             <DataTemplate x:Key="AddButtonContentTemplate">
                 <StackPanel Orientation="Horizontal" Spacing="8">
