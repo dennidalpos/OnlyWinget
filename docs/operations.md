@@ -69,3 +69,4 @@ Elevated installer lifecycle validation on a clean Windows host:
 - Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to disable automatic installation.
 - `WindowsAppRuntimeInstall.exe` can still be supplied explicitly with `-WindowsAppRuntimeInstallerPath` or `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`.
 - Downloaded Windows App Runtime redistributables are cached under `dependencies/windowsappsdk/`, outside `artifacts`, so clean scripts do not remove reusable installer prerequisites.
+- Run only one packaging task per worktree. A concurrent invocation fails immediately with the path of `artifacts/.package.lock`; an interrupted process releases the operating-system lock automatically.

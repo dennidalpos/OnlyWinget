@@ -81,14 +81,15 @@
                             VerticalScrollMode="Disabled"
                             IsVerticalScrollChainingEnabled="True">
                             <StackPanel>
-                                <Grid MinWidth="760" Padding="12,8" ColumnSpacing="12">
+                                <Border Style="{StaticResource TableHeaderSurfaceStyle}">
+                                <Grid Padding="12,8">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="32" />
-                                    <ColumnDefinition Width="1.5*" />
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="1.2*" />
-                                    <ColumnDefinition Width="1*" />
-                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="{Binding Column0Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column1Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column2Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column3Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column4Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column5Width, Source={StaticResource PresetColumnLayout}}" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="PresetNameHeader" Grid.Column="1" Style="{StaticResource TableHeaderTextBlockStyle}" />
                                 <TextBlock x:Name="PresetPackageIdHeader" Grid.Column="2" Style="{StaticResource TableHeaderTextBlockStyle}" />
@@ -96,16 +97,17 @@
                                 <TextBlock x:Name="PresetVersionHeader" Grid.Column="4" Style="{StaticResource TableHeaderTextBlockStyle}" />
                                 <TextBlock x:Name="PresetArchitectureHeader" Grid.Column="5" Style="{StaticResource TableHeaderTextBlockStyle}" />
                                 </Grid>
+                                </Border>
                                 <ItemsControl x:Name="PackageList" AutomationProperties.AutomationId="PresetPackageList">
                                     <ItemsControl.ItemTemplate><DataTemplate x:DataType="presentation:PresetPackageRow">
-                                    <Grid MinWidth="760" Padding="12,8" ColumnSpacing="12">
+                                    <Grid Padding="12,8">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="32" />
-                                    <ColumnDefinition Width="1.5*" />
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="1.2*" />
-                                    <ColumnDefinition Width="1*" />
-                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="{Binding Column0Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column1Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column2Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column3Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column4Width, Source={StaticResource PresetColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column5Width, Source={StaticResource PresetColumnLayout}}" />
                                 </Grid.ColumnDefinitions>
                                 <CheckBox
                                     AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
@@ -118,6 +120,11 @@
                                 <TextBlock Grid.Column="3" Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
                                 <TextBlock Grid.Column="4" Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
                                 <TextBlock Grid.Column="5" Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                <Border Grid.ColumnSpan="6" Style="{StaticResource TableRowDividerStyle}" />
+                                <Border Grid.Column="1" Style="{StaticResource TableCellDividerStyle}" />
+                                <Border Grid.Column="2" Style="{StaticResource TableCellDividerStyle}" />
+                                <Border Grid.Column="3" Style="{StaticResource TableCellDividerStyle}" />
+                                <Border Grid.Column="4" Style="{StaticResource TableCellDividerStyle}" />
                                     </Grid>
                                     </DataTemplate></ItemsControl.ItemTemplate>
                                 </ItemsControl>

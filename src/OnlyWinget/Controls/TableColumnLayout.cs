@@ -4,6 +4,20 @@ using System.Runtime.CompilerServices;
 
 namespace OnlyWinget.Controls;
 
+public sealed class FixedTableLayout
+{
+    public GridLength Column0Width { get; set; }
+    public GridLength Column1Width { get; set; }
+    public GridLength Column2Width { get; set; }
+    public GridLength Column3Width { get; set; }
+    public GridLength Column4Width { get; set; }
+    public GridLength Column5Width { get; set; }
+    public GridLength Column6Width { get; set; }
+    public GridLength Column7Width { get; set; }
+    public GridLength Column8Width { get; set; }
+    public GridLength Column9Width { get; set; }
+}
+
 public sealed class TableColumnLayout : DependencyObject, INotifyPropertyChanged
 {
     private GridLength selectionWidth = new(44);

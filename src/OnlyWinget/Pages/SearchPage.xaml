@@ -50,22 +50,23 @@
                     <ListView
                         x:Name="ResultList"
                         Grid.Row="1"
-                        ItemContainerStyle="{StaticResource ListRowContainerStyle}"
+                        ItemContainerStyle="{StaticResource TableRowContainerStyle}"
                         AutomationProperties.AutomationId="SearchResultList"
                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
                         ScrollViewer.HorizontalScrollMode="Enabled"
                         ScrollViewer.VerticalScrollBarVisibility="Auto"
                         ScrollViewer.VerticalScrollMode="Enabled">
                         <ListView.Header>
-                            <Grid MinWidth="760" Padding="12,8" ColumnSpacing="12">
+                            <Border Style="{StaticResource TableHeaderSurfaceStyle}">
+                            <Grid Padding="12,8">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="32" />
-                                    <ColumnDefinition Width="1.7*" />
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="1.1*" />
-                                    <ColumnDefinition Width="1*" />
-                                    <ColumnDefinition Width="1*" />
-                                    <ColumnDefinition Width="1.5*" />
+                                    <ColumnDefinition Width="{Binding Column0Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column1Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column2Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column3Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column4Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column5Width, Source={StaticResource SearchColumnLayout}}" />
+                                    <ColumnDefinition Width="{Binding Column6Width, Source={StaticResource SearchColumnLayout}}" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="SearchNameHeader" Grid.Column="1" Style="{StaticResource TableHeaderTextBlockStyle}" />
                                 <TextBlock x:Name="SearchPackageIdHeader" Grid.Column="2" Style="{StaticResource TableHeaderTextBlockStyle}" />
@@ -74,18 +75,19 @@
                                 <TextBlock x:Name="SearchArchitectureHeader" Grid.Column="5" Style="{StaticResource TableHeaderTextBlockStyle}" />
                                 <TextBlock x:Name="SearchMatchHeader" Grid.Column="6" Style="{StaticResource TableHeaderTextBlockStyle}" />
                             </Grid>
+                            </Border>
                         </ListView.Header>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="presentation:SearchResultRow">
-                                <Grid MinWidth="760" ColumnSpacing="12">
+                                <Grid Padding="12,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="32" />
-                                        <ColumnDefinition Width="1.7*" />
-                                        <ColumnDefinition Width="2*" />
-                                        <ColumnDefinition Width="1.1*" />
-                                        <ColumnDefinition Width="1*" />
-                                        <ColumnDefinition Width="1*" />
-                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="{Binding Column0Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column1Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column2Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column3Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column4Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column5Width, Source={StaticResource SearchColumnLayout}}" />
+                                        <ColumnDefinition Width="{Binding Column6Width, Source={StaticResource SearchColumnLayout}}" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox
                                         AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
@@ -99,6 +101,12 @@
                                     <TextBlock Grid.Column="4" Text="{x:Bind Version, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
                                     <TextBlock Grid.Column="5" Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
                                     <TextBlock Grid.Column="6" Text="{x:Bind Match, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
+                                    <Border Grid.ColumnSpan="7" Style="{StaticResource TableRowDividerStyle}" />
+                                    <Border Grid.Column="1" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="2" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="3" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="4" Style="{StaticResource TableCellDividerStyle}" />
+                                    <Border Grid.Column="5" Style="{StaticResource TableCellDividerStyle}" />
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>

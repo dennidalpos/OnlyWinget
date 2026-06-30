@@ -24,6 +24,8 @@ From a clean working tree:
 
 Packaging resolves `WindowsAppRuntimeInstall.exe` from an explicit `-WindowsAppRuntimeInstallerPath`, `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`, local NuGet/cache paths, or the official Windows App Runtime redistributable download. Downloaded redistributables are cached in `dependencies/windowsappsdk/`, which is intentionally outside `artifacts` so cleanup does not remove reusable prerequisites.
 
+The packaging task permits only one run per worktree and publishes the MSI and setup EXE atomically from staging. WiX 3 ICE03 is suppressed because its obsolete locale table rejects valid Windows App SDK 2.x MUI locales such as `gd-GB`, `mi-NZ`, and `ug-CN`; other linker validation remains active, apart from the existing ICE61 suppression.
+
 Then run the hosted GitHub Actions `build-gate` workflow for the exact release commit.
 
 ## Artifact

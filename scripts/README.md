@@ -33,5 +33,8 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `check.ps1` | Direct full gate action; without parameters opens the menu. |
 | `clean.ps1` | Direct guarded cleanup action; without parameters opens the menu. |
 | `validate-installer-lifecycle.ps1` | Direct elevated clean-host lifecycle validation; without parameters opens the menu. |
+| `validate-installed-startup.ps1` | Verifies that an installed executable starts and remains responsive. |
 
 Support files live under `scripts/support/` and are not standalone entrypoints.
+
+Packaging is serialized per worktree through `artifacts/.package.lock`. WiX writes MSI and setup outputs in staging and moves them into `artifacts/dist/` only after a successful link, so failed or overlapping runs cannot leave a partially replaced release artifact. WiX 3 ICE03 is disabled because its locale table rejects valid Windows App SDK 2.x MUI locales; all other linker validation remains enabled except the existing ICE61 suppression.

@@ -35,7 +35,10 @@ $setupOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
 $upgradeCode = '{B6E2D6FC-56ED-4A5C-A766-01F3FE71D7E6}'
 $bundleUpgradeCode = '{A34AF980-F5F1-4E4D-8124-8DC5E889C74D}'
 $builtMsiPaths = @{}
-$suppressedValidationIces = @('ICE61')
+# WiX 3's ICE03 language table predates locales shipped by Windows App SDK 2.x
+# (for example gd-GB, mi-NZ, and ug-CN) and reports their valid MUI files as
+# invalid. Candle still validates and binds those files; only that stale ICE is
+# disabled here.
 $resolvedWindowsAppRuntimeInstallerX64Path = $null
 $attemptedWixInstall = $false
 
@@ -289,6 +292,16 @@ function Reset-Directory {
     New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
 }
 
+function Publish-GeneratedFile {
+    param(
+        [string]$StagedPath,
+        [string]$DestinationPath
+    )
+
+    Assert-Path -Path $StagedPath -Description 'Staged package artifact'
+    [System.IO.File]::Move($StagedPath, $DestinationPath, $true)
+}
+
 function Copy-WinUiPublishResource {
     param(
         [string]$RuntimeIdentifier,
@@ -328,6 +341,7 @@ function Invoke-X64Msi {
     $setupObjectPath = Join-Path $wixObjDir 'OnlyWinget.Setup.wixobj'
     $harvestObjectPath = Join-Path $wixObjDir 'OnlyWinget.Harvest.wixobj'
     $msiFilePath = Join-Path $msiOutputDir "OnlyWinget-$installerVersion-x64.msi"
+    $temporaryMsiFilePath = Join-Path $architectureStagingRoot 'OnlyWinget-x64.msi'
 
     Reset-Directory -Path $architectureStagingRoot
     New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
@@ -419,15 +433,18 @@ function Invoke-X64Msi {
 
     & $lightExe `
         -nologo `
-        "-sice:$($suppressedValidationIces -join ';')" `
+        -sice:ICE03 `
+        -sice:ICE61 `
         -ext $uiExtension `
-        -out $msiFilePath `
+        -out $temporaryMsiFilePath `
         $setupObjectPath `
         $harvestObjectPath
 
     if ($LASTEXITCODE -ne 0) {
         throw 'Link WiX x64 fallito.'
     }
+
+    Publish-GeneratedFile -StagedPath $temporaryMsiFilePath -DestinationPath $msiFilePath
 
     $builtMsiPaths['x64'] = $msiFilePath
     Write-Host "MSI x64 generato: $msiFilePath" -ForegroundColor Green
@@ -437,6 +454,7 @@ function Invoke-UnifiedSetup {
     $bundleObjDir = Join-Path $stagingRoot 'bundle-wixobj'
     $bundleObjectPath = Join-Path $bundleObjDir 'OnlyWinget.Bundle.wixobj'
     $setupFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-setup.exe"
+    $temporarySetupFilePath = Join-Path $bundleObjDir 'OnlyWinget-setup.exe'
 
     if (-not $builtMsiPaths.ContainsKey('x64')) {
         throw 'Il setup x64 richiede il relativo MSI.'
@@ -469,12 +487,14 @@ function Invoke-UnifiedSetup {
         -nologo `
         -ext $balExtension `
         -ext $utilExtension `
-        -out $setupFilePath `
+        -out $temporarySetupFilePath `
         $bundleObjectPath
 
     if ($LASTEXITCODE -ne 0) {
         throw 'Link WiX bundle fallito.'
     }
+
+    Publish-GeneratedFile -StagedPath $temporarySetupFilePath -DestinationPath $setupFilePath
 
     Write-Host "Setup unificato generato: $setupFilePath" -ForegroundColor Green
 }
@@ -572,14 +592,34 @@ if (-not $SkipBundle) {
 
 $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
 Assert-Path -Path $buildScriptPath -Description 'Build script'
-& $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive:$NonInteractive
-if ($LASTEXITCODE -ne 0) {
-    throw 'Preparazione build fallita prima del publish MSI.'
+
+New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
+$packageLockPath = Join-Path $artifactsPath '.package.lock'
+try {
+    $packageLock = [System.IO.File]::Open(
+        $packageLockPath,
+        [System.IO.FileMode]::OpenOrCreate,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None)
+}
+catch [System.IO.IOException] {
+    throw "Packaging gia' in esecuzione per questo repository. Attendi il completamento dell'altro processo e riprova. Lock: $packageLockPath"
 }
 
-Invoke-X64Msi
-Invoke-PortablePackage
+try {
+    & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive:$NonInteractive
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Preparazione build fallita prima del publish MSI.'
+    }
 
-if (-not $SkipBundle) {
-    Invoke-UnifiedSetup
+    Invoke-X64Msi
+    Invoke-PortablePackage
+
+    if (-not $SkipBundle) {
+        Invoke-UnifiedSetup
+    }
+}
+finally {
+    $packageLock.Dispose()
+    Remove-Item -LiteralPath $packageLockPath -Force -ErrorAction SilentlyContinue
 }
