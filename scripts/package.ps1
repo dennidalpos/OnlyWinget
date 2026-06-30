@@ -335,7 +335,7 @@ function Invoke-X64Msi {
     New-Item -ItemType Directory -Path $msiOutputDir -Force | Out-Null
 
     if (-not $NoRestore) {
-        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode
+        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet restore per il packaging $runtimeIdentifier fallito."
         }
@@ -355,6 +355,7 @@ function Invoke-X64Msi {
         '--output'
         $publishDir
         '/p:UseAppHost=true'
+        '/p:BuildProjectReferences=false'
         '/p:DebugSymbols=false'
         '/p:DebugType=None'
     )
@@ -489,7 +490,7 @@ function Invoke-PortablePackage {
     New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
 
     if (-not $NoRestore) {
-        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode
+        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet restore per il packaging portable $runtimeIdentifier fallito."
         }
@@ -510,6 +511,7 @@ function Invoke-PortablePackage {
         $publishDir
         '--no-restore'
         '/p:UseAppHost=true'
+        '/p:BuildProjectReferences=false'
         '/p:WindowsAppSDKSelfContained=true'
         '/p:DebugSymbols=false'
         '/p:DebugType=None'
@@ -568,13 +570,11 @@ if (-not $SkipBundle) {
         -WindowsAppSdkVersion $windowsAppSdkVersion
 }
 
-if ($StopRunningInstance) {
-    $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
-    Assert-Path -Path $buildScriptPath -Description 'Build script'
-    & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance -NonInteractive:$NonInteractive
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Preparazione build fallita prima del publish MSI.'
-    }
+$buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
+Assert-Path -Path $buildScriptPath -Description 'Build script'
+& $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive:$NonInteractive
+if ($LASTEXITCODE -ne 0) {
+    throw 'Preparazione build fallita prima del publish MSI.'
 }
 
 Invoke-X64Msi

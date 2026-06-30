@@ -21,17 +21,24 @@ internal static class PageUi
                     return;
                 }
 
-                var targetOffset = Math.Clamp(
-                    scroller.VerticalOffset - properties.MouseWheelDelta,
-                    0,
-                    scroller.ScrollableHeight);
-                if (Math.Abs(targetOffset - scroller.VerticalOffset) < double.Epsilon)
+                var wheelDelta = properties.MouseWheelDelta;
+                var canScroll = wheelDelta < 0
+                    ? scroller.VerticalOffset < scroller.ScrollableHeight
+                    : scroller.VerticalOffset > 0;
+                if (!canScroll)
                 {
                     return;
                 }
 
-                scroller.ChangeView(null, targetOffset, null, disableAnimation: true);
                 args.Handled = true;
+                _ = scroller.DispatcherQueue.TryEnqueue(() =>
+                {
+                    var targetOffset = Math.Clamp(
+                        scroller.VerticalOffset - wheelDelta,
+                        0,
+                        scroller.ScrollableHeight);
+                    scroller.ChangeView(null, targetOffset, null, disableAnimation: true);
+                });
             }),
             handledEventsToo: true);
     }
