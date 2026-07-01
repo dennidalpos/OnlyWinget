@@ -69,7 +69,7 @@ public sealed partial class PresetsPage : Page
         isRefreshing = true;
         PresetSelector.SelectedItem = viewModel.ActivePresetName;
         PresetNameBox.Text = viewModel.ActivePresetName ?? string.Empty;
-        StatusText.Text = viewModel.Status;
+        PageState.Present(viewModel.PageState);
         OperationResultList.Visibility = viewModel.OperationResults.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ApplyOperationProgress(viewModel.IsExecuting);
 

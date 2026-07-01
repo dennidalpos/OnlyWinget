@@ -37,16 +37,10 @@ public sealed partial class WindowsUpdatePage : Page
     private void Refresh()
     {
         isRefreshing = true;
-        StatusText.Text = viewModel.Status;
+        PageState.Present(viewModel.PageState);
         LoadingRing.IsActive = viewModel.IsBusy;
         LoadingRing.Visibility = viewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         WindowsUpdateProgressBar.Visibility = viewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
-        LoadingStatusText.Visibility = viewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
-        LoadingStatusText.Text = viewModel.IsInstalling
-            ? TextResources.Get("Progress_InstallingWindowsUpdates")
-            : viewModel.IsScanning
-                ? TextResources.Get("Progress_ScanningWindowsUpdates")
-                : string.Empty;
         SelectAllWindowsUpdatesBox.IsThreeState = true;
         SelectAllWindowsUpdatesBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 

@@ -25,9 +25,9 @@ public sealed partial class DashboardPage : Page
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(DashboardViewModel.Status))
+        if (args.PropertyName == nameof(DashboardViewModel.PageState))
         {
-            StatusText.Text = viewModel.Status;
+            PageState.Present(viewModel.PageState);
         }
     }
 

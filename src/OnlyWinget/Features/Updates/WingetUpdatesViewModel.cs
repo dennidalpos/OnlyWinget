@@ -13,7 +13,7 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     private CancellationTokenSource? cancellation;
     private bool isLoading;
     private bool isExecuting;
-    private string status = string.Empty;
+    private FeatureState pageState = FeatureState.Ready;
     private SelectionHeaderState headerState;
     private OperationProgress? progress;
 
@@ -21,7 +21,7 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public bool IsLoading { get => isLoading; private set => SetProperty(ref isLoading, value); }
     public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
-    public string Status { get => status; private set => SetProperty(ref status, value); }
+    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public OperationProgress? Progress { get => progress; private set => SetProperty(ref progress, value); }
     public string ProgressText => Progress is null ? TextResources.Get("Progress_Starting") : $"{TextResources.Get($"Progress_{Progress.Phase}")} · {Progress.Percentage}% · {Progress.PackageId}";
@@ -54,7 +54,17 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
         IsExecuting = state.IsExecuting;
         HeaderState = state.HeaderState;
         Progress = Workflow.State.OperationProgress;
-        Status = state.Error ?? (state.IsLoading || state.Updates.Count > 0 ? string.Empty : TextResources.Get("Empty_Updates"));
+        PageState = !Workflow.State.Capabilities.CanUseWinget
+            ? FeatureState.Unavailable(Workflow.State.Capabilities.WingetUnavailableMessage)
+            : state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : state.IsExecuting
+                ? FeatureState.Executing(ProgressText)
+                : state.IsLoading
+                    ? FeatureState.Loading(TextResources.Get("Progress_LoadingUpdates"))
+                    : state.Updates.Count == 0
+                        ? FeatureState.Empty(TextResources.Get("Empty_Updates"))
+                        : FeatureState.Ready;
         OnPropertyChanged(nameof(Commands));
         OnPropertyChanged(nameof(ProgressText));
     }

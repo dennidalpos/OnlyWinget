@@ -7,11 +7,11 @@ namespace OnlyWinget.Features.Home;
 
 public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
-    private string status = string.Empty;
+    private FeatureState pageState = FeatureState.Ready;
 
     public ObservableCollection<DashboardMetric> Metrics { get; } = [new(), new(), new(), new(), new()];
     public ObservableCollection<ActivityRow> RecentActivity { get; } = [];
-    public string Status { get => status; private set => SetProperty(ref status, value); }
+    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
 
     protected override void Refresh()
     {
@@ -27,7 +27,13 @@ public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewMod
         Metrics[3].Value = state.UpdateCount.ToString(CultureInfo.CurrentCulture);
         Metrics[4].Value = state.SourceCount.ToString(CultureInfo.CurrentCulture);
         RecentActivity.ReplaceWith(state.RecentActivity);
-        Status = state.Error ?? (state.RecentActivity.Count == 0 ? TextResources.Get("Empty_Activity") : string.Empty);
+        PageState = state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : state.IsWingetAvailable == false
+                ? FeatureState.Unavailable(TextResources.Get("Dashboard_Winget_Unavailable"))
+                : state.RecentActivity.Count == 0
+                    ? FeatureState.Empty(TextResources.Get("Empty_Activity"))
+                    : FeatureState.Ready;
     }
 }
 

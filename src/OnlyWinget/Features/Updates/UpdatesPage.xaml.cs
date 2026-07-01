@@ -44,12 +44,10 @@ public sealed partial class UpdatesPage : Page
     private void Refresh()
     {
         isRefreshing = true;
-        StatusText.Text = viewModel.Status;
+        PageState.Present(viewModel.PageState);
         LoadingRing.IsActive = viewModel.IsLoading || viewModel.IsExecuting;
         LoadingRing.Visibility = viewModel.IsLoading || viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
         DiscoveryProgressBar.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        LoadingStatusText.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        LoadingStatusText.Text = viewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : string.Empty;
         ApplyOperationProgress();
         SelectAllUpdatesBox.IsThreeState = true;
         SelectAllUpdatesBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };

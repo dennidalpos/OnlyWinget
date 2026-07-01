@@ -7,7 +7,7 @@ namespace OnlyWinget.Features.Sources;
 public sealed class SourcesViewModel : FeatureViewModel
 {
     private bool isRefreshing;
-    private string status = string.Empty;
+    private FeatureState pageState = FeatureState.Ready;
 
     public SourcesViewModel(Action<Action> dispatch) : base(App.Workflow, dispatch)
     {
@@ -19,7 +19,7 @@ public sealed class SourcesViewModel : FeatureViewModel
     public ValidatedField Argument { get; } = new(ValidateArgument);
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public bool IsRefreshing { get => isRefreshing; private set => SetProperty(ref isRefreshing, value); }
-    public string Status { get => status; private set => SetProperty(ref status, value); }
+    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public bool CanAdd => Name.IsValid && Argument.IsValid && Name.Value.Trim().Length > 0 && Argument.Value.Trim().Length > 0 && IsEnabled(UiCommandId.AddSource);
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
@@ -47,7 +47,13 @@ public sealed class SourcesViewModel : FeatureViewModel
             Type = TextResources.Get(source.Type),
             Status = TextResources.Get($"Source_Status_{source.Status}")
         }));
-        Status = state.Error ?? (state.Sources.Count == 0 ? TextResources.Get("Empty_Sources") : string.Empty);
+        PageState = !Workflow.State.Capabilities.CanUseWinget
+            ? FeatureState.Unavailable(Workflow.State.Capabilities.WingetUnavailableMessage)
+            : state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : state.Sources.Count == 0
+                ? FeatureState.Empty(TextResources.Get("Empty_Sources"))
+                : FeatureState.Ready;
         Name.Validate();
         IsRefreshing = false;
         OnPropertyChanged(nameof(Commands));

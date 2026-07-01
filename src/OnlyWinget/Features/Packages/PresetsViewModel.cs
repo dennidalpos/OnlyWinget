@@ -9,7 +9,7 @@ namespace OnlyWinget.Features.Packages;
 public sealed class PresetsViewModel : FeatureViewModel
 {
     private bool isExecuting;
-    private string status = string.Empty;
+    private FeatureState pageState = FeatureState.Ready;
     private string? activePresetName;
     private SelectionHeaderState headerState;
 
@@ -27,7 +27,7 @@ public sealed class PresetsViewModel : FeatureViewModel
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public string? ActivePresetName { get => activePresetName; private set => SetProperty(ref activePresetName, value); }
     public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
-    public string Status { get => status; private set => SetProperty(ref status, value); }
+    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
 
@@ -46,7 +46,13 @@ public sealed class PresetsViewModel : FeatureViewModel
         ActivePresetName = state.ActivePresetName;
         HeaderState = state.HeaderState;
         IsExecuting = state.IsExecuting;
-        Status = state.Error ?? EmptyText(state);
+        PageState = !Workflow.State.Capabilities.CanUseWinget
+            ? FeatureState.Unavailable(Workflow.State.Capabilities.WingetUnavailableMessage)
+            : state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : state.IsExecuting
+                ? FeatureState.Executing(TextResources.Get("Progress_Starting"))
+                : EmptyState(state);
         PresetName.Validate();
         PackageId.Validate();
         OnPropertyChanged(nameof(Commands));
@@ -66,9 +72,11 @@ public sealed class PresetsViewModel : FeatureViewModel
             ? TextResources.Get("Validation_DuplicatePackage") : null;
     }
 
-    private static string EmptyText(PresetsPresentationState state) => state.PresetNames.Count == 0
-        ? TextResources.Get("Empty_Presets")
-        : state.Packages.Count == 0 ? TextResources.Get("Empty_Packages") : string.Empty;
+    private static FeatureState EmptyState(PresetsPresentationState state) => state.PresetNames.Count == 0
+        ? FeatureState.Empty(TextResources.Get("Empty_Presets"))
+        : state.Packages.Count == 0
+            ? FeatureState.Empty(TextResources.Get("Empty_Packages"))
+            : FeatureState.Ready;
 
     private static string PackageKey(PresetPackageRow row) => $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";
 }

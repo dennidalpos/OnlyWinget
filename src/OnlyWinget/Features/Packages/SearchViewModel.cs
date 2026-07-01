@@ -9,13 +9,13 @@ namespace OnlyWinget.Features.Packages;
 public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
     private bool isLoading;
-    private string status = string.Empty;
+    private FeatureState pageState = FeatureState.Ready;
     private SelectionHeaderState headerState;
 
     public ObservableCollection<SearchResultRow> Results { get; } = [];
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public bool IsLoading { get => isLoading; private set => SetProperty(ref isLoading, value); }
-    public string Status { get => status; private set => SetProperty(ref status, value); }
+    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
@@ -36,7 +36,15 @@ public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(
         Commands = state.Commands.ToDictionary(command => command.Id);
         IsLoading = state.IsLoading;
         HeaderState = state.HeaderState;
-        Status = state.Error ?? (state.IsLoading || state.Results.Count > 0 ? string.Empty : TextResources.Get("Empty_Search"));
+        PageState = !Workflow.State.Capabilities.CanUseWinget
+            ? FeatureState.Unavailable(Workflow.State.Capabilities.WingetUnavailableMessage)
+            : state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : state.IsLoading
+                ? FeatureState.Loading(TextResources.Get("Progress_Searching"))
+                : state.Results.Count == 0
+                    ? FeatureState.Empty(TextResources.Get("Empty_Search"))
+                    : FeatureState.Ready;
         OnPropertyChanged(nameof(Commands));
     }
 

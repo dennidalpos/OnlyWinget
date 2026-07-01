@@ -2,7 +2,8 @@
     x:Class="OnlyWinget.Features.Updates.UpdatesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:presentation="using:OnlyWinget.Application.Presentation">
+    xmlns:presentation="using:OnlyWinget.Application.Presentation"
+    xmlns:states="using:OnlyWinget.DesignSystem.States">
     <Grid x:Name="PageContent" MaxWidth="{StaticResource PageMaxWidth}" Padding="{StaticResource PageWidePadding}" RowSpacing="{StaticResource PageSectionSpacing}" HorizontalAlignment="Stretch">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
@@ -103,11 +104,10 @@
                     </ListView>
                     <StackPanel Grid.Row="2" Spacing="4">
                         <ProgressBar x:Name="DiscoveryProgressBar" IsIndeterminate="True" Visibility="Collapsed" AutomationProperties.AutomationId="UpdatesDiscoveryProgressBar" />
-                        <TextBlock x:Name="LoadingStatusText" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                         <ProgressBar x:Name="OperationProgressBar" Height="4" Minimum="0" Maximum="100" Visibility="Collapsed" AutomationProperties.AutomationId="UpdateOperationProgressBar" AutomationProperties.Name="Update operation progress" />
                         <TextBlock x:Name="OperationProgressText" AutomationProperties.AutomationId="UpdateOperationProgressText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                     </StackPanel>
-                    <TextBlock x:Name="StatusText" Grid.Row="3" AutomationProperties.LiveSetting="Polite" Style="{StaticResource EmptyStateTextBlockStyle}" />
+                    <states:StatePresenter x:Name="PageState" Grid.Row="3" />
                 </Grid>
             </Border>
     </Grid>

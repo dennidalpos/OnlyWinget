@@ -12,7 +12,6 @@
                 <ResourceDictionary Source="DesignSystem/Resources/Buttons.xaml" />
                 <ResourceDictionary Source="DesignSystem/Resources/Tables.xaml" />
                 <ResourceDictionary Source="DesignSystem/Resources/Forms.xaml" />
-                <ResourceDictionary Source="DesignSystem/Resources/States.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

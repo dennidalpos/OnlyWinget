@@ -31,16 +31,9 @@ public sealed partial class ActivityPage : Page
             CommandBar.SetCommands(viewModel.Commands);
         }
 
-        if (args.PropertyName == nameof(ActivityViewModel.IsEmpty))
+        if (args.PropertyName == nameof(ActivityViewModel.PageState))
         {
-            if (viewModel.IsEmpty)
-            {
-                PageState.ShowEmpty(TextResources.Get("Empty_Activity"));
-            }
-            else
-            {
-                PageState.Hide();
-            }
+            PageState.Present(viewModel.PageState);
         }
     }
 

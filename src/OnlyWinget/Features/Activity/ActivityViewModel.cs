@@ -10,10 +10,11 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
     private IReadOnlyList<ActivityRow> allEntries = [];
     private string query = string.Empty;
     private string severity = "all";
+    private FeatureState pageState = FeatureState.Ready;
 
     public ObservableCollection<ActivityRow> Entries { get; } = [];
     public IReadOnlyList<UiCommand> Commands { get; private set; } = [];
-    public bool IsEmpty => allEntries.Count == 0;
+    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
 
     public void SetFilter(string search, string selectedSeverity)
     {
@@ -30,7 +31,9 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
         allEntries = state.Entries;
         Commands = state.Commands;
         OnPropertyChanged(nameof(Commands));
-        OnPropertyChanged(nameof(IsEmpty));
+        PageState = state.Entries.Count == 0
+            ? FeatureState.Empty(TextResources.Get("Empty_Activity"))
+            : FeatureState.Ready;
         ApplyFilter();
     }
 

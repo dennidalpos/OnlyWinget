@@ -4,8 +4,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:home="using:OnlyWinget.Features.Home"
-    xmlns:presentation="using:OnlyWinget.Application.Presentation">
+    xmlns:presentation="using:OnlyWinget.Application.Presentation"
+    xmlns:states="using:OnlyWinget.DesignSystem.States">
     <design:PageScaffold x:Name="Scaffold">
+        <design:PageScaffold.State>
+            <states:StatePresenter x:Name="PageState" />
+        </design:PageScaffold.State>
         <design:PageScaffold.Body>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <Grid RowSpacing="{StaticResource PageSectionSpacing}">
@@ -45,7 +49,6 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <TextBlock x:Name="StatusText" Grid.Row="2" AutomationProperties.LiveSetting="Polite" Style="{StaticResource EmptyStateTextBlockStyle}" />
                         </Grid>
                     </Border>
                 </Grid>

@@ -11,7 +11,7 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     private CancellationTokenSource? cancellation;
     private bool isScanning;
     private bool isInstalling;
-    private string status = string.Empty;
+    private FeatureState pageState = FeatureState.Ready;
     private SelectionHeaderState headerState;
 
     public ObservableCollection<WindowsUpdateRow> Updates { get; } = [];
@@ -19,7 +19,7 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     public bool IsScanning { get => isScanning; private set => SetProperty(ref isScanning, value); }
     public bool IsInstalling { get => isInstalling; private set => SetProperty(ref isInstalling, value); }
     public bool IsBusy => IsScanning || IsInstalling;
-    public string Status { get => status; private set => SetProperty(ref status, value); }
+    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
@@ -44,7 +44,17 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
         IsScanning = state.IsScanning;
         IsInstalling = state.IsInstalling;
         HeaderState = state.HeaderState;
-        Status = state.Error ?? (state.IsScanning || state.Updates.Count > 0 ? string.Empty : TextResources.Get("Empty_WindowsUpdates"));
+        PageState = !Workflow.State.Capabilities.CanUseWindowsUpdate
+            ? FeatureState.Unavailable(Workflow.State.Capabilities.WindowsUpdateUnavailableMessage)
+            : state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : state.IsInstalling
+                ? FeatureState.Executing(TextResources.Get("Progress_InstallingWindowsUpdates"))
+                : state.IsScanning
+                    ? FeatureState.Loading(TextResources.Get("Progress_ScanningWindowsUpdates"))
+                    : state.Updates.Count == 0
+                        ? FeatureState.Empty(TextResources.Get("Empty_WindowsUpdates"))
+                        : FeatureState.Ready;
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(Commands));
     }

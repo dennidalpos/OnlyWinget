@@ -41,7 +41,7 @@ public sealed partial class SourcesPage : Page
 
     private void RefreshControls()
     {
-        StatusText.Text = viewModel.Status;
+        PageState.Present(viewModel.PageState);
         LoadingRing.IsActive = viewModel.IsRefreshing;
         LoadingRing.Visibility = viewModel.IsRefreshing ? Visibility.Visible : Visibility.Collapsed;
         RefreshButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RefreshSources);

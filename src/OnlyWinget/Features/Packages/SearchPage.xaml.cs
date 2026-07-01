@@ -36,12 +36,10 @@ public sealed partial class SearchPage : Page
     private void Refresh()
     {
         isRefreshing = true;
-        StatusText.Text = viewModel.Status;
+        PageState.Present(viewModel.PageState);
         LoadingRing.IsActive = viewModel.IsLoading;
         LoadingRing.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
         SearchProgressBar.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        LoadingStatusText.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        LoadingStatusText.Text = viewModel.IsLoading ? TextResources.Get("Progress_Searching") : string.Empty;
         SelectAllResultsBox.IsThreeState = true;
         SelectAllResultsBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 
