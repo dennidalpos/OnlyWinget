@@ -243,6 +243,7 @@ public static class PresentationStateMapper
                 .Select(entry => new ActivityRow(entry.Timestamp, entry.Severity, entry.Title, entry.Message))
                 .ToArray(),
             [
+                new(UiCommandId.ExportActivity, "Command_Activity_Export", state.Activity.Count > 0, Icon: "Save"),
                 new(UiCommandId.ClearActivity, "Command_Activity_Clear", state.Activity.Count > 0, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_ClearActivity_Message")
             ]);
     }

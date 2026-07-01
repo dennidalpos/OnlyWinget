@@ -1,4 +1,5 @@
 using OnlyWinget.Application.App;
+using OnlyWinget.Application.Activity;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.Storage;
 using OnlyWinget.Application.System;
@@ -481,6 +482,23 @@ public sealed class OnlyWingetApplicationTests
         capabilities.Complete();
         Assert.True((await first).Succeeded);
         Assert.Equal(ApplicationBusyState.Idle, app.State.BusyState);
+    }
+
+    [Fact]
+    public void ClearedActivityCanBeRestoredWithoutCreatingSyntheticEntries()
+    {
+        var app = CreateApplication();
+        var entries = new[]
+        {
+            new ActivityEntry(DateTimeOffset.Parse("2026-07-01T10:00:00Z"), ActivitySeverity.Warning, "Source unavailable", "winget")
+        };
+
+        Assert.True(app.RestoreActivity(entries).Succeeded);
+        Assert.True(app.ClearActivity().Succeeded);
+        Assert.Empty(app.State.Activity);
+
+        Assert.True(app.RestoreActivity(entries).Succeeded);
+        Assert.Equal(entries, app.State.Activity);
     }
 
     private static OnlyWingetApplication CreateApplication(

@@ -1,14 +1,16 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
+using OnlyWinget.DesignSystem.Commands;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Updates;
 
-public sealed partial class UpdatesPage : Page
+public sealed partial class UpdatesPage : UserControl
 {
     private bool initialRefreshStarted;
     private bool isRefreshing;
+    private bool wasBusy;
     private readonly WingetUpdatesViewModel viewModel;
 
     public UpdatesPage()
@@ -47,24 +49,16 @@ public sealed partial class UpdatesPage : Page
         PageState.Present(viewModel.PageState);
         LoadingRing.IsActive = viewModel.IsLoading || viewModel.IsExecuting;
         LoadingRing.Visibility = viewModel.IsLoading || viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-        DiscoveryProgressBar.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
         ApplyOperationProgress();
         SelectAllUpdatesBox.IsThreeState = true;
         SelectAllUpdatesBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
-
-        RefreshButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RefreshUpdates);
-        ApplySelectedButton.IsEnabled = viewModel.IsEnabled(UiCommandId.ApplyUpdates);
-        CancelButton.IsEnabled = viewModel.IsEnabled(UiCommandId.CancelOperation);
+        CommandBar.SetCommands(viewModel.Commands.Values);
         isRefreshing = false;
     }
 
     private void ApplyText()
     {
-        TitleText.Text = TextResources.Get("Updates_Title");
         SelectAllUpdatesBox.Content = TextResources.Get("Command_Select_All");
-        RefreshButton.Content = TextResources.Get("Command_Updates_Refresh");
-        ApplySelectedButton.Content = TextResources.Get("Command_Updates_ApplySelected");
-        CancelButton.Content = TextResources.Get("Command_Operation_Cancel");
         UpdatesNameHeader.Text = TextResources.Get("Header_Name");
         UpdatesPackageIdHeader.Text = TextResources.Get("Header_PackageId");
         UpdatesSourceHeader.Text = TextResources.Get("Header_Source");
@@ -74,24 +68,19 @@ public sealed partial class UpdatesPage : Page
         UpdatesStatusHeader.Text = TextResources.Get("Header_Status");
     }
 
-    private async void OnRefreshUpdates(object sender, RoutedEventArgs args)
+    private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        await RefreshUpdatesAsync();
+        switch (args.Command.Id)
+        {
+            case UiCommandId.RefreshUpdates: await RefreshUpdatesAsync(); break;
+            case UiCommandId.ApplyUpdates: await viewModel.ApplyAsync(); break;
+            case UiCommandId.CancelOperation: viewModel.Cancel(); break;
+        }
     }
 
     private Task RefreshUpdatesAsync()
     {
         return viewModel.RefreshAsync(CancellationToken.None);
-    }
-
-    private async void OnApplySelected(object sender, RoutedEventArgs args)
-    {
-        await viewModel.ApplyAsync();
-    }
-
-    private void OnCancel(object sender, RoutedEventArgs args)
-    {
-        viewModel.Cancel();
     }
 
     private void OnToggleAllUpdates(object sender, RoutedEventArgs args)
@@ -116,12 +105,20 @@ public sealed partial class UpdatesPage : Page
 
     private void ApplyOperationProgress()
     {
-        OperationProgressBar.Visibility = viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-        OperationProgressText.Visibility = viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-        OperationProgressBar.IsIndeterminate = viewModel.IsExecuting && viewModel.Progress is null;
-        OperationProgressBar.Value = viewModel.Progress?.Percentage ?? 0;
-        OperationProgressText.Text = viewModel.ProgressText;
+        var busy = viewModel.IsLoading || viewModel.IsExecuting;
+        if (busy)
+        {
+            OperationStatus.Show(TextResources.Get("Operation_Updates_Title"), viewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : TextResources.Get(viewModel.Progress is null ? "Progress_Starting" : $"Progress_{viewModel.Progress.Phase}"), viewModel.Progress?.PackageId, viewModel.Progress?.Percentage, viewModel.IsExecuting);
+        }
+        else if (wasBusy)
+        {
+            var error = App.Workflow.State.UserVisibleError;
+            OperationStatus.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
+        }
+        wasBusy = busy;
     }
+
+    private void OnOperationCancelRequested(object? sender, EventArgs args) => viewModel.Cancel();
 
     private void Dispatch(Action action)
     {

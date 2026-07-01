@@ -1,31 +1,28 @@
-<Page
+<UserControl
     x:Class="OnlyWinget.Features.Updates.UpdatesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:presentation="using:OnlyWinget.Application.Presentation"
-    xmlns:states="using:OnlyWinget.DesignSystem.States">
-    <Grid x:Name="PageContent" MaxWidth="{StaticResource PageMaxWidth}" Padding="{StaticResource PageWidePadding}" RowSpacing="{StaticResource PageSectionSpacing}" HorizontalAlignment="Stretch">
+    xmlns:states="using:OnlyWinget.DesignSystem.States"
+    xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
+    <Grid x:Name="PageContent" MaxWidth="{StaticResource PageMaxWidth}" RowSpacing="{StaticResource PageSectionSpacing}" HorizontalAlignment="Stretch">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
                     <VisualState x:Name="Wide"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1100" /></VisualState.StateTriggers></VisualState>
-                    <VisualState x:Name="Medium"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="720" /></VisualState.StateTriggers><VisualState.Setters><Setter Target="PageContent.Padding" Value="{StaticResource PageMediumPadding}" /></VisualState.Setters></VisualState>
+                    <VisualState x:Name="Medium"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="720" /></VisualState.StateTriggers></VisualState>
                     <VisualState x:Name="Compact"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers><VisualState.Setters>
-                        <Setter Target="PageContent.Padding" Value="{StaticResource PageCompactPadding}" /><Setter Target="UpdateActions.Orientation" Value="Vertical" /><Setter Target="UpdateActions.HorizontalAlignment" Value="Stretch" />
-                        <Setter Target="RefreshButton.HorizontalAlignment" Value="Stretch" /><Setter Target="ApplySelectedButton.HorizontalAlignment" Value="Stretch" /><Setter Target="CancelButton.HorizontalAlignment" Value="Stretch" />
+                        <Setter Target="UpdateActions.Orientation" Value="Vertical" /><Setter Target="UpdateActions.HorizontalAlignment" Value="Stretch" />
                     </VisualState.Setters></VisualState>
                 </VisualStateGroup>
             </VisualStateManager.VisualStateGroups>
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-            <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
             <Border Grid.Row="1" Style="{StaticResource CardStyle}">
                 <Grid RowSpacing="10">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <StackPanel x:Name="UpdateActions" Style="{StaticResource ActionBarStyle}">
                         <CheckBox x:Name="SelectAllUpdatesBox" Click="OnToggleAllUpdates" VerticalAlignment="Center" AutomationProperties.AutomationId="UpdatesSelectAllCheckBox" />
                         <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="UpdatesLoadingRing" AutomationProperties.Name="Loading updates" />
-                        <Button x:Name="RefreshButton" Style="{StaticResource RefreshButtonStyle}" Click="OnRefreshUpdates" AutomationProperties.AutomationId="UpdatesRefreshButton" />
-                        <Button x:Name="ApplySelectedButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnApplySelected" AutomationProperties.AutomationId="UpdatesApplySelectedButton" />
-                        <Button x:Name="CancelButton" Style="{StaticResource CancelButtonStyle}" Click="OnCancel" AutomationProperties.AutomationId="UpdatesCancelButton" />
+                        <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
                     </StackPanel>
                     <ListView
                         x:Name="UpdateList"
@@ -102,13 +99,9 @@
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
-                    <StackPanel Grid.Row="2" Spacing="4">
-                        <ProgressBar x:Name="DiscoveryProgressBar" IsIndeterminate="True" Visibility="Collapsed" AutomationProperties.AutomationId="UpdatesDiscoveryProgressBar" />
-                        <ProgressBar x:Name="OperationProgressBar" Height="4" Minimum="0" Maximum="100" Visibility="Collapsed" AutomationProperties.AutomationId="UpdateOperationProgressBar" AutomationProperties.Name="Update operation progress" />
-                        <TextBlock x:Name="OperationProgressText" AutomationProperties.AutomationId="UpdateOperationProgressText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                    </StackPanel>
+                    <states:OperationBanner x:Name="OperationStatus" Grid.Row="2" CancelRequested="OnOperationCancelRequested" />
                     <states:StatePresenter x:Name="PageState" Grid.Row="3" />
                 </Grid>
             </Border>
     </Grid>
-</Page>
+</UserControl>

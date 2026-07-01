@@ -15,7 +15,7 @@
                 </VisualState>
                 <VisualState x:Name="Medium">
                     <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="720" />
+                        <AdaptiveTrigger MinWindowWidth="{StaticResource PageMediumBreakpoint}" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
                         <Setter Target="Root.Padding" Value="24,20,24,24" />
@@ -23,7 +23,7 @@
                 </VisualState>
                 <VisualState x:Name="Wide">
                     <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="1100" />
+                        <AdaptiveTrigger MinWindowWidth="{StaticResource PageWideBreakpoint}" />
                     </VisualState.StateTriggers>
                 </VisualState>
             </VisualStateGroup>

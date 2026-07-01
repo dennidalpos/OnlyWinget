@@ -3,15 +3,17 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.Presets;
+using OnlyWinget.DesignSystem.Commands;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Presentation;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Packages;
 
-public sealed partial class PresetsPage : Page
+public sealed partial class PresetsPage : UserControl
 {
     private CancellationTokenSource? operationCancellation;
+    private bool wasExecuting;
     private bool isRefreshing;
     private readonly PresetsViewModel viewModel;
 
@@ -29,7 +31,6 @@ public sealed partial class PresetsPage : Page
         OperationResultList.ItemsSource = viewModel.OperationResults;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        SizeChanged += OnSizeChanged;
         ApplyText();
     }
 
@@ -45,25 +46,6 @@ public sealed partial class PresetsPage : Page
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
 
-    private void OnSizeChanged(object sender, SizeChangedEventArgs args)
-    {
-        var compact = args.NewSize.Width < 720;
-        ApplyActionLayout(PresetActions, compact, AddPresetButton, RenamePresetButton, SaveWorkspaceButton, RemovePresetButton);
-        ApplyActionLayout(PackageEditActions, compact, AddPackageButton, EditPackageButton, RemovePackageButton);
-        ApplyActionLayout(PackageActions, compact, InstallPresetButton, UninstallPresetButton, CancelPresetOperationButton);
-        ApplyActionLayout(ImportActions, compact, ImportPresetButton, ExportPresetButton);
-    }
-
-    private static void ApplyActionLayout(StackPanel panel, bool compact, params Button[] buttons)
-    {
-        panel.Orientation = compact ? Orientation.Vertical : Orientation.Horizontal;
-        panel.HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
-        foreach (var button in buttons)
-        {
-            button.HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
-        }
-    }
-
     private void Refresh()
     {
         isRefreshing = true;
@@ -76,29 +58,12 @@ public sealed partial class PresetsPage : Page
         SelectAllPackagesBox.IsThreeState = true;
         SelectAllPackagesBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 
-        AddPresetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.AddPreset);
-        RenamePresetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RenamePreset);
-        RemovePresetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RemovePreset);
-        AddPackageButton.IsEnabled = viewModel.IsEnabled(UiCommandId.AddPresetPackage);
-        EditPackageButton.IsEnabled = viewModel.IsEnabled(UiCommandId.EditPresetPackage);
-        RemovePackageButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RemovePresetPackages);
-        ImportPresetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.ImportPreset);
-        ExportPresetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.ExportPreset);
-        SaveWorkspaceButton.IsEnabled = viewModel.IsEnabled(UiCommandId.SaveWorkspace);
-        InstallPresetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.InstallPreset);
-        UninstallPresetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.UninstallPreset);
-        CancelPresetOperationButton.IsEnabled = viewModel.IsEnabled(UiCommandId.CancelOperation);
         ApplyValidationToCommands();
-        ExportPresetButton.Content = string.Format(
-            global::System.Globalization.CultureInfo.CurrentCulture,
-            TextResources.Get("Command_Preset_ExportNamed"),
-            viewModel.ActivePresetName ?? TextResources.Get("Preset_DefaultFileName"));
         isRefreshing = false;
     }
 
     private void ApplyText()
     {
-        TitleText.Text = TextResources.Get("Presets_Title");
         PresetManagementText.Text = TextResources.Get("Section_PresetManagement");
         PackageManagementText.Text = TextResources.Get("Section_PackageManagement");
         PackagesSectionText.Text = TextResources.Get("Section_Packages");
@@ -107,23 +72,37 @@ public sealed partial class PresetsPage : Page
         PackageIdBox.Header = TextResources.Get("Package_Id");
         PackageSourceBox.Header = TextResources.Get("Package_Source");
         ImportExportText.Text = TextResources.Get("Section_ImportExport");
-        AddPresetButton.Content = TextResources.Get("Command_Preset_Add");
-        RenamePresetButton.Content = TextResources.Get("Command_Preset_Rename");
-        RemovePresetButton.Content = TextResources.Get("Command_Preset_Remove");
-        AddPackageButton.Content = TextResources.Get("Command_PresetPackage_Add");
-        EditPackageButton.Content = TextResources.Get("Command_PresetPackage_Edit");
-        RemovePackageButton.Content = TextResources.Get("Command_PresetPackage_Remove");
-        ImportPresetButton.Content = TextResources.Get("Command_Preset_Import");
-        SaveWorkspaceButton.Content = TextResources.Get("Command_Workspace_Save");
-        InstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyInstall");
-        UninstallPresetButton.Content = TextResources.Get("Command_Preset_ApplyUninstall");
-        CancelPresetOperationButton.Content = TextResources.Get("Command_Operation_Cancel");
         SelectAllPackagesBox.Content = TextResources.Get("Command_Select_All");
         PresetNameHeader.Text = TextResources.Get("Header_Name");
         PresetPackageIdHeader.Text = TextResources.Get("Header_PackageId");
         PresetSourceHeader.Text = TextResources.Get("Header_Source");
         PresetVersionHeader.Text = TextResources.Get("Header_Version");
         PresetArchitectureHeader.Text = TextResources.Get("Header_Architecture");
+    }
+
+    private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
+    {
+        if (args.Command.ConfirmationResourceKey is { } confirmation &&
+            !await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, args.Command.LabelResourceKey, confirmation))
+        {
+            return;
+        }
+
+        switch (args.Command.Id)
+        {
+            case UiCommandId.AddPreset: OnAddPreset(this, new RoutedEventArgs()); break;
+            case UiCommandId.RenamePreset: OnRenamePreset(this, new RoutedEventArgs()); break;
+            case UiCommandId.RemovePreset: OnRemovePreset(this, new RoutedEventArgs()); break;
+            case UiCommandId.AddPresetPackage: OnAddPackage(this, new RoutedEventArgs()); break;
+            case UiCommandId.EditPresetPackage: OnEditPackage(this, new RoutedEventArgs()); break;
+            case UiCommandId.RemovePresetPackages: OnRemovePackages(this, new RoutedEventArgs()); break;
+            case UiCommandId.ImportPreset: OnImportPreset(this, new RoutedEventArgs()); break;
+            case UiCommandId.ExportPreset: OnExportPreset(this, new RoutedEventArgs()); break;
+            case UiCommandId.SaveWorkspace: OnSaveWorkspace(this, new RoutedEventArgs()); break;
+            case UiCommandId.InstallPreset: OnInstallPreset(this, new RoutedEventArgs()); break;
+            case UiCommandId.UninstallPreset: OnUninstallPreset(this, new RoutedEventArgs()); break;
+            case UiCommandId.CancelOperation: OnCancelPresetOperation(this, new RoutedEventArgs()); break;
+        }
     }
 
     private void OnPresetChanged(object sender, SelectionChangedEventArgs args)
@@ -300,21 +279,30 @@ public sealed partial class PresetsPage : Page
 
     private void ApplyValidationToCommands()
     {
-        AddPresetButton.IsEnabled &= viewModel.PresetName.IsValid && viewModel.PresetName.Value.Trim().Length > 0;
-        RenamePresetButton.IsEnabled &= viewModel.PresetName.IsValid && viewModel.PresetName.Value.Trim().Length > 0;
-        AddPackageButton.IsEnabled &= viewModel.PackageId.IsValid && viewModel.PackageId.Value.Trim().Length > 0;
+        CommandBar.SetCommands(viewModel.Commands.Values.Select(command => command.Id switch
+        {
+            UiCommandId.AddPreset or UiCommandId.RenamePreset => command with { IsEnabled = command.IsEnabled && viewModel.PresetName.IsValid && viewModel.PresetName.Value.Trim().Length > 0 },
+            UiCommandId.AddPresetPackage => command with { IsEnabled = command.IsEnabled && viewModel.PackageId.IsValid && viewModel.PackageId.Value.Trim().Length > 0 },
+            _ => command
+        }));
     }
 
     private void ApplyOperationProgress(bool isExecuting)
     {
         var progress = App.Workflow.State.OperationProgress;
-        OperationProgressBar.Visibility = isExecuting ? Visibility.Visible : Visibility.Collapsed;
-        OperationProgressText.Visibility = isExecuting ? Visibility.Visible : Visibility.Collapsed;
-        OperationProgressBar.Value = progress?.Percentage ?? 0;
-        OperationProgressText.Text = progress is null
-            ? TextResources.Get("Progress_Starting")
-            : $"{TextResources.Get($"Progress_{progress.Phase}")} · {progress.Percentage}% · {progress.PackageId}";
+        if (isExecuting)
+        {
+            OperationStatus.Show(TextResources.Get("Operation_Preset_Title"), TextResources.Get(progress is null ? "Progress_Starting" : $"Progress_{progress.Phase}"), progress?.PackageId, progress?.Percentage, operationCancellation is not null);
+        }
+        else if (wasExecuting)
+        {
+            var error = App.Workflow.State.UserVisibleError;
+            OperationStatus.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
+        }
+        wasExecuting = isExecuting;
     }
+
+    private void OnOperationCancelRequested(object? sender, EventArgs args) => operationCancellation?.Cancel();
 
     private void Dispatch(Action action)
     {

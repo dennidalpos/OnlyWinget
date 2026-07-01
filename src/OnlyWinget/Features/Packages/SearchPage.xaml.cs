@@ -1,11 +1,12 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
+using OnlyWinget.DesignSystem.Commands;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Packages;
 
-public sealed partial class SearchPage : Page
+public sealed partial class SearchPage : UserControl
 {
     private bool isRefreshing;
     private readonly SearchViewModel viewModel;
@@ -43,21 +44,17 @@ public sealed partial class SearchPage : Page
         SelectAllResultsBox.IsThreeState = true;
         SelectAllResultsBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 
-        SearchButton.IsEnabled = viewModel.IsEnabled(UiCommandId.SearchPackages);
-        AddSelectedButton.IsEnabled = viewModel.IsEnabled(UiCommandId.AddSearchResults);
+        CommandBar.SetCommands(viewModel.Commands.Values);
         isRefreshing = false;
     }
 
     private void ApplyText()
     {
-        TitleText.Text = TextResources.Get("Nav_Search");
         SearchSectionText.Text = TextResources.Get("Section_Search");
         ResultsSectionText.Text = TextResources.Get("Section_SearchResults");
         QueryBox.PlaceholderText = TextResources.Get("Search_Query");
         QueryBox.Header = TextResources.Get("Search_Query");
         SelectAllResultsBox.Content = TextResources.Get("Command_Select_All");
-        SearchButton.Content = TextResources.Get("Command_Search_Execute");
-        AddSelectedButton.Content = TextResources.Get("Command_Search_AddSelected");
         SearchNameHeader.Text = TextResources.Get("Header_Name");
         SearchPackageIdHeader.Text = TextResources.Get("Header_PackageId");
         SearchSourceHeader.Text = TextResources.Get("Header_Source");
@@ -71,19 +68,18 @@ public sealed partial class SearchPage : Page
         await SearchAsync();
     }
 
-    private async void OnSearch(object sender, RoutedEventArgs args)
+    private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        await SearchAsync();
+        switch (args.Command.Id)
+        {
+            case UiCommandId.SearchPackages: await SearchAsync(); break;
+            case UiCommandId.AddSearchResults: await viewModel.AddSelectedAsync(CancellationToken.None); break;
+        }
     }
 
     private Task SearchAsync()
     {
         return viewModel.SearchAsync(QueryBox.Text, CancellationToken.None);
-    }
-
-    private async void OnAddSelected(object sender, RoutedEventArgs args)
-    {
-        await viewModel.AddSelectedAsync(CancellationToken.None);
     }
 
     private void OnToggleAllResults(object sender, RoutedEventArgs args)

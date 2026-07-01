@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
+using OnlyWinget.DesignSystem.Commands;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Sources;
@@ -36,7 +37,7 @@ public sealed partial class SourcesPage : Page
         SourceArgumentBox.Description = viewModel.Argument.Error;
         AutomationProperties.SetHelpText(SourceNameBox, viewModel.Name.Error ?? string.Empty);
         AutomationProperties.SetHelpText(SourceArgumentBox, viewModel.Argument.Error ?? string.Empty);
-        AddButton.IsEnabled = viewModel.CanAdd;
+        RefreshCommands();
     }
 
     private void RefreshControls()
@@ -44,11 +45,7 @@ public sealed partial class SourcesPage : Page
         PageState.Present(viewModel.PageState);
         LoadingRing.IsActive = viewModel.IsRefreshing;
         LoadingRing.Visibility = viewModel.IsRefreshing ? Visibility.Visible : Visibility.Collapsed;
-        RefreshButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RefreshSources);
-        UpdateButton.IsEnabled = viewModel.IsEnabled(UiCommandId.UpdateSources);
-        AddButton.IsEnabled = viewModel.CanAdd;
-        RemoveButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RemoveSource);
-        ResetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.ResetSources);
+        RefreshCommands();
     }
 
     private void ApplyText()
@@ -58,33 +55,26 @@ public sealed partial class SourcesPage : Page
         ManageSourcesSectionText.Text = TextResources.Get("Section_ManageSources");
         SourceNameBox.Header = TextResources.Get("Source_Name");
         SourceArgumentBox.Header = TextResources.Get("Source_Argument");
-        AddButton.Content = TextResources.Get("Command_Sources_Add");
-        RefreshButton.Content = TextResources.Get("Command_Sources_Refresh");
-        UpdateButton.Content = TextResources.Get("Command_Sources_Update");
-        RemoveButton.Content = TextResources.Get("Command_Sources_Remove");
-        ResetButton.Content = TextResources.Get("Command_Sources_Reset");
     }
 
     private void OnSourceNameChanged(object sender, TextChangedEventArgs args) => viewModel.Name.Value = SourceNameBox.Text;
     private void OnSourceArgumentChanged(object sender, TextChangedEventArgs args) => viewModel.Argument.Value = SourceArgumentBox.Text;
-    private async void OnRefreshSources(object sender, RoutedEventArgs args) => await App.Workflow.RefreshSourcesAsync(CancellationToken.None);
-    private async void OnUpdateSources(object sender, RoutedEventArgs args) => await App.Workflow.UpdateSourcesAsync(CancellationToken.None);
-    private async void OnAddSource(object sender, RoutedEventArgs args) => await viewModel.AddAsync(CancellationToken.None);
+    private void RefreshCommands() => CommandBar.SetCommands(viewModel.Commands.Values.Select(command =>
+        command.Id == UiCommandId.AddSource ? command with { IsEnabled = viewModel.CanAdd } : command));
 
-    private async void OnRemoveSource(object sender, RoutedEventArgs args)
+    private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        if (SourceList.SelectedItem is SourceRow row &&
-            await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_RemoveSource_Title", "Dialog_RemoveSource_Message"))
+        switch (args.Command.Id)
         {
-            await App.Workflow.RemoveSourceAsync(row.Name, CancellationToken.None);
-        }
-    }
-
-    private async void OnResetSources(object sender, RoutedEventArgs args)
-    {
-        if (await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_ResetSources_Title", "Dialog_ResetSources_Message"))
-        {
-            await App.Workflow.ResetSourcesAsync(CancellationToken.None);
+            case UiCommandId.RefreshSources: await App.Workflow.RefreshSourcesAsync(CancellationToken.None); break;
+            case UiCommandId.UpdateSources: await App.Workflow.UpdateSourcesAsync(CancellationToken.None); break;
+            case UiCommandId.AddSource: await viewModel.AddAsync(CancellationToken.None); break;
+            case UiCommandId.RemoveSource when SourceList.SelectedItem is SourceRow row &&
+                await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_RemoveSource_Title", "Dialog_RemoveSource_Message"):
+                await App.Workflow.RemoveSourceAsync(row.Name, CancellationToken.None); break;
+            case UiCommandId.ResetSources when
+                await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_ResetSources_Title", "Dialog_ResetSources_Message"):
+                await App.Workflow.ResetSourcesAsync(CancellationToken.None); break;
         }
     }
 

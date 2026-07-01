@@ -25,7 +25,8 @@ public enum UiCommandId
     RemoveSource,
     ResetSources,
     CancelOperation,
-    ClearActivity
+    ClearActivity,
+    ExportActivity
 }
 
 public enum UiCommandKind

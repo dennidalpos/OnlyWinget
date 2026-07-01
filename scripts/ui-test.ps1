@@ -128,7 +128,9 @@ Test-Ui 'Source toggle can be changed and restored' {
 
 Test-Ui 'Import picker can be cancelled without mutation' {
     winapp ui invoke 'NavPackages' -a $AppPid -q
-    winapp ui invoke 'ImportPresetButton' -a $AppPid -q
+    winapp ui invoke 'MoreButton' -a $AppPid -q
+    winapp ui wait-for 'CommandImportPreset' -a $AppPid -t 3000 -q
+    winapp ui invoke 'CommandImportPreset' -a $AppPid -q
     Start-Sleep -Seconds 2
     $picker = winapp ui list-windows --json 2>$null | ConvertFrom-Json |
         Where-Object {
@@ -156,11 +158,11 @@ Test-Ui 'Import picker can be cancelled without mutation' {
 Test-Ui 'Progress controls expose automation metadata' {
     $presetXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Packages/PresetsPage.xaml')
     $updatesXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Updates/UpdatesPage.xaml')
-    if ($presetXaml -notmatch 'PresetOperationProgressBar' -or
-        $presetXaml -notmatch 'PresetOperationProgressText' -or
-        $updatesXaml -notmatch 'UpdateOperationProgressBar' -or
-        $updatesXaml -notmatch 'UpdateOperationProgressText' -or
-        $updatesXaml -notmatch 'AutomationProperties.LiveSetting="Polite"') {
+    $bannerXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/DesignSystem/States/OperationBanner.xaml')
+    if ($presetXaml -notmatch 'OperationBanner' -or
+        $updatesXaml -notmatch 'OperationBanner' -or
+        $bannerXaml -notmatch 'AutomationProperties.LiveSetting="Polite"' -or
+        $bannerXaml -notmatch 'ProgressBar') {
         throw 'Metadati di accessibilita del progresso incompleti.'
     }
 }

@@ -602,6 +602,15 @@ public sealed class OnlyWingetApplication(
             userVisibleError = null;
         });
 
+    public ApplicationActionResult RestoreActivity(IEnumerable<ActivityEntry> entries) =>
+        Run(() =>
+        {
+            ArgumentNullException.ThrowIfNull(entries);
+            activity.Clear();
+            activity.AddRange(entries);
+            userVisibleError = null;
+        });
+
     public ApplicationActionResult ReportExternalFailure(string message) =>
         Run(() => throw new InvalidOperationException(
             string.IsNullOrWhiteSpace(message) ? "External operation failed." : message.Trim()));

@@ -30,6 +30,7 @@ public sealed partial class OnlyWingetCommandBar : UserControl
                 Icon = CreateIcon(command.Icon)
             };
             AutomationProperties.SetName(button, button.Label);
+            AutomationProperties.SetAutomationId(button, $"Command{command.Id}");
             ToolTipService.SetToolTip(button, TextResources.Get(command.TooltipResourceKey ?? command.LabelResourceKey));
             button.Click += OnClick;
             if (command.Placement == UiCommandPlacement.Overflow)

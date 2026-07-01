@@ -4,8 +4,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:presentation="using:OnlyWinget.Application.Presentation"
-    xmlns:states="using:OnlyWinget.DesignSystem.States">
+    xmlns:states="using:OnlyWinget.DesignSystem.States"
+    xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
     <design:PageScaffold x:Name="Scaffold">
+        <design:PageScaffold.Commands>
+            <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
+        </design:PageScaffold.Commands>
         <design:PageScaffold.State>
             <states:StatePresenter x:Name="PageState" />
         </design:PageScaffold.State>
@@ -20,7 +24,6 @@
                             <StackPanel Grid.Row="1" Spacing="{StaticResource ControlSpacing}">
                                 <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" />
                                 <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" />
-                                <Button x:Name="AddButton" Style="{StaticResource AddPrimaryButtonStyle}" Click="OnAddSource" AutomationProperties.AutomationId="SourceAddButton" />
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -30,8 +33,6 @@
                             <TextBlock x:Name="ManageSourcesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                             <StackPanel x:Name="SourceActions" Grid.Row="1" Style="{StaticResource ActionBarStyle}">
                                 <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" />
-                                <Button x:Name="RefreshButton" Style="{StaticResource RefreshButtonStyle}" Click="OnRefreshSources" AutomationProperties.AutomationId="SourcesRefreshButton" />
-                                <Button x:Name="UpdateButton" Style="{StaticResource DownloadPrimaryButtonStyle}" Click="OnUpdateSources" AutomationProperties.AutomationId="SourcesUpdateButton" />
                             </StackPanel>
                             <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SourceList">
                                 <ListView.ItemTemplate>
@@ -49,12 +50,6 @@
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
                             </ListView>
-                            <StackPanel Grid.Row="3" Spacing="10">
-                                <StackPanel x:Name="DestructiveActions" Style="{StaticResource ActionBarStyle}">
-                                    <Button x:Name="RemoveButton" Style="{StaticResource DeleteButtonStyle}" Click="OnRemoveSource" AutomationProperties.AutomationId="SourceRemoveButton" />
-                                    <Button x:Name="ResetButton" Style="{StaticResource DeleteButtonStyle}" Click="OnResetSources" AutomationProperties.AutomationId="SourcesResetButton" />
-                                </StackPanel>
-                            </StackPanel>
                         </Grid>
                     </Border>
                 </Grid>

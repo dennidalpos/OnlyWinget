@@ -5,7 +5,8 @@
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
     xmlns:states="using:OnlyWinget.DesignSystem.States"
-    xmlns:presentation="using:OnlyWinget.Application.Presentation">
+    xmlns:presentation="using:OnlyWinget.Application.Presentation"
+    xmlns:activity="using:OnlyWinget.Features.Activity">
     <design:PageScaffold x:Name="Scaffold">
         <design:PageScaffold.Commands>
             <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
@@ -17,7 +18,7 @@
             <Grid RowSpacing="12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="160" /><ColumnDefinition Width="160" /></Grid.ColumnDefinitions>
                     <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" />
                     <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged">
                         <ComboBoxItem Tag="all" />
@@ -25,6 +26,10 @@
                         <ComboBoxItem Tag="Success" />
                         <ComboBoxItem Tag="Warning" />
                         <ComboBoxItem Tag="Error" />
+                    </ComboBox>
+                    <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged">
+                        <ComboBoxItem Tag="all" /><ComboBoxItem Tag="packages" /><ComboBoxItem Tag="windows" />
+                        <ComboBoxItem Tag="sources" /><ComboBoxItem Tag="presets" /><ComboBoxItem Tag="system" />
                     </ComboBox>
                 </Grid>
                 <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None" ItemContainerStyle="{StaticResource ListRowContainerStyle}">
@@ -39,11 +44,18 @@
                                         <TextBlock Grid.Column="2" Text="{x:Bind Title}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                                     </Grid>
                                 </Expander.Header>
-                                <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Margin="0,8,0,4" />
+                                <StackPanel Spacing="8" Margin="0,8,0,4">
+                                    <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                    <TextBlock Text="{x:Bind Timestamp}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                    <Button Content="{x:Bind activity:ActivityViewModel.CopyLabel}" Tag="{x:Bind}" Click="OnCopyDetails" HorizontalAlignment="Left" />
+                                </StackPanel>
                             </Expander>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+                <InfoBar x:Name="UndoBar" Grid.Row="1" VerticalAlignment="Bottom" IsClosable="True" Severity="Informational">
+                    <InfoBar.ActionButton><Button x:Name="UndoButton" Click="OnUndoClear" /></InfoBar.ActionButton>
+                </InfoBar>
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>
