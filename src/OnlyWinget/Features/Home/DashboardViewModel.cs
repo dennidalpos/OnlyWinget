@@ -8,10 +8,16 @@ namespace OnlyWinget.Features.Home;
 public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
     private FeatureState pageState = FeatureState.Ready;
+    private string activePreset = string.Empty;
+    private string operationalStatus = string.Empty;
+    private bool hasWarning;
 
-    public ObservableCollection<DashboardMetric> Metrics { get; } = [new(), new(), new(), new(), new()];
+    public ObservableCollection<DashboardMetric> Metrics { get; } = [new(), new(), new(), new(), new(), new()];
     public ObservableCollection<ActivityRow> RecentActivity { get; } = [];
     public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
+    public string ActivePreset { get => activePreset; private set => SetProperty(ref activePreset, value); }
+    public string OperationalStatus { get => operationalStatus; private set => SetProperty(ref operationalStatus, value); }
+    public bool HasWarning { get => hasWarning; private set => SetProperty(ref hasWarning, value); }
 
     protected override void Refresh()
     {
@@ -26,6 +32,12 @@ public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewMod
         Metrics[2].Value = state.SearchResultCount.ToString(CultureInfo.CurrentCulture);
         Metrics[3].Value = state.UpdateCount.ToString(CultureInfo.CurrentCulture);
         Metrics[4].Value = state.SourceCount.ToString(CultureInfo.CurrentCulture);
+        Metrics[5].Value = state.WindowsUpdateCount.ToString(CultureInfo.CurrentCulture);
+        ActivePreset = state.ActivePresetName ?? TextResources.Get("Dashboard_NoActivePreset");
+        HasWarning = state.RebootRequired || state.IsWingetAvailable == false || state.IsWindowsUpdateAvailable == false;
+        OperationalStatus = state.RebootRequired
+            ? TextResources.Get("Dashboard_RebootWarning")
+            : state.IsBusy ? TextResources.Get("Dashboard_Busy") : TextResources.Get("Dashboard_Ready");
         RecentActivity.ReplaceWith(state.RecentActivity);
         PageState = state.Error is not null
             ? FeatureState.Error(state.Error)

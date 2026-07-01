@@ -1,11 +1,6 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:OnlyWinget.Controls">
-    <controls:TableColumnLayout x:Key="UpdatesColumnLayout" />
-    <controls:FixedTableLayout x:Key="SearchColumnLayout" Column0Width="44" Column1Width="190" Column2Width="230" Column3Width="100" Column4Width="100" Column5Width="120" Column6Width="170" />
-    <controls:FixedTableLayout x:Key="PresetColumnLayout" Column0Width="44" Column1Width="180" Column2Width="240" Column3Width="120" Column4Width="110" Column5Width="120" />
-    <controls:FixedTableLayout x:Key="WindowsUpdateColumnLayout" Column0Width="44" Column1Width="280" Column2Width="100" Column3Width="100" Column4Width="150" Column5Width="90" Column6Width="90" Column7Width="90" Column8Width="80" Column9Width="150" />
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style x:Key="TableHeaderTextBlockStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="SemiBold" />

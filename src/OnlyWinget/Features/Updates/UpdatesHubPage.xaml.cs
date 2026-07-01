@@ -4,9 +4,6 @@ namespace OnlyWinget.Features.Updates;
 
 public sealed partial class UpdatesHubPage : Page
 {
-    private readonly UpdatesPage winget = new();
-    private readonly WindowsUpdatePage windows = new();
-
     public UpdatesHubPage()
     {
         InitializeComponent();
@@ -15,9 +12,12 @@ public sealed partial class UpdatesHubPage : Page
         WingetMode.Text = TextResources.Get("Updates_WingetMode");
         WindowsMode.Text = TextResources.Get("Updates_WindowsMode");
         ModeSelector.SelectedItem = WingetMode;
-        ModeContent.Content = winget;
     }
 
-    private void OnModeChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args) =>
-        ModeContent.Content = ReferenceEquals(sender.SelectedItem, WindowsMode) ? windows : winget;
+    private void OnModeChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        var showWindows = ReferenceEquals(sender.SelectedItem, WindowsMode);
+        WindowsWorkflow.Visibility = showWindows ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+        WingetWorkflow.Visibility = showWindows ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+    }
 }

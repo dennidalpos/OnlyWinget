@@ -11,6 +11,12 @@ public partial class App : Microsoft.UI.Xaml.Application
     internal static nint WindowHandle => window is null ? 0 : WinRT.Interop.WindowNative.GetWindowHandle(window);
 
     internal static Microsoft.UI.WindowId WindowId => Microsoft.UI.Win32Interop.GetWindowIdFromWindow(WindowHandle);
+    internal static Microsoft.UI.Xaml.XamlRoot? XamlRoot => (window?.Content as Microsoft.UI.Xaml.FrameworkElement)?.XamlRoot;
+
+    internal static void Navigate(string routeId)
+    {
+        if (window is MainWindow mainWindow) mainWindow.Navigate(routeId);
+    }
 
     internal static UiServiceCollection UiServices { get; } = AppComposition.CreateUiServices();
 

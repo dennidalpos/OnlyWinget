@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.DesignSystem.Commands;
+using OnlyWinget.Controls;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Updates;
@@ -18,6 +19,7 @@ public sealed partial class UpdatesPage : UserControl
         InitializeComponent();
         viewModel = new(Dispatch);
         UpdateList.ItemsSource = viewModel.Updates;
+        OperationResultList.ItemsSource = viewModel.OperationResults;
         viewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -28,8 +30,7 @@ public sealed partial class UpdatesPage : UserControl
     {
         viewModel.Activate();
         if (!initialRefreshStarted &&
-            App.Workflow.State.Updates.Count == 0 &&
-            App.Workflow.State.BusyState == OnlyWinget.Application.App.ApplicationBusyState.Idle)
+            viewModel.ShouldInitialRefresh)
         {
             initialRefreshStarted = true;
             await RefreshUpdatesAsync();
@@ -49,23 +50,17 @@ public sealed partial class UpdatesPage : UserControl
         PageState.Present(viewModel.PageState);
         LoadingRing.IsActive = viewModel.IsLoading || viewModel.IsExecuting;
         LoadingRing.Visibility = viewModel.IsLoading || viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
+        OperationResultList.Visibility = viewModel.OperationResults.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ApplyOperationProgress();
-        SelectAllUpdatesBox.IsThreeState = true;
-        SelectAllUpdatesBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
+        UpdateList.HeaderSelection = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
         CommandBar.SetCommands(viewModel.Commands.Values);
         isRefreshing = false;
     }
 
     private void ApplyText()
     {
-        SelectAllUpdatesBox.Content = TextResources.Get("Command_Select_All");
-        UpdatesNameHeader.Text = TextResources.Get("Header_Name");
-        UpdatesPackageIdHeader.Text = TextResources.Get("Header_PackageId");
-        UpdatesSourceHeader.Text = TextResources.Get("Header_Source");
-        UpdatesInstalledHeader.Text = TextResources.Get("Header_Installed");
-        UpdatesAvailableHeader.Text = TextResources.Get("Header_Available");
-        UpdatesArchitectureHeader.Text = TextResources.Get("Header_Architecture");
-        UpdatesStatusHeader.Text = TextResources.Get("Header_Status");
+        UpdateList.SelectionLabel = TextResources.Get("Command_Select_All");
+        UpdateList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Installed", "Header_Available", "Header_Architecture", "Header_Status" }.Select(TextResources.Get).ToArray());
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
@@ -83,7 +78,7 @@ public sealed partial class UpdatesPage : UserControl
         return viewModel.RefreshAsync(CancellationToken.None);
     }
 
-    private void OnToggleAllUpdates(object sender, RoutedEventArgs args)
+    private void OnToggleAllUpdates(object? sender, EventArgs args)
     {
         if (isRefreshing)
         {
@@ -112,10 +107,15 @@ public sealed partial class UpdatesPage : UserControl
         }
         else if (wasBusy)
         {
-            var error = App.Workflow.State.UserVisibleError;
+            var error = viewModel.Error;
             OperationStatus.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
         }
         wasBusy = busy;
+    }
+
+    private void OnUpdateSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
+    {
+        if (args.Item is UpdateRow row) viewModel.Toggle(row);
     }
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => viewModel.Cancel();

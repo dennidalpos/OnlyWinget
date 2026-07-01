@@ -137,6 +137,13 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    internal void Navigate(string routeId)
+    {
+        if (!routes.ContainsKey(routeId)) return;
+        SelectRoute(routeId);
+        ShowPage(routeId);
+    }
+
     private void BuildNavigation()
     {
         RootNavigation.MenuItems.Clear();

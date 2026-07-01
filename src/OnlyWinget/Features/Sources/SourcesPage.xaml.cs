@@ -59,32 +59,28 @@ public sealed partial class SourcesPage : Page
 
     private void OnSourceNameChanged(object sender, TextChangedEventArgs args) => viewModel.Name.Value = SourceNameBox.Text;
     private void OnSourceArgumentChanged(object sender, TextChangedEventArgs args) => viewModel.Argument.Value = SourceArgumentBox.Text;
-    private void RefreshCommands() => CommandBar.SetCommands(viewModel.Commands.Values.Select(command =>
-        command.Id == UiCommandId.AddSource ? command with { IsEnabled = viewModel.CanAdd } : command));
+    private void RefreshCommands() => CommandBar.SetCommands(viewModel.Commands.Values.Select(command => command.Id switch
+    {
+        UiCommandId.AddSource => command with { IsEnabled = viewModel.CanAdd },
+        UiCommandId.RemoveSource => command with { IsEnabled = command.IsEnabled && viewModel.SelectedSource?.IsExplicit == true },
+        _ => command
+    }));
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        switch (args.Command.Id)
-        {
-            case UiCommandId.RefreshSources: await App.Workflow.RefreshSourcesAsync(CancellationToken.None); break;
-            case UiCommandId.UpdateSources: await App.Workflow.UpdateSourcesAsync(CancellationToken.None); break;
-            case UiCommandId.AddSource: await viewModel.AddAsync(CancellationToken.None); break;
-            case UiCommandId.RemoveSource when SourceList.SelectedItem is SourceRow row &&
-                await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_RemoveSource_Title", "Dialog_RemoveSource_Message"):
-                await App.Workflow.RemoveSourceAsync(row.Name, CancellationToken.None); break;
-            case UiCommandId.ResetSources when
-                await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_ResetSources_Title", "Dialog_ResetSources_Message"):
-                await App.Workflow.ResetSourcesAsync(CancellationToken.None); break;
-        }
+        await viewModel.ExecuteAsync(args.Command.Id, CancellationToken.None);
     }
 
     private async void OnSourceEnabledToggled(object sender, RoutedEventArgs args)
     {
         if (!viewModel.IsRefreshing && sender is ToggleSwitch { DataContext: SourceRow row } toggle)
         {
-            await App.Workflow.SetSourceEnabledAsync(row.Name, toggle.IsOn, CancellationToken.None);
+            await viewModel.SetEnabledAsync(row, toggle.IsOn, CancellationToken.None);
         }
     }
+
+    private void OnSourceSelectionChanged(object sender, SelectionChangedEventArgs args) =>
+        viewModel.SelectedSource = SourceList.SelectedItem as SourceRow;
 
     private void Dispatch(Action action)
     {

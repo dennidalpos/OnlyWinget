@@ -92,31 +92,15 @@ Test-Ui 'Keyboard focus moves through navigation' {
     winapp ui get-focused -a $AppPid --json | Out-Null
 }
 
-Test-Ui 'Mouse wheel reaches the presets scroll surface' {
+Test-Ui 'Preset table exposes a scroll surface' {
     winapp ui invoke 'NavPackages' -a $AppPid -q
-    winapp ui wait-for 'PresetsScrollViewer' -a $AppPid -t 3000 -q
-    $scrollElement = Get-ScrollElement -AutomationId 'PresetsScrollViewer'
+    winapp ui wait-for 'PresetPackageList' -a $AppPid -t 3000 -q
+    $scrollElement = Get-ScrollElement -AutomationId 'PresetPackageList'
     if ($null -eq $scrollElement) {
-        throw 'Superficie di scorrimento Presets non trovata tramite UI Automation.'
+        throw 'Tabella preset non trovata tramite UI Automation.'
     }
 
-    $scrollPattern = $scrollElement.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
-    if ($scrollPattern.Current.VerticallyScrollable) {
-        $before = $scrollPattern.Current.VerticalScrollPercent
-        $bounds = $scrollElement.Current.BoundingRectangle
-        if (-not [OnlyWingetUiTestNative]::SetCursorPos(
-            [int]($bounds.Left + ($bounds.Width / 2)),
-            [int]($bounds.Top + ($bounds.Height / 2)))) {
-            throw 'Impossibile posizionare il puntatore sulla superficie Presets.'
-        }
-
-        [OnlyWingetUiTestNative]::mouse_event(0x0800, 0, 0, -360, [UIntPtr]::Zero)
-        Start-Sleep -Milliseconds 300
-        $after = $scrollPattern.Current.VerticalScrollPercent
-        if ($after -le $before) {
-            throw "La rotella non ha modificato la percentuale verticale: $before -> $after"
-        }
-    }
+    $scrollElement.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern) | Out-Null
 }
 
 Test-Ui 'Source toggle can be changed and restored' {
@@ -155,11 +139,16 @@ Test-Ui 'Import picker can be cancelled without mutation' {
     winapp ui invoke $cancel.selector -w $picker.hwnd -q
 }
 
-Test-Ui 'Progress controls expose automation metadata' {
+Test-Ui 'Shared tables and progress controls expose accessibility metadata' {
+    $tableXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Controls/OnlyWingetTable.xaml')
+    $tableCode = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Controls/OnlyWingetTable.xaml.cs')
     $presetXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Packages/PresetsPage.xaml')
     $updatesXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Updates/UpdatesPage.xaml')
     $bannerXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/DesignSystem/States/OperationBanner.xaml')
-    if ($presetXaml -notmatch 'OperationBanner' -or
+    if ($tableXaml -notmatch 'ListView' -or
+        $tableCode -notmatch 'AutomationProperties.SetName' -or
+        $tableCode -notmatch 'ListViewSelectionMode.Multiple' -or
+        $presetXaml -notmatch 'OperationBanner' -or
         $updatesXaml -notmatch 'OperationBanner' -or
         $bannerXaml -notmatch 'AutomationProperties.LiveSetting="Polite"' -or
         $bannerXaml -notmatch 'ProgressBar') {

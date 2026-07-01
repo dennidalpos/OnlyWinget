@@ -43,7 +43,7 @@ Application startup checks OS support, `winget`, PowerShell, and Windows Update 
 
 The WinUI shell is route-driven through `Shell/NavigationRegistry.cs`. User-facing routes are Home, Packages, Updates, Sources, Activity, and Settings; Packages and Updates own their provider-specific modes instead of exposing technical modules in primary navigation.
 
-Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and the state controls provide consistent inline status and operation progress. Feature pages live under `Features`; older page implementations are removed as each feature migration completes rather than retained through compatibility adapters.
+Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and the state controls provide consistent inline status and operation progress. `OnlyWingetTable` owns shared header/row columns, horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding. Packages and Updates declare both modes in one route-owned visual tree; mode switches change visibility instead of constructing nested pages at runtime. Feature ViewModels own operations, cancellation, validation, confirmation, and picker orchestration through the existing UI services.
 
 ## Installer
 

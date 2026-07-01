@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.DesignSystem.Commands;
+using OnlyWinget.Controls;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Updates;
@@ -43,8 +44,7 @@ public sealed partial class WindowsUpdatePage : UserControl
         LoadingRing.IsActive = viewModel.IsBusy;
         LoadingRing.Visibility = viewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
         ApplyOperationStatus();
-        SelectAllWindowsUpdatesBox.IsThreeState = true;
-        SelectAllWindowsUpdatesBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
+        WindowsUpdateList.HeaderSelection = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 
         CommandBar.SetCommands(viewModel.Commands.Values);
         isRefreshing = false;
@@ -52,19 +52,11 @@ public sealed partial class WindowsUpdatePage : UserControl
 
     private void ApplyText()
     {
-        SelectAllWindowsUpdatesBox.Content = TextResources.Get("Command_Select_All");
         SoftwareUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeSoftware");
         DriverUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeDrivers");
         MicrosoftUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeMicrosoft");
-        WindowsTitleHeader.Text = TextResources.Get("Header_Title");
-        WindowsKbHeader.Text = TextResources.Get("Header_KnowledgeBase");
-        WindowsSeverityHeader.Text = TextResources.Get("Header_Severity");
-        WindowsCategoriesHeader.Text = TextResources.Get("Header_Categories");
-        WindowsSizeHeader.Text = TextResources.Get("Header_Size");
-        WindowsDownloadedHeader.Text = TextResources.Get("Header_Downloaded");
-        WindowsRebootHeader.Text = TextResources.Get("Header_Reboot");
-        WindowsRevisionHeader.Text = TextResources.Get("Header_Revision");
-        WindowsStatusHeader.Text = TextResources.Get("Header_Status");
+        WindowsUpdateList.SelectionLabel = TextResources.Get("Command_Select_All");
+        WindowsUpdateList.SetHeaders(new[] { "Header_Title", "Header_KnowledgeBase", "Header_Severity", "Header_Categories", "Header_Size", "Header_Downloaded", "Header_Reboot", "Header_Revision", "Header_Status" }.Select(TextResources.Get).ToArray());
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
@@ -77,7 +69,7 @@ public sealed partial class WindowsUpdatePage : UserControl
         }
     }
 
-    private void OnToggleAllWindowsUpdates(object sender, RoutedEventArgs args)
+    private void OnToggleAllWindowsUpdates(object? sender, EventArgs args)
     {
         if (isRefreshing)
         {
@@ -110,11 +102,16 @@ public sealed partial class WindowsUpdatePage : UserControl
         }
         else if (wasBusy)
         {
-            var error = App.Workflow.State.UserVisibleError;
-            var reboot = App.Workflow.State.LastWindowsUpdateResults.Any(result => result.RebootRequired);
+            var error = viewModel.Error;
+            var reboot = viewModel.RebootRequired;
             OperationStatus.Complete(error ?? TextResources.Get(reboot ? "WindowsUpdates_RebootRequired" : "Progress_Completed"), error is not null);
         }
         wasBusy = viewModel.IsBusy;
+    }
+
+    private void OnWindowsUpdateSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
+    {
+        if (args.Item is WindowsUpdateRow row) viewModel.Toggle(row);
     }
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => viewModel.Cancel();

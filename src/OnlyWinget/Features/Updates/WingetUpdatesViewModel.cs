@@ -18,6 +18,7 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     private OperationProgress? progress;
 
     public ObservableCollection<UpdateRow> Updates { get; } = [];
+    public ObservableCollection<OperationResultRow> OperationResults { get; } = [];
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public bool IsLoading { get => isLoading; private set => SetProperty(ref isLoading, value); }
     public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
@@ -25,6 +26,8 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public OperationProgress? Progress { get => progress; private set => SetProperty(ref progress, value); }
     public string ProgressText => Progress is null ? TextResources.Get("Progress_Starting") : $"{TextResources.Get($"Progress_{Progress.Phase}")} · {Progress.Percentage}% · {Progress.PackageId}";
+    public bool ShouldInitialRefresh => Workflow.State.Updates.Count == 0 && Workflow.State.BusyState == ApplicationBusyState.Idle;
+    public string? Error => Workflow.State.UserVisibleError;
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public Task RefreshAsync(CancellationToken token) => Workflow.RefreshUpdatesAsync(token);
@@ -49,6 +52,7 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
             Architecture = TextResources.Get(row.Architecture),
             Status = TextResources.Get(row.Status ?? "Update_Status_Available")
         }), PackageKey);
+        OperationResults.ReplaceWith(state.OperationResults);
         Commands = state.Commands.ToDictionary(command => command.Id);
         IsLoading = state.IsLoading;
         IsExecuting = state.IsExecuting;

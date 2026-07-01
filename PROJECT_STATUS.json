@@ -1,13 +1,6 @@
 {
   "todos": [
-    "Implement typed table column definitions and OnlyWingetTable so one declaration generates header and cells with shared horizontal scrolling, stable item sources, standard selection and mixed select-all, selectable and truncated text, compact cards, keyboard navigation, UI Automation, High Contrast, and 200% text scaling.",
-    "Migrate preset packages, package search, winget updates, Windows Update, and sources to OnlyWingetTable; delete FixedTableLayout, TableColumnLayout, ColumnNWidth resources, and all duplicated header and row column definitions.",
-    "Move the remaining file-picker, confirmation, selector synchronization, and control-state orchestration out of Packages and Updates code-behind into their feature ViewModels and existing injectable UI services.",
-    "Finish Packages as one responsive workflow with active preset context, preset packages, search, selected packages, operation results, add-to-preset state, multi-selection, import/export actions, install/uninstall preview, destructive confirmation, and package/source validation; remove the nested legacy page composition.",
-    "Finish Updates as one responsive workflow with App winget and Windows Update modes, shared scan/apply/cancel commands and filters, coherent tables, per-row failures, operation summary, and reboot-required state while preserving explicit-only Windows Update scans; remove the nested legacy page composition.",
-    "Redesign Sources as validated configuration management with coherent rows or cards, enabled and unavailable states, per-row actions, source testing where supported, and previewed confirmed remove/reset operations.",
-    "Redesign Home as an operational overview of winget and Windows Update capability, update and error status, active preset, useful metrics, warnings, recent activity, and clear quick actions without triggering implicit Windows Update scans.",
-    "Update all visible EN/IT strings, architecture documentation, and UI automation coverage for the final routes and shared components; remove obsolete presentation models, styles, code-behind helpers, dead files, and tests after migration.",
-    "After implementation, run Setup only if restore inputs changed, then Format, Lint, Typecheck, Test, Build, Package, and automated UI tests through repository scripts; fix every failure and keep PROJECT_STATUS.json residual-only."
+    "On a Windows session configured for a Contrast theme and 200% text scaling, validate OnlyWingetTable and every final route; fix any visual defects found.",
+    "Move the remaining purely visual selector and control-state synchronization from Packages and Updates code-behind to bindings or reusable presentation state, then delete superseded handlers."
   ]
 }

@@ -16,8 +16,22 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <ItemsRepeater x:Name="MetricRepeater">
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="ActivePresetText" Style="{StaticResource SectionTitleTextBlockStyle}" AutomationProperties.AutomationId="DashboardActivePreset" />
+                                <InfoBar x:Name="OperationalStatus" IsOpen="True" IsClosable="False" AutomationProperties.AutomationId="DashboardOperationalStatus" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Button x:Name="OpenPackagesButton" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages" />
+                                <Button x:Name="OpenUpdatesButton" Click="OnOpenUpdates" AutomationProperties.AutomationId="DashboardOpenUpdates" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <ItemsRepeater x:Name="MetricRepeater" Grid.Row="1">
                         <ItemsRepeater.Layout>
                             <UniformGridLayout MaximumRowsOrColumns="5" MinItemWidth="170" MinColumnSpacing="12" MinRowSpacing="12" ItemsStretch="Fill" Orientation="Horizontal" />
                         </ItemsRepeater.Layout>
@@ -32,7 +46,7 @@
                             </DataTemplate>
                         </ItemsRepeater.ItemTemplate>
                     </ItemsRepeater>
-                    <Border Grid.Row="1" Style="{StaticResource CardStyle}">
+                    <Border Grid.Row="2" Style="{StaticResource CardStyle}">
                         <Grid RowSpacing="10">
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                             <TextBlock x:Name="RecentActivityText" Style="{StaticResource SectionTitleTextBlockStyle}" />

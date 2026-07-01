@@ -30,6 +30,10 @@ public static class PresentationStateMapper
             state.SearchResults.Count,
             state.Updates.Count,
             state.Sources.Count,
+            state.Capabilities.IsWindowsUpdateComAvailable,
+            state.WindowsUpdates.Count,
+            state.ActivePreset?.Name,
+            state.LastWindowsUpdateResults.Any(result => result.RebootRequired),
             state.BusyState != ApplicationBusyState.Idle,
             state.UserVisibleError,
             state.Activity

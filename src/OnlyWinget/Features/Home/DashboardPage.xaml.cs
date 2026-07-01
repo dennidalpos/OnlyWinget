@@ -25,6 +25,7 @@ public sealed partial class DashboardPage : Page
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
     {
+        RefreshOverview();
         if (args.PropertyName == nameof(DashboardViewModel.PageState))
         {
             PageState.Present(viewModel.PageState);
@@ -40,8 +41,22 @@ public sealed partial class DashboardPage : Page
         viewModel.Metrics[2].Label = TextResources.Get("Dashboard_SearchResults");
         viewModel.Metrics[3].Label = TextResources.Get("Dashboard_Updates");
         viewModel.Metrics[4].Label = TextResources.Get("Dashboard_Sources");
+        viewModel.Metrics[5].Label = TextResources.Get("Dashboard_WindowsUpdates");
         RecentActivityText.Text = TextResources.Get("Dashboard_RecentActivity");
+        OpenPackagesButton.Content = TextResources.Get("Dashboard_OpenPackages");
+        OpenUpdatesButton.Content = TextResources.Get("Dashboard_OpenUpdates");
+        RefreshOverview();
     }
+
+    private void RefreshOverview()
+    {
+        ActivePresetText.Text = $"{TextResources.Get("Dashboard_ActivePreset")}: {viewModel.ActivePreset}";
+        OperationalStatus.Message = viewModel.OperationalStatus;
+        OperationalStatus.Severity = viewModel.HasWarning ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
+    }
+
+    private void OnOpenPackages(object sender, RoutedEventArgs args) => App.Navigate("packages");
+    private void OnOpenUpdates(object sender, RoutedEventArgs args) => App.Navigate("updates");
 
     private void Dispatch(Action action)
     {

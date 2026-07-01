@@ -21,6 +21,8 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     public bool IsBusy => IsScanning || IsInstalling;
     public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
+    public string? Error => Workflow.State.UserVisibleError;
+    public bool RebootRequired => Workflow.State.LastWindowsUpdateResults.Any(result => result.RebootRequired);
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public void ToggleAll() => Workflow.ToggleAllWindowsUpdates();

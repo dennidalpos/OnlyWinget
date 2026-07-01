@@ -34,18 +34,20 @@
                             <StackPanel x:Name="SourceActions" Grid.Row="1" Style="{StaticResource ActionBarStyle}">
                                 <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" />
                             </StackPanel>
-                            <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SourceList">
+                            <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SourceList">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="presentation:SourceRow">
                                         <Grid ColumnSpacing="12">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                            <StackPanel Spacing="3">
+                                            <StackPanel Spacing="3" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}">
                                                 <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                                                 <TextBlock Text="{x:Bind Argument, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
                                                 <TextBlock Text="{x:Bind Type, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" IsOn="{x:Bind IsEnabled, Mode=OneTime}" Toggled="OnSourceEnabledToggled" />
                                                 <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                             </StackPanel>
-                                            <ToggleSwitch Grid.Column="1" AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" IsOn="{x:Bind IsEnabled, Mode=OneTime}" Toggled="OnSourceEnabledToggled" VerticalAlignment="Center" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>

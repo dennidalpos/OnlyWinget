@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.DesignSystem.Commands;
+using OnlyWinget.Controls;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Packages;
@@ -41,8 +42,7 @@ public sealed partial class SearchPage : UserControl
         LoadingRing.IsActive = viewModel.IsLoading;
         LoadingRing.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
         SearchProgressBar.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        SelectAllResultsBox.IsThreeState = true;
-        SelectAllResultsBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
+        ResultList.HeaderSelection = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 
         CommandBar.SetCommands(viewModel.Commands.Values);
         isRefreshing = false;
@@ -50,17 +50,10 @@ public sealed partial class SearchPage : UserControl
 
     private void ApplyText()
     {
-        SearchSectionText.Text = TextResources.Get("Section_Search");
-        ResultsSectionText.Text = TextResources.Get("Section_SearchResults");
         QueryBox.PlaceholderText = TextResources.Get("Search_Query");
         QueryBox.Header = TextResources.Get("Search_Query");
-        SelectAllResultsBox.Content = TextResources.Get("Command_Select_All");
-        SearchNameHeader.Text = TextResources.Get("Header_Name");
-        SearchPackageIdHeader.Text = TextResources.Get("Header_PackageId");
-        SearchSourceHeader.Text = TextResources.Get("Header_Source");
-        SearchVersionHeader.Text = TextResources.Get("Header_Version");
-        SearchArchitectureHeader.Text = TextResources.Get("Header_Architecture");
-        SearchMatchHeader.Text = TextResources.Get("Header_Match");
+        ResultList.SelectionLabel = TextResources.Get("Command_Select_All");
+        ResultList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Architecture", "Header_Match" }.Select(TextResources.Get).ToArray());
     }
 
     private async void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
@@ -82,7 +75,7 @@ public sealed partial class SearchPage : UserControl
         return viewModel.SearchAsync(QueryBox.Text, CancellationToken.None);
     }
 
-    private void OnToggleAllResults(object sender, RoutedEventArgs args)
+    private void OnToggleAllResults(object? sender, EventArgs args)
     {
         if (isRefreshing)
         {
@@ -106,5 +99,10 @@ public sealed partial class SearchPage : UserControl
     {
         if (DispatcherQueue.HasThreadAccess) action();
         else _ = DispatcherQueue.TryEnqueue(() => action());
+    }
+
+    private void OnResultSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
+    {
+        if (args.Item is SearchResultRow row) viewModel.Toggle(row);
     }
 }

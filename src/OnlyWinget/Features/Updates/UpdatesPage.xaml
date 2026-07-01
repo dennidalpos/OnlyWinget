@@ -1,107 +1,11 @@
-<UserControl
-    x:Class="OnlyWinget.Features.Updates.UpdatesPage"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:presentation="using:OnlyWinget.Application.Presentation"
-    xmlns:states="using:OnlyWinget.DesignSystem.States"
-    xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
-    <Grid x:Name="PageContent" MaxWidth="{StaticResource PageMaxWidth}" RowSpacing="{StaticResource PageSectionSpacing}" HorizontalAlignment="Stretch">
-            <VisualStateManager.VisualStateGroups>
-                <VisualStateGroup>
-                    <VisualState x:Name="Wide"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1100" /></VisualState.StateTriggers></VisualState>
-                    <VisualState x:Name="Medium"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="720" /></VisualState.StateTriggers></VisualState>
-                    <VisualState x:Name="Compact"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers><VisualState.Setters>
-                        <Setter Target="UpdateActions.Orientation" Value="Vertical" /><Setter Target="UpdateActions.HorizontalAlignment" Value="Stretch" />
-                    </VisualState.Setters></VisualState>
-                </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-            <Border Grid.Row="1" Style="{StaticResource CardStyle}">
-                <Grid RowSpacing="10">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <StackPanel x:Name="UpdateActions" Style="{StaticResource ActionBarStyle}">
-                        <CheckBox x:Name="SelectAllUpdatesBox" Click="OnToggleAllUpdates" VerticalAlignment="Center" AutomationProperties.AutomationId="UpdatesSelectAllCheckBox" />
-                        <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="UpdatesLoadingRing" AutomationProperties.Name="Loading updates" />
-                        <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
-                    </StackPanel>
-                    <ListView
-                        x:Name="UpdateList"
-                        Grid.Row="1"
-                        ItemContainerStyle="{StaticResource TableRowContainerStyle}"
-                        AutomationProperties.AutomationId="UpdateList"
-                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                        ScrollViewer.HorizontalScrollMode="Enabled"
-                        ScrollViewer.VerticalScrollBarVisibility="Auto"
-                        ScrollViewer.VerticalScrollMode="Enabled">
-                        <ListView.Header>
-                            <Border Padding="12,8" Style="{StaticResource TableHeaderSurfaceStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="{Binding SelectionWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    <ColumnDefinition Width="{Binding NameWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    <ColumnDefinition Width="{Binding PackageIdWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    <ColumnDefinition Width="{Binding SourceWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    <ColumnDefinition Width="{Binding InstalledWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    <ColumnDefinition Width="{Binding AvailableWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    <ColumnDefinition Width="{Binding ArchitectureWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    <ColumnDefinition Width="{Binding StatusWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="UpdatesNameHeader" Grid.Column="1" TextAlignment="Left" Style="{StaticResource TableHeaderTextBlockStyle}" />
-                                <TextBlock x:Name="UpdatesPackageIdHeader" Grid.Column="2" TextAlignment="Left" Style="{StaticResource TableHeaderTextBlockStyle}" />
-                                <TextBlock x:Name="UpdatesSourceHeader" Grid.Column="3" TextAlignment="Left" Style="{StaticResource TableHeaderTextBlockStyle}" />
-                                <TextBlock x:Name="UpdatesInstalledHeader" Grid.Column="4" TextAlignment="Left" Style="{StaticResource TableHeaderTextBlockStyle}" />
-                                <TextBlock x:Name="UpdatesAvailableHeader" Grid.Column="5" TextAlignment="Left" Style="{StaticResource TableHeaderTextBlockStyle}" />
-                                <TextBlock x:Name="UpdatesArchitectureHeader" Grid.Column="6" TextAlignment="Left" Style="{StaticResource TableHeaderTextBlockStyle}" />
-                                <TextBlock x:Name="UpdatesStatusHeader" Grid.Column="7" TextAlignment="Left" Style="{StaticResource TableHeaderTextBlockStyle}" />
-                            </Grid>
-                            </Border>
-                        </ListView.Header>
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="presentation:UpdateRow">
-                                <Grid Padding="12,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="{Binding SelectionWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                        <ColumnDefinition Width="{Binding NameWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                        <ColumnDefinition Width="{Binding PackageIdWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                        <ColumnDefinition Width="{Binding SourceWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                        <ColumnDefinition Width="{Binding InstalledWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                        <ColumnDefinition Width="{Binding AvailableWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                        <ColumnDefinition Width="{Binding ArchitectureWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                        <ColumnDefinition Width="{Binding StatusWidth, Source={StaticResource UpdatesColumnLayout}}" />
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox
-                                        AutomationProperties.AutomationId="{x:Bind PackageId, Mode=OneTime}"
-                                        AutomationProperties.Name="{x:Bind Name, Mode=OneTime}"
-                                        IsChecked="{x:Bind IsSelected, Mode=OneTime}"
-                                        Click="OnUpdateSelectionClick"
-                                        Width="{StaticResource TableSelectionColumnWidth}"
-                                        MinWidth="0"
-                                        HorizontalAlignment="Left"
-                                        VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                    <TextBlock Grid.Column="2" Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                    <TextBlock Grid.Column="3" Text="{x:Bind Source, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
-                                    <TextBlock Grid.Column="4" Text="{x:Bind InstalledVersion, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
-                                    <TextBlock Grid.Column="5" Text="{x:Bind AvailableVersion, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" FontWeight="SemiBold" />
-                                    <TextBlock Grid.Column="6" Text="{x:Bind Architecture, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
-                                    <StackPanel Grid.Column="7" VerticalAlignment="Center" Spacing="2" ToolTipService.ToolTip="{x:Bind Output, Mode=OneTime}">
-                                        <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource TableCellTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind ErrorDetails, Mode=OneTime}" Foreground="{ThemeResource SystemFillColorCriticalBrush}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                                    </StackPanel>
-                                    <Border Grid.ColumnSpan="8" Style="{StaticResource TableRowDividerStyle}" />
-                                    <Border Grid.Column="1" Style="{StaticResource TableCellDividerStyle}" />
-                                    <Border Grid.Column="2" Style="{StaticResource TableCellDividerStyle}" />
-                                    <Border Grid.Column="3" Style="{StaticResource TableCellDividerStyle}" />
-                                    <Border Grid.Column="4" Style="{StaticResource TableCellDividerStyle}" />
-                                    <Border Grid.Column="5" Style="{StaticResource TableCellDividerStyle}" />
-                                    <Border Grid.Column="6" Style="{StaticResource TableCellDividerStyle}" />
-                                </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                    <states:OperationBanner x:Name="OperationStatus" Grid.Row="2" CancelRequested="OnOperationCancelRequested" />
-                    <states:StatePresenter x:Name="PageState" Grid.Row="3" />
-                </Grid>
-            </Border>
+<UserControl x:Class="OnlyWinget.Features.Updates.UpdatesPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:OnlyWinget.Controls" xmlns:states="using:OnlyWinget.DesignSystem.States" xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
+    <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Spacing="8"><ProgressRing x:Name="LoadingRing" Width="24" Height="24"/><commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked"/></StackPanel>
+        <controls:OnlyWingetTable x:Name="UpdateList" Grid.Row="1" AutomationProperties.AutomationId="UpdateList" ToggleAllRequested="OnToggleAllUpdates" SelectionToggled="OnUpdateSelectionToggled">
+            <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="210" IsPrimary="True"/><controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="250" IsTextSelectable="True"/><controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="100"/><controls:OnlyWingetTableColumn Header="Installed" BindingPath="InstalledVersion" Width="110"/><controls:OnlyWingetTableColumn Header="Available" BindingPath="AvailableVersion" Width="120"/><controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="130"/><controls:OnlyWingetTableColumn Header="Status" BindingPath="Status" Width="150"/>
+        </controls:OnlyWingetTable>
+        <states:OperationBanner x:Name="OperationStatus" Grid.Row="2" CancelRequested="OnOperationCancelRequested"/>
+        <ItemsControl x:Name="OperationResultList" Grid.Row="3" AutomationProperties.AutomationId="UpdatesOperationResults"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Padding="8" Spacing="2"><TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True"/><TextBlock Text="{Binding Status}"/><TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        <states:StatePresenter x:Name="PageState" Grid.Row="4"/>
     </Grid>
 </UserControl>
