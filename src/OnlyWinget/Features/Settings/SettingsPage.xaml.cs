@@ -1,18 +1,19 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using OnlyWinget.Services;
 
 namespace OnlyWinget.Features.Settings;
 
 public sealed partial class SettingsPage : Page
 {
     private bool isInitializing;
+    private readonly SettingsViewModel viewModel;
 
     public SettingsPage()
     {
         isInitializing = true;
         InitializeComponent();
-        LoadSettings();
+        viewModel = new(App.UiServices.Settings);
+        LoadViewModel();
         ApplyText();
         isInitializing = false;
     }
@@ -71,27 +72,27 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
-        await App.UiServices.Settings.ResetAsync(CancellationToken.None);
+        await viewModel.ResetAsync(CancellationToken.None);
     }
 
-    private void LoadSettings()
+    private void LoadViewModel()
     {
-        var settings = App.UiServices.Settings.Current;
-        SelectByTag(LanguagePicker, settings.Language);
-        SelectByTag(ThemePicker, settings.Theme);
-        ConfirmDestructiveToggle.IsOn = settings.ConfirmDestructiveActions;
-        DiagnosticsToggle.IsOn = settings.DiagnosticLogging;
-        InstallBehaviorToggle.IsOn = settings.ContinueOperationsAfterFailure;
+        SelectByTag(LanguagePicker, viewModel.Language);
+        SelectByTag(ThemePicker, viewModel.Theme);
+        ConfirmDestructiveToggle.IsOn = viewModel.ConfirmDestructiveActions;
+        DiagnosticsToggle.IsOn = viewModel.DiagnosticLogging;
+        InstallBehaviorToggle.IsOn = viewModel.ContinueOperationsAfterFailure;
     }
 
-    private Task SaveSettingsAsync() => App.UiServices.Settings.SaveAsync(
-        new AppSettings(
-            SelectedTag(LanguagePicker, "system"),
-            SelectedTag(ThemePicker, "default"),
-            ConfirmDestructiveToggle.IsOn,
-            DiagnosticsToggle.IsOn,
-            InstallBehaviorToggle.IsOn),
-        CancellationToken.None);
+    private Task SaveSettingsAsync()
+    {
+        viewModel.Language = SelectedTag(LanguagePicker, "system");
+        viewModel.Theme = SelectedTag(ThemePicker, "default");
+        viewModel.ConfirmDestructiveActions = ConfirmDestructiveToggle.IsOn;
+        viewModel.DiagnosticLogging = DiagnosticsToggle.IsOn;
+        viewModel.ContinueOperationsAfterFailure = InstallBehaviorToggle.IsOn;
+        return viewModel.SaveAsync(CancellationToken.None);
+    }
 
     private static string SelectedTag(ComboBox comboBox, string fallback) =>
         (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? fallback;

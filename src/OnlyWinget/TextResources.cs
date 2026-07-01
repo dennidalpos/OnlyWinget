@@ -161,7 +161,16 @@ public static class TextResources
         ["State_Error"] = "Something went wrong",
         ["Activity_Subtitle"] = "Inspect operations, warnings, and diagnostic details.",
         ["Activity_Search"] = "Search activity",
-        ["Activity_AllSeverities"] = "All severities"
+        ["Activity_AllSeverities"] = "All severities",
+        ["Activity_Severity_Information"] = "Information",
+        ["Activity_Severity_Success"] = "Success",
+        ["Activity_Severity_Warning"] = "Warning",
+        ["Activity_Severity_Error"] = "Error",
+        ["Validation_Required"] = "This field is required.",
+        ["Validation_SourceArgument"] = "Enter an absolute HTTP or HTTPS URL.",
+        ["Validation_DuplicateSource"] = "A source with this name already exists.",
+        ["Validation_DuplicatePreset"] = "A preset with this name already exists.",
+        ["Validation_DuplicatePackage"] = "This package is already in the active preset."
     };
 
     private static readonly IReadOnlyDictionary<string, string> Italian = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -319,7 +328,16 @@ public static class TextResources
         ["State_Error"] = "Si è verificato un errore",
         ["Activity_Subtitle"] = "Controlla operazioni, avvisi e dettagli diagnostici.",
         ["Activity_Search"] = "Cerca nelle attività",
-        ["Activity_AllSeverities"] = "Tutte le gravità"
+        ["Activity_AllSeverities"] = "Tutte le gravità",
+        ["Activity_Severity_Information"] = "Informazione",
+        ["Activity_Severity_Success"] = "Operazione riuscita",
+        ["Activity_Severity_Warning"] = "Avviso",
+        ["Activity_Severity_Error"] = "Errore",
+        ["Validation_Required"] = "Questo campo è obbligatorio.",
+        ["Validation_SourceArgument"] = "Inserisci un URL HTTP o HTTPS assoluto.",
+        ["Validation_DuplicateSource"] = "Esiste già una sorgente con questo nome.",
+        ["Validation_DuplicatePreset"] = "Esiste già un preset con questo nome.",
+        ["Validation_DuplicatePackage"] = "Questo pacchetto è già presente nel preset attivo."
     };
 
     public static string Get(string key)

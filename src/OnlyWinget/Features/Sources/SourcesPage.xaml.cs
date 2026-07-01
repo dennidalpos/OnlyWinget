@@ -1,59 +1,54 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using OnlyWinget.DesignSystem;
 using OnlyWinget.Application.Presentation;
-using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace OnlyWinget.Features.Sources;
 
 public sealed partial class SourcesPage : Page
 {
-    private bool isRefreshing;
-    private readonly ObservableCollection<SourceRow> sources = [];
+    private readonly SourcesViewModel viewModel;
 
     public SourcesPage()
     {
         InitializeComponent();
-        SourceList.ItemsSource = sources;
+        viewModel = new(Dispatch);
+        SourceList.ItemsSource = viewModel.Sources;
+        viewModel.PropertyChanged += OnViewModelChanged;
+        viewModel.Name.PropertyChanged += OnValidationChanged;
+        viewModel.Argument.PropertyChanged += OnValidationChanged;
+        SourceNameBox.TextChanged += OnSourceNameChanged;
+        SourceArgumentBox.TextChanged += OnSourceArgumentChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs args)
+    private void OnLoaded(object sender, RoutedEventArgs args) => viewModel.Activate();
+    private void OnUnloaded(object sender, RoutedEventArgs args) => viewModel.Deactivate();
+
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => RefreshControls();
+
+    private void OnValidationChanged(object? sender, PropertyChangedEventArgs args)
     {
-        App.Workflow.StateChanged += OnWorkflowChanged;
-        Refresh();
+        SourceNameBox.Description = viewModel.Name.Error;
+        SourceArgumentBox.Description = viewModel.Argument.Error;
+        AutomationProperties.SetHelpText(SourceNameBox, viewModel.Name.Error ?? string.Empty);
+        AutomationProperties.SetHelpText(SourceArgumentBox, viewModel.Argument.Error ?? string.Empty);
+        AddButton.IsEnabled = viewModel.CanAdd;
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs args)
+    private void RefreshControls()
     {
-        App.Workflow.StateChanged -= OnWorkflowChanged;
-    }
-
-    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
-
-    private void Refresh()
-    {
-        isRefreshing = true;
-        var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Sources;
-        var commands = state.Commands.ToDictionary(command => command.Id);
-
-        PageUi.ReplaceItems(sources, state.Sources
-            .Select(source => source with
-            {
-                Type = TextResources.Get(source.Type),
-                Status = TextResources.Get($"Source_Status_{source.Status}")
-            })
-            .ToArray());
-        PageUi.ApplyStatus(StatusText, state.Error, TextResources.Get("Empty_Sources"), state.Sources.Count > 0);
-        PageUi.ApplyLoading(LoadingRing, state.IsLoading);
-        PageUi.SetEnabled(RefreshButton, commands, UiCommandId.RefreshSources);
-        PageUi.SetEnabled(UpdateButton, commands, UiCommandId.UpdateSources);
-        PageUi.SetEnabled(AddButton, commands, UiCommandId.AddSource);
-        PageUi.SetEnabled(RemoveButton, commands, UiCommandId.RemoveSource);
-        PageUi.SetEnabled(ResetButton, commands, UiCommandId.ResetSources);
-        isRefreshing = false;
+        StatusText.Text = viewModel.Status;
+        LoadingRing.IsActive = viewModel.IsRefreshing;
+        LoadingRing.Visibility = viewModel.IsRefreshing ? Visibility.Visible : Visibility.Collapsed;
+        RefreshButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RefreshSources);
+        UpdateButton.IsEnabled = viewModel.IsEnabled(UiCommandId.UpdateSources);
+        AddButton.IsEnabled = viewModel.CanAdd;
+        RemoveButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RemoveSource);
+        ResetButton.IsEnabled = viewModel.IsEnabled(UiCommandId.ResetSources);
     }
 
     private void ApplyText()
@@ -70,51 +65,46 @@ public sealed partial class SourcesPage : Page
         ResetButton.Content = TextResources.Get("Command_Sources_Reset");
     }
 
-    private async void OnRefreshSources(object sender, RoutedEventArgs args)
-    {
-        await PageUi.RunWorkflowAsync(() => App.Workflow.RefreshSourcesAsync(CancellationToken.None));
-    }
-
-    private async void OnUpdateSources(object sender, RoutedEventArgs args)
-    {
-        await PageUi.RunWorkflowAsync(() => App.Workflow.UpdateSourcesAsync(CancellationToken.None));
-    }
-
-    private async void OnAddSource(object sender, RoutedEventArgs args)
-    {
-        await PageUi.RunWorkflowAsync(() => App.Workflow.AddSourceAsync(SourceNameBox.Text, SourceArgumentBox.Text, CancellationToken.None));
-    }
+    private void OnSourceNameChanged(object sender, TextChangedEventArgs args) => viewModel.Name.Value = SourceNameBox.Text;
+    private void OnSourceArgumentChanged(object sender, TextChangedEventArgs args) => viewModel.Argument.Value = SourceArgumentBox.Text;
+    private async void OnRefreshSources(object sender, RoutedEventArgs args) => await App.Workflow.RefreshSourcesAsync(CancellationToken.None);
+    private async void OnUpdateSources(object sender, RoutedEventArgs args) => await App.Workflow.UpdateSourcesAsync(CancellationToken.None);
+    private async void OnAddSource(object sender, RoutedEventArgs args) => await viewModel.AddAsync(CancellationToken.None);
 
     private async void OnRemoveSource(object sender, RoutedEventArgs args)
     {
-        if (SourceList.SelectedItem is not SourceRow row ||
-            !await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_RemoveSource_Title", "Dialog_RemoveSource_Message"))
+        if (SourceList.SelectedItem is SourceRow row &&
+            await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_RemoveSource_Title", "Dialog_RemoveSource_Message"))
         {
-            return;
+            await App.Workflow.RemoveSourceAsync(row.Name, CancellationToken.None);
         }
-
-        await PageUi.RunWorkflowAsync(() => App.Workflow.RemoveSourceAsync(row.Name, CancellationToken.None));
     }
 
     private async void OnResetSources(object sender, RoutedEventArgs args)
     {
-        if (!await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_ResetSources_Title", "Dialog_ResetSources_Message"))
+        if (await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Dialog_ResetSources_Title", "Dialog_ResetSources_Message"))
         {
-            return;
+            await App.Workflow.ResetSourcesAsync(CancellationToken.None);
         }
-
-        await PageUi.RunWorkflowAsync(() => App.Workflow.ResetSourcesAsync(CancellationToken.None));
     }
 
     private async void OnSourceEnabledToggled(object sender, RoutedEventArgs args)
     {
-        if (isRefreshing || sender is not ToggleSwitch { DataContext: SourceRow row } toggle)
+        if (!viewModel.IsRefreshing && sender is ToggleSwitch { DataContext: SourceRow row } toggle)
         {
-            return;
+            await App.Workflow.SetSourceEnabledAsync(row.Name, toggle.IsOn, CancellationToken.None);
         }
-
-        await PageUi.RunWorkflowAsync(() =>
-            App.Workflow.SetSourceEnabledAsync(row.Name, toggle.IsOn, CancellationToken.None));
     }
 
+    private void Dispatch(Action action)
+    {
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            action();
+        }
+        else
+        {
+            _ = DispatcherQueue.TryEnqueue(() => action());
+        }
+    }
 }

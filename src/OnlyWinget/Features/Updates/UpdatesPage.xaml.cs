@@ -1,23 +1,22 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using OnlyWinget.DesignSystem;
 using OnlyWinget.Application.Presentation;
-using OnlyWinget.Domain.Packages;
-using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace OnlyWinget.Features.Updates;
 
 public sealed partial class UpdatesPage : Page
 {
-    private CancellationTokenSource? operationCancellation;
     private bool initialRefreshStarted;
     private bool isRefreshing;
-    private readonly ObservableCollection<UpdateRow> updates = [];
+    private readonly WingetUpdatesViewModel viewModel;
 
     public UpdatesPage()
     {
         InitializeComponent();
-        UpdateList.ItemsSource = updates;
+        viewModel = new(Dispatch);
+        UpdateList.ItemsSource = viewModel.Updates;
+        viewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -25,8 +24,7 @@ public sealed partial class UpdatesPage : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.Workflow.StateChanged += OnWorkflowChanged;
-        Refresh();
+        viewModel.Activate();
         if (!initialRefreshStarted &&
             App.Workflow.State.Updates.Count == 0 &&
             App.Workflow.State.BusyState == OnlyWinget.Application.App.ApplicationBusyState.Idle)
@@ -38,38 +36,27 @@ public sealed partial class UpdatesPage : Page
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.Workflow.StateChanged -= OnWorkflowChanged;
+        viewModel.Deactivate();
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
 
     private void Refresh()
     {
         isRefreshing = true;
-        var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Updates;
-        var commands = state.Commands.ToDictionary(command => command.Id);
+        StatusText.Text = viewModel.Status;
+        LoadingRing.IsActive = viewModel.IsLoading || viewModel.IsExecuting;
+        LoadingRing.Visibility = viewModel.IsLoading || viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
+        DiscoveryProgressBar.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+        LoadingStatusText.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+        LoadingStatusText.Text = viewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : string.Empty;
+        ApplyOperationProgress();
+        SelectAllUpdatesBox.IsThreeState = true;
+        SelectAllUpdatesBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 
-        var localizedUpdates = state.Updates.Select(row => row with
-        {
-            Architecture = TextResources.Get(row.Architecture),
-            Status = TextResources.Get(row.Status ?? "Update_Status_Available")
-        });
-        PageUi.SynchronizeItems(updates, localizedUpdates, PackageKey);
-        PageUi.ApplyStatus(
-            StatusText,
-            state.Error,
-            state.IsLoading ? string.Empty : TextResources.Get("Empty_Updates"),
-            state.Updates.Count > 0);
-        PageUi.ApplyLoading(LoadingRing, state.IsLoading || state.IsExecuting);
-        PageUi.SetVisible(DiscoveryProgressBar, state.IsLoading);
-        PageUi.SetVisible(LoadingStatusText, state.IsLoading);
-        LoadingStatusText.Text = state.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : string.Empty;
-        ApplyOperationProgress(state.IsExecuting);
-        PageUi.ApplySelectionHeader(SelectAllUpdatesBox, state.HeaderState);
-
-        PageUi.SetEnabled(RefreshButton, commands, UiCommandId.RefreshUpdates);
-        PageUi.SetEnabled(ApplySelectedButton, commands, UiCommandId.ApplyUpdates);
-        PageUi.SetEnabled(CancelButton, commands, UiCommandId.CancelOperation);
+        RefreshButton.IsEnabled = viewModel.IsEnabled(UiCommandId.RefreshUpdates);
+        ApplySelectedButton.IsEnabled = viewModel.IsEnabled(UiCommandId.ApplyUpdates);
+        CancelButton.IsEnabled = viewModel.IsEnabled(UiCommandId.CancelOperation);
         isRefreshing = false;
     }
 
@@ -94,29 +81,19 @@ public sealed partial class UpdatesPage : Page
         await RefreshUpdatesAsync();
     }
 
-    private static Task RefreshUpdatesAsync()
+    private Task RefreshUpdatesAsync()
     {
-        return PageUi.RunWorkflowAsync(() => App.Workflow.RefreshUpdatesAsync(CancellationToken.None));
+        return viewModel.RefreshAsync(CancellationToken.None);
     }
 
     private async void OnApplySelected(object sender, RoutedEventArgs args)
     {
-        operationCancellation?.Dispose();
-        operationCancellation = new CancellationTokenSource();
-        try
-        {
-            await App.Workflow.ApplySelectedUpdatesAsync(operationCancellation.Token);
-        }
-        finally
-        {
-            operationCancellation.Dispose();
-            operationCancellation = null;
-        }
+        await viewModel.ApplyAsync();
     }
 
     private void OnCancel(object sender, RoutedEventArgs args)
     {
-        operationCancellation?.Cancel();
+        viewModel.Cancel();
     }
 
     private void OnToggleAllUpdates(object sender, RoutedEventArgs args)
@@ -126,7 +103,7 @@ public sealed partial class UpdatesPage : Page
             return;
         }
 
-        App.Workflow.ToggleAllUpdates();
+        viewModel.ToggleAll();
     }
 
     private void OnUpdateSelectionClick(object sender, RoutedEventArgs args)
@@ -136,22 +113,21 @@ public sealed partial class UpdatesPage : Page
             return;
         }
 
-        App.Workflow.ToggleUpdate(new PackageIdentity(row.PackageId, row.Source));
+        viewModel.Toggle(row);
     }
 
-    private void ApplyOperationProgress(bool isExecuting)
+    private void ApplyOperationProgress()
     {
-        var progress = App.Workflow.State.OperationProgress;
-        PageUi.SetVisible(OperationProgressBar, isExecuting);
-        PageUi.SetVisible(OperationProgressText, isExecuting);
-        OperationProgressBar.IsIndeterminate = isExecuting &&
-            (progress is null || progress.Phase == OnlyWinget.Application.Winget.WingetProgressPhase.Starting);
-        OperationProgressBar.Value = progress?.Percentage ?? 0;
-        OperationProgressText.Text = progress is null
-            ? TextResources.Get("Progress_Starting")
-            : $"{TextResources.Get($"Progress_{progress.Phase}")} · {progress.Percentage}% · {progress.PackageId}";
+        OperationProgressBar.Visibility = viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
+        OperationProgressText.Visibility = viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
+        OperationProgressBar.IsIndeterminate = viewModel.IsExecuting && viewModel.Progress is null;
+        OperationProgressBar.Value = viewModel.Progress?.Percentage ?? 0;
+        OperationProgressText.Text = viewModel.ProgressText;
     }
 
-    private static string PackageKey(UpdateRow row) =>
-        $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";
+    private void Dispatch(Action action)
+    {
+        if (DispatcherQueue.HasThreadAccess) action();
+        else _ = DispatcherQueue.TryEnqueue(() => action());
+    }
 }

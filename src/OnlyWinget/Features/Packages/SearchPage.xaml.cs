@@ -1,21 +1,21 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using OnlyWinget.DesignSystem;
 using OnlyWinget.Application.Presentation;
-using OnlyWinget.Domain.Packages;
-using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace OnlyWinget.Features.Packages;
 
 public sealed partial class SearchPage : Page
 {
     private bool isRefreshing;
-    private readonly ObservableCollection<SearchResultRow> results = [];
+    private readonly SearchViewModel viewModel;
 
     public SearchPage()
     {
         InitializeComponent();
-        ResultList.ItemsSource = results;
+        viewModel = new(Dispatch);
+        ResultList.ItemsSource = viewModel.Results;
+        viewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -23,43 +23,30 @@ public sealed partial class SearchPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        App.Workflow.StateChanged += OnWorkflowChanged;
-        Refresh();
+        viewModel.Activate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        App.Workflow.StateChanged -= OnWorkflowChanged;
+        viewModel.Deactivate();
     }
 
-    private void OnWorkflowChanged(object? sender, EventArgs args) => PageUi.RefreshOnUiThread(this, Refresh);
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
 
     private void Refresh()
     {
         isRefreshing = true;
-        var state = PresentationStateMapper.FromApplicationState(App.Workflow.State).Search;
-        var commands = state.Commands.ToDictionary(command => command.Id);
+        StatusText.Text = viewModel.Status;
+        LoadingRing.IsActive = viewModel.IsLoading;
+        LoadingRing.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+        SearchProgressBar.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+        LoadingStatusText.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+        LoadingStatusText.Text = viewModel.IsLoading ? TextResources.Get("Progress_Searching") : string.Empty;
+        SelectAllResultsBox.IsThreeState = true;
+        SelectAllResultsBox.IsChecked = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
 
-        var localizedResults = state.Results.Select(row => row with
-        {
-            Architecture = TextResources.Get(row.Architecture),
-            Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version,
-            Match = string.IsNullOrWhiteSpace(row.Match) ? TextResources.Get("Value_Unknown") : row.Match
-        });
-        PageUi.SynchronizeItems(results, localizedResults, PackageKey);
-        PageUi.ApplyStatus(
-            StatusText,
-            state.Error,
-            state.IsLoading ? string.Empty : TextResources.Get("Empty_Search"),
-            state.Results.Count > 0);
-        PageUi.ApplyLoading(LoadingRing, state.IsLoading);
-        PageUi.SetVisible(SearchProgressBar, state.IsLoading);
-        PageUi.SetVisible(LoadingStatusText, state.IsLoading);
-        LoadingStatusText.Text = state.IsLoading ? TextResources.Get("Progress_Searching") : string.Empty;
-        PageUi.ApplySelectionHeader(SelectAllResultsBox, state.HeaderState);
-
-        PageUi.SetEnabled(SearchButton, commands, UiCommandId.SearchPackages);
-        PageUi.SetEnabled(AddSelectedButton, commands, UiCommandId.AddSearchResults);
+        SearchButton.IsEnabled = viewModel.IsEnabled(UiCommandId.SearchPackages);
+        AddSelectedButton.IsEnabled = viewModel.IsEnabled(UiCommandId.AddSearchResults);
         isRefreshing = false;
     }
 
@@ -93,12 +80,12 @@ public sealed partial class SearchPage : Page
 
     private Task SearchAsync()
     {
-        return PageUi.RunWorkflowAsync(() => App.Workflow.SearchAsync(QueryBox.Text, CancellationToken.None));
+        return viewModel.SearchAsync(QueryBox.Text, CancellationToken.None);
     }
 
     private async void OnAddSelected(object sender, RoutedEventArgs args)
     {
-        await PageUi.RunWorkflowAsync(() => App.Workflow.AddSelectedSearchResultsToActivePresetAsync(CancellationToken.None));
+        await viewModel.AddSelectedAsync(CancellationToken.None);
     }
 
     private void OnToggleAllResults(object sender, RoutedEventArgs args)
@@ -108,7 +95,7 @@ public sealed partial class SearchPage : Page
             return;
         }
 
-        App.Workflow.ToggleAllSearchResults();
+        viewModel.ToggleAll();
     }
 
     private void OnResultSelectionClick(object sender, RoutedEventArgs args)
@@ -118,9 +105,12 @@ public sealed partial class SearchPage : Page
             return;
         }
 
-        App.Workflow.ToggleSearchResult(new PackageIdentity(row.PackageId, row.Source));
+        viewModel.Toggle(row);
     }
 
-    private static string PackageKey(SearchResultRow row) =>
-        $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";
+    private void Dispatch(Action action)
+    {
+        if (DispatcherQueue.HasThreadAccess) action();
+        else _ = DispatcherQueue.TryEnqueue(() => action());
+    }
 }

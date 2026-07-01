@@ -316,7 +316,8 @@ function Copy-WinUiPublishResource {
         'MainWindow.xbf',
         'OnlyWinget.pri',
         'Assets',
-        'Pages'
+        'DesignSystem',
+        'Features'
     )
 
     foreach ($resourcePath in $resourcePaths) {

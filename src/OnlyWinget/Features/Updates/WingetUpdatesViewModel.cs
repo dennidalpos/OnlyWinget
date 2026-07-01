@@ -1,0 +1,63 @@
+using OnlyWinget.Application.App;
+using OnlyWinget.Application.Presentation;
+using OnlyWinget.Application.Winget;
+using OnlyWinget.Domain.Packages;
+using OnlyWinget.Domain.Selection;
+using OnlyWinget.Presentation;
+using System.Collections.ObjectModel;
+
+namespace OnlyWinget.Features.Updates;
+
+public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+{
+    private CancellationTokenSource? cancellation;
+    private bool isLoading;
+    private bool isExecuting;
+    private string status = string.Empty;
+    private SelectionHeaderState headerState;
+    private OperationProgress? progress;
+
+    public ObservableCollection<UpdateRow> Updates { get; } = [];
+    public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
+    public bool IsLoading { get => isLoading; private set => SetProperty(ref isLoading, value); }
+    public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
+    public string Status { get => status; private set => SetProperty(ref status, value); }
+    public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
+    public OperationProgress? Progress { get => progress; private set => SetProperty(ref progress, value); }
+    public string ProgressText => Progress is null ? TextResources.Get("Progress_Starting") : $"{TextResources.Get($"Progress_{Progress.Phase}")} · {Progress.Percentage}% · {Progress.PackageId}";
+
+    public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
+    public Task RefreshAsync(CancellationToken token) => Workflow.RefreshUpdatesAsync(token);
+    public void ToggleAll() => Workflow.ToggleAllUpdates();
+    public void Toggle(UpdateRow row) => Workflow.ToggleUpdate(new PackageIdentity(row.PackageId, row.Source));
+    public void Cancel() => cancellation?.Cancel();
+
+    public async Task ApplyAsync()
+    {
+        if (cancellation is not null) return;
+        using var current = new CancellationTokenSource();
+        cancellation = current;
+        try { await Workflow.ApplySelectedUpdatesAsync(current.Token); }
+        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+    }
+
+    protected override void Refresh()
+    {
+        var state = PresentationStateMapper.FromApplicationState(Workflow.State).Updates;
+        Updates.SynchronizeWith(state.Updates.Select(row => row with
+        {
+            Architecture = TextResources.Get(row.Architecture),
+            Status = TextResources.Get(row.Status ?? "Update_Status_Available")
+        }), PackageKey);
+        Commands = state.Commands.ToDictionary(command => command.Id);
+        IsLoading = state.IsLoading;
+        IsExecuting = state.IsExecuting;
+        HeaderState = state.HeaderState;
+        Progress = Workflow.State.OperationProgress;
+        Status = state.Error ?? (state.IsLoading || state.Updates.Count > 0 ? string.Empty : TextResources.Get("Empty_Updates"));
+        OnPropertyChanged(nameof(Commands));
+        OnPropertyChanged(nameof(ProgressText));
+    }
+
+    private static string PackageKey(UpdateRow row) => $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";
+}
