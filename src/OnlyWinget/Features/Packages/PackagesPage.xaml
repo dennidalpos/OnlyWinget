@@ -3,18 +3,19 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
-    xmlns:packages="using:OnlyWinget.Features.Packages">
+    xmlns:packages="using:OnlyWinget.Features.Packages"
+    xmlns:presentation="using:OnlyWinget.Presentation">
     <design:PageScaffold x:Name="Scaffold">
         <design:PageScaffold.Commands>
-            <SelectorBar x:Name="ModeSelector" SelectionChanged="OnModeChanged" AutomationProperties.AutomationId="PackagesModes">
+            <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind PresetMode}" AutomationProperties.AutomationId="PackagesModes">
                 <SelectorBarItem x:Name="PresetMode" Icon="Library" AutomationProperties.AutomationId="PackagesPresetTab" />
                 <SelectorBarItem x:Name="SearchMode" Icon="Find" AutomationProperties.AutomationId="PackagesSearchTab" />
             </SelectorBar>
         </design:PageScaffold.Commands>
         <design:PageScaffold.Body>
             <Grid>
-                <packages:PresetsPage x:Name="PresetWorkflow" />
-                <packages:SearchPage x:Name="SearchWorkflow" Visibility="Collapsed" />
+                <packages:PresetsPage x:Name="PresetWorkflow" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
+                <packages:SearchPage x:Name="SearchWorkflow" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>

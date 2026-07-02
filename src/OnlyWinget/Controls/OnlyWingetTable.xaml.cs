@@ -78,24 +78,37 @@ public sealed partial class OnlyWingetTable : UserControl
         }
         for (var index = 0; index < Columns.Count; index++)
         {
-            var header = new TextBlock { Text = Columns[index].Header, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderTextBlockStyle"] };
-            Grid.SetColumn(header, index + (IsSelectionEnabled ? 1 : 0));
-            grid.Children.Add(header);
+            var header = new TextBlock
+            {
+                Text = Columns[index].Header,
+                Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderTextBlockStyle"],
+                HorizontalAlignment = HorizontalAlignment.Left,
+                TextAlignment = TextAlignment.Left
+            };
+            var cell = new Border
+            {
+                Width = Columns[index].Width.IsAbsolute ? Columns[index].Width.Value : double.NaN,
+                Margin = IsSelectionEnabled ? new Thickness(-44, 0, 44, 0) : new Thickness(0),
+                Padding = new Thickness(0, 0, 16, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Child = header
+            };
+            Grid.SetColumn(cell, index + (IsSelectionEnabled ? 1 : 0));
+            grid.Children.Add(cell);
         }
         return new Border { Padding = new Thickness(12, 8, 12, 8), Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderSurfaceStyle"], Child = grid };
     }
 
     private DataTemplate BuildRowTemplate()
     {
-        var selection = string.Empty;
         var cells = string.Join(string.Empty, Columns.Select((column, index) =>
-            $"<TextBlock Grid.Column=\"{index + (IsSelectionEnabled ? 1 : 0)}\" Text=\"{{Binding {column.BindingPath}, Mode=OneWay}}\" Style=\"{{StaticResource {(column.IsPrimary ? "RowPrimaryTextBlockStyle" : "TableCellTextBlockStyle")}}}\" IsTextSelectionEnabled=\"{column.IsTextSelectable}\" />"));
+            $"<TextBlock Grid.Column=\"{index + (IsSelectionEnabled ? 1 : 0)}\" Text=\"{{Binding {column.BindingPath}, Mode=OneWay}}\" Style=\"{{StaticResource {(column.IsPrimary ? "RowPrimaryTextBlockStyle" : "TableCellTextBlockStyle")}}}\" Margin=\"0,0,16,0\" IsTextSelectionEnabled=\"{column.IsTextSelectable}\" />"));
         var definitions = string.Join(string.Empty,
             (IsSelectionEnabled ? new[] { new GridLength(44) } : []).Concat(Columns.Select(column => column.Width))
                 .Select(width => $"<ColumnDefinition Width=\"{width}\" />"));
         var primaryPath = Columns.FirstOrDefault(column => column.IsPrimary)?.BindingPath ?? Columns.FirstOrDefault()?.BindingPath;
         var automationName = string.IsNullOrWhiteSpace(primaryPath) ? string.Empty : $" AutomationProperties.Name=\"{{Binding {primaryPath}}}\"";
-        var xaml = $"<DataTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" xmlns:controls=\"using:OnlyWinget.Controls\"><Grid Padding=\"12,0\"{automationName}><Grid.ColumnDefinitions>{definitions}</Grid.ColumnDefinitions>{selection}{cells}<Border Grid.ColumnSpan=\"{Columns.Count + (IsSelectionEnabled ? 1 : 0)}\" Style=\"{{StaticResource TableRowDividerStyle}}\" /></Grid></DataTemplate>";
+        var xaml = $"<DataTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" xmlns:controls=\"using:OnlyWinget.Controls\"><Grid Padding=\"12,0\"{automationName}><Grid.ColumnDefinitions>{definitions}</Grid.ColumnDefinitions>{cells}<Border Grid.ColumnSpan=\"{Columns.Count + (IsSelectionEnabled ? 1 : 0)}\" Style=\"{{StaticResource TableRowDividerStyle}}\" /></Grid></DataTemplate>";
         return (DataTemplate)XamlReader.Load(xaml);
     }
 

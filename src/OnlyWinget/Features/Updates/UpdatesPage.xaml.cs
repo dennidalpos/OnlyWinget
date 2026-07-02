@@ -10,17 +10,14 @@ namespace OnlyWinget.Features.Updates;
 public sealed partial class UpdatesPage : UserControl
 {
     private bool initialRefreshStarted;
-    private bool isRefreshing;
     private bool wasBusy;
-    private readonly WingetUpdatesViewModel viewModel;
+    public WingetUpdatesViewModel ViewModel { get; }
 
     public UpdatesPage()
     {
+        ViewModel = new(Dispatch);
         InitializeComponent();
-        viewModel = new(Dispatch);
-        UpdateList.ItemsSource = viewModel.Updates;
-        OperationResultList.ItemsSource = viewModel.OperationResults;
-        viewModel.PropertyChanged += OnViewModelChanged;
+        ViewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -28,9 +25,9 @@ public sealed partial class UpdatesPage : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
-        viewModel.Activate();
+        ViewModel.Activate();
         if (!initialRefreshStarted &&
-            viewModel.ShouldInitialRefresh)
+            ViewModel.ShouldInitialRefresh)
         {
             initialRefreshStarted = true;
             await RefreshUpdatesAsync();
@@ -39,22 +36,15 @@ public sealed partial class UpdatesPage : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        viewModel.Deactivate();
+        ViewModel.Deactivate();
     }
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
 
     private void Refresh()
     {
-        isRefreshing = true;
-        PageState.Present(viewModel.PageState);
-        LoadingRing.IsActive = viewModel.IsLoading || viewModel.IsExecuting;
-        LoadingRing.Visibility = viewModel.IsLoading || viewModel.IsExecuting ? Visibility.Visible : Visibility.Collapsed;
-        OperationResultList.Visibility = viewModel.OperationResults.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        PageState.Present(ViewModel.PageState);
         ApplyOperationProgress();
-        UpdateList.HeaderSelection = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
-        CommandBar.SetCommands(viewModel.Commands.Values);
-        isRefreshing = false;
     }
 
     private void ApplyText()
@@ -68,46 +58,31 @@ public sealed partial class UpdatesPage : UserControl
         switch (args.Command.Id)
         {
             case UiCommandId.RefreshUpdates: await RefreshUpdatesAsync(); break;
-            case UiCommandId.ApplyUpdates: await viewModel.ApplyAsync(); break;
-            case UiCommandId.CancelOperation: viewModel.Cancel(); break;
+            case UiCommandId.ApplyUpdates: await ViewModel.ApplyAsync(); break;
+            case UiCommandId.CancelOperation: ViewModel.Cancel(); break;
         }
     }
 
     private Task RefreshUpdatesAsync()
     {
-        return viewModel.RefreshAsync(CancellationToken.None);
+        return ViewModel.RefreshAsync(CancellationToken.None);
     }
 
     private void OnToggleAllUpdates(object? sender, EventArgs args)
     {
-        if (isRefreshing)
-        {
-            return;
-        }
-
-        viewModel.ToggleAll();
-    }
-
-    private void OnUpdateSelectionClick(object sender, RoutedEventArgs args)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not UpdateRow row)
-        {
-            return;
-        }
-
-        viewModel.Toggle(row);
+        ViewModel.ToggleAll();
     }
 
     private void ApplyOperationProgress()
     {
-        var busy = viewModel.IsLoading || viewModel.IsExecuting;
+        var busy = ViewModel.IsBusy;
         if (busy)
         {
-            OperationStatus.Show(TextResources.Get("Operation_Updates_Title"), viewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : TextResources.Get(viewModel.Progress is null ? "Progress_Starting" : $"Progress_{viewModel.Progress.Phase}"), viewModel.Progress?.PackageId, viewModel.Progress?.Percentage, viewModel.IsExecuting);
+            OperationStatus.Show(TextResources.Get("Operation_Updates_Title"), ViewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : TextResources.Get(ViewModel.Progress is null ? "Progress_Starting" : $"Progress_{ViewModel.Progress.Phase}"), ViewModel.Progress?.PackageId, ViewModel.Progress?.Percentage, ViewModel.IsExecuting);
         }
         else if (wasBusy)
         {
-            var error = viewModel.Error;
+            var error = ViewModel.Error;
             OperationStatus.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
         }
         wasBusy = busy;
@@ -115,10 +90,10 @@ public sealed partial class UpdatesPage : UserControl
 
     private void OnUpdateSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
     {
-        if (args.Item is UpdateRow row) viewModel.Toggle(row);
+        if (args.Item is UpdateRow row) ViewModel.Toggle(row);
     }
 
-    private void OnOperationCancelRequested(object? sender, EventArgs args) => viewModel.Cancel();
+    private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();
 
     private void Dispatch(Action action)
     {

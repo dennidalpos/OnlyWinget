@@ -1,6 +1,5 @@
 {
   "todos": [
-    "On a Windows session configured for a Contrast theme and 200% text scaling, validate OnlyWingetTable and every final route; fix any visual defects found.",
-    "Move the remaining purely visual selector and control-state synchronization from Packages and Updates code-behind to bindings or reusable presentation state, then delete superseded handlers."
+    "On a Windows session configured for a Contrast theme and 200% text scaling, validate OnlyWingetTable and every final route; fix any visual defects found."
   ]
 }

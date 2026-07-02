@@ -14,7 +14,7 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     private FeatureState pageState = FeatureState.Ready;
     private SelectionHeaderState headerState;
 
-    public ObservableCollection<WindowsUpdateRow> Updates { get; } = [];
+    public ObservableCollection<WindowsUpdateDisplayRow> Updates { get; } = [];
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public bool IsScanning { get => isScanning; private set => SetProperty(ref isScanning, value); }
     public bool IsInstalling { get => isInstalling; private set => SetProperty(ref isInstalling, value); }
@@ -26,7 +26,7 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public void ToggleAll() => Workflow.ToggleAllWindowsUpdates();
-    public void Toggle(WindowsUpdateRow row) => Workflow.ToggleWindowsUpdate(new WindowsUpdateIdentity(row.UpdateId, row.RevisionNumber));
+    public void Toggle(WindowsUpdateDisplayRow row) => Workflow.ToggleWindowsUpdate(new WindowsUpdateIdentity(row.UpdateId, row.RevisionNumber));
     public void Cancel() => cancellation?.Cancel();
 
     public Task ScanAsync(WindowsUpdateOptions options) => RunAsync(token => Workflow.ScanWindowsUpdatesAsync(options, token));
@@ -35,13 +35,7 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     protected override void Refresh()
     {
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).WindowsUpdates;
-        Updates.SynchronizeWith(state.Updates.Select(row => row with
-        {
-            Severity = Empty(row.Severity),
-            Categories = Empty(row.Categories),
-            KnowledgeBaseArticles = Empty(row.KnowledgeBaseArticles),
-            Status = Empty(row.Status)
-        }), Key);
+        Updates.SynchronizeWith(state.Updates.Select(ToDisplayRow), Key);
         Commands = state.Commands.ToDictionary(command => command.Id);
         IsScanning = state.IsScanning;
         IsInstalling = state.IsInstalling;
@@ -71,5 +65,31 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     }
 
     private static string Empty(string? value) => string.IsNullOrWhiteSpace(value) ? TextResources.Get("Value_Unknown") : value;
-    private static string Key(WindowsUpdateRow row) => $"{row.UpdateId.ToUpperInvariant()}|{row.RevisionNumber}";
+    private static WindowsUpdateDisplayRow ToDisplayRow(WindowsUpdateRow row) => new(
+        row.UpdateId,
+        row.RevisionNumber,
+        row.RevisionNumber.ToString(System.Globalization.CultureInfo.CurrentCulture),
+        row.Title,
+        Empty(row.KnowledgeBaseArticles),
+        Empty(row.Severity),
+        Empty(row.Categories),
+        FormatSize(row.MaxDownloadSize),
+        FormatBoolean(row.IsDownloaded),
+        FormatBoolean(row.RebootRequired),
+        row.IsSelected,
+        Empty(row.Status));
+
+    private static string FormatBoolean(bool value) => TextResources.Get(value ? "Value_Yes" : "Value_No");
+
+    private static string FormatSize(ulong bytes)
+    {
+        if (bytes == 0) return TextResources.Get("Value_Unknown");
+        const double megabyte = 1024d * 1024d;
+        const double gigabyte = megabyte * 1024d;
+        return bytes >= gigabyte
+            ? $"{bytes / gigabyte:0.##} GB"
+            : $"{bytes / megabyte:0.##} MB";
+    }
+
+    private static string Key(WindowsUpdateDisplayRow row) => $"{row.UpdateId.ToUpperInvariant()}|{row.RevisionNumber}";
 }

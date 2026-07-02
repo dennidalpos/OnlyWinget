@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory)]
     [int]$AppPid,
     [string]$OutputDirectory,
+    [switch]$CaptureAllRoutes,
     [switch]$NonInteractive
 )
 
@@ -187,6 +188,57 @@ Test-Ui 'Interactive controls have AutomationId' {
             "$($_.type) '$name'"
         }) -join ', ')
     }
+}
+
+if ($CaptureAllRoutes) {
+    $routeDirectory = Join-Path $OutputDirectory 'routes'
+    New-Item -ItemType Directory -Path $routeDirectory -Force | Out-Null
+    if (-not [OnlyWingetUiTestNative]::MoveWindow($hwnd, 20, 20, 1800, 950, $true)) {
+        throw 'Impossibile impostare la finestra per gli screenshot delle route.'
+    }
+
+    function Save-RouteScreenshot {
+        param([string]$Name)
+        Start-Sleep -Milliseconds 500
+        winapp ui screenshot -a $AppPid -o (Join-Path $routeDirectory "$Name.png") -q
+    }
+
+    winapp ui invoke 'NavHome' -a $AppPid -q
+    Save-RouteScreenshot '01-home'
+
+    winapp ui invoke 'NavPackages' -a $AppPid -q
+    winapp ui invoke 'PackagesPresetTab' -a $AppPid -q
+    Save-RouteScreenshot '02-packages-presets'
+
+    winapp ui invoke 'PackagesSearchTab' -a $AppPid -q
+    winapp ui focus 'PackageSearchQuery' -a $AppPid -q
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.SendKeys]::SendWait('^a')
+    [System.Windows.Forms.SendKeys]::SendWait('vlc{ENTER}')
+    Start-Sleep -Seconds 8
+    Save-RouteScreenshot '03-packages-search-populated'
+
+    winapp ui invoke 'NavUpdates' -a $AppPid -q
+    winapp ui invoke 'UpdatesWingetTab' -a $AppPid -q
+    winapp ui click 'CommandRefreshUpdates' -a $AppPid -q
+    winapp ui wait-for 'CommandRefreshUpdates' -a $AppPid -p IsEnabled --value True -t 90000 -q
+    Save-RouteScreenshot '04-updates-winget-populated'
+
+    winapp ui invoke 'UpdatesWindowsTab' -a $AppPid -q
+    winapp ui click 'CommandScanWindowsUpdates' -a $AppPid -q
+    winapp ui wait-for 'CommandScanWindowsUpdates' -a $AppPid -p IsEnabled --value True -t 90000 -q
+    Save-RouteScreenshot '05-updates-windows-populated'
+
+    winapp ui invoke 'NavSources' -a $AppPid -q
+    Start-Sleep -Seconds 3
+    Save-RouteScreenshot '06-sources'
+
+    winapp ui click 'NavActivity' -a $AppPid -q
+    Start-Sleep -Seconds 2
+    Save-RouteScreenshot '07-activity'
+
+    winapp ui invoke 'SettingsItem' -a $AppPid -q
+    Save-RouteScreenshot '08-settings'
 }
 
 $results | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $OutputDirectory 'results.json') -Encoding utf8

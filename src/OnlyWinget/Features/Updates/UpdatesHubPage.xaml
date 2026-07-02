@@ -3,18 +3,19 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
-    xmlns:updates="using:OnlyWinget.Features.Updates">
+    xmlns:updates="using:OnlyWinget.Features.Updates"
+    xmlns:presentation="using:OnlyWinget.Presentation">
     <design:PageScaffold x:Name="Scaffold">
         <design:PageScaffold.Commands>
-            <SelectorBar x:Name="ModeSelector" SelectionChanged="OnModeChanged" AutomationProperties.AutomationId="UpdatesModes">
+            <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind WingetMode}" AutomationProperties.AutomationId="UpdatesModes">
                 <SelectorBarItem x:Name="WingetMode" Icon="Sync" AutomationProperties.AutomationId="UpdatesWingetTab" />
                 <SelectorBarItem x:Name="WindowsMode" Icon="Download" AutomationProperties.AutomationId="UpdatesWindowsTab" />
             </SelectorBar>
         </design:PageScaffold.Commands>
         <design:PageScaffold.Body>
             <Grid>
-                <updates:UpdatesPage x:Name="WingetWorkflow" />
-                <updates:WindowsUpdatePage x:Name="WindowsWorkflow" Visibility="Collapsed" />
+                <updates:UpdatesPage x:Name="WingetWorkflow" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
+                <updates:WindowsUpdatePage x:Name="WindowsWorkflow" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>

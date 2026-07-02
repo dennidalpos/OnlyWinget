@@ -9,5 +9,12 @@
         ScrollViewer.HorizontalScrollBarVisibility="Auto"
         ScrollViewer.HorizontalScrollMode="Enabled"
         ScrollViewer.VerticalScrollBarVisibility="Auto"
-        ScrollViewer.VerticalScrollMode="Enabled" />
+        ScrollViewer.VerticalScrollMode="Enabled">
+        <ListView.Resources>
+            <Style TargetType="ListViewHeaderItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="0" />
+            </Style>
+        </ListView.Resources>
+    </ListView>
 </UserControl>

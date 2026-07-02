@@ -22,6 +22,8 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public bool IsLoading { get => isLoading; private set => SetProperty(ref isLoading, value); }
     public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
+    public bool IsBusy => IsLoading || IsExecuting;
+    public bool HasOperationResults => OperationResults.Count > 0;
     public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public OperationProgress? Progress { get => progress; private set => SetProperty(ref progress, value); }
@@ -71,6 +73,8 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
                         : FeatureState.Ready;
         OnPropertyChanged(nameof(Commands));
         OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(IsBusy));
+        OnPropertyChanged(nameof(HasOperationResults));
     }
 
     private static string PackageKey(UpdateRow row) => $"{row.Source?.ToUpperInvariant() ?? string.Empty}|{row.PackageId.ToUpperInvariant()}";

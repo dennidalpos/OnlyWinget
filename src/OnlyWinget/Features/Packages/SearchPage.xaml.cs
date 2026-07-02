@@ -9,15 +9,13 @@ namespace OnlyWinget.Features.Packages;
 
 public sealed partial class SearchPage : UserControl
 {
-    private bool isRefreshing;
-    private readonly SearchViewModel viewModel;
+    public SearchViewModel ViewModel { get; }
 
     public SearchPage()
     {
+        ViewModel = new(Dispatch);
         InitializeComponent();
-        viewModel = new(Dispatch);
-        ResultList.ItemsSource = viewModel.Results;
-        viewModel.PropertyChanged += OnViewModelChanged;
+        ViewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -25,27 +23,19 @@ public sealed partial class SearchPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        viewModel.Activate();
+        ViewModel.Activate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        viewModel.Deactivate();
+        ViewModel.Deactivate();
     }
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
 
     private void Refresh()
     {
-        isRefreshing = true;
-        PageState.Present(viewModel.PageState);
-        LoadingRing.IsActive = viewModel.IsLoading;
-        LoadingRing.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        SearchProgressBar.Visibility = viewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        ResultList.HeaderSelection = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
-
-        CommandBar.SetCommands(viewModel.Commands.Values);
-        isRefreshing = false;
+        PageState.Present(ViewModel.PageState);
     }
 
     private void ApplyText()
@@ -66,33 +56,18 @@ public sealed partial class SearchPage : UserControl
         switch (args.Command.Id)
         {
             case UiCommandId.SearchPackages: await SearchAsync(); break;
-            case UiCommandId.AddSearchResults: await viewModel.AddSelectedAsync(CancellationToken.None); break;
+            case UiCommandId.AddSearchResults: await ViewModel.AddSelectedAsync(CancellationToken.None); break;
         }
     }
 
     private Task SearchAsync()
     {
-        return viewModel.SearchAsync(QueryBox.Text, CancellationToken.None);
+        return ViewModel.SearchAsync(QueryBox.Text, CancellationToken.None);
     }
 
     private void OnToggleAllResults(object? sender, EventArgs args)
     {
-        if (isRefreshing)
-        {
-            return;
-        }
-
-        viewModel.ToggleAll();
-    }
-
-    private void OnResultSelectionClick(object sender, RoutedEventArgs args)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not SearchResultRow row)
-        {
-            return;
-        }
-
-        viewModel.Toggle(row);
+        ViewModel.ToggleAll();
     }
 
     private void Dispatch(Action action)
@@ -103,6 +78,6 @@ public sealed partial class SearchPage : UserControl
 
     private void OnResultSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
     {
-        if (args.Item is SearchResultRow row) viewModel.Toggle(row);
+        if (args.Item is SearchResultRow row) ViewModel.Toggle(row);
     }
 }

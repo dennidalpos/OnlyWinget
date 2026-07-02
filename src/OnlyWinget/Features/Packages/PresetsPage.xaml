@@ -1,6 +1,6 @@
-<UserControl x:Class="OnlyWinget.Features.Packages.PresetsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:OnlyWinget.Controls" xmlns:states="using:OnlyWinget.DesignSystem.States" xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
+<UserControl x:Class="OnlyWinget.Features.Packages.PresetsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:OnlyWinget.Controls" xmlns:states="using:OnlyWinget.DesignSystem.States" xmlns:commands="using:OnlyWinget.DesignSystem.Commands" xmlns:presentation="using:OnlyWinget.Presentation">
     <Grid RowSpacing="12">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
         <Border Grid.Row="1" Style="{StaticResource CardStyle}">
             <Grid ColumnSpacing="16" RowSpacing="8">
@@ -15,13 +15,14 @@
             </Grid>
         </Border>
         <TextBlock x:Name="PackagesSectionText" Grid.Row="2" Style="{StaticResource SectionTitleTextBlockStyle}"/>
-        <Grid Grid.Row="3"><controls:OnlyWingetTable x:Name="PackageList" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled">
+        <states:StatePresenter x:Name="PageState" Grid.Row="3"/>
+        <controls:OnlyWingetTable x:Name="PackageList" Grid.Row="4" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled">
             <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="180" IsPrimary="True"/><controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True"/><controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="120"/><controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="110"/><controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="120"/>
-        </controls:OnlyWingetTable><states:StatePresenter x:Name="PageState"/></Grid>
-        <states:OperationBanner x:Name="OperationStatus" Grid.Row="4" CancelRequested="OnOperationCancelRequested"/>
-        <StackPanel Grid.Row="5">
-            <TextBlock x:Name="OperationResultsText" Style="{StaticResource SectionTitleTextBlockStyle}"/>
-            <ItemsControl x:Name="OperationResultList" AutomationProperties.AutomationId="PresetOperationResultList"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Padding="8" Spacing="2"><TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True"/><TextBlock Text="{Binding Status}"/><TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        </controls:OnlyWingetTable>
+        <states:OperationBanner x:Name="OperationStatus" Grid.Row="5" CancelRequested="OnOperationCancelRequested"/>
+        <StackPanel Grid.Row="6">
+            <TextBlock x:Name="OperationResultsText" Style="{StaticResource SectionTitleTextBlockStyle}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.HasOperationResults), Mode=OneWay}"/>
+            <ItemsControl x:Name="OperationResultList" ItemsSource="{x:Bind ViewModel.OperationResults}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.HasOperationResults), Mode=OneWay}" AutomationProperties.AutomationId="PresetOperationResultList"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Padding="8" Spacing="2"><TextBlock Text="{Binding PackageId}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True"/><TextBlock Text="{Binding Status}"/><TextBlock Text="{Binding ErrorDetails}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
             <TextBlock x:Name="ImportExportText" Visibility="Collapsed"/>
         </StackPanel>
     </Grid>

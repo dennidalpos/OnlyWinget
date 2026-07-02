@@ -10,16 +10,14 @@ namespace OnlyWinget.Features.Updates;
 
 public sealed partial class WindowsUpdatePage : UserControl
 {
-    private bool isRefreshing;
     private bool wasBusy;
-    private readonly WindowsUpdatesViewModel viewModel;
+    public WindowsUpdatesViewModel ViewModel { get; }
 
     public WindowsUpdatePage()
     {
+        ViewModel = new(Dispatch);
         InitializeComponent();
-        viewModel = new(Dispatch);
-        WindowsUpdateList.ItemsSource = viewModel.Updates;
-        viewModel.PropertyChanged += OnViewModelChanged;
+        ViewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -27,27 +25,20 @@ public sealed partial class WindowsUpdatePage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
-        viewModel.Activate();
+        ViewModel.Activate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        viewModel.Deactivate();
+        ViewModel.Deactivate();
     }
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
 
     private void Refresh()
     {
-        isRefreshing = true;
-        PageState.Present(viewModel.PageState);
-        LoadingRing.IsActive = viewModel.IsBusy;
-        LoadingRing.Visibility = viewModel.IsBusy ? Visibility.Visible : Visibility.Collapsed;
+        PageState.Present(ViewModel.PageState);
         ApplyOperationStatus();
-        WindowsUpdateList.HeaderSelection = viewModel.HeaderState switch { OnlyWinget.Domain.Selection.SelectionHeaderState.Checked => true, OnlyWinget.Domain.Selection.SelectionHeaderState.Mixed => null, _ => false };
-
-        CommandBar.SetCommands(viewModel.Commands.Values);
-        isRefreshing = false;
     }
 
     private void ApplyText()
@@ -63,30 +54,15 @@ public sealed partial class WindowsUpdatePage : UserControl
     {
         switch (args.Command.Id)
         {
-            case UiCommandId.ScanWindowsUpdates: await viewModel.ScanAsync(CreateOptions()); break;
-            case UiCommandId.InstallWindowsUpdates: await viewModel.InstallAsync(CreateOptions()); break;
-            case UiCommandId.CancelOperation: viewModel.Cancel(); break;
+            case UiCommandId.ScanWindowsUpdates: await ViewModel.ScanAsync(CreateOptions()); break;
+            case UiCommandId.InstallWindowsUpdates: await ViewModel.InstallAsync(CreateOptions()); break;
+            case UiCommandId.CancelOperation: ViewModel.Cancel(); break;
         }
     }
 
     private void OnToggleAllWindowsUpdates(object? sender, EventArgs args)
     {
-        if (isRefreshing)
-        {
-            return;
-        }
-
-        viewModel.ToggleAll();
-    }
-
-    private void OnWindowsUpdateSelectionClick(object sender, RoutedEventArgs args)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not WindowsUpdateRow row)
-        {
-            return;
-        }
-
-        viewModel.Toggle(row);
+        ViewModel.ToggleAll();
     }
 
     private WindowsUpdateOptions CreateOptions() => new(
@@ -96,42 +72,25 @@ public sealed partial class WindowsUpdatePage : UserControl
 
     private void ApplyOperationStatus()
     {
-        if (viewModel.IsBusy)
+        if (ViewModel.IsBusy)
         {
-            OperationStatus.Show(TextResources.Get("Operation_WindowsUpdate_Title"), TextResources.Get(viewModel.IsInstalling ? "Progress_InstallingWindowsUpdates" : "Progress_ScanningWindowsUpdates"), canCancel: true);
+            OperationStatus.Show(TextResources.Get("Operation_WindowsUpdate_Title"), TextResources.Get(ViewModel.IsInstalling ? "Progress_InstallingWindowsUpdates" : "Progress_ScanningWindowsUpdates"), canCancel: true);
         }
         else if (wasBusy)
         {
-            var error = viewModel.Error;
-            var reboot = viewModel.RebootRequired;
+            var error = ViewModel.Error;
+            var reboot = ViewModel.RebootRequired;
             OperationStatus.Complete(error ?? TextResources.Get(reboot ? "WindowsUpdates_RebootRequired" : "Progress_Completed"), error is not null);
         }
-        wasBusy = viewModel.IsBusy;
+        wasBusy = ViewModel.IsBusy;
     }
 
     private void OnWindowsUpdateSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
     {
-        if (args.Item is WindowsUpdateRow row) viewModel.Toggle(row);
+        if (args.Item is WindowsUpdateDisplayRow row) ViewModel.Toggle(row);
     }
 
-    private void OnOperationCancelRequested(object? sender, EventArgs args) => viewModel.Cancel();
-
-    public static string FormatBoolean(bool value) =>
-        TextResources.Get(value ? "Value_Yes" : "Value_No");
-
-    public static string FormatSize(ulong bytes)
-    {
-        if (bytes == 0)
-        {
-            return TextResources.Get("Value_Unknown");
-        }
-
-        const double megabyte = 1024d * 1024d;
-        const double gigabyte = megabyte * 1024d;
-        return bytes >= gigabyte
-            ? $"{bytes / gigabyte:0.##} GB"
-            : $"{bytes / megabyte:0.##} MB";
-    }
+    private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();
 
     private void Dispatch(Action action)
     {

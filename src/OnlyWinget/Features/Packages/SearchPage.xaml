@@ -4,18 +4,19 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:OnlyWinget.Controls"
     xmlns:states="using:OnlyWinget.DesignSystem.States"
-    xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
+    xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
+    xmlns:presentation="using:OnlyWinget.Presentation">
     <Grid RowSpacing="12">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
             <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <AutoSuggestBox x:Name="QueryBox" QuerySubmitted="OnQuerySubmitted" AutomationProperties.AutomationId="PackageSearchQuery" />
-                <ProgressRing x:Name="LoadingRing" Grid.Column="1" Width="24" Height="24" />
-                <commands:OnlyWingetCommandBar x:Name="CommandBar" Grid.Column="2" CommandInvoked="OnCommandInvoked" />
+                <ProgressRing Grid.Column="1" Width="24" Height="24" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.IsLoading), Mode=OneWay}" />
+                <commands:OnlyWingetCommandBar Grid.Column="2" ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" />
             </Grid>
         </Border>
-        <ProgressBar x:Name="SearchProgressBar" Grid.Row="1" IsIndeterminate="True" />
-        <controls:OnlyWingetTable x:Name="ResultList" Grid.Row="2" AutomationProperties.AutomationId="SearchResults" ToggleAllRequested="OnToggleAllResults" SelectionToggled="OnResultSelectionToggled">
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.IsLoading), Mode=OneWay}" />
+        <controls:OnlyWingetTable x:Name="ResultList" Grid.Row="2" ItemsSource="{x:Bind ViewModel.Results}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="SearchResults" ToggleAllRequested="OnToggleAllResults" SelectionToggled="OnResultSelectionToggled">
             <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="190" IsPrimary="True" />
             <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="230" IsTextSelectable="True" />
             <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="100" />

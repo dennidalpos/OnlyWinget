@@ -123,6 +123,14 @@ public sealed partial class MainWindow : Window
         ShowPage(tag);
     }
 
+    private void OnItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        var tag = args.IsSettingsInvoked
+            ? routeDefinitions.Single(route => route.IsSettings).Id
+            : (args.InvokedItemContainer as NavigationViewItem)?.Tag as string;
+        if (tag is not null && routes.ContainsKey(tag)) ShowPage(tag);
+    }
+
     private void ShowPage(string tag)
     {
         if (!pageCache.TryGetValue(tag, out var page))

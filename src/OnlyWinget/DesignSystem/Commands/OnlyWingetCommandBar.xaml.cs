@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
+using System.Collections;
 
 namespace OnlyWinget.DesignSystem.Commands;
 
@@ -12,9 +13,21 @@ public sealed class UiCommandInvokedEventArgs(UiCommand command) : EventArgs
 
 public sealed partial class OnlyWingetCommandBar : UserControl
 {
+    public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
+        nameof(ItemsSource), typeof(IEnumerable), typeof(OnlyWingetCommandBar), new PropertyMetadata(null, OnItemsSourceChanged));
+
     public event EventHandler<UiCommandInvokedEventArgs>? CommandInvoked;
 
     public OnlyWingetCommandBar() => InitializeComponent();
+
+    public IEnumerable? ItemsSource
+    {
+        get => (IEnumerable?)GetValue(ItemsSourceProperty);
+        set => SetValue(ItemsSourceProperty, value);
+    }
+
+    private static void OnItemsSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args) =>
+        ((OnlyWingetCommandBar)sender).SetCommands((args.NewValue as IEnumerable)?.OfType<UiCommand>() ?? []);
 
     public void SetCommands(IEnumerable<UiCommand> commands)
     {

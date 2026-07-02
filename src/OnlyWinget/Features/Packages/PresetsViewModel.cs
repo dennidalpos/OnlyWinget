@@ -30,6 +30,7 @@ public sealed class PresetsViewModel : FeatureViewModel
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
     public string? ActivePresetName { get => activePresetName; private set => SetProperty(ref activePresetName, value); }
     public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
+    public bool HasOperationResults => OperationResults.Count > 0;
     public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
@@ -121,6 +122,7 @@ public sealed class PresetsViewModel : FeatureViewModel
         PresetName.Validate();
         PackageId.Validate();
         OnPropertyChanged(nameof(Commands));
+        OnPropertyChanged(nameof(HasOperationResults));
     }
 
     private string? ValidatePresetName(string value)

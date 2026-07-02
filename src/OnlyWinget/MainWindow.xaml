@@ -13,6 +13,7 @@
         PaneDisplayMode="Auto"
         AutomationProperties.AutomationId="RootNavigation"
         SelectionFollowsFocus="Enabled"
+        ItemInvoked="OnItemInvoked"
         SelectionChanged="OnSelectionChanged">
         <ContentControl
             x:Name="PageHost"
