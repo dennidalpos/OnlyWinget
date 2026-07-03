@@ -6,6 +6,7 @@ namespace OnlyWinget.Features.Sources;
 
 public sealed class SourcesViewModel : FeatureViewModel
 {
+    private CancellationTokenSource? cancellation;
     private bool isRefreshing;
     private FeatureState pageState = FeatureState.Ready;
     private SourceRow? selectedSource;
@@ -25,8 +26,18 @@ public sealed class SourcesViewModel : FeatureViewModel
     public bool CanAdd => Name.IsValid && Argument.IsValid && Name.Value.Trim().Length > 0 && Argument.Value.Trim().Length > 0 && IsEnabled(UiCommandId.AddSource);
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
+    public void Cancel() => cancellation?.Cancel();
 
-    public async Task AddAsync(CancellationToken cancellationToken)
+    private async Task RunAsync(Func<CancellationToken, Task> action)
+    {
+        if (cancellation is not null) return;
+        using var current = new CancellationTokenSource();
+        cancellation = current;
+        try { await action(current.Token); }
+        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+    }
+
+    public async Task AddAsync()
     {
         Name.Validate();
         Argument.Validate();
@@ -36,27 +47,27 @@ public sealed class SourcesViewModel : FeatureViewModel
             return;
         }
 
-        await Workflow.AddSourceAsync(Name.Value.Trim(), Argument.Value.Trim(), cancellationToken);
+        await RunAsync(token => Workflow.AddSourceAsync(Name.Value.Trim(), Argument.Value.Trim(), token));
         Name.Clear();
         Argument.Clear();
     }
 
-    public async Task ExecuteAsync(UiCommandId command, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(UiCommandId command)
     {
         switch (command)
         {
-            case UiCommandId.RefreshSources: await Workflow.RefreshSourcesAsync(cancellationToken); break;
-            case UiCommandId.UpdateSources: await Workflow.UpdateSourcesAsync(cancellationToken); break;
-            case UiCommandId.AddSource: await AddAsync(cancellationToken); break;
+            case UiCommandId.RefreshSources: await RunAsync(token => Workflow.RefreshSourcesAsync(token)); break;
+            case UiCommandId.UpdateSources: await RunAsync(token => Workflow.UpdateSourcesAsync(token)); break;
+            case UiCommandId.AddSource: await AddAsync(); break;
             case UiCommandId.RemoveSource when SelectedSource is not null && await ConfirmAsync("Dialog_RemoveSource_Title", "Dialog_RemoveSource_Message"):
-                await Workflow.RemoveSourceAsync(SelectedSource.Name, cancellationToken); break;
+                await RunAsync(token => Workflow.RemoveSourceAsync(SelectedSource.Name, token)); break;
             case UiCommandId.ResetSources when await ConfirmAsync("Dialog_ResetSources_Title", "Dialog_ResetSources_Message"):
-                await Workflow.ResetSourcesAsync(cancellationToken); break;
+                await RunAsync(token => Workflow.ResetSourcesAsync(token)); break;
         }
     }
 
-    public Task SetEnabledAsync(SourceRow source, bool enabled, CancellationToken cancellationToken) =>
-        Workflow.SetSourceEnabledAsync(source.Name, enabled, cancellationToken);
+    public Task SetEnabledAsync(SourceRow source, bool enabled) =>
+        RunAsync(token => Workflow.SetSourceEnabledAsync(source.Name, enabled, token));
 
     private static Task<bool> ConfirmAsync(string title, string message) => App.XamlRoot is { } root
         ? App.UiServices.Confirmation.ConfirmAsync(root, title, message)
@@ -82,6 +93,7 @@ public sealed class SourcesViewModel : FeatureViewModel
                 ? FeatureState.Empty(TextResources.Get("Empty_Sources"))
                 : FeatureState.Ready;
         Name.Validate();
+        Argument.Validate();
         IsRefreshing = false;
         OnPropertyChanged(nameof(Commands));
         OnPropertyChanged(nameof(CanAdd));

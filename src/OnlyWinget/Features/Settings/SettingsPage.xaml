@@ -36,18 +36,47 @@
                         </Grid>
                     </Border>
                     <Border Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="12">
-                            <ToggleSwitch x:Name="ConfirmDestructiveToggle" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" />
-                            <ToggleSwitch x:Name="DiagnosticsToggle" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" />
-                            <ToggleSwitch x:Name="InstallBehaviorToggle" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" />
+                        <StackPanel Spacing="16">
+                            <Grid ColumnSpacing="24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="ConfirmDestructiveText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="ConfirmDestructiveToggle" Grid.Column="1" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.5" />
+                            <Grid ColumnSpacing="24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="DiagnosticsText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="DiagnosticsToggle" Grid.Column="1" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.5" />
+                            <Grid ColumnSpacing="24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="InstallBehaviorText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="InstallBehaviorToggle" Grid.Column="1" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource CardStyle}">
-                        <StackPanel Spacing="8">
-                            <TextBlock x:Name="ResetTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                            <TextBlock x:Name="ResetDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
-                            <Button x:Name="ResetButton" Style="{StaticResource DestructiveButtonStyle}" Click="OnReset" HorizontalAlignment="Left" AutomationProperties.AutomationId="SettingsResetButton" />
-                        </StackPanel>
+                        <Grid ColumnSpacing="24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="ResetTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                <TextBlock x:Name="ResetDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
+                            </StackPanel>
+                            <Button x:Name="ResetButton" Grid.Column="1" Style="{StaticResource DestructiveButtonStyle}" Click="OnReset" AutomationProperties.AutomationId="SettingsResetButton" VerticalAlignment="Center" />
+                        </Grid>
                     </Border>
                 </StackPanel>
             </ScrollViewer>

@@ -8,6 +8,7 @@ namespace OnlyWinget.Features.Packages;
 
 public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
+    private CancellationTokenSource? cancellation;
     private bool isLoading;
     private FeatureState pageState = FeatureState.Ready;
     private SelectionHeaderState headerState;
@@ -19,10 +20,21 @@ public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
-    public Task SearchAsync(string query, CancellationToken token) => Workflow.SearchAsync(query, token);
-    public Task AddSelectedAsync(CancellationToken token) => Workflow.AddSelectedSearchResultsToActivePresetAsync(token);
     public void ToggleAll() => Workflow.ToggleAllSearchResults();
     public void Toggle(SearchResultRow row) => Workflow.ToggleSearchResult(new PackageIdentity(row.PackageId, row.Source));
+    public void Cancel() => cancellation?.Cancel();
+
+    private async Task RunAsync(Func<CancellationToken, Task> action)
+    {
+        if (cancellation is not null) return;
+        using var current = new CancellationTokenSource();
+        cancellation = current;
+        try { await action(current.Token); }
+        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+    }
+
+    public Task SearchAsync(string query) => RunAsync(token => Workflow.SearchAsync(query, token));
+    public Task AddSelectedAsync() => RunAsync(token => Workflow.AddSelectedSearchResultsToActivePresetAsync(token));
 
     protected override void Refresh()
     {

@@ -21,5 +21,13 @@ internal sealed class SettingsViewModel(IAppSettingsService settingsService) : O
         new AppSettings(Language, Theme, ConfirmDestructiveActions, DiagnosticLogging, ContinueOperationsAfterFailure),
         cancellationToken);
 
-    public Task ResetAsync(CancellationToken cancellationToken) => settingsService.ResetAsync(cancellationToken);
+    public async Task ResetAsync(CancellationToken cancellationToken)
+    {
+        await settingsService.ResetAsync(cancellationToken);
+        Language = settingsService.Current.Language;
+        Theme = settingsService.Current.Theme;
+        ConfirmDestructiveActions = settingsService.Current.ConfirmDestructiveActions;
+        DiagnosticLogging = settingsService.Current.DiagnosticLogging;
+        ContinueOperationsAfterFailure = settingsService.Current.ContinueOperationsAfterFailure;
+    }
 }

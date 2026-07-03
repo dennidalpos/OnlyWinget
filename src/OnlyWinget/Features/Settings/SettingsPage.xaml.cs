@@ -26,9 +26,9 @@ public sealed partial class SettingsPage : Page
         LanguageDescription.Text = TextResources.Get("Settings_LanguageDescription");
         ThemeTitle.Text = TextResources.Get("Settings_Theme");
         ThemeDescription.Text = TextResources.Get("Settings_ThemeDescription");
-        ConfirmDestructiveToggle.Header = TextResources.Get("Settings_ConfirmDestructive");
-        DiagnosticsToggle.Header = TextResources.Get("Settings_Diagnostics");
-        InstallBehaviorToggle.Header = TextResources.Get("Settings_InstallBehavior");
+        ConfirmDestructiveText.Text = TextResources.Get("Settings_ConfirmDestructive");
+        DiagnosticsText.Text = TextResources.Get("Settings_Diagnostics");
+        InstallBehaviorText.Text = TextResources.Get("Settings_InstallBehavior");
         ResetTitle.Text = TextResources.Get("Settings_Reset");
         ResetDescription.Text = TextResources.Get("Settings_ResetDescription");
         ResetButton.Content = TextResources.Get("Settings_ResetAction");
@@ -72,7 +72,16 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
-        await viewModel.ResetAsync(CancellationToken.None);
+        isInitializing = true;
+        try
+        {
+            await viewModel.ResetAsync(CancellationToken.None);
+            LoadViewModel();
+        }
+        finally
+        {
+            isInitializing = false;
+        }
     }
 
     private void LoadViewModel()

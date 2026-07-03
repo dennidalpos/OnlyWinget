@@ -34,10 +34,13 @@
         <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />
     </Style>
+    <Style x:Key="TableHeaderCellBorderStyle" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+    </Style>
     <Style x:Key="TableCellDividerStyle" TargetType="Border">
         <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="0,0,1,0" />
-        <Setter Property="Opacity" Value="0.55" />
+        <Setter Property="Opacity" Value="{ThemeResource TableCellDividerOpacity}" />
         <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
     <Style x:Key="TableRowDividerStyle" TargetType="Border">

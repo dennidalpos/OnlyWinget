@@ -34,14 +34,48 @@ public sealed class WingetPackageResolver(
 
         var values = ParseShowOutput(result.StandardOutput);
         var resolvedPackage = new PackageIdentity(package.Id, GetValue(values, "Source", "Origine") ?? package.Source);
+
+        var name = GetValue(values, "Name", "Nome");
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = ExtractName(result.StandardOutput, package.Id) ?? package.Id;
+        }
+
         return new PackageResolution(
             resolvedPackage,
-            GetValue(values, "Name", "Nome"),
+            name,
             GetValue(values, "Version", "Versione"),
             GetValue(values, "Publisher", "Autore", "Editore"),
             result.Succeeded,
             errorClassifier.Classify(result),
             GetValues(values, "Architecture", "Architettura"));
+    }
+
+    private static string? ExtractName(string output, string packageId)
+    {
+        var lines = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var openBracket = line.LastIndexOf('[');
+            var closeBracket = line.LastIndexOf(']');
+            if (openBracket > 0 && closeBracket > openBracket)
+            {
+                var idInBrackets = line[(openBracket + 1)..closeBracket].Trim();
+                if (string.Equals(idInBrackets, packageId, StringComparison.OrdinalIgnoreCase))
+                {
+                    var firstSpace = line.IndexOf(' ');
+                    if (firstSpace > 0 && firstSpace < openBracket)
+                    {
+                        var name = line[firstSpace..openBracket].Trim();
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            return name;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static Dictionary<string, List<string>> ParseShowOutput(string output)

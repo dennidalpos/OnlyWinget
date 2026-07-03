@@ -65,21 +65,21 @@ public sealed class PresetsViewModel : FeatureViewModel
             case UiCommandId.AddPresetPackage:
                 if (Validate(PackageId))
                 {
-                    await Workflow.AddPackageToActivePresetAsync(Package(source), CancellationToken.None);
+                    await RunAsync(token => Workflow.AddPackageToActivePresetAsync(Package(source), token));
                     PackageId.Clear();
                 }
                 break;
             case UiCommandId.EditPresetPackage when Workflow.State.SelectedPresetPackages.SingleOrDefault() is { } selected:
                 if (Validate(PackageId))
                 {
-                    await Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), CancellationToken.None);
+                    await RunAsync(token => Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), token));
                     PackageId.Clear();
                 }
                 break;
             case UiCommandId.RemovePresetPackages: Workflow.RemoveSelectedPackagesFromActivePreset(); break;
             case UiCommandId.ImportPreset: await ImportAsync(); break;
             case UiCommandId.ExportPreset: await ExportAsync(); break;
-            case UiCommandId.SaveWorkspace: await Workflow.SaveWorkspaceAsync(CancellationToken.None); break;
+            case UiCommandId.SaveWorkspace: await RunAsync(token => Workflow.SaveWorkspaceAsync(token)); break;
             case UiCommandId.InstallPreset: await ApplyAsync(PackageAction.Install); break;
             case UiCommandId.UninstallPreset: await ApplyAsync(PackageAction.Uninstall); break;
             case UiCommandId.CancelOperation: Cancel(); break;
@@ -91,21 +91,24 @@ public sealed class PresetsViewModel : FeatureViewModel
     private static Task<bool> ConfirmAsync(string title, string message) => App.XamlRoot is { } root
         ? App.UiServices.Confirmation.ConfirmAsync(root, title, message) : Task.FromResult(false);
 
-    private async Task ApplyAsync(PackageAction action)
+    private async Task RunAsync(Func<CancellationToken, Task> action)
     {
         if (cancellation is not null) return;
         using var current = new CancellationTokenSource();
         cancellation = current;
-        try { await Workflow.ApplyActivePresetAsync(action, current.Token); }
+        try { await action(current.Token); }
         finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
     }
+
+    private Task ApplyAsync(PackageAction action) =>
+        RunAsync(token => Workflow.ApplyActivePresetAsync(action, token));
 
     private async Task ImportAsync()
     {
         try
         {
             var json = await App.UiServices.FilePicker.PickAndReadTextAsync(App.WindowId, ".json", CancellationToken.None);
-            if (json is not null) await Workflow.ImportPresetAsync(json, CancellationToken.None);
+            if (json is not null) await RunAsync(token => Workflow.ImportPresetAsync(json, token));
         }
         catch (Exception exception) when (exception is not OperationCanceledException) { Workflow.ReportExternalFailure(TextResources.Get("Error_PresetImportRead")); }
     }
@@ -140,7 +143,7 @@ public sealed class PresetsViewModel : FeatureViewModel
             : state.Error is not null
             ? FeatureState.Error(state.Error)
             : state.IsExecuting
-                ? FeatureState.Executing(TextResources.Get("Progress_Starting"))
+                ? FeatureState.Ready
                 : EmptyState(state);
         PresetName.Validate();
         PackageId.Validate();

@@ -53,13 +53,15 @@
                             <ItemsControl x:Name="ActivityList" Grid.Row="1" AutomationProperties.AutomationId="DashboardActivityList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="presentation:ActivityRow">
-                                        <StackPanel Padding="12,8" Spacing="3">
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                                <TextBlock Text="{x:Bind Severity, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                                <TextBlock Text="{x:Bind Title, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                                            <StackPanel Spacing="3">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{x:Bind Severity, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                                    <TextBlock Text="{x:Bind Title, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                                </StackPanel>
+                                                <TextBlock Text="{x:Bind Message, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                             </StackPanel>
-                                            <TextBlock Text="{x:Bind Message, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                                        </StackPanel>
+                                        </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

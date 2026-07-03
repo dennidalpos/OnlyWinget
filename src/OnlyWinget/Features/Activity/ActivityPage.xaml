@@ -17,22 +17,30 @@
         <design:PageScaffold.Body>
             <Grid RowSpacing="12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="160" /><ColumnDefinition Width="160" /></Grid.ColumnDefinitions>
-                    <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" />
-                    <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged">
-                        <ComboBoxItem Tag="all" />
-                        <ComboBoxItem Tag="Information" />
-                        <ComboBoxItem Tag="Success" />
-                        <ComboBoxItem Tag="Warning" />
-                        <ComboBoxItem Tag="Error" />
-                    </ComboBox>
-                    <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged">
-                        <ComboBoxItem Tag="all" /><ComboBoxItem Tag="packages" /><ComboBoxItem Tag="windows" />
-                        <ComboBoxItem Tag="sources" /><ComboBoxItem Tag="presets" /><ComboBoxItem Tag="system" />
-                    </ComboBox>
-                </Grid>
-                <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None" ItemContainerStyle="{StaticResource ListRowContainerStyle}">
+                <Border Style="{StaticResource CardStyle}">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="160" /><ColumnDefinition Width="160" /></Grid.ColumnDefinitions>
+                        <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" VerticalAlignment="Center" />
+                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="160" VerticalAlignment="Center">
+                            <ComboBoxItem Tag="all" />
+                            <ComboBoxItem Tag="Information" />
+                            <ComboBoxItem Tag="Success" />
+                            <ComboBoxItem Tag="Warning" />
+                            <ComboBoxItem Tag="Error" />
+                        </ComboBox>
+                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="160" VerticalAlignment="Center">
+                            <ComboBoxItem Tag="all" /><ComboBoxItem Tag="packages" /><ComboBoxItem Tag="windows" />
+                            <ComboBoxItem Tag="sources" /><ComboBoxItem Tag="presets" /><ComboBoxItem Tag="system" />
+                        </ComboBox>
+                    </Grid>
+                </Border>
+                <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
+                            <Setter Property="Padding" Value="0,4" />
+                            <Setter Property="Margin" Value="0,0,0,4" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="presentation:ActivityRow">
                             <Expander>
@@ -44,7 +52,7 @@
                                         <TextBlock Grid.Column="2" Text="{x:Bind Title}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                                     </Grid>
                                 </Expander.Header>
-                                <StackPanel Spacing="8" Margin="0,8,0,4">
+                                <StackPanel Spacing="8" Margin="0,8,0,12">
                                     <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                                     <TextBlock Text="{x:Bind Timestamp}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
                                     <Button Content="{x:Bind activity:ActivityViewModel.CopyLabel}" Tag="{x:Bind}" Click="OnCopyDetails" HorizontalAlignment="Left" />
@@ -53,7 +61,7 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-                <InfoBar x:Name="UndoBar" Grid.Row="1" VerticalAlignment="Bottom" IsClosable="True" Severity="Informational">
+                <InfoBar x:Name="UndoBar" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="12" IsClosable="True" Severity="Informational">
                     <InfoBar.ActionButton><Button x:Name="UndoButton" Click="OnUndoClear" /></InfoBar.ActionButton>
                 </InfoBar>
             </Grid>

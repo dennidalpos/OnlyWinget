@@ -120,12 +120,12 @@ public sealed partial class OnlyWingetTable : UserControl
             var checkBoxBorder = new Border
             {
                 Padding = new Thickness(0, 8, 0, 8),
-                BorderThickness = new Thickness(1, 1, 1, 1),
+                BorderThickness = new Thickness(0, 0, 1, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 Child = selectAll
             };
-            checkBoxBorder.BorderBrush = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+            checkBoxBorder.Style = (Style)global::Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderCellBorderStyle"];
             Grid.SetColumn(checkBoxBorder, 0);
             grid.Children.Add(checkBoxBorder);
         }
@@ -138,24 +138,23 @@ public sealed partial class OnlyWingetTable : UserControl
                 VerticalAlignment = VerticalAlignment.Center
             };
             header.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderTextBlockStyle"];
-            var isFirst = !IsSelectionEnabled && index == 0;
+            var isLast = index == Columns.Count - 1;
             var cell = new Border
             {
                 Width = Columns[index].Width.IsAbsolute ? Columns[index].Width.Value : double.NaN,
                 Padding = new Thickness(12, 8, 12, 8),
-                BorderThickness = isFirst ? new Thickness(1, 1, 1, 1) : new Thickness(0, 1, 1, 1),
+                BorderThickness = isLast ? new Thickness(0) : new Thickness(0, 0, 1, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 Child = header
             };
-            cell.BorderBrush = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+            cell.Style = (Style)global::Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderCellBorderStyle"];
 
             Grid.SetColumn(cell, index + (IsSelectionEnabled ? 1 : 0));
             grid.Children.Add(cell);
         }
-        var headerBorder = new Border { Padding = new Thickness(0), BorderThickness = new Thickness(0, 0, 0, 1), Child = grid };
-        // headerBorder.Background = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["SubtleFillColorSecondaryBrush"];
-        // headerBorder.BorderBrush = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+        var headerBorder = new Border { Padding = new Thickness(0), CornerRadius = new CornerRadius(8, 8, 0, 0), Child = grid };
+        headerBorder.Style = (Style)global::Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderSurfaceStyle"];
         return headerBorder;
     }
 
@@ -163,13 +162,13 @@ public sealed partial class OnlyWingetTable : UserControl
     {
         var cells = string.Join(string.Empty, Columns.Select((column, index) =>
         {
-            var isFirst = !IsSelectionEnabled && index == 0;
-            var thickness = isFirst ? "1,0,1,1" : "0,0,1,1";
+            var isLast = index == Columns.Count - 1;
+            var thickness = isLast ? "0,0,0,1" : "0,0,1,1";
             return $"<Border Grid.Column=\"{index + (IsSelectionEnabled ? 1 : 0)}\" BorderBrush=\"{{ThemeResource DividerStrokeColorDefaultBrush}}\" BorderThickness=\"{thickness}\" Padding=\"12,8\" HorizontalAlignment=\"Stretch\" VerticalAlignment=\"Stretch\"><TextBlock Text=\"{{Binding {column.BindingPath}, Mode=OneWay}}\" Style=\"{{StaticResource {(column.IsPrimary ? "RowPrimaryTextBlockStyle" : "TableCellTextBlockStyle")}}}\" IsTextSelectionEnabled=\"{column.IsTextSelectable}\" VerticalAlignment=\"Center\" /></Border>";
         }));
 
         var checkBox = IsSelectionEnabled
-            ? $"<Border Grid.Column=\"0\" BorderBrush=\"{{ThemeResource DividerStrokeColorDefaultBrush}}\" BorderThickness=\"1,0,1,1\" Padding=\"0,8\" HorizontalAlignment=\"Stretch\" VerticalAlignment=\"Stretch\"><CheckBox IsChecked=\"{{Binding {SelectionBindingPath}, Mode=OneWay}}\" IsHitTestVisible=\"False\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\" AutomationProperties.Name=\"{SelectionLabel}\" /></Border>"
+            ? $"<Border Grid.Column=\"0\" BorderBrush=\"{{ThemeResource DividerStrokeColorDefaultBrush}}\" BorderThickness=\"0,0,1,1\" Padding=\"0,8\" HorizontalAlignment=\"Stretch\" VerticalAlignment=\"Stretch\"><CheckBox IsChecked=\"{{Binding {SelectionBindingPath}, Mode=OneWay}}\" IsHitTestVisible=\"False\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\" AutomationProperties.Name=\"{SelectionLabel}\" /></Border>"
             : string.Empty;
 
         var definitions = string.Join(string.Empty,

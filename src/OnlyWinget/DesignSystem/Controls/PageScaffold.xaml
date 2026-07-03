@@ -11,6 +11,10 @@
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
                         <Setter Target="Root.Padding" Value="16,16,16,20" />
+                        <Setter Target="HeaderCol1.Width" Value="0" />
+                        <Setter Target="HeaderRow1.Height" Value="Auto" />
+                        <Setter Target="CommandsPresenter.(Grid.Row)" Value="1" />
+                        <Setter Target="CommandsPresenter.(Grid.Column)" Value="0" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Medium">
@@ -34,19 +38,27 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Grid MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" ColumnSpacing="16">
+        <Grid x:Name="HeaderGrid" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" ColumnSpacing="16" RowSpacing="12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="HeaderCol0" Width="*" />
+                <ColumnDefinition x:Name="HeaderCol1" Width="Auto" />
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <Border x:Name="AccentBar" Width="5" Height="36" CornerRadius="2.5" VerticalAlignment="Center" Background="{x:Bind AreaAccentBrush, Mode=OneWay}" Visibility="Collapsed" />
-                <StackPanel Spacing="4">
+            <Grid.RowDefinitions>
+                <RowDefinition x:Name="HeaderRow0" Height="Auto" />
+                <RowDefinition x:Name="HeaderRow1" Height="0" />
+            </Grid.RowDefinitions>
+            <Grid x:Name="TitleBlockGrid" Grid.Column="0" Grid.Row="0" ColumnSpacing="12" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border x:Name="AccentBar" Grid.Column="0" Width="5" CornerRadius="2.5" VerticalAlignment="Stretch" Background="{x:Bind AreaAccentBrush, Mode=OneWay}" Visibility="Collapsed" />
+                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind Title, Mode=OneWay}" Style="{StaticResource PageTitleTextBlockStyle}" />
                     <TextBlock Text="{x:Bind Subtitle, Mode=OneWay}" Style="{StaticResource SubtitleTextBlockStyle}" />
                 </StackPanel>
-            </StackPanel>
-            <ContentPresenter Grid.Column="1" Content="{x:Bind Commands, Mode=OneWay}" VerticalAlignment="Bottom" />
+            </Grid>
+            <ContentPresenter x:Name="CommandsPresenter" Grid.Column="1" Grid.Row="0" Content="{x:Bind Commands, Mode=OneWay}" VerticalAlignment="Bottom" />
         </Grid>
         <ContentPresenter Grid.Row="1" Content="{x:Bind State, Mode=OneWay}" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" />
         <ContentPresenter Grid.Row="2" Content="{x:Bind Body, Mode=OneWay}" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />

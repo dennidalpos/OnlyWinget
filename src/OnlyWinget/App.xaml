@@ -18,6 +18,7 @@
                     <SolidColorBrush x:Key="AreaSourcesHeaderBrush" Color="#152B20" />
                     <SolidColorBrush x:Key="AreaActivityHeaderBrush" Color="#301F18" />
                     <SolidColorBrush x:Key="AreaSettingsHeaderBrush" Color="#2A2A2A" />
+                    <x:Double x:Key="TableCellDividerOpacity">0.55</x:Double>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="AreaHomeBrush" Color="#0078D4" />
@@ -32,6 +33,7 @@
                     <SolidColorBrush x:Key="AreaSourcesHeaderBrush" Color="#E6F7ED" />
                     <SolidColorBrush x:Key="AreaActivityHeaderBrush" Color="#FCEFEA" />
                     <SolidColorBrush x:Key="AreaSettingsHeaderBrush" Color="#F2F2F2" />
+                    <x:Double x:Key="TableCellDividerOpacity">0.55</x:Double>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AreaHomeBrush" Color="#60CDFF" />
@@ -46,6 +48,22 @@
                     <SolidColorBrush x:Key="AreaSourcesHeaderBrush" Color="#152B20" />
                     <SolidColorBrush x:Key="AreaActivityHeaderBrush" Color="#301F18" />
                     <SolidColorBrush x:Key="AreaSettingsHeaderBrush" Color="#2A2A2A" />
+                    <x:Double x:Key="TableCellDividerOpacity">0.55</x:Double>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="AreaHomeBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaActivityBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaHomeHeaderBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="AreaPackagesHeaderBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="AreaUpdatesHeaderBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="AreaSourcesHeaderBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="AreaActivityHeaderBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="AreaSettingsHeaderBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <x:Double x:Key="TableCellDividerOpacity">1.0</x:Double>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <ResourceDictionary.MergedDictionaries>

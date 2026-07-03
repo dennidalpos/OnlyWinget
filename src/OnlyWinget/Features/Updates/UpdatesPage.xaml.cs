@@ -65,7 +65,7 @@ public sealed partial class UpdatesPage : UserControl
 
     private Task RefreshUpdatesAsync()
     {
-        return ViewModel.RefreshAsync(CancellationToken.None);
+        return ViewModel.RefreshAsync();
     }
 
     private void OnToggleAllUpdates(object? sender, EventArgs args)

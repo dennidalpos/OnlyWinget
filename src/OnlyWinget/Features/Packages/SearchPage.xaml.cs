@@ -56,13 +56,13 @@ public sealed partial class SearchPage : UserControl
         switch (args.Command.Id)
         {
             case UiCommandId.SearchPackages: await SearchAsync(); break;
-            case UiCommandId.AddSearchResults: await ViewModel.AddSelectedAsync(CancellationToken.None); break;
+            case UiCommandId.AddSearchResults: await ViewModel.AddSelectedAsync(); break;
         }
     }
 
     private Task SearchAsync()
     {
-        return ViewModel.SearchAsync(QueryBox.Text, CancellationToken.None);
+        return ViewModel.SearchAsync(QueryBox.Text);
     }
 
     private void OnToggleAllResults(object? sender, EventArgs args)

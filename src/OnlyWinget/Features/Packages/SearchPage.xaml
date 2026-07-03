@@ -16,13 +16,15 @@
             </Grid>
         </Border>
         <states:StatePresenter x:Name="PageState" Grid.Row="1" />
-        <controls:OnlyWingetTable x:Name="ResultList" Grid.Row="2" ItemsSource="{x:Bind ViewModel.Results}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="SearchResults" ToggleAllRequested="OnToggleAllResults" SelectionToggled="OnResultSelectionToggled">
-            <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="190" IsPrimary="True" />
-            <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="230" IsTextSelectable="True" />
-            <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="100" />
-            <controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="100" />
-            <controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="120" />
-            <controls:OnlyWingetTableColumn Header="Match" BindingPath="Match" Width="*" />
-        </controls:OnlyWingetTable>
+        <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
+            <controls:OnlyWingetTable x:Name="ResultList" ItemsSource="{x:Bind ViewModel.Results}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="SearchResults" ToggleAllRequested="OnToggleAllResults" SelectionToggled="OnResultSelectionToggled">
+                <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="190" IsPrimary="True" />
+                <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="230" IsTextSelectable="True" />
+                <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="100" />
+                <controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="100" />
+                <controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="120" />
+                <controls:OnlyWingetTableColumn Header="Match" BindingPath="Match" Width="*" />
+            </controls:OnlyWingetTable>
+        </Border>
     </Grid>
 </UserControl>

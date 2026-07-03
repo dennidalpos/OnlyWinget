@@ -44,13 +44,9 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
             ? FeatureState.Unavailable(Workflow.State.Capabilities.WindowsUpdateUnavailableMessage)
             : state.Error is not null
             ? FeatureState.Error(state.Error)
-            : state.IsInstalling
-                ? FeatureState.Executing(TextResources.Get("Progress_InstallingWindowsUpdates"))
-                : state.IsScanning
-                    ? FeatureState.Loading(TextResources.Get("Progress_ScanningWindowsUpdates"))
-                    : state.Updates.Count == 0
-                        ? FeatureState.Empty(TextResources.Get("Empty_WindowsUpdates"))
-                        : FeatureState.Ready;
+            : state.Updates.Count == 0 && !state.IsScanning && !state.IsInstalling
+                ? FeatureState.Empty(TextResources.Get("Empty_WindowsUpdates"))
+                : FeatureState.Ready;
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(Commands));
     }

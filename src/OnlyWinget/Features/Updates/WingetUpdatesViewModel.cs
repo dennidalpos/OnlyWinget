@@ -30,22 +30,22 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     public string ProgressText => Progress is null ? TextResources.Get("Progress_Starting") : $"{TextResources.Get($"Progress_{Progress.Phase}")} · {Progress.Percentage}% · {Progress.PackageId}";
     public bool ShouldInitialRefresh => Workflow.State.Updates.Count == 0 && Workflow.State.BusyState == ApplicationBusyState.Idle;
     public string? Error => Workflow.State.UserVisibleError;
-
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
-    public Task RefreshAsync(CancellationToken token) => Workflow.RefreshUpdatesAsync(token);
     public void ToggleAll() => Workflow.ToggleAllUpdates();
     public void Toggle(UpdateRow row) => Workflow.ToggleUpdate(new PackageIdentity(row.PackageId, row.Source));
     public void Cancel() => cancellation?.Cancel();
 
-    public async Task ApplyAsync()
+    private async Task RunAsync(Func<CancellationToken, Task> action)
     {
         if (cancellation is not null) return;
         using var current = new CancellationTokenSource();
         cancellation = current;
-        try { await Workflow.ApplySelectedUpdatesAsync(current.Token); }
+        try { await action(current.Token); }
         finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
     }
 
+    public Task RefreshAsync() => RunAsync(token => Workflow.RefreshUpdatesAsync(token));
+    public Task ApplyAsync() => RunAsync(token => Workflow.ApplySelectedUpdatesAsync(token));
     protected override void Refresh()
     {
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).Updates;
@@ -64,13 +64,9 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
             ? FeatureState.Unavailable(Workflow.State.Capabilities.WingetUnavailableMessage)
             : state.Error is not null
             ? FeatureState.Error(state.Error)
-            : state.IsExecuting
-                ? FeatureState.Executing(ProgressText)
-                : state.IsLoading
-                    ? FeatureState.Loading(TextResources.Get("Progress_LoadingUpdates"))
-                    : state.Updates.Count == 0
-                        ? FeatureState.Empty(TextResources.Get("Empty_Updates"))
-                        : FeatureState.Ready;
+            : state.Updates.Count == 0 && !state.IsLoading && !state.IsExecuting
+                ? FeatureState.Empty(TextResources.Get("Empty_Updates"))
+                : FeatureState.Ready;
         OnPropertyChanged(nameof(Commands));
         OnPropertyChanged(nameof(ProgressText));
         OnPropertyChanged(nameof(IsBusy));

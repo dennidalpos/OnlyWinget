@@ -18,13 +18,18 @@
                 <Grid RowSpacing="{StaticResource PageSectionSpacing}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Border Style="{StaticResource CardStyle}">
-                        <Grid RowSpacing="12">
-                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                            <TextBlock x:Name="AddSourceSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                            <StackPanel Grid.Row="1" Spacing="{StaticResource ControlSpacing}">
-                                <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                            </StackPanel>
+                        <Grid ColumnSpacing="16" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="AddSourceSectionText" Grid.ColumnSpan="2" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                            <TextBox x:Name="SourceNameBox" Grid.Row="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBox x:Name="SourceArgumentBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         </Grid>
                     </Border>
                     <Border Grid.Row="1" Style="{StaticResource CardStyle}">
@@ -34,7 +39,12 @@
                             <StackPanel x:Name="SourceActions" Grid.Row="1" Style="{StaticResource ActionBarStyle}">
                                 <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" />
                             </StackPanel>
-                            <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" ItemContainerStyle="{StaticResource ListRowContainerStyle}" AutomationProperties.AutomationId="SourceList">
+                            <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
+                                        <Setter Property="Padding" Value="0,8" />
+                                    </Style>
+                                </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="presentation:SourceRow">
                                         <Grid ColumnSpacing="12">

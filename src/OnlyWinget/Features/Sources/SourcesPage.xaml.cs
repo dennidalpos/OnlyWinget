@@ -10,6 +10,7 @@ namespace OnlyWinget.Features.Sources;
 public sealed partial class SourcesPage : Page
 {
     private readonly SourcesViewModel viewModel;
+    public SourcesViewModel ViewModel => viewModel;
 
     public SourcesPage()
     {
@@ -66,14 +67,14 @@ public sealed partial class SourcesPage : Page
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        await viewModel.ExecuteAsync(args.Command.Id, CancellationToken.None);
+        await viewModel.ExecuteAsync(args.Command.Id);
     }
 
     private async void OnSourceEnabledToggled(object sender, RoutedEventArgs args)
     {
         if (!viewModel.IsRefreshing && sender is ToggleSwitch { DataContext: SourceRow row } toggle)
         {
-            await viewModel.SetEnabledAsync(row, toggle.IsOn, CancellationToken.None);
+            await viewModel.SetEnabledAsync(row, toggle.IsOn);
         }
     }
 

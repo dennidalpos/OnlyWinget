@@ -11,9 +11,9 @@
         Message="{x:Bind Message, Mode=OneWay}"
         AutomationProperties.LiveSetting="Polite">
         <InfoBar.Content>
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="8" Margin="0,0,0,12">
                 <ProgressRing Width="20" Height="20" IsActive="{x:Bind IsLoading, Mode=OneWay}" HorizontalAlignment="Left" />
-                <Button x:Name="ActionButton" Visibility="{x:Bind ActionVisibility, Mode=OneWay}" Click="OnAction" />
+                <Button x:Name="ActionButton" Visibility="{x:Bind ActionVisibility, Mode=OneWay}" Click="OnAction" Margin="0,4,0,0" />
                 <Expander x:Name="DetailsExpander" Visibility="{x:Bind DetailsVisibility, Mode=OneWay}">
                     <TextBlock Text="{x:Bind Details, Mode=OneWay}" IsTextSelectionEnabled="True" TextWrapping="Wrap" />
                 </Expander>
