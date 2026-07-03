@@ -79,7 +79,7 @@ public sealed partial class ActivityPage : Page
 
     private void ApplyFilter()
     {
-        if (SearchBox is not null && SeverityFilter?.SelectedItem is ComboBoxItem selected)
+        if (viewModel is not null && SearchBox is not null && SeverityFilter?.SelectedItem is ComboBoxItem selected)
         {
             var selectedCategory = CategoryFilter?.SelectedItem as ComboBoxItem;
             viewModel.SetFilter(SearchBox.Text, selected.Tag?.ToString() ?? "all", selectedCategory?.Tag?.ToString() ?? "all");

@@ -29,7 +29,7 @@ internal static class AppComposition
         var classifier = new WingetErrorClassifier();
         var capabilityService = new SystemCapabilityService(processRunner);
 
-        return new OnlyWingetApplication(
+        var app = new OnlyWingetApplication(
             new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath),
             capabilityService,
             new WingetPackageSearchService(runner, parser, classifier),
@@ -39,5 +39,8 @@ internal static class AppComposition
             new WingetSourceService(runner, parser, classifier),
             new WingetOperationExecutor(runner, new WingetCommandBuilder(), classifier),
             sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath));
+
+        app.ExceptionLogger = AppDiagnostics.WriteException;
+        return app;
     }
 }

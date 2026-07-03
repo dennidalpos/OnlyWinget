@@ -22,8 +22,6 @@ public sealed partial class PresetsPage : UserControl
         ViewModel.PresetName.PropertyChanged += OnFieldValidationChanged;
         ViewModel.PackageId.PropertyChanged += OnFieldValidationChanged;
         ViewModel.PropertyChanged += OnViewModelChanged;
-        PresetNameBox.TextChanged += OnPresetNameChanged;
-        PackageIdBox.TextChanged += OnPackageIdChanged;
         PresetSelector.ItemsSource = ViewModel.PresetNames;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -93,8 +91,7 @@ public sealed partial class PresetsPage : UserControl
         ViewModel.ToggleAll();
     }
 
-    private void OnPresetNameChanged(object sender, TextChangedEventArgs args) => ViewModel.PresetName.Value = PresetNameBox.Text;
-    private void OnPackageIdChanged(object sender, TextChangedEventArgs args) => ViewModel.PackageId.Value = PackageIdBox.Text;
+
 
     private void OnFieldValidationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {

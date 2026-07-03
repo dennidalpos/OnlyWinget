@@ -7,7 +7,7 @@
     xmlns:states="using:OnlyWinget.DesignSystem.States"
     xmlns:presentation="using:OnlyWinget.Application.Presentation"
     xmlns:activity="using:OnlyWinget.Features.Activity">
-    <design:PageScaffold x:Name="Scaffold">
+    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaActivityBrush}">
         <design:PageScaffold.Commands>
             <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
         </design:PageScaffold.Commands>
@@ -19,7 +19,7 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="160" /><ColumnDefinition Width="160" /></Grid.ColumnDefinitions>
-                    <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" />
+                    <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" />
                     <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged">
                         <ComboBoxItem Tag="all" />
                         <ComboBoxItem Tag="Information" />

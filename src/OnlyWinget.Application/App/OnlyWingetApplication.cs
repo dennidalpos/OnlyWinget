@@ -25,6 +25,7 @@ public sealed class OnlyWingetApplication(
     ISourcePreferenceStore? sourcePreferenceStore = null)
 {
     public bool ContinueOperationsAfterFailure { get; set; }
+    public Action<string, Exception>? ExceptionLogger { get; set; }
 
     private readonly PresetDocumentService presetDocuments = new();
     private readonly OperationPlanner operationPlanner = new();
@@ -905,8 +906,9 @@ public sealed class OnlyWingetApplication(
         {
             return Fail(exception.Message);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ExceptionLogger?.Invoke("OnlyWingetApplication.RunAsync", exception);
             return Fail(fallbackError);
         }
         finally

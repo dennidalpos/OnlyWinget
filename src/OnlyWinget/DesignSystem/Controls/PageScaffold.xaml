@@ -39,9 +39,12 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <StackPanel Spacing="4">
-                <TextBlock Text="{x:Bind Title, Mode=OneWay}" Style="{StaticResource PageTitleTextBlockStyle}" />
-                <TextBlock Text="{x:Bind Subtitle, Mode=OneWay}" Style="{StaticResource SubtitleTextBlockStyle}" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Border x:Name="AccentBar" Width="5" Height="36" CornerRadius="2.5" VerticalAlignment="Center" Background="{x:Bind AreaAccentBrush, Mode=OneWay}" Visibility="Collapsed" />
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{x:Bind Title, Mode=OneWay}" Style="{StaticResource PageTitleTextBlockStyle}" />
+                    <TextBlock Text="{x:Bind Subtitle, Mode=OneWay}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                </StackPanel>
             </StackPanel>
             <ContentPresenter Grid.Column="1" Content="{x:Bind Commands, Mode=OneWay}" VerticalAlignment="Bottom" />
         </Grid>

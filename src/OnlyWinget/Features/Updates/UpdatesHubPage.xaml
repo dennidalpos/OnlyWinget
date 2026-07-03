@@ -5,7 +5,7 @@
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:updates="using:OnlyWinget.Features.Updates"
     xmlns:presentation="using:OnlyWinget.Presentation">
-    <design:PageScaffold x:Name="Scaffold">
+    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaUpdatesBrush}">
         <design:PageScaffold.Commands>
             <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind WingetMode}" AutomationProperties.AutomationId="UpdatesModes">
                 <SelectorBarItem x:Name="WingetMode" Icon="Sync" AutomationProperties.AutomationId="UpdatesWingetTab" />

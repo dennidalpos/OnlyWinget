@@ -291,7 +291,6 @@ function Reset-Directory {
 
     New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
 }
-
 function Publish-GeneratedFile {
     param(
         [string]$StagedPath,
@@ -299,7 +298,10 @@ function Publish-GeneratedFile {
     )
 
     Assert-Path -Path $StagedPath -Description 'Staged package artifact'
-    [System.IO.File]::Move($StagedPath, $DestinationPath, $true)
+    if (Test-Path -LiteralPath $DestinationPath) {
+        Remove-Item -LiteralPath $DestinationPath -Force -ErrorAction Stop
+    }
+    [System.IO.File]::Move($StagedPath, $DestinationPath)
 }
 
 function Copy-WinUiPublishResource {

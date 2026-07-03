@@ -8,16 +8,16 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <TextBlock x:Name="PresetManagementText" Style="{StaticResource SectionTitleTextBlockStyle}"/>
                 <TextBlock x:Name="PackageManagementText" Grid.Column="1" Style="{StaticResource SectionTitleTextBlockStyle}"/>
-                <ComboBox x:Name="PresetSelector" Grid.Row="1" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector"/>
-                <TextBox x:Name="PackageIdBox" Grid.Row="1" Grid.Column="1" AutomationProperties.AutomationId="PresetPackageIdTextBox"/>
-                <TextBox x:Name="PresetNameBox" Grid.Row="2" AutomationProperties.AutomationId="PresetNameTextBox"/>
-                <TextBox x:Name="PackageSourceBox" Grid.Row="2" Grid.Column="1" AutomationProperties.AutomationId="PresetPackageSourceTextBox"/>
+                <ComboBox x:Name="PresetSelector" Grid.Row="1" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector" Style="{StaticResource FormComboBoxStyle}"/>
+                <TextBox x:Name="PackageIdBox" Grid.Row="1" Grid.Column="1" AutomationProperties.AutomationId="PresetPackageIdTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PackageId.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox x:Name="PresetNameBox" Grid.Row="2" AutomationProperties.AutomationId="PresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox x:Name="PackageSourceBox" Grid.Row="2" Grid.Column="1" AutomationProperties.AutomationId="PresetPackageSourceTextBox" Style="{StaticResource FormTextBoxStyle}"/>
             </Grid>
         </Border>
         <TextBlock x:Name="PackagesSectionText" Grid.Row="2" Style="{StaticResource SectionTitleTextBlockStyle}"/>
         <states:StatePresenter x:Name="PageState" Grid.Row="3"/>
         <controls:OnlyWingetTable x:Name="PackageList" Grid.Row="4" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled">
-            <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="180" IsPrimary="True"/><controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True"/><controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="120"/><controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="110"/><controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="120"/>
+            <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="180" IsPrimary="True"/><controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True"/><controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="120"/><controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="110"/><controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="*"/>
         </controls:OnlyWingetTable>
         <states:OperationBanner x:Name="OperationStatus" Grid.Row="5" CancelRequested="OnOperationCancelRequested"/>
         <StackPanel Grid.Row="6">

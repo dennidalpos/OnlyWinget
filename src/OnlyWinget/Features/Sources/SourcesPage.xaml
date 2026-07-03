@@ -6,7 +6,7 @@
     xmlns:presentation="using:OnlyWinget.Application.Presentation"
     xmlns:states="using:OnlyWinget.DesignSystem.States"
     xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
-    <design:PageScaffold x:Name="Scaffold">
+    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaSourcesBrush}">
         <design:PageScaffold.Commands>
             <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
         </design:PageScaffold.Commands>
@@ -22,8 +22,8 @@
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                             <TextBlock x:Name="AddSourceSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                             <StackPanel Grid.Row="1" Spacing="{StaticResource ControlSpacing}">
-                                <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" />
-                                <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" />
+                                <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
                         </Grid>
                     </Border>

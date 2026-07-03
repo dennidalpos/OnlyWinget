@@ -6,7 +6,7 @@
     xmlns:home="using:OnlyWinget.Features.Home"
     xmlns:presentation="using:OnlyWinget.Application.Presentation"
     xmlns:states="using:OnlyWinget.DesignSystem.States">
-    <design:PageScaffold x:Name="Scaffold">
+    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaHomeBrush}">
         <design:PageScaffold.State>
             <states:StatePresenter x:Name="PageState" />
         </design:PageScaffold.State>

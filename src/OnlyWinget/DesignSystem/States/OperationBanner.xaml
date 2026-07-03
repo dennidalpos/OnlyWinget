@@ -5,7 +5,7 @@
     <InfoBar x:Name="Bar" IsOpen="{x:Bind IsOpen}" IsClosable="False" Severity="{x:Bind Severity}" Title="{x:Bind Title}" Message="{x:Bind Message}" AutomationProperties.LiveSetting="Polite">
         <InfoBar.Content>
             <StackPanel Spacing="8">
-                <ProgressBar IsIndeterminate="{x:Bind IsIndeterminate}" Value="{x:Bind Progress}" Maximum="100" />
+                <ProgressBar IsIndeterminate="{x:Bind IsIndeterminate}" Value="{x:Bind Progress}" Maximum="100" HorizontalAlignment="Stretch" MaxWidth="480" />
                 <TextBlock Text="{x:Bind Detail}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                 <Button x:Name="CancelButton" Content="Cancel" Visibility="{x:Bind CancelVisibility}" Click="OnCancel" HorizontalAlignment="Left" />
             </StackPanel>

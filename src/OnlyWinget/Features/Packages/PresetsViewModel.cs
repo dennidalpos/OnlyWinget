@@ -47,12 +47,35 @@ public sealed class PresetsViewModel : FeatureViewModel
         if (command.ConfirmationResourceKey is { } confirmation && !await ConfirmAsync(command.LabelResourceKey, confirmation)) return;
         switch (command.Id)
         {
-            case UiCommandId.AddPreset: if (Validate(PresetName)) Workflow.AddPreset(PresetName.Value.Trim()); break;
-            case UiCommandId.RenamePreset: if (Validate(PresetName)) Workflow.RenameActivePreset(PresetName.Value.Trim()); break;
+            case UiCommandId.AddPreset:
+                if (Validate(PresetName))
+                {
+                    Workflow.AddPreset(PresetName.Value.Trim());
+                    PresetName.Clear();
+                }
+                break;
+            case UiCommandId.RenamePreset:
+                if (Validate(PresetName))
+                {
+                    Workflow.RenameActivePreset(PresetName.Value.Trim());
+                    PresetName.Clear();
+                }
+                break;
             case UiCommandId.RemovePreset: Workflow.RemoveActivePreset(); break;
-            case UiCommandId.AddPresetPackage: if (Validate(PackageId)) await Workflow.AddPackageToActivePresetAsync(Package(source), CancellationToken.None); break;
+            case UiCommandId.AddPresetPackage:
+                if (Validate(PackageId))
+                {
+                    await Workflow.AddPackageToActivePresetAsync(Package(source), CancellationToken.None);
+                    PackageId.Clear();
+                }
+                break;
             case UiCommandId.EditPresetPackage when Workflow.State.SelectedPresetPackages.SingleOrDefault() is { } selected:
-                if (Validate(PackageId)) await Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), CancellationToken.None); break;
+                if (Validate(PackageId))
+                {
+                    await Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), CancellationToken.None);
+                    PackageId.Clear();
+                }
+                break;
             case UiCommandId.RemovePresetPackages: Workflow.RemoveSelectedPackagesFromActivePreset(); break;
             case UiCommandId.ImportPreset: await ImportAsync(); break;
             case UiCommandId.ExportPreset: await ExportAsync(); break;

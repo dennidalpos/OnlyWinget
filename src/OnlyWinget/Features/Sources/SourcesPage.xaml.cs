@@ -17,10 +17,9 @@ public sealed partial class SourcesPage : Page
         viewModel = new(Dispatch);
         SourceList.ItemsSource = viewModel.Sources;
         viewModel.PropertyChanged += OnViewModelChanged;
+
         viewModel.Name.PropertyChanged += OnValidationChanged;
         viewModel.Argument.PropertyChanged += OnValidationChanged;
-        SourceNameBox.TextChanged += OnSourceNameChanged;
-        SourceArgumentBox.TextChanged += OnSourceArgumentChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -57,8 +56,7 @@ public sealed partial class SourcesPage : Page
         SourceArgumentBox.Header = TextResources.Get("Source_Argument");
     }
 
-    private void OnSourceNameChanged(object sender, TextChangedEventArgs args) => viewModel.Name.Value = SourceNameBox.Text;
-    private void OnSourceArgumentChanged(object sender, TextChangedEventArgs args) => viewModel.Argument.Value = SourceArgumentBox.Text;
+
     private void RefreshCommands() => CommandBar.SetCommands(viewModel.Commands.Values.Select(command => command.Id switch
     {
         UiCommandId.AddSource => command with { IsEnabled = viewModel.CanAdd },

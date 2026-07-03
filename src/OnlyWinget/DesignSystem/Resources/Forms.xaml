@@ -3,5 +3,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style x:Key="FormTextBoxStyle" TargetType="TextBox">
         <Setter Property="MinWidth" Value="160" />
+        <Setter Property="MaxWidth" Value="480" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style x:Key="FormComboBoxStyle" TargetType="ComboBox">
+        <Setter Property="MinWidth" Value="160" />
+        <Setter Property="MaxWidth" Value="480" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
 </ResourceDictionary>

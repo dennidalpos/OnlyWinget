@@ -4,6 +4,50 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="AreaHomeBrush" Color="#60CDFF" />
+                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="#B194E3" />
+                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="#4DF2F9" />
+                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="#60CD9B" />
+                    <SolidColorBrush x:Key="AreaActivityBrush" Color="#FF8C00" />
+                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="#A19F9D" />
+                    <SolidColorBrush x:Key="AreaHomeHeaderBrush" Color="#18233C" />
+                    <SolidColorBrush x:Key="AreaPackagesHeaderBrush" Color="#251A38" />
+                    <SolidColorBrush x:Key="AreaUpdatesHeaderBrush" Color="#152B30" />
+                    <SolidColorBrush x:Key="AreaSourcesHeaderBrush" Color="#152B20" />
+                    <SolidColorBrush x:Key="AreaActivityHeaderBrush" Color="#301F18" />
+                    <SolidColorBrush x:Key="AreaSettingsHeaderBrush" Color="#2A2A2A" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AreaHomeBrush" Color="#0078D4" />
+                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="#8764B8" />
+                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="#00828A" />
+                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="#107C41" />
+                    <SolidColorBrush x:Key="AreaActivityBrush" Color="#D83B01" />
+                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="#5A5958" />
+                    <SolidColorBrush x:Key="AreaHomeHeaderBrush" Color="#E6F2FC" />
+                    <SolidColorBrush x:Key="AreaPackagesHeaderBrush" Color="#F2EBF7" />
+                    <SolidColorBrush x:Key="AreaUpdatesHeaderBrush" Color="#E6F6F7" />
+                    <SolidColorBrush x:Key="AreaSourcesHeaderBrush" Color="#E6F7ED" />
+                    <SolidColorBrush x:Key="AreaActivityHeaderBrush" Color="#FCEFEA" />
+                    <SolidColorBrush x:Key="AreaSettingsHeaderBrush" Color="#F2F2F2" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AreaHomeBrush" Color="#60CDFF" />
+                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="#B194E3" />
+                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="#4DF2F9" />
+                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="#60CD9B" />
+                    <SolidColorBrush x:Key="AreaActivityBrush" Color="#FF8C00" />
+                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="#A19F9D" />
+                    <SolidColorBrush x:Key="AreaHomeHeaderBrush" Color="#18233C" />
+                    <SolidColorBrush x:Key="AreaPackagesHeaderBrush" Color="#251A38" />
+                    <SolidColorBrush x:Key="AreaUpdatesHeaderBrush" Color="#152B30" />
+                    <SolidColorBrush x:Key="AreaSourcesHeaderBrush" Color="#152B20" />
+                    <SolidColorBrush x:Key="AreaActivityHeaderBrush" Color="#301F18" />
+                    <SolidColorBrush x:Key="AreaSettingsHeaderBrush" Color="#2A2A2A" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="DesignSystem/Resources/Spacing.xaml" />

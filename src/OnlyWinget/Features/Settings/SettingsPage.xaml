@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls">
-    <design:PageScaffold x:Name="Scaffold">
+    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaSettingsBrush}">
         <design:PageScaffold.Body>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="12" Padding="0,0,0,24">
@@ -14,7 +14,7 @@
                                 <TextBlock x:Name="LanguageTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <TextBlock x:Name="LanguageDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
                             </StackPanel>
-                            <ComboBox x:Name="LanguagePicker" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnLanguageChanged" AutomationProperties.AutomationId="SettingsLanguagePicker">
+                            <ComboBox x:Name="LanguagePicker" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnLanguageChanged" AutomationProperties.AutomationId="SettingsLanguagePicker" HorizontalAlignment="Stretch">
                                 <ComboBoxItem Content="System default" Tag="system" />
                                 <ComboBoxItem Content="English" Tag="en" />
                                 <ComboBoxItem Content="Italiano" Tag="it" />
@@ -28,7 +28,7 @@
                                 <TextBlock x:Name="ThemeTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <TextBlock x:Name="ThemeDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
                             </StackPanel>
-                            <ComboBox x:Name="ThemePicker" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnThemeChanged" AutomationProperties.AutomationId="SettingsThemePicker">
+                            <ComboBox x:Name="ThemePicker" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnThemeChanged" AutomationProperties.AutomationId="SettingsThemePicker" HorizontalAlignment="Stretch">
                                 <ComboBoxItem Content="System default" Tag="default" />
                                 <ComboBoxItem Content="Light" Tag="light" />
                                 <ComboBoxItem Content="Dark" Tag="dark" />

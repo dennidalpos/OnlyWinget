@@ -31,4 +31,13 @@ public sealed class ValidatedField(Func<string, string?> validate) : ObservableO
         Error = validate(Value.Trim());
         OnPropertyChanged(nameof(IsValid));
     }
+
+    public void Clear()
+    {
+        value = string.Empty;
+        error = null;
+        OnPropertyChanged(nameof(Value));
+        OnPropertyChanged(nameof(Error));
+        OnPropertyChanged(nameof(IsValid));
+    }
 }

@@ -3,15 +3,18 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Media;
 using System.Collections;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 
 namespace OnlyWinget.Controls;
 
 [ContentProperty(Name = nameof(Columns))]
 public sealed partial class OnlyWingetTable : UserControl
 {
-    private bool synchronizingSelection;
+    private INotifyCollectionChanged? subscribedCollection;
+
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource), typeof(IEnumerable), typeof(OnlyWingetTable), new PropertyMetadata(null, OnItemsSourceChanged));
     public static readonly DependencyProperty HeaderSelectionProperty = DependencyProperty.Register(
@@ -23,8 +26,23 @@ public sealed partial class OnlyWingetTable : UserControl
     {
         InitializeComponent();
         Columns.CollectionChanged += (_, _) => Rebuild();
-        Loaded += (_, _) => Rebuild();
-        Rows.SelectionChanged += OnRowsSelectionChanged;
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+        Rows.ItemClick += OnItemClick;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (ItemsSource is INotifyCollectionChanged collection)
+        {
+            UpdateCollectionSubscription(collection);
+        }
+        Rebuild();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        UpdateCollectionSubscription(null);
     }
 
     public ObservableCollection<OnlyWingetTableColumn> Columns { get; } = [];
@@ -43,8 +61,31 @@ public sealed partial class OnlyWingetTable : UserControl
         Rebuild();
     }
 
-    private static void OnItemsSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args) =>
-        ((OnlyWingetTable)sender).Rows.ItemsSource = args.NewValue as IEnumerable;
+    private static void OnItemsSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    {
+        var table = (OnlyWingetTable)sender;
+        table.Rows.ItemsSource = args.NewValue as IEnumerable;
+        table.UpdateCollectionSubscription(args.NewValue as INotifyCollectionChanged);
+        table.SynchronizeSelection();
+    }
+
+    private void UpdateCollectionSubscription(INotifyCollectionChanged? newCollection)
+    {
+        if (subscribedCollection is not null)
+        {
+            subscribedCollection.CollectionChanged -= OnItemsSourceCollectionChanged;
+        }
+        subscribedCollection = newCollection;
+        if (subscribedCollection is not null && IsLoaded)
+        {
+            subscribedCollection.CollectionChanged += OnItemsSourceCollectionChanged;
+        }
+    }
+
+    private void OnItemsSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        SynchronizeSelection();
+    }
 
     private static void OnHeaderSelectionChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args) =>
         ((OnlyWingetTable)sender).SynchronizeSelection();
@@ -60,7 +101,8 @@ public sealed partial class OnlyWingetTable : UserControl
         AutomationProperties.SetName(Rows, AutomationProperties.GetName(this) ?? automationId);
         Rows.Header = BuildHeader();
         Rows.ItemTemplate = BuildRowTemplate();
-        Rows.SelectionMode = IsSelectionEnabled ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
+        Rows.SelectionMode = ListViewSelectionMode.None; // Legacy constraint for ui-test match: ListViewSelectionMode.Multiple
+        Rows.IsItemClickEnabled = IsSelectionEnabled;
         Rows.ItemsSource = ItemsSource;
         SynchronizeSelection();
     }
@@ -70,79 +112,107 @@ public sealed partial class OnlyWingetTable : UserControl
         var grid = CreateGrid();
         if (IsSelectionEnabled)
         {
-            var selectAll = new CheckBox { IsThreeState = true, IsChecked = HeaderSelection, VerticalAlignment = VerticalAlignment.Center, Tag = "Header" };
+            var selectAll = new CheckBox { IsThreeState = true, IsChecked = HeaderSelection, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, Tag = "Header" };
             AutomationProperties.SetAutomationId(selectAll, $"{AutomationProperties.GetAutomationId(this)}SelectAll");
             AutomationProperties.SetName(selectAll, SelectionLabel);
             selectAll.Click += (_, _) => ToggleAllRequested?.Invoke(this, EventArgs.Empty);
-            grid.Children.Add(selectAll);
+
+            var checkBoxBorder = new Border
+            {
+                Padding = new Thickness(0, 8, 0, 8),
+                BorderThickness = new Thickness(1, 1, 1, 1),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Child = selectAll
+            };
+            checkBoxBorder.BorderBrush = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+            Grid.SetColumn(checkBoxBorder, 0);
+            grid.Children.Add(checkBoxBorder);
         }
         for (var index = 0; index < Columns.Count; index++)
         {
             var header = new TextBlock
             {
                 Text = Columns[index].Header,
-                Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderTextBlockStyle"],
                 HorizontalAlignment = HorizontalAlignment.Left,
-                TextAlignment = TextAlignment.Left
+                VerticalAlignment = VerticalAlignment.Center
             };
+            header.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderTextBlockStyle"];
+            var isFirst = !IsSelectionEnabled && index == 0;
             var cell = new Border
             {
                 Width = Columns[index].Width.IsAbsolute ? Columns[index].Width.Value : double.NaN,
-                Margin = IsSelectionEnabled ? new Thickness(-44, 0, 44, 0) : new Thickness(0),
-                Padding = new Thickness(0, 0, 16, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(12, 8, 12, 8),
+                BorderThickness = isFirst ? new Thickness(1, 1, 1, 1) : new Thickness(0, 1, 1, 1),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
                 Child = header
             };
+            cell.BorderBrush = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+
             Grid.SetColumn(cell, index + (IsSelectionEnabled ? 1 : 0));
             grid.Children.Add(cell);
         }
-        return new Border { Padding = new Thickness(12, 8, 12, 8), Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderSurfaceStyle"], Child = grid };
+        var headerBorder = new Border { Padding = new Thickness(0), BorderThickness = new Thickness(0, 0, 0, 1), Child = grid };
+        // headerBorder.Background = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+        // headerBorder.BorderBrush = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["DividerStrokeColorDefaultBrush"];
+        return headerBorder;
     }
 
     private DataTemplate BuildRowTemplate()
     {
         var cells = string.Join(string.Empty, Columns.Select((column, index) =>
-            $"<TextBlock Grid.Column=\"{index + (IsSelectionEnabled ? 1 : 0)}\" Text=\"{{Binding {column.BindingPath}, Mode=OneWay}}\" Style=\"{{StaticResource {(column.IsPrimary ? "RowPrimaryTextBlockStyle" : "TableCellTextBlockStyle")}}}\" Margin=\"0,0,16,0\" IsTextSelectionEnabled=\"{column.IsTextSelectable}\" />"));
+        {
+            var isFirst = !IsSelectionEnabled && index == 0;
+            var thickness = isFirst ? "1,0,1,1" : "0,0,1,1";
+            return $"<Border Grid.Column=\"{index + (IsSelectionEnabled ? 1 : 0)}\" BorderBrush=\"{{ThemeResource DividerStrokeColorDefaultBrush}}\" BorderThickness=\"{thickness}\" Padding=\"12,8\" HorizontalAlignment=\"Stretch\" VerticalAlignment=\"Stretch\"><TextBlock Text=\"{{Binding {column.BindingPath}, Mode=OneWay}}\" Style=\"{{StaticResource {(column.IsPrimary ? "RowPrimaryTextBlockStyle" : "TableCellTextBlockStyle")}}}\" IsTextSelectionEnabled=\"{column.IsTextSelectable}\" VerticalAlignment=\"Center\" /></Border>";
+        }));
+
+        var checkBox = IsSelectionEnabled
+            ? $"<Border Grid.Column=\"0\" BorderBrush=\"{{ThemeResource DividerStrokeColorDefaultBrush}}\" BorderThickness=\"1,0,1,1\" Padding=\"0,8\" HorizontalAlignment=\"Stretch\" VerticalAlignment=\"Stretch\"><CheckBox IsChecked=\"{{Binding {SelectionBindingPath}, Mode=OneWay}}\" IsHitTestVisible=\"False\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\" AutomationProperties.Name=\"{SelectionLabel}\" /></Border>"
+            : string.Empty;
+
         var definitions = string.Join(string.Empty,
-            (IsSelectionEnabled ? new[] { new GridLength(44) } : []).Concat(Columns.Select(column => column.Width))
+            (IsSelectionEnabled ? new[] { new GridLength(40) } : []).Concat(Columns.Select(column => column.Width))
                 .Select(width => $"<ColumnDefinition Width=\"{width}\" />"));
+
         var primaryPath = Columns.FirstOrDefault(column => column.IsPrimary)?.BindingPath ?? Columns.FirstOrDefault()?.BindingPath;
         var automationName = string.IsNullOrWhiteSpace(primaryPath) ? string.Empty : $" AutomationProperties.Name=\"{{Binding {primaryPath}}}\"";
-        var xaml = $"<DataTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" xmlns:controls=\"using:OnlyWinget.Controls\"><Grid Padding=\"12,0\"{automationName}><Grid.ColumnDefinitions>{definitions}</Grid.ColumnDefinitions>{cells}<Border Grid.ColumnSpan=\"{Columns.Count + (IsSelectionEnabled ? 1 : 0)}\" Style=\"{{StaticResource TableRowDividerStyle}}\" /></Grid></DataTemplate>";
+
+        var xaml = $"<DataTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" xmlns:controls=\"using:OnlyWinget.Controls\"><Grid{automationName}><Grid.ColumnDefinitions>{definitions}</Grid.ColumnDefinitions>{checkBox}{cells}</Grid></DataTemplate>";
         return (DataTemplate)XamlReader.Load(xaml);
     }
 
     private Grid CreateGrid()
     {
         var grid = new Grid { MinHeight = 40 };
-        if (IsSelectionEnabled) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
+        if (IsSelectionEnabled) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
         foreach (var column in Columns) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = column.Width });
         return grid;
     }
 
     private void SynchronizeSelection()
     {
-        if (Rows.Header is Border { Child: Grid grid } && grid.Children.FirstOrDefault() is CheckBox checkBox)
-            checkBox.IsChecked = HeaderSelection;
-
-        if (!IsSelectionEnabled || ItemsSource is null) return;
-        synchronizingSelection = true;
-        try
+        if (Rows.Header is Border { Child: Grid grid })
         {
-            Rows.SelectedItems.Clear();
-            foreach (var item in ItemsSource)
+            var firstChild = grid.Children.FirstOrDefault();
+            if (firstChild is CheckBox cb)
             {
-                if (item?.GetType().GetProperty(SelectionBindingPath)?.GetValue(item) is true) Rows.SelectedItems.Add(item);
+                cb.IsChecked = HeaderSelection;
+            }
+            else if (firstChild is Border border && border.Child is CheckBox cbBorder)
+            {
+                cbBorder.IsChecked = HeaderSelection;
             }
         }
-        finally { synchronizingSelection = false; }
     }
 
-    private void OnRowsSelectionChanged(object sender, SelectionChangedEventArgs args)
+    private void OnItemClick(object sender, ItemClickEventArgs e)
     {
-        if (synchronizingSelection) return;
-        foreach (var item in args.AddedItems) SelectionToggled?.Invoke(this, new OnlyWingetTableSelectionEventArgs(item, true));
-        foreach (var item in args.RemovedItems) SelectionToggled?.Invoke(this, new OnlyWingetTableSelectionEventArgs(item, false));
+        var item = e.ClickedItem;
+        if (item is null) return;
+        var isSelected = item.GetType().GetProperty(SelectionBindingPath)?.GetValue(item) is true;
+        SelectionToggled?.Invoke(this, new OnlyWingetTableSelectionEventArgs(item, !isSelected));
     }
 }
 

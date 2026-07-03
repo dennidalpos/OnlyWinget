@@ -37,6 +37,8 @@ public sealed class SourcesViewModel : FeatureViewModel
         }
 
         await Workflow.AddSourceAsync(Name.Value.Trim(), Argument.Value.Trim(), cancellationToken);
+        Name.Clear();
+        Argument.Clear();
     }
 
     public async Task ExecuteAsync(UiCommandId command, CancellationToken cancellationToken)
