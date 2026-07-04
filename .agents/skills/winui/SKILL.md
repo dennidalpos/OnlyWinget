@@ -119,6 +119,27 @@ After changes:
 6. Summarize changed files.
 7. Summarize remaining manual steps.
 
+## Table & Grid Layout Best Practices
+
+1. **Star Columns in ScrollViewer**:
+   - In a horizontal `ScrollViewer`, star columns (`*`) collapse to 0 or their minimum size because they are measured with infinite width.
+   - Solve this by managing column widths dynamically in C# via a layout helper (e.g., `TableLayoutHelper` as a `DependencyObject` resource), converting star columns to absolute pixels based on viewport size, and distributing space.
+2. **Compact Checkbox Columns**:
+   - Reduce checkbox column width to 32px or narrower.
+   - Apply `MinWidth="0"`, `MinHeight="0"`, and `Padding="0"` to the `CheckBox` control itself so it centers without extra label-spacing overhead.
+3. **Interactive Header Resizing**:
+   - Create resize drag handles as transparent overlay elements in column header cells aligned to the right.
+   - WinUI 3 `Border` is `sealed`. To set a custom cursor (like `SizeWestEast`) on a layout container, subclass `Grid` (e.g. `CursorGrid : Grid`) and wrap `ProtectedCursor` in a public `Cursor` property.
+   - Capture pointer events (`PointerPressed`, `PointerMoved`, etc.) on the handle, update column width properties, and recalculate in real-time.
+
+## Strict Compilation & XAML Bindings
+
+1. **Warning WMC1506**:
+   - `{x:Bind Mode=OneWay}` on properties that do not raise change notifications causes warning `WMC1506`, which fails builds under strict `-WarnAsError` flags.
+   - Implement `INotifyPropertyChanged` on the host control class (e.g., `UserControl` or `Page`) to suppress the warning, even if you raise notifications manually via `Bindings.Update()`.
+2. **Unused Event Warning CS0067**:
+   - When implementing interfaces like `INotifyPropertyChanged` but not raising the event directly in C# code, wrap the event declaration with `#pragma warning disable CS0067` and `#pragma warning restore CS0067` to prevent strict compilation failures.
+
 ## Safety
 
 Never:

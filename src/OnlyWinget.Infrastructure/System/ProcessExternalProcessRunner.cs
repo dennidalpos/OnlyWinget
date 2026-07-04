@@ -146,7 +146,7 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
                 process.Kill(entireProcessTree: true);
             }
         }
-        catch (InvalidOperationException)
+        catch (Exception)
         {
         }
     }

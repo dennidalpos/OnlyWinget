@@ -31,7 +31,12 @@ Infrastructure -----> Application -> Domain
 - Guard external processes and COM calls. Return structured failures and show actionable errors.
 - Publish state changes through the instance-scoped `OnlyWingetApplication.StateChanged`; do not add static refresh events or manual page broadcasts.
 - Serialize asynchronous operations in `OnlyWingetApplication`; disabled UI commands are not an application-layer concurrency guard.
+- Parallelize read-only winget operations (searching, updates loading, and metadata resolution) via `Task.WhenAll` with concurrency throttled where appropriate (e.g. `SemaphoreSlim` limit of 4 for process execution).
+- Ensure thread safety on shared memory updates (like `packageMetadata` additions) via `lock` sync primitives.
+- Protect JSON-based store operations (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`) using instance-scoped write/read serialization gates (`SemaphoreSlim(1,1)`).
 - Keep page item sources stable and update their collections. Prefer typed `x:Bind` for immutable presentation rows.
+- Ensure ViewModels bound via `x:Bind` are declared `public` (even if their constructors are `internal`) to permit compilation of bindings.
+- Generate the grid-row cell layout programmatically in C# (e.g., using `OnlyWingetTableRow`) rather than compiling inline XAML strings at runtime via `XamlReader.Load` to ensure compile-time type safety.
 - Run Windows Update scans only on explicit user action. Read-only discovery must not require elevation.
 - Pass a real `CancellationToken` to every cancellable operation. Never enable cancellation for work started with `CancellationToken.None`.
 - Preserve the workspace schema and preset exchange format unless explicitly requested otherwise.
@@ -51,7 +56,7 @@ Infrastructure -----> Application -> Domain
 
 ```json
 {
-  "todos": ["Short actionable task"]
+  "todos": []
 }
 ```
 
@@ -59,10 +64,10 @@ Keep only verified, actionable residual work in execution order. Remove complete
 
 ## Workflow
 
-1. Inspect applicable instructions, relevant files, and `git status --short`; preserve existing changes.
+1. Run `.\scripts\sync-win-dev-skills.ps1` to update WinUI developer skills, then inspect applicable instructions, relevant files, and `git status --short`; preserve existing changes.
 2. Make the smallest coherent change. Add or update tests for behavior changes.
 3. Use `scripts/run.ps1` tasks instead of ad hoc equivalents.
-4. For WinUI changes, build, launch, confirm a responsive top-level window, and leave the verified app running.
+4. For WinUI changes, build, launch, confirm a responsive top-level window, and leave the verified app running. Terminate running application instances (e.g., `taskkill /f /im OnlyWinget.exe`) if clean tasks fail due to lock issues.
 5. Before handoff, run `git status --short` and `git ls-files`.
 
 ## Commands

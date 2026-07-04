@@ -39,7 +39,7 @@ public sealed class OnlyWingetApplication(
     private readonly List<WingetSource> sources = [];
     private readonly List<ActivityEntry> activity = [];
     private readonly List<OperationExecutionResult> lastOperationResults = [];
-    private readonly Dictionary<string, PackageResolution> packageMetadata = new(StringComparer.Ordinal);
+    private readonly Dictionary<PackageIdentity, PackageResolution> packageMetadata = new();
     private readonly List<WindowsUpdateInstallResult> lastWindowsUpdateResults = [];
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
     private readonly ISourcePreferenceStore sourcePreferences = sourcePreferenceStore ?? new EmptySourcePreferenceStore();
@@ -161,7 +161,7 @@ public sealed class OnlyWingetApplication(
             ArgumentNullException.ThrowIfNull(package);
             var validated = await ValidatePackageAsync(package, cancellationToken).ConfigureAwait(false);
             var active = RequireActivePreset();
-            if (ContainsPackage(active.Packages, validated.Package))
+            if (active.Packages.Contains(validated.Package))
             {
                 throw new InvalidOperationException("Package is already in the active preset.");
             }
@@ -180,18 +180,18 @@ public sealed class OnlyWingetApplication(
             ArgumentNullException.ThrowIfNull(replacement);
             var validated = await ValidatePackageAsync(replacement, cancellationToken).ConfigureAwait(false);
             var active = RequireActivePreset();
-            if (!ContainsPackage(active.Packages, current))
+            if (!active.Packages.Contains(current))
             {
                 throw new InvalidOperationException("Package was not found in the active preset.");
             }
 
-            if (!PackageEquals(current, validated.Package) && ContainsPackage(active.Packages, validated.Package))
+            if (current != validated.Package && active.Packages.Contains(validated.Package))
             {
                 throw new InvalidOperationException("Package is already in the active preset.");
             }
 
             var packages = active.Packages
-                .Select(package => PackageEquals(package, current) ? validated.Package : package)
+                .Select(package => package == current ? validated.Package : package)
                 .ToArray();
             ReplacePreset(active.Name, new Preset(active.Name, packages), active.Name);
             AddActivity(ActivitySeverity.Success, "Package updated", validated.Package.Id);
@@ -208,7 +208,7 @@ public sealed class OnlyWingetApplication(
             }
 
             var packages = active.Packages
-                .Where(package => !selected.Any(selectedPackage => PackageEquals(selectedPackage, package)))
+                .Where(package => !selected.Contains(package))
                 .ToArray();
             ReplacePreset(active.Name, new Preset(active.Name, packages), active.Name);
             AddActivity(ActivitySeverity.Success, "Packages removed", selected.Length.ToString(global::System.Globalization.CultureInfo.InvariantCulture));
@@ -233,18 +233,26 @@ public sealed class OnlyWingetApplication(
 
                     searchResults.Clear();
                     var sourceErrors = new List<string>();
-                    foreach (var source in enabledSources)
+                    var searchTasks = enabledSources.Select(async source =>
                     {
                         var outcome = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
                             .ConfigureAwait(false);
                         if (!outcome.Succeeded)
                         {
-                            sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget search failed."}");
-                            continue;
+                            lock (sourceErrors)
+                            {
+                                sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget search failed."}");
+                            }
                         }
-
-                        searchResults.AddRange(outcome.Rows);
-                    }
+                        else
+                        {
+                            lock (searchResults)
+                            {
+                                searchResults.AddRange(outcome.Rows);
+                            }
+                        }
+                    }).ToArray();
+                    await Task.WhenAll(searchTasks).ConfigureAwait(false);
 
                     if (searchResults.Count == 0 && sourceErrors.Count > 0)
                     {
@@ -252,7 +260,7 @@ public sealed class OnlyWingetApplication(
                     }
 
                     var distinctResults = searchResults
-                        .DistinctBy(result => PackageFingerprint(result.Package))
+                        .DistinctBy(result => result.Package)
                         .OrderBy(result => result.Name, StringComparer.OrdinalIgnoreCase)
                         .ThenBy(result => result.Package.Id, StringComparer.OrdinalIgnoreCase)
                         .ToArray();
@@ -292,7 +300,7 @@ public sealed class OnlyWingetApplication(
 
                         var resolution = await ValidatePackageAsync(selected, cancellationToken).ConfigureAwait(false);
                         var package = resolution.Package;
-                        if (ContainsPackage(packages, package))
+                        if (packages.Contains(package))
                         {
                             continue;
                         }
@@ -324,17 +332,25 @@ public sealed class OnlyWingetApplication(
                     updates.Clear();
                     lastOperationResults.Clear();
                     var sourceErrors = new List<string>();
-                    foreach (var source in enabledSources)
+                    var loadTasks = enabledSources.Select(async source =>
                     {
                         var outcome = await updateLoader.LoadUpdatesAsync(source, cancellationToken).ConfigureAwait(false);
                         if (!outcome.Succeeded && outcome.Error?.Kind != WingetErrorKind.NoUpdates)
                         {
-                            sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget upgrade failed."}");
-                            continue;
+                            lock (sourceErrors)
+                            {
+                                sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget upgrade failed."}");
+                            }
                         }
-
-                        updates.AddRange(outcome.Rows);
-                    }
+                        else
+                        {
+                            lock (updates)
+                            {
+                                updates.AddRange(outcome.Rows);
+                            }
+                        }
+                    }).ToArray();
+                    await Task.WhenAll(loadTasks).ConfigureAwait(false);
 
                     if (updates.Count == 0 && sourceErrors.Count > 0)
                     {
@@ -342,19 +358,33 @@ public sealed class OnlyWingetApplication(
                     }
 
                     var distinctUpdates = updates
-                        .DistinctBy(update => PackageFingerprint(update.Package))
+                        .DistinctBy(update => update.Package)
                         .OrderBy(update => update.Name, StringComparer.OrdinalIgnoreCase)
                         .ToArray();
                     updates.Clear();
                     updates.AddRange(distinctUpdates);
-                    foreach (var update in updates)
+
+                    using var semaphore = new SemaphoreSlim(4);
+                    var resolveTasks = updates.Select(async update =>
                     {
-                        var resolution = await packageResolver.ResolveAsync(update.Package, cancellationToken).ConfigureAwait(false);
-                        if (resolution.IsResolved)
+                        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        try
                         {
-                            packageMetadata[PackageFingerprint(update.Package)] = resolution;
+                            var resolution = await packageResolver.ResolveAsync(update.Package, cancellationToken).ConfigureAwait(false);
+                            if (resolution.IsResolved)
+                            {
+                                lock (packageMetadata)
+                                {
+                                    packageMetadata[update.Package] = resolution;
+                                }
+                            }
                         }
-                    }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }).ToArray();
+                    await Task.WhenAll(resolveTasks).ConfigureAwait(false);
 
                     updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
@@ -470,17 +500,29 @@ public sealed class OnlyWingetApplication(
                     RequireWinget();
                     var packages = workspace.Presets
                         .SelectMany(preset => preset.Packages)
-                        .DistinctBy(PackageFingerprint)
+                        .Distinct()
                         .ToArray();
-                    foreach (var package in packages)
+                    using var semaphore = new SemaphoreSlim(4);
+                    var tasks = packages.Select(async package =>
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        var resolution = await packageResolver.ResolveAsync(package, cancellationToken).ConfigureAwait(false);
-                        if (resolution.IsResolved)
+                        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        try
                         {
-                            packageMetadata[PackageFingerprint(package)] = resolution;
+                            var resolution = await packageResolver.ResolveAsync(package, cancellationToken).ConfigureAwait(false);
+                            if (resolution.IsResolved)
+                            {
+                                lock (packageMetadata)
+                                {
+                                    packageMetadata[package] = resolution;
+                                }
+                            }
                         }
-                    }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }).ToArray();
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
 
                     AddActivity(ActivitySeverity.Information, "Package metadata refreshed", $"{packageMetadata.Count} package(s).");
                 },
@@ -717,7 +759,7 @@ public sealed class OnlyWingetApplication(
                             .Where(result => result.Succeeded)
                             .Select(result => result.Selection.Package)
                             .ToArray();
-                        updates.RemoveAll(update => succeededPackages.Any(package => PackageEquals(package, update.Package)));
+                        updates.RemoveAll(update => succeededPackages.Contains(update.Package));
                         updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
 
                         if (!summary.Succeeded || validationFailures.Count > 0)
@@ -758,7 +800,7 @@ public sealed class OnlyWingetApplication(
             windowsUpdateSelection.Selected.ToArray(),
             windowsUpdateSelection.HeaderState,
             lastWindowsUpdateResults.ToArray(),
-            new Dictionary<string, PackageResolution>(packageMetadata, StringComparer.Ordinal),
+            new Dictionary<PackageIdentity, PackageResolution>(packageMetadata),
             capabilities,
             sources.ToArray(),
             sourceError,
@@ -843,7 +885,7 @@ public sealed class OnlyWingetApplication(
                 throw new InvalidOperationException(resolution.Error?.Message ?? $"Package '{package.Id}' was not found in source '{requestedSource}'.");
             }
 
-            packageMetadata[PackageFingerprint(resolution.Package)] = resolution;
+            packageMetadata[resolution.Package] = resolution;
             return resolution;
         }
 
@@ -871,12 +913,12 @@ public sealed class OnlyWingetApplication(
         }
 
         var match = matches[0];
-        packageMetadata[PackageFingerprint(match.Package)] = match;
+        packageMetadata[match.Package] = match;
         return match;
     }
 
     public PackageResolution? GetPackageMetadata(PackageIdentity package) =>
-        packageMetadata.GetValueOrDefault(PackageFingerprint(package));
+        packageMetadata.GetValueOrDefault(package);
 
     private void ReconcileSourcePreferences()
     {
@@ -1054,16 +1096,6 @@ public sealed class OnlyWingetApplication(
         return new WorkspaceState(presets, activeName);
     }
 
-    private static bool ContainsPackage(IEnumerable<PackageIdentity> packages, PackageIdentity package) =>
-        packages.Any(existing => PackageEquals(existing, package));
-
-    private static bool PackageEquals(PackageIdentity left, PackageIdentity right) =>
-        string.Equals(left.Id, right.Id, StringComparison.OrdinalIgnoreCase) &&
-        string.Equals(left.Source ?? string.Empty, right.Source ?? string.Empty, StringComparison.OrdinalIgnoreCase);
-
-    private static string PackageFingerprint(PackageIdentity package) =>
-        $"{package.Source?.ToUpperInvariant() ?? string.Empty}|{package.Id.ToUpperInvariant()}";
-
     private static string WindowsUpdateFingerprint(WindowsUpdateIdentity update) =>
         $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";
 
@@ -1077,10 +1109,5 @@ public sealed class OnlyWingetApplication(
 
         public Task SaveAsync(SourcePreferences preferences, CancellationToken cancellationToken) =>
             Task.CompletedTask;
-    }
-
-    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
-    {
-        public void Report(T value) => report(value);
     }
 }

@@ -1,22 +1,24 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System.ComponentModel;
 
 namespace OnlyWinget.Features.Settings;
 
 public sealed partial class SettingsPage : Page
 {
     private bool isInitializing;
-    private readonly SettingsViewModel viewModel;
 
     public SettingsPage()
     {
         isInitializing = true;
         InitializeComponent();
-        viewModel = new(App.UiServices.Settings);
-        LoadViewModel();
+        ViewModel = new(App.UiServices.Settings);
         ApplyText();
         isInitializing = false;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
     }
+
+    public SettingsViewModel ViewModel { get; }
 
     private void ApplyText()
     {
@@ -34,60 +36,24 @@ public sealed partial class SettingsPage : Page
         ResetButton.Content = TextResources.Get("Settings_ResetAction");
     }
 
-    private void OnThemeChanged(object sender, SelectionChangedEventArgs args)
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (isInitializing || ThemePicker.SelectedItem is not ComboBoxItem)
+        if (isInitializing)
         {
             return;
         }
 
-        viewModel.Theme = SelectedTag(ThemePicker, "default");
         _ = DispatcherQueue.TryEnqueue(async () =>
         {
-            await viewModel.SaveAsync(CancellationToken.None);
+            try
+            {
+                await ViewModel.SaveAsync(CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                AppDiagnostics.WriteException("SettingsPage.SaveAsync", exception);
+            }
         });
-    }
-
-    private void OnLanguageChanged(object sender, SelectionChangedEventArgs args)
-    {
-        if (isInitializing || LanguagePicker.SelectedItem is not ComboBoxItem)
-        {
-            return;
-        }
-
-        viewModel.Language = SelectedTag(LanguagePicker, "system");
-        _ = DispatcherQueue.TryEnqueue(async () =>
-        {
-            await viewModel.SaveAsync(CancellationToken.None);
-        });
-    }
-
-    private void OnSettingToggled(object sender, RoutedEventArgs args)
-    {
-        if (!isInitializing && sender is ToggleSwitch toggle)
-        {
-            if (ReferenceEquals(toggle, ConfirmDestructiveToggle) && toggle.IsOn == viewModel.ConfirmDestructiveActions) return;
-            if (ReferenceEquals(toggle, DiagnosticsToggle) && toggle.IsOn == viewModel.DiagnosticLogging) return;
-            if (ReferenceEquals(toggle, InstallBehaviorToggle) && toggle.IsOn == viewModel.ContinueOperationsAfterFailure) return;
-
-            if (ReferenceEquals(toggle, ConfirmDestructiveToggle))
-            {
-                viewModel.ConfirmDestructiveActions = toggle.IsOn;
-            }
-            else if (ReferenceEquals(toggle, DiagnosticsToggle))
-            {
-                viewModel.DiagnosticLogging = toggle.IsOn;
-            }
-            else if (ReferenceEquals(toggle, InstallBehaviorToggle))
-            {
-                viewModel.ContinueOperationsAfterFailure = toggle.IsOn;
-            }
-
-            _ = DispatcherQueue.TryEnqueue(async () =>
-            {
-                await viewModel.SaveAsync(CancellationToken.None);
-            });
-        }
     }
 
     private async void OnReset(object sender, RoutedEventArgs args)
@@ -103,32 +69,15 @@ public sealed partial class SettingsPage : Page
         isInitializing = true;
         try
         {
-            await viewModel.ResetAsync(CancellationToken.None);
-            LoadViewModel();
+            await ViewModel.ResetAsync(CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("SettingsPage.ResetAsync", exception);
         }
         finally
         {
             isInitializing = false;
         }
-    }
-
-    private void LoadViewModel()
-    {
-        SelectByTag(LanguagePicker, viewModel.Language);
-        SelectByTag(ThemePicker, viewModel.Theme);
-        ConfirmDestructiveToggle.IsOn = viewModel.ConfirmDestructiveActions;
-        DiagnosticsToggle.IsOn = viewModel.DiagnosticLogging;
-        InstallBehaviorToggle.IsOn = viewModel.ContinueOperationsAfterFailure;
-    }
-
-    private static string SelectedTag(ComboBox comboBox, string fallback) =>
-        (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? fallback;
-
-    private static void SelectByTag(ComboBox comboBox, string tag)
-    {
-        comboBox.SelectedItem = comboBox.Items
-            .OfType<ComboBoxItem>()
-            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), tag, StringComparison.Ordinal))
-            ?? comboBox.Items[0];
     }
 }

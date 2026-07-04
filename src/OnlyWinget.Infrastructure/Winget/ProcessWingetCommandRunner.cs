@@ -36,9 +36,4 @@ public sealed class ProcessWingetCommandRunner(
             null));
         return new WingetCommandResult(result.ExitCode, result.StandardOutput, result.StandardError);
     }
-
-    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
-    {
-        public void Report(T value) => report(value);
-    }
 }

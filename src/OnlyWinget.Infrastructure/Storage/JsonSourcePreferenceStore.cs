@@ -1,10 +1,13 @@
 using System.Text.Json;
+using System.Threading;
 using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget.Infrastructure.Storage;
 
 public sealed class JsonSourcePreferenceStore(string filePath) : ISourcePreferenceStore
 {
+    private readonly SemaphoreSlim saveGate = new(1, 1);
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -17,50 +20,74 @@ public sealed class JsonSourcePreferenceStore(string filePath) : ISourcePreferen
 
     public async Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(filePath))
+        await saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            return SourcePreferences.Empty;
-        }
+            if (!File.Exists(filePath))
+            {
+                return SourcePreferences.Empty;
+            }
 
-        await using var stream = File.OpenRead(filePath);
-        var document = await JsonSerializer.DeserializeAsync<SourcePreferencesDocument>(stream, JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
-        return document is { SchemaVersion: 1 }
-            ? Normalize(new SourcePreferences(document.DisabledSources ?? []))
-            : SourcePreferences.Empty;
+            try
+            {
+                await using var stream = File.OpenRead(filePath);
+                var document = await JsonSerializer.DeserializeAsync<SourcePreferencesDocument>(stream, JsonOptions, cancellationToken)
+                    .ConfigureAwait(false);
+                return document is { SchemaVersion: 1 }
+                    ? Normalize(new SourcePreferences(document.DisabledSources ?? []))
+                    : SourcePreferences.Empty;
+            }
+            catch (JsonException)
+            {
+                return SourcePreferences.Empty;
+            }
+        }
+        finally
+        {
+            saveGate.Release();
+        }
     }
 
     public async Task SaveAsync(SourcePreferences preferences, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(preferences);
-        var directory = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
 
-        var temporaryPath = filePath + ".tmp";
+        await saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await using (var stream = File.Create(temporaryPath))
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrWhiteSpace(directory))
             {
-                var normalized = Normalize(preferences);
-                await JsonSerializer.SerializeAsync(
-                        stream,
-                        new SourcePreferencesDocument(1, normalized.DisabledSources),
-                        JsonOptions,
-                        cancellationToken)
-                    .ConfigureAwait(false);
+                Directory.CreateDirectory(directory);
             }
 
-            File.Move(temporaryPath, filePath, overwrite: true);
+            var temporaryPath = filePath + ".tmp";
+            try
+            {
+                await using (var stream = File.Create(temporaryPath))
+                {
+                    var normalized = Normalize(preferences);
+                    await JsonSerializer.SerializeAsync(
+                            stream,
+                            new SourcePreferencesDocument(1, normalized.DisabledSources),
+                            JsonOptions,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                File.Move(temporaryPath, filePath, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath))
+                {
+                    File.Delete(temporaryPath);
+                }
+            }
         }
         finally
         {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
+            saveGate.Release();
         }
     }
 

@@ -1,23 +1,35 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Presentation;
+using System.ComponentModel;
 
 namespace OnlyWinget.DesignSystem.States;
 
-public sealed partial class StatePresenter : UserControl
+public sealed partial class StatePresenter : UserControl, INotifyPropertyChanged
 {
+#pragma warning disable CS0067
+    public event PropertyChangedEventHandler? PropertyChanged;
+#pragma warning restore CS0067
     public event EventHandler? ActionRequested;
     public event EventHandler? CancelRequested;
 
-    public static readonly DependencyProperty IsOpenProperty = DependencyProperty.Register(nameof(IsOpen), typeof(bool), typeof(StatePresenter), new PropertyMetadata(false));
-    public static readonly DependencyProperty IsLoadingProperty = DependencyProperty.Register(nameof(IsLoading), typeof(bool), typeof(StatePresenter), new PropertyMetadata(false));
-    public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(nameof(Title), typeof(string), typeof(StatePresenter), new PropertyMetadata(string.Empty));
-    public static readonly DependencyProperty MessageProperty = DependencyProperty.Register(nameof(Message), typeof(string), typeof(StatePresenter), new PropertyMetadata(string.Empty));
-    public static readonly DependencyProperty DetailsProperty = DependencyProperty.Register(nameof(Details), typeof(string), typeof(StatePresenter), new PropertyMetadata(string.Empty));
-    public static readonly DependencyProperty SeverityProperty = DependencyProperty.Register(nameof(Severity), typeof(InfoBarSeverity), typeof(StatePresenter), new PropertyMetadata(InfoBarSeverity.Informational));
-    public static readonly DependencyProperty ProgressProperty = DependencyProperty.Register(nameof(Progress), typeof(double), typeof(StatePresenter), new PropertyMetadata(0.0));
-    public static readonly DependencyProperty IsIndeterminateProperty = DependencyProperty.Register(nameof(IsIndeterminate), typeof(bool), typeof(StatePresenter), new PropertyMetadata(true));
-    public static readonly DependencyProperty CanCancelProperty = DependencyProperty.Register(nameof(CanCancel), typeof(bool), typeof(StatePresenter), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsOpenProperty = DependencyProperty.Register(nameof(IsOpen), typeof(bool), typeof(StatePresenter), new PropertyMetadata(false, OnPropertyChanged));
+    public static readonly DependencyProperty IsLoadingProperty = DependencyProperty.Register(nameof(IsLoading), typeof(bool), typeof(StatePresenter), new PropertyMetadata(false, OnPropertyChanged));
+    public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(nameof(Title), typeof(string), typeof(StatePresenter), new PropertyMetadata(string.Empty, OnPropertyChanged));
+    public static readonly DependencyProperty MessageProperty = DependencyProperty.Register(nameof(Message), typeof(string), typeof(StatePresenter), new PropertyMetadata(string.Empty, OnPropertyChanged));
+    public static readonly DependencyProperty DetailsProperty = DependencyProperty.Register(nameof(Details), typeof(string), typeof(StatePresenter), new PropertyMetadata(string.Empty, OnPropertyChanged));
+    public static readonly DependencyProperty SeverityProperty = DependencyProperty.Register(nameof(Severity), typeof(InfoBarSeverity), typeof(StatePresenter), new PropertyMetadata(InfoBarSeverity.Informational, OnPropertyChanged));
+    public static readonly DependencyProperty ProgressProperty = DependencyProperty.Register(nameof(Progress), typeof(double), typeof(StatePresenter), new PropertyMetadata(0.0, OnPropertyChanged));
+    public static readonly DependencyProperty IsIndeterminateProperty = DependencyProperty.Register(nameof(IsIndeterminate), typeof(bool), typeof(StatePresenter), new PropertyMetadata(true, OnPropertyChanged));
+    public static readonly DependencyProperty CanCancelProperty = DependencyProperty.Register(nameof(CanCancel), typeof(bool), typeof(StatePresenter), new PropertyMetadata(false, OnPropertyChanged));
+
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is StatePresenter presenter)
+        {
+            presenter.Bindings.Update();
+        }
+    }
 
     public StatePresenter()
     {

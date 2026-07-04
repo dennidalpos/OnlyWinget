@@ -59,14 +59,14 @@ public static class PresentationStateMapper
             active?.Packages
                 .Select(package =>
                 {
-                    state.PackageMetadata.TryGetValue(PackageFingerprint(package), out var metadata);
+                    state.PackageMetadata.TryGetValue(package, out var metadata);
                     return new PresetPackageRow(
                         package.Id,
                         metadata?.Name,
                         package.Source,
                         metadata?.Version,
                         FormatArchitectures(metadata),
-                        state.SelectedPresetPackages.Any(selected => PackageEquals(selected, package)));
+                        state.SelectedPresetPackages.Contains(package));
                 })
                 .ToArray() ?? [],
             state.PresetSelectionHeader,
@@ -99,7 +99,7 @@ public static class PresentationStateMapper
             state.SearchResults
                 .Select(result =>
                 {
-                    state.PackageMetadata.TryGetValue(PackageFingerprint(result.Package), out var metadata);
+                    state.PackageMetadata.TryGetValue(result.Package, out var metadata);
                     return new SearchResultRow(
                         result.Package.Id,
                         result.Name,
@@ -107,7 +107,7 @@ public static class PresentationStateMapper
                         result.Version,
                         FormatArchitectures(metadata),
                         result.Match,
-                        state.SelectedSearchPackages.Any(selected => PackageEquals(selected, result.Package)));
+                        state.SelectedSearchPackages.Contains(result.Package));
                 })
                 .ToArray(),
             state.SearchSelectionHeader,
@@ -126,24 +126,24 @@ public static class PresentationStateMapper
         var canUseWinget = state.Capabilities.CanUseWinget;
         var operationResults = CreateOperationResultRows(state);
         var operationResultsByPackage = operationResults
-            .GroupBy(result => PackageFingerprint(result.PackageId, result.Source), StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
+            .GroupBy(result => new PackageIdentity(result.PackageId, result.Source))
+            .ToDictionary(group => group.Key, group => group.Last());
 
         return new UpdatesPresentationState(
             state.Updates
                 .Select(update =>
                 {
-                    operationResultsByPackage.TryGetValue(PackageFingerprint(update.Package), out var result);
+                    operationResultsByPackage.TryGetValue(update.Package, out var result);
                     return new UpdateRow(
                         update.Package.Id,
                         update.Name,
                         update.Package.Source,
                         update.InstalledVersion,
                         update.AvailableVersion,
-                        state.PackageMetadata.TryGetValue(PackageFingerprint(update.Package), out var metadata)
+                        state.PackageMetadata.TryGetValue(update.Package, out var metadata)
                             ? FormatArchitectures(metadata)
                             : "Value_Unknown",
-                        state.SelectedUpdates.Any(selected => PackageEquals(selected, update.Package)),
+                        state.SelectedUpdates.Contains(update.Package),
                         result?.Status ?? "Update_Status_Available",
                         result?.ErrorDetails,
                         result?.Output);
@@ -271,16 +271,6 @@ public static class PresentationStateMapper
         metadata?.Architectures is { Count: > 0 } architectures
             ? string.Join(", ", architectures)
             : "Architecture_Automatic";
-
-    private static bool PackageEquals(PackageIdentity left, PackageIdentity right) =>
-        string.Equals(left.Id, right.Id, StringComparison.OrdinalIgnoreCase) &&
-        string.Equals(left.Source ?? string.Empty, right.Source ?? string.Empty, StringComparison.OrdinalIgnoreCase);
-
-    private static string PackageFingerprint(PackageIdentity package) =>
-        PackageFingerprint(package.Id, package.Source);
-
-    private static string PackageFingerprint(string packageId, string? source) =>
-        $"{source?.ToUpperInvariant() ?? string.Empty}|{packageId.ToUpperInvariant()}";
 
     private static bool WindowsUpdateEquals(WindowsUpdateIdentity left, WindowsUpdateIdentity right) =>
         string.Equals(left.UpdateId, right.UpdateId, StringComparison.OrdinalIgnoreCase) &&

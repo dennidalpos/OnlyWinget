@@ -14,7 +14,7 @@
                                 <TextBlock x:Name="LanguageTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <TextBlock x:Name="LanguageDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
                             </StackPanel>
-                            <ComboBox x:Name="LanguagePicker" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnLanguageChanged" AutomationProperties.AutomationId="SettingsLanguagePicker" HorizontalAlignment="Stretch">
+                            <ComboBox x:Name="LanguagePicker" Grid.Column="1" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsLanguagePicker" HorizontalAlignment="Stretch">
                                 <ComboBoxItem Content="System default" Tag="system" />
                                 <ComboBoxItem Content="English" Tag="en" />
                                 <ComboBoxItem Content="Italiano" Tag="it" />
@@ -28,7 +28,7 @@
                                 <TextBlock x:Name="ThemeTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <TextBlock x:Name="ThemeDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
                             </StackPanel>
-                            <ComboBox x:Name="ThemePicker" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnThemeChanged" AutomationProperties.AutomationId="SettingsThemePicker" HorizontalAlignment="Stretch">
+                            <ComboBox x:Name="ThemePicker" Grid.Column="1" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Theme, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsThemePicker" HorizontalAlignment="Stretch">
                                 <ComboBoxItem Content="System default" Tag="default" />
                                 <ComboBoxItem Content="Light" Tag="light" />
                                 <ComboBoxItem Content="Dark" Tag="dark" />
@@ -43,7 +43,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="ConfirmDestructiveText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                                <ToggleSwitch x:Name="ConfirmDestructiveToggle" Grid.Column="1" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" Header="" Margin="0" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="ConfirmDestructiveToggle" Grid.Column="1" IsOn="{x:Bind ViewModel.ConfirmDestructiveActions, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" Header="" Margin="0" VerticalAlignment="Center" />
                             </Grid>
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.5" />
                             <Grid ColumnSpacing="24">
@@ -52,7 +52,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="DiagnosticsText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                                <ToggleSwitch x:Name="DiagnosticsToggle" Grid.Column="1" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" Header="" Margin="0" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="DiagnosticsToggle" Grid.Column="1" IsOn="{x:Bind ViewModel.DiagnosticLogging, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" Header="" Margin="0" VerticalAlignment="Center" />
                             </Grid>
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.5" />
                             <Grid ColumnSpacing="24">
@@ -61,7 +61,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="InstallBehaviorText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                                <ToggleSwitch x:Name="InstallBehaviorToggle" Grid.Column="1" Toggled="OnSettingToggled" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" Header="" Margin="0" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="InstallBehaviorToggle" Grid.Column="1" IsOn="{x:Bind ViewModel.ContinueOperationsAfterFailure, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" Header="" Margin="0" VerticalAlignment="Center" />
                             </Grid>
                         </StackPanel>
                     </Border>

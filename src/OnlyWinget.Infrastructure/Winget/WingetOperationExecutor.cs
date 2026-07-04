@@ -1,3 +1,4 @@
+using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Domain.Operations;
 
@@ -73,10 +74,5 @@ public sealed class WingetOperationExecutor(
         }
 
         return new OperationExecutionSummary(results);
-    }
-
-    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
-    {
-        public void Report(T value) => report(value);
     }
 }

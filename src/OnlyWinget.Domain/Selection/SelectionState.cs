@@ -6,9 +6,9 @@ public sealed class SelectionState<TKey>
     private readonly HashSet<TKey> available = [];
     private readonly HashSet<TKey> selected = [];
 
-    public IReadOnlyCollection<TKey> Available => available.ToArray();
+    public IReadOnlyCollection<TKey> Available => available;
 
-    public IReadOnlyCollection<TKey> Selected => selected.ToArray();
+    public IReadOnlyCollection<TKey> Selected => selected;
 
     public SelectionHeaderState HeaderState
     {

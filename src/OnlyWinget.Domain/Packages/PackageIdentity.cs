@@ -19,4 +19,15 @@ public sealed record PackageIdentity
     public string Id { get; }
 
     public string? Source { get; }
+
+    public bool Equals(PackageIdentity? other) =>
+        other is not null &&
+        string.Equals(Id, other.Id, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(Source ?? string.Empty, other.Source ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(
+            Id.ToUpperInvariant(),
+            Source?.ToUpperInvariant() ?? string.Empty);
 }
+

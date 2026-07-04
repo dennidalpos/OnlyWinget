@@ -3,13 +3,24 @@ using OnlyWinget.Services;
 
 namespace OnlyWinget.Features.Settings;
 
-internal sealed class SettingsViewModel(IAppSettingsService settingsService) : ObservableObject
+public sealed class SettingsViewModel : ObservableObject
 {
-    private string language = settingsService.Current.Language;
-    private string theme = settingsService.Current.Theme;
-    private bool confirmDestructiveActions = settingsService.Current.ConfirmDestructiveActions;
-    private bool diagnosticLogging = settingsService.Current.DiagnosticLogging;
-    private bool continueOperationsAfterFailure = settingsService.Current.ContinueOperationsAfterFailure;
+    private readonly IAppSettingsService settingsService;
+    private string language;
+    private string theme;
+    private bool confirmDestructiveActions;
+    private bool diagnosticLogging;
+    private bool continueOperationsAfterFailure;
+
+    internal SettingsViewModel(IAppSettingsService settingsService)
+    {
+        this.settingsService = settingsService;
+        language = settingsService.Current.Language;
+        theme = settingsService.Current.Theme;
+        confirmDestructiveActions = settingsService.Current.ConfirmDestructiveActions;
+        diagnosticLogging = settingsService.Current.DiagnosticLogging;
+        continueOperationsAfterFailure = settingsService.Current.ContinueOperationsAfterFailure;
+    }
 
     public string Language { get => language; set => SetProperty(ref language, value); }
     public string Theme { get => theme; set => SetProperty(ref theme, value); }

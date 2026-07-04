@@ -24,7 +24,7 @@ public sealed record OnlyWingetState(
     IReadOnlyList<WindowsUpdateIdentity> SelectedWindowsUpdates,
     SelectionHeaderState WindowsUpdatesSelectionHeader,
     IReadOnlyList<WindowsUpdateInstallResult> LastWindowsUpdateResults,
-    IReadOnlyDictionary<string, PackageResolution> PackageMetadata,
+    IReadOnlyDictionary<PackageIdentity, PackageResolution> PackageMetadata,
     SystemCapabilities Capabilities,
     IReadOnlyList<WingetSource> Sources,
     ClassifiedWingetError? SourceError,
