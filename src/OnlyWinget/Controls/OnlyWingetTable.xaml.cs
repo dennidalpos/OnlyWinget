@@ -112,7 +112,6 @@ public sealed partial class OnlyWingetTable : UserControl
         RecalculateWidths(ActualWidth);
 
         Rows.Header = BuildHeader();
-        Rows.ItemTemplate = BuildRowTemplate();
         Rows.SelectionMode = ListViewSelectionMode.None; // Legacy constraint for ui-test match: ListViewSelectionMode.Multiple
         Rows.IsItemClickEnabled = IsSelectionEnabled;
         Rows.ItemsSource = ItemsSource;
@@ -232,11 +231,7 @@ public sealed partial class OnlyWingetTable : UserControl
         return headerBorder;
     }
 
-    private DataTemplate BuildRowTemplate()
-    {
-        const string xaml = @"<DataTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation"" xmlns:controls=""using:OnlyWinget.Controls""><controls:OnlyWingetTableRow /></DataTemplate>";
-        return (DataTemplate)XamlReader.Load(xaml);
-    }
+
 
     private Grid CreateGrid()
     {

@@ -885,7 +885,10 @@ public sealed class OnlyWingetApplication(
                 throw new InvalidOperationException(resolution.Error?.Message ?? $"Package '{package.Id}' was not found in source '{requestedSource}'.");
             }
 
-            packageMetadata[resolution.Package] = resolution;
+            lock (packageMetadata)
+            {
+                packageMetadata[resolution.Package] = resolution;
+            }
             return resolution;
         }
 
@@ -913,7 +916,10 @@ public sealed class OnlyWingetApplication(
         }
 
         var match = matches[0];
-        packageMetadata[match.Package] = match;
+        lock (packageMetadata)
+        {
+            packageMetadata[match.Package] = match;
+        }
         return match;
     }
 
