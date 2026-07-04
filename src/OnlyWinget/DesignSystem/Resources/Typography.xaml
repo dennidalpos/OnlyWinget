@@ -6,9 +6,9 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
-    <Style x:Key="TitleTextBlockStyle" TargetType="TextBlock" BasedOn="{StaticResource PageTitleTextBlockStyle}" />
     <Style x:Key="SubtitleTextBlockStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
     <Style x:Key="SectionTitleTextBlockStyle" TargetType="TextBlock">
@@ -28,7 +28,8 @@
     </Style>
     <Style x:Key="RowPrimaryTextBlockStyle" TargetType="TextBlock">
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style x:Key="RowSecondaryTextBlockStyle" TargetType="TextBlock">

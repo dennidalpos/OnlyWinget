@@ -16,21 +16,32 @@
         </design:PageScaffold.State>
         <design:PageScaffold.Body>
             <Grid RowSpacing="12">
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
                 <Border Style="{StaticResource CardStyle}">
                     <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="160" /><ColumnDefinition Width="160" /></Grid.ColumnDefinitions>
-                        <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Left" Width="480" VerticalAlignment="Center" />
-                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="160" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" VerticalAlignment="Center" />
+                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Tag="all" />
                             <ComboBoxItem Tag="Information" />
                             <ComboBoxItem Tag="Success" />
                             <ComboBoxItem Tag="Warning" />
                             <ComboBoxItem Tag="Error" />
                         </ComboBox>
-                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="160" VerticalAlignment="Center">
-                            <ComboBoxItem Tag="all" /><ComboBoxItem Tag="packages" /><ComboBoxItem Tag="windows" />
-                            <ComboBoxItem Tag="sources" /><ComboBoxItem Tag="presets" /><ComboBoxItem Tag="system" />
+                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="140" VerticalAlignment="Center">
+                            <ComboBoxItem Tag="all" />
+                            <ComboBoxItem Tag="packages" />
+                            <ComboBoxItem Tag="windows" />
+                            <ComboBoxItem Tag="sources" />
+                            <ComboBoxItem Tag="presets" />
+                            <ComboBoxItem Tag="system" />
                         </ComboBox>
                     </Grid>
                 </Border>
@@ -46,7 +57,11 @@
                             <Expander>
                                 <Expander.Header>
                                     <Grid ColumnSpacing="12">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="120" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="110" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
                                         <TextBlock Text="{x:Bind Timestamp}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                         <TextBlock Grid.Column="1" Text="{x:Bind Severity}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                         <TextBlock Grid.Column="2" Text="{x:Bind Title}" Style="{StaticResource RowPrimaryTextBlockStyle}" />

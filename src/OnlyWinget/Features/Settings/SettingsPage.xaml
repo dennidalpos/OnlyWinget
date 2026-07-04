@@ -6,7 +6,7 @@
     <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaSettingsBrush}">
         <design:PageScaffold.Body>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="8" Padding="0,0,0,24" MaxWidth="1000" HorizontalAlignment="Left" Width="800">
+                <StackPanel Spacing="8" Padding="0,0,0,24" MaxWidth="1000" HorizontalAlignment="Stretch">
                     <!-- Language Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
                         <Grid ColumnSpacing="12">
@@ -15,7 +15,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Globe" Margin="0,0,12,0" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Globe" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="LanguageTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <TextBlock x:Name="LanguageDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
@@ -36,7 +36,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Highlight" Margin="0,0,12,0" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Highlight" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="ThemeTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <TextBlock x:Name="ThemeDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
@@ -57,7 +57,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Important" Margin="0,0,12,0" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Important" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="ConfirmDestructiveText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                             </StackPanel>
@@ -73,7 +73,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Document" Margin="0,0,12,0" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Document" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="DiagnosticsText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                             </StackPanel>
@@ -89,7 +89,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Play" Margin="0,0,12,0" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Play" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="InstallBehaviorText" Style="{StaticResource SectionTitleTextBlockStyle}" />
                             </StackPanel>
@@ -105,7 +105,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Refresh" Margin="0,0,12,0" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Refresh" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="ResetTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <TextBlock x:Name="ResetDescription" Style="{StaticResource SubtitleTextBlockStyle}" />

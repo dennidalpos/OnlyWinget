@@ -5,15 +5,6 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="AreaHomeBrush" Color="#60CDFF" />
-                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="#B194E3" />
-                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="#4DF2F9" />
-                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="#60CD9B" />
-                    <SolidColorBrush x:Key="AreaActivityBrush" Color="#FF8C00" />
-                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="#A19F9D" />
-                    <x:Double x:Key="TableCellDividerOpacity">0.55</x:Double>
-                </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="AreaHomeBrush" Color="#0078D4" />
                     <SolidColorBrush x:Key="AreaPackagesBrush" Color="#8764B8" />

@@ -67,23 +67,11 @@ public sealed partial class StatePresenter : UserControl, INotifyPropertyChanged
 
     public Microsoft.UI.Xaml.Media.Brush IconForeground => Severity switch
     {
-        InfoBarSeverity.Error => GetSeverityBrush("SystemFillColorCriticalBrush", Microsoft.UI.Colors.Red),
-        InfoBarSeverity.Warning => GetSeverityBrush("SystemFillColorCautionBrush", Microsoft.UI.Colors.Orange),
-        InfoBarSeverity.Success => GetSeverityBrush("SystemFillColorSuccessBrush", Microsoft.UI.Colors.Green),
-        _ => GetSeverityBrush("SystemFillColorAttentionBrush", Microsoft.UI.Colors.Blue)
+        InfoBarSeverity.Error => PresentationValues.GetSeverityBrush("SystemFillColorCriticalBrush", Microsoft.UI.Colors.Red),
+        InfoBarSeverity.Warning => PresentationValues.GetSeverityBrush("SystemFillColorCautionBrush", Microsoft.UI.Colors.Orange),
+        InfoBarSeverity.Success => PresentationValues.GetSeverityBrush("SystemFillColorSuccessBrush", Microsoft.UI.Colors.Green),
+        _ => PresentationValues.GetSeverityBrush("SystemFillColorAttentionBrush", Microsoft.UI.Colors.Blue)
     };
-
-    private Microsoft.UI.Xaml.Media.Brush GetSeverityBrush(string resourceKey, Windows.UI.Color fallbackColor)
-    {
-        if (Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(resourceKey, out var brush))
-        {
-            if (brush is Microsoft.UI.Xaml.Media.Brush b)
-            {
-                return b;
-            }
-        }
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(fallbackColor);
-    }
 
     public void Present(FeatureState state)
     {

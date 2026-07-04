@@ -90,7 +90,11 @@
             <states:StatePresenter x:Name="PageState" Grid.Row="3"/>
             <Border Grid.Row="4" Style="{StaticResource ListCardStyle}" MinHeight="300">
                 <controls:OnlyWingetTable x:Name="PackageList" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled">
-                    <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="180" IsPrimary="True"/><controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True"/><controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="120"/><controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="110"/><controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="*"/>
+                    <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="180" IsPrimary="True" />
+                    <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True" />
+                    <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="120" />
+                    <controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="110" />
+                    <controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="*" />
                 </controls:OnlyWingetTable>
             </Border>
             <StackPanel Grid.Row="5" Spacing="8">
@@ -107,9 +111,9 @@
                                                 <ColumnDefinition Width="Auto" MinWidth="100" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="1" Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" Foreground="{x:Bind presentation:PresentationValues.StatusBrush(Succeeded), Mode=OneTime}" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="2" Text="{x:Bind ErrorDetails, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" Visibility="{x:Bind presentation:PresentationValues.HasErrorDetails(ErrorDetails), Mode=OneTime}"/>
+                                            <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" Foreground="{x:Bind presentation:PresentationValues.StatusBrush(Succeeded), Mode=OneTime}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{x:Bind ErrorDetails, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" Visibility="{x:Bind presentation:PresentationValues.HasErrorDetails(ErrorDetails), Mode=OneTime}" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -117,7 +121,6 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Border>
-                <TextBlock x:Name="ImportExportText" Visibility="Collapsed"/>
             </StackPanel>
         </Grid>
     </ScrollViewer>

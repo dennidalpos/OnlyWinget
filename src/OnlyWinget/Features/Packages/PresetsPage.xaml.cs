@@ -62,7 +62,7 @@ public sealed partial class PresetsPage : UserControl
         PresetNameBox.Header = TextResources.Get("Preset_Name");
         PackageIdBox.Header = TextResources.Get("Package_Id");
         PackageSourceBox.Header = TextResources.Get("Package_Source");
-        ImportExportText.Text = TextResources.Get("Section_ImportExport");
+
         PackageList.SelectionLabel = TextResources.Get("Command_Select_All");
         PackageList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Architecture" }.Select(TextResources.Get).ToArray());
 

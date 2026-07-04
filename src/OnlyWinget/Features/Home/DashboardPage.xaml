@@ -63,7 +63,7 @@
                             <ItemsControl x:Name="ActivityList" Grid.Row="1" AutomationProperties.AutomationId="DashboardActivityList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="presentation:ActivityRow">
-                                        <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                                        <Border Style="{StaticResource TableRowDividerStyle}" Padding="0,8">
                                             <StackPanel Spacing="3">
                                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                                     <TextBlock Text="{x:Bind Severity, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />

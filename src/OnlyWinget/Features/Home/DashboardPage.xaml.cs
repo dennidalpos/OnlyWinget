@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using OnlyWinget.Presentation;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Home;
@@ -57,30 +58,18 @@ public sealed partial class DashboardPage : Page
         if (viewModel.HasWarning)
         {
             OperationalIcon.Glyph = "\uE7BA";
-            OperationalIcon.Foreground = GetSeverityBrush("SystemFillColorCautionBrush", Microsoft.UI.Colors.Orange);
+            OperationalIcon.Foreground = PresentationValues.GetSeverityBrush("SystemFillColorCautionBrush", Microsoft.UI.Colors.Orange);
         }
         else if (viewModel.OperationalStatus == TextResources.Get("Dashboard_Busy"))
         {
             OperationalIcon.Glyph = "\uE895";
-            OperationalIcon.Foreground = GetSeverityBrush("SystemFillColorAttentionBrush", Microsoft.UI.Colors.Blue);
+            OperationalIcon.Foreground = PresentationValues.GetSeverityBrush("SystemFillColorAttentionBrush", Microsoft.UI.Colors.Blue);
         }
         else
         {
             OperationalIcon.Glyph = "\uE930";
-            OperationalIcon.Foreground = GetSeverityBrush("SystemFillColorSuccessBrush", Microsoft.UI.Colors.Green);
+            OperationalIcon.Foreground = PresentationValues.GetSeverityBrush("SystemFillColorSuccessBrush", Microsoft.UI.Colors.Green);
         }
-    }
-
-    private Microsoft.UI.Xaml.Media.Brush GetSeverityBrush(string resourceKey, Windows.UI.Color fallbackColor)
-    {
-        if (Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(resourceKey, out var brush))
-        {
-            if (brush is Microsoft.UI.Xaml.Media.Brush b)
-            {
-                return b;
-            }
-        }
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(fallbackColor);
     }
 
     private void OnOpenPackages(object sender, RoutedEventArgs args) => App.Navigate("packages");
@@ -99,3 +88,4 @@ public sealed partial class DashboardPage : Page
         }
     }
 }
+

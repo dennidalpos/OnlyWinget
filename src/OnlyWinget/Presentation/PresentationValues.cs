@@ -35,4 +35,16 @@ public static class PresentationValues
 
     public static Visibility HasErrorDetails(string? errorDetails) =>
         string.IsNullOrWhiteSpace(errorDetails) ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+
+    public static Microsoft.UI.Xaml.Media.Brush GetSeverityBrush(string resourceKey, Windows.UI.Color fallbackColor)
+    {
+        if (Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(resourceKey, out var brush))
+        {
+            if (brush is Microsoft.UI.Xaml.Media.Brush b)
+            {
+                return b;
+            }
+        }
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(fallbackColor);
+    }
 }
