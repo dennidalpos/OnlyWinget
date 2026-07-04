@@ -16,6 +16,7 @@ public sealed partial class OnlyWingetTable : UserControl
     private INotifyCollectionChanged? subscribedCollection;
     internal readonly TableLayoutHelper layoutHelper = new();
     private Grid? headerGrid;
+    private bool hasAutoFitDone;
 
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource), typeof(IEnumerable), typeof(OnlyWingetTable), new PropertyMetadata(null, OnItemsSourceChanged));
@@ -71,6 +72,8 @@ public sealed partial class OnlyWingetTable : UserControl
         table.Rows.ItemsSource = args.NewValue as IEnumerable;
         table.UpdateCollectionSubscription(args.NewValue as INotifyCollectionChanged);
         table.SynchronizeSelection();
+        table.hasAutoFitDone = false;
+        table.AutoFitColumns();
     }
 
     private void UpdateCollectionSubscription(INotifyCollectionChanged? newCollection)
@@ -89,6 +92,11 @@ public sealed partial class OnlyWingetTable : UserControl
     private void OnItemsSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         SynchronizeSelection();
+        if (e.Action == NotifyCollectionChangedAction.Add || e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            hasAutoFitDone = false;
+            AutoFitColumns();
+        }
     }
 
     private static void OnHeaderSelectionChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args) =>
@@ -100,6 +108,72 @@ public sealed partial class OnlyWingetTable : UserControl
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         RecalculateWidths(e.NewSize.Width);
+        if (!hasAutoFitDone && e.NewSize.Width > 0 && ItemsSource != null)
+        {
+            AutoFitColumns();
+        }
+    }
+
+    public void AutoFitColumns()
+    {
+        if (Columns.Count == 0 || ItemsSource == null) return;
+
+        var items = new List<object>();
+        var enumerator = ItemsSource.GetEnumerator();
+        while (enumerator.MoveNext())
+        {
+            if (enumerator.Current != null)
+            {
+                items.Add(enumerator.Current);
+            }
+        }
+
+        if (items.Count == 0) return;
+
+        for (int i = 0; i < Columns.Count; i++)
+        {
+            var col = Columns[i];
+
+            // Start with header width
+            double maxTextWidth = 0;
+            if (!string.IsNullOrEmpty(col.Header))
+            {
+                maxTextWidth = col.Header.Length * 8.2 + 28;
+            }
+
+            // Inspect up to first 100 items for performance
+            var sampleCount = Math.Min(items.Count, 100);
+            for (int j = 0; j < sampleCount; j++)
+            {
+                var item = items[j];
+                if (item == null) continue;
+
+                var prop = item.GetType().GetProperty(col.BindingPath);
+                if (prop != null)
+                {
+                    var val = prop.GetValue(item)?.ToString();
+                    if (!string.IsNullOrEmpty(val))
+                    {
+                        double estimatedWidth = val.Length * 7.5 + 26;
+                        if (estimatedWidth > maxTextWidth)
+                        {
+                            maxTextWidth = estimatedWidth;
+                        }
+                    }
+                }
+            }
+
+            // Constrain between 60px and 450px
+            double finalWidth = Math.Max(60, Math.Min(maxTextWidth, 450));
+
+            col.Width = new GridLength(finalWidth);
+        }
+
+        if (ActualWidth > 0)
+        {
+            RecalculateWidths(ActualWidth);
+            hasAutoFitDone = true;
+        }
     }
 
     private void Rebuild()
@@ -112,7 +186,7 @@ public sealed partial class OnlyWingetTable : UserControl
         RecalculateWidths(ActualWidth);
 
         Rows.Header = BuildHeader();
-        Rows.SelectionMode = ListViewSelectionMode.None; // Legacy constraint for ui-test match: ListViewSelectionMode.Multiple
+        Rows.SelectionMode = ListViewSelectionMode.None;
         Rows.IsItemClickEnabled = IsSelectionEnabled;
         Rows.ItemsSource = ItemsSource;
         SynchronizeSelection();
@@ -408,26 +482,45 @@ public sealed class CursorGrid : Grid
 public sealed class TableLayoutHelper : DependencyObject
 {
     public static readonly DependencyProperty CheckBoxWidthProperty = DependencyProperty.Register(
-        nameof(CheckBoxWidth), typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(32.0));
+        nameof(CheckBoxWidth), typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(32.0, OnCheckBoxWidthPropertyChanged));
+
+    private static void OnCheckBoxWidthPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableLayoutHelper helper && e.NewValue is double newWidth)
+        {
+            helper.CheckBoxWidthChanged?.Invoke(newWidth);
+        }
+    }
+
+    public event Action<double>? CheckBoxWidthChanged;
+    public event Action<int, double>? WidthChanged;
+
+    private static void OnWidthChanged(DependencyObject d, DependencyPropertyChangedEventArgs e, int index)
+    {
+        if (d is TableLayoutHelper helper && e.NewValue is double newWidth)
+        {
+            helper.WidthChanged?.Invoke(index, newWidth);
+        }
+    }
+
+    public static readonly DependencyProperty Width0Property = DependencyProperty.Register("Width0", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 0)));
+    public static readonly DependencyProperty Width1Property = DependencyProperty.Register("Width1", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 1)));
+    public static readonly DependencyProperty Width2Property = DependencyProperty.Register("Width2", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 2)));
+    public static readonly DependencyProperty Width3Property = DependencyProperty.Register("Width3", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 3)));
+    public static readonly DependencyProperty Width4Property = DependencyProperty.Register("Width4", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 4)));
+    public static readonly DependencyProperty Width5Property = DependencyProperty.Register("Width5", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 5)));
+    public static readonly DependencyProperty Width6Property = DependencyProperty.Register("Width6", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 6)));
+    public static readonly DependencyProperty Width7Property = DependencyProperty.Register("Width7", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 7)));
+    public static readonly DependencyProperty Width8Property = DependencyProperty.Register("Width8", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 8)));
+    public static readonly DependencyProperty Width9Property = DependencyProperty.Register("Width9", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 9)));
+    public static readonly DependencyProperty Width10Property = DependencyProperty.Register("Width10", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 10)));
+    public static readonly DependencyProperty Width11Property = DependencyProperty.Register("Width11", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0, (d, e) => OnWidthChanged(d, e, 11)));
 
     public double CheckBoxWidth
     {
         get => (double)GetValue(CheckBoxWidthProperty);
         set => SetValue(CheckBoxWidthProperty, value);
     }
-
-    public static readonly DependencyProperty Width0Property = DependencyProperty.Register("Width0", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width1Property = DependencyProperty.Register("Width1", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width2Property = DependencyProperty.Register("Width2", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width3Property = DependencyProperty.Register("Width3", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width4Property = DependencyProperty.Register("Width4", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width5Property = DependencyProperty.Register("Width5", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width6Property = DependencyProperty.Register("Width6", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width7Property = DependencyProperty.Register("Width7", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width8Property = DependencyProperty.Register("Width8", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width9Property = DependencyProperty.Register("Width9", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width10Property = DependencyProperty.Register("Width10", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
-    public static readonly DependencyProperty Width11Property = DependencyProperty.Register("Width11", typeof(double), typeof(TableLayoutHelper), new PropertyMetadata(100.0));
 
     public double Width0 { get => (double)GetValue(Width0Property); set => SetValue(Width0Property, value); }
     public double Width1 { get => (double)GetValue(Width1Property); set => SetValue(Width1Property, value); }
@@ -498,23 +591,103 @@ public sealed class DoubleToGridLengthConverter : IValueConverter
 public sealed class OnlyWingetTableRow : Grid
 {
     private bool isInitialized;
-    private static readonly DoubleToGridLengthConverter GridLengthConverter = new();
+    private TableLayoutHelper? subscribedLayoutHelper;
 
     public OnlyWingetTableRow()
     {
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         DataContextChanged += OnDataContextChanged;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (isInitialized) return;
-        InitializeRow();
+        if (!isInitialized)
+        {
+            InitializeRow();
+        }
+        else
+        {
+            var parentTable = FindParentTable();
+            if (parentTable != null)
+            {
+                SubscribeLayoutHelper(parentTable.layoutHelper);
+                SyncWidths(parentTable);
+            }
+        }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        UnsubscribeLayoutHelper();
     }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
         UpdateAutomationProperties();
+    }
+
+    private void SubscribeLayoutHelper(TableLayoutHelper layoutHelper)
+    {
+        if (subscribedLayoutHelper == layoutHelper) return;
+
+        UnsubscribeLayoutHelper();
+
+        subscribedLayoutHelper = layoutHelper;
+        subscribedLayoutHelper.WidthChanged += OnColumnWidthChanged;
+        subscribedLayoutHelper.CheckBoxWidthChanged += OnCheckBoxWidthChanged;
+    }
+
+    private void UnsubscribeLayoutHelper()
+    {
+        if (subscribedLayoutHelper != null)
+        {
+            subscribedLayoutHelper.WidthChanged -= OnColumnWidthChanged;
+            subscribedLayoutHelper.CheckBoxWidthChanged -= OnCheckBoxWidthChanged;
+            subscribedLayoutHelper = null;
+        }
+    }
+
+    private void OnColumnWidthChanged(int index, double newWidth)
+    {
+        var parentTable = FindParentTable();
+        if (parentTable == null) return;
+
+        var isSelectionEnabled = parentTable.IsSelectionEnabled;
+        var colIndex = index + (isSelectionEnabled ? 1 : 0);
+
+        if (colIndex < ColumnDefinitions.Count)
+        {
+            ColumnDefinitions[colIndex].Width = new GridLength(newWidth);
+        }
+    }
+
+    private void OnCheckBoxWidthChanged(double newWidth)
+    {
+        if (ColumnDefinitions.Count > 0)
+        {
+            ColumnDefinitions[0].Width = new GridLength(newWidth);
+        }
+    }
+
+    private void SyncWidths(OnlyWingetTable parentTable)
+    {
+        var layoutHelper = parentTable.layoutHelper;
+        var isSelectionEnabled = parentTable.IsSelectionEnabled;
+
+        if (isSelectionEnabled && ColumnDefinitions.Count > 0)
+        {
+            ColumnDefinitions[0].Width = new GridLength(layoutHelper.CheckBoxWidth);
+        }
+
+        for (int i = 0; i < parentTable.Columns.Count; i++)
+        {
+            var colIndex = i + (isSelectionEnabled ? 1 : 0);
+            if (colIndex < ColumnDefinitions.Count)
+            {
+                ColumnDefinitions[colIndex].Width = new GridLength(layoutHelper.GetWidth(i));
+            }
+        }
     }
 
     private void InitializeRow()
@@ -528,20 +701,14 @@ public sealed class OnlyWingetTableRow : Grid
         var layoutHelper = parentTable.layoutHelper;
         var isSelectionEnabled = parentTable.IsSelectionEnabled;
 
+        SubscribeLayoutHelper(layoutHelper);
+
         ColumnDefinitions.Clear();
         Children.Clear();
 
         if (isSelectionEnabled)
         {
-            var colDef = new ColumnDefinition();
-            var binding = new Binding
-            {
-                Source = layoutHelper,
-                Path = new PropertyPath(nameof(TableLayoutHelper.CheckBoxWidth)),
-                Mode = BindingMode.OneWay,
-                Converter = GridLengthConverter
-            };
-            BindingOperations.SetBinding(colDef, ColumnDefinition.WidthProperty, binding);
+            var colDef = new ColumnDefinition { Width = new GridLength(layoutHelper.CheckBoxWidth) };
             ColumnDefinitions.Add(colDef);
 
             var checkBox = new CheckBox
@@ -580,16 +747,7 @@ public sealed class OnlyWingetTableRow : Grid
             var col = columns[i];
             var colIndex = i + (isSelectionEnabled ? 1 : 0);
 
-            var colDef = new ColumnDefinition();
-            var widthPropertyName = $"Width{i}";
-            var binding = new Binding
-            {
-                Source = layoutHelper,
-                Path = new PropertyPath(widthPropertyName),
-                Mode = BindingMode.OneWay,
-                Converter = GridLengthConverter
-            };
-            BindingOperations.SetBinding(colDef, ColumnDefinition.WidthProperty, binding);
+            var colDef = new ColumnDefinition { Width = new GridLength(layoutHelper.GetWidth(i)) };
             ColumnDefinitions.Add(colDef);
 
             var textBlock = new TextBlock

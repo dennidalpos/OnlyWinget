@@ -13,9 +13,9 @@
             </SelectorBar>
         </design:PageScaffold.Commands>
         <design:PageScaffold.Body>
-            <Grid>
-                <updates:UpdatesPage x:Name="WingetWorkflow" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
-                <updates:WindowsUpdatePage x:Name="WindowsWorkflow" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
+            <Grid VerticalAlignment="Stretch">
+                <updates:UpdatesPage x:Name="WingetWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
+                <updates:WindowsUpdatePage x:Name="WindowsWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>

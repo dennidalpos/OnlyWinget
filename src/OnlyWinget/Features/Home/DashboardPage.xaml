@@ -36,7 +36,7 @@
                     </Border>
                     <ItemsRepeater x:Name="MetricRepeater" Grid.Row="1">
                         <ItemsRepeater.Layout>
-                            <UniformGridLayout MaximumRowsOrColumns="5" MinItemWidth="170" MinColumnSpacing="12" MinRowSpacing="12" ItemsStretch="Fill" Orientation="Horizontal" />
+                            <UniformGridLayout MaximumRowsOrColumns="6" MinItemWidth="170" MinColumnSpacing="12" MinRowSpacing="12" ItemsStretch="Fill" Orientation="Horizontal" />
                         </ItemsRepeater.Layout>
                         <ItemsRepeater.ItemTemplate>
                             <DataTemplate x:DataType="home:DashboardMetric">
@@ -52,7 +52,14 @@
                     <Border Grid.Row="2" Style="{StaticResource CardStyle}">
                         <Grid RowSpacing="10">
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                            <TextBlock x:Name="RecentActivityText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="RecentActivityText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
+                                <HyperlinkButton x:Name="ViewAllActivityButton" Grid.Column="1" Click="OnViewAllActivity" VerticalAlignment="Center" />
+                            </Grid>
                             <ItemsControl x:Name="ActivityList" Grid.Row="1" AutomationProperties.AutomationId="DashboardActivityList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="presentation:ActivityRow">

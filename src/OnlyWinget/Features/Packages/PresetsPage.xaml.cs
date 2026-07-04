@@ -65,6 +65,15 @@ public sealed partial class PresetsPage : UserControl
         ImportExportText.Text = TextResources.Get("Section_ImportExport");
         PackageList.SelectionLabel = TextResources.Get("Command_Select_All");
         PackageList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Architecture" }.Select(TextResources.Get).ToArray());
+
+        AddPresetBtn.Content = TextResources.Get("Command_Preset_Add");
+        RenamePresetBtn.Content = TextResources.Get("Command_Preset_Rename");
+        RemovePresetBtn.Content = TextResources.Get("Command_Preset_Remove");
+        ImportPresetBtn.Content = TextResources.Get("Command_Preset_Import");
+        ExportPresetBtn.Content = TextResources.Get("Command_Preset_Export");
+        AddPackageBtn.Content = TextResources.Get("Command_PresetPackage_Add");
+        EditPackageBtn.Content = TextResources.Get("Command_PresetPackage_Edit");
+        RemovePackageBtn.Content = TextResources.Get("Command_PresetPackage_Remove");
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
@@ -111,12 +120,26 @@ public sealed partial class PresetsPage : UserControl
 
     private void ApplyValidationToCommands()
     {
-        CommandBar.SetCommands(ViewModel.Commands.Values.Select(command => command.Id switch
+        var topLevelCommandIds = new[]
         {
-            UiCommandId.AddPreset or UiCommandId.RenamePreset => command with { IsEnabled = command.IsEnabled && ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0 },
-            UiCommandId.AddPresetPackage => command with { IsEnabled = command.IsEnabled && ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0 },
-            _ => command
-        }));
+            UiCommandId.SaveWorkspace,
+            UiCommandId.InstallPreset,
+            UiCommandId.UninstallPreset,
+            UiCommandId.CancelOperation
+        };
+
+        CommandBar.SetCommands(ViewModel.Commands.Values
+            .Where(c => topLevelCommandIds.Contains(c.Id)));
+
+        AddPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPreset) && ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
+        RenamePresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RenamePreset) && ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
+        RemovePresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RemovePreset);
+        ImportPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.ImportPreset);
+        ExportPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.ExportPreset);
+
+        AddPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPresetPackage) && ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
+        EditPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.EditPresetPackage) && ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
+        RemovePackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RemovePresetPackages);
     }
 
     private void ApplyOperationProgress(bool isExecuting)
@@ -135,6 +158,23 @@ public sealed partial class PresetsPage : UserControl
     }
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();
+
+    private async void OnAddPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.AddPreset);
+    private async void OnRenamePresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RenamePreset);
+    private async void OnRemovePresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePreset);
+    private async void OnImportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ImportPreset);
+    private async void OnExportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ExportPreset);
+    private async void OnAddPackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.AddPresetPackage);
+    private async void OnEditPackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.EditPresetPackage);
+    private async void OnRemovePackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePresetPackages);
+
+    private async System.Threading.Tasks.Task ExecuteCommandAsync(UiCommandId id)
+    {
+        if (ViewModel.Commands.TryGetValue(id, out var command))
+        {
+            await ViewModel.ExecuteAsync(command, PackageSourceBox.Text);
+        }
+    }
 
     private void Dispatch(Action action)
     {

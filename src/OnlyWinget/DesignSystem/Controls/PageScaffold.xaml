@@ -2,12 +2,7 @@
     x:Class="OnlyWinget.DesignSystem.Controls.PageScaffold"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer
-        HorizontalScrollBarVisibility="Auto"
-        HorizontalScrollMode="Enabled"
-        VerticalScrollBarVisibility="Auto"
-        VerticalScrollMode="Enabled">
-        <Grid x:Name="Root" Padding="28,24,28,28" RowSpacing="16">
+    <Grid x:Name="Root" Padding="28,24,28,28" RowSpacing="16">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
                     <VisualState x:Name="Compact">
@@ -69,5 +64,4 @@
             <ContentPresenter Grid.Row="2" Content="{x:Bind Body, Mode=OneWay}" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
             <ContentPresenter Grid.Row="3" Content="{x:Bind Footer, Mode=OneWay}" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" />
         </Grid>
-    </ScrollViewer>
 </UserControl>

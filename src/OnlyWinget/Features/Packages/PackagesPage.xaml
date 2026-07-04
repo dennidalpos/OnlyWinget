@@ -13,9 +13,9 @@
             </SelectorBar>
         </design:PageScaffold.Commands>
         <design:PageScaffold.Body>
-            <Grid>
-                <packages:PresetsPage x:Name="PresetWorkflow" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
-                <packages:SearchPage x:Name="SearchWorkflow" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
+            <Grid VerticalAlignment="Stretch">
+                <packages:PresetsPage x:Name="PresetWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
+                <packages:SearchPage x:Name="SearchWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>

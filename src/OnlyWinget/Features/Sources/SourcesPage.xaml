@@ -6,72 +6,101 @@
     xmlns:presentation="using:OnlyWinget.Application.Presentation"
     xmlns:states="using:OnlyWinget.DesignSystem.States"
     xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
-    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaSourcesBrush}">
-        <design:PageScaffold.Commands>
-            <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
-        </design:PageScaffold.Commands>
-        <design:PageScaffold.State>
-            <states:StatePresenter x:Name="PageState" />
-        </design:PageScaffold.State>
-        <design:PageScaffold.Body>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <Grid RowSpacing="{StaticResource PageSectionSpacing}">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="16" RowSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <TextBlock x:Name="AddSourceSectionText" Grid.ColumnSpan="2" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                            <Grid Grid.Row="1" HorizontalAlignment="Stretch">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="480"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="WideLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="720" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="NarrowLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SourceNameCol.Width" Value="*" />
+                        <Setter Target="SourceArgCol.Width" Value="0" />
+                        <Setter Target="ButtonRow.Height" Value="Auto" />
+                        <Setter Target="SourceArgumentBox.(Grid.Column)" Value="0" />
+                        <Setter Target="SourceArgumentBox.(Grid.Row)" Value="2" />
+                        <Setter Target="AddSourceBtnRow.(Grid.Row)" Value="3" />
+                        <Setter Target="AddSourceBtnRow.(Grid.ColumnSpan)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaSourcesBrush}">
+            <design:PageScaffold.Commands>
+                <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
+            </design:PageScaffold.Commands>
+            <design:PageScaffold.State>
+                <states:StatePresenter x:Name="PageState" />
+            </design:PageScaffold.State>
+            <design:PageScaffold.Body>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid RowSpacing="{StaticResource PageSectionSpacing}">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Border Style="{StaticResource CardStyle}">
+                            <Grid ColumnSpacing="16" RowSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition x:Name="SourceNameCol" Width="*" />
+                                    <ColumnDefinition x:Name="SourceArgCol" Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition x:Name="SourceArgRow" Height="Auto" />
+                                    <RowDefinition x:Name="ButtonRow" Height="0" />
+                                </Grid.RowDefinitions>
+                                <TextBlock x:Name="AddSourceSectionText" Grid.ColumnSpan="2" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                <TextBox x:Name="SourceNameBox" Grid.Row="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                <TextBox x:Name="SourceArgumentBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                <StackPanel x:Name="AddSourceBtnRow" Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="AddSourceBtn" Click="OnAddSourceClick" Style="{StaticResource AddPrimaryButtonStyle}" />
+                                </StackPanel>
                             </Grid>
-                            <Grid Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="480"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        </Border>
+                        <Border Grid.Row="1" Style="{StaticResource CardStyle}">
+                            <Grid RowSpacing="10">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock x:Name="ManageSourcesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                <design:OnlyWingetWrapPanel x:Name="SourceActions" Grid.Row="1" HorizontalSpacing="8" VerticalSpacing="8">
+                                    <Button x:Name="RefreshSourcesBtn" Click="OnRefreshSourcesClick" Style="{StaticResource RefreshButtonStyle}" />
+                                    <Button x:Name="UpdateSourcesBtn" Click="OnUpdateSourcesClick" Style="{StaticResource PrimaryButtonStyle}" />
+                                    <Button x:Name="RemoveSourceBtn" Click="OnRemoveSourceClick" Style="{StaticResource DeleteButtonStyle}" />
+                                    <Button x:Name="ResetSourcesBtn" Click="OnResetSourcesClick" Style="{StaticResource DestructiveButtonStyle}" />
+                                    <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" VerticalAlignment="Center" />
+                                </design:OnlyWingetWrapPanel>
+                                <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
+                                            <Setter Property="Padding" Value="0,8" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="presentation:SourceRow">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <StackPanel Spacing="3" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}">
+                                                    <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                                    <TextBlock Text="{x:Bind Argument, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                                    <TextBlock Text="{x:Bind Type, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                    <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" DataContextChanged="OnSourceToggleDataContextChanged" />
+                                                    <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
                             </Grid>
-                        </Grid>
-                    </Border>
-                    <Border Grid.Row="1" Style="{StaticResource CardStyle}">
-                        <Grid RowSpacing="10">
-                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                            <TextBlock x:Name="ManageSourcesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                            <StackPanel x:Name="SourceActions" Grid.Row="1" Style="{StaticResource ActionBarStyle}">
-                                <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" />
-                            </StackPanel>
-                            <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
-                                <ListView.ItemContainerStyle>
-                                    <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
-                                        <Setter Property="Padding" Value="0,8" />
-                                    </Style>
-                                </ListView.ItemContainerStyle>
-                                <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="presentation:SourceRow">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                            <StackPanel Spacing="3" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}">
-                                                <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                                <TextBlock Text="{x:Bind Argument, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                                <TextBlock Text="{x:Bind Type, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                                                <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" DataContextChanged="OnSourceToggleDataContextChanged" />
-                                                <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                        </Grid>
-                    </Border>
-                </Grid>
-            </ScrollViewer>
-        </design:PageScaffold.Body>
-    </design:PageScaffold>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </design:PageScaffold.Body>
+        </design:PageScaffold>
+    </Grid>
 </Page>

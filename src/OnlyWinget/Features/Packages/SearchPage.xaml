@@ -6,7 +6,7 @@
     xmlns:states="using:OnlyWinget.DesignSystem.States"
     xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
     xmlns:presentation="using:OnlyWinget.Presentation">
-    <Grid RowSpacing="12">
+    <Grid RowSpacing="12" VerticalAlignment="Stretch">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
             <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

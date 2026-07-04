@@ -55,15 +55,28 @@ public sealed partial class SourcesPage : Page
         ManageSourcesSectionText.Text = TextResources.Get("Section_ManageSources");
         SourceNameBox.Header = TextResources.Get("Source_Name");
         SourceArgumentBox.Header = TextResources.Get("Source_Argument");
+
+        AddSourceBtn.Content = TextResources.Get("Command_Sources_Add");
+        RefreshSourcesBtn.Content = TextResources.Get("Command_Sources_Refresh");
+        UpdateSourcesBtn.Content = TextResources.Get("Command_Sources_Update");
+        RemoveSourceBtn.Content = TextResources.Get("Command_Sources_Remove");
+        ResetSourcesBtn.Content = TextResources.Get("Command_Sources_Reset");
     }
 
 
-    private void RefreshCommands() => CommandBar.SetCommands(viewModel.Commands.Values.Select(command => command.Id switch
+    private void RefreshCommands()
     {
-        UiCommandId.AddSource => command with { IsEnabled = viewModel.CanAdd },
-        UiCommandId.RemoveSource => command with { IsEnabled = command.IsEnabled && viewModel.SelectedSource?.IsExplicit == true },
-        _ => command
-    }));
+        var topLevelCommandIds = new[] { UiCommandId.CancelOperation };
+
+        CommandBar.SetCommands(viewModel.Commands.Values
+            .Where(c => topLevelCommandIds.Contains(c.Id)));
+
+        AddSourceBtn.IsEnabled = viewModel.CanAdd;
+        RefreshSourcesBtn.IsEnabled = viewModel.IsEnabled(UiCommandId.RefreshSources);
+        UpdateSourcesBtn.IsEnabled = viewModel.IsEnabled(UiCommandId.UpdateSources);
+        RemoveSourceBtn.IsEnabled = viewModel.IsEnabled(UiCommandId.RemoveSource) && viewModel.SelectedSource?.IsExplicit == true;
+        ResetSourcesBtn.IsEnabled = viewModel.IsEnabled(UiCommandId.ResetSources);
+    }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
@@ -103,6 +116,20 @@ public sealed partial class SourcesPage : Page
 
     private void OnSourceSelectionChanged(object sender, SelectionChangedEventArgs args) =>
         viewModel.SelectedSource = SourceList.SelectedItem as SourceRow;
+
+    private async void OnAddSourceClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.AddSource);
+    private async void OnRefreshSourcesClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RefreshSources);
+    private async void OnUpdateSourcesClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.UpdateSources);
+    private async void OnRemoveSourceClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemoveSource);
+    private async void OnResetSourcesClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ResetSources);
+
+    private async System.Threading.Tasks.Task ExecuteCommandAsync(UiCommandId id)
+    {
+        if (viewModel.Commands.TryGetValue(id, out var command) && command.IsEnabled)
+        {
+            await viewModel.ExecuteAsync(id);
+        }
+    }
 
     private void Dispatch(Action action)
     {

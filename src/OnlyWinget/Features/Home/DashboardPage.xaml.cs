@@ -43,6 +43,7 @@ public sealed partial class DashboardPage : Page
         viewModel.Metrics[4].Label = TextResources.Get("Dashboard_Sources");
         viewModel.Metrics[5].Label = TextResources.Get("Dashboard_WindowsUpdates");
         RecentActivityText.Text = TextResources.Get("Dashboard_RecentActivity");
+        ViewAllActivityButton.Content = TextResources.Get("Dashboard_ViewAllActivity");
         OpenPackagesButton.Content = TextResources.Get("Dashboard_OpenPackages");
         OpenUpdatesButton.Content = TextResources.Get("Dashboard_OpenUpdates");
         RefreshOverview();
@@ -84,6 +85,7 @@ public sealed partial class DashboardPage : Page
 
     private void OnOpenPackages(object sender, RoutedEventArgs args) => App.Navigate("packages");
     private void OnOpenUpdates(object sender, RoutedEventArgs args) => App.Navigate("updates");
+    private void OnViewAllActivity(object sender, RoutedEventArgs args) => App.Navigate("activity");
 
     private void Dispatch(Action action)
     {

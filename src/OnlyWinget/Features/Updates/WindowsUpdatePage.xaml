@@ -1,5 +1,5 @@
 <UserControl x:Class="OnlyWinget.Features.Updates.WindowsUpdatePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:OnlyWinget.Controls" xmlns:states="using:OnlyWinget.DesignSystem.States" xmlns:commands="using:OnlyWinget.DesignSystem.Commands" xmlns:presentation="using:OnlyWinget.Presentation">
-    <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Grid RowSpacing="12" VerticalAlignment="Stretch"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
             <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
