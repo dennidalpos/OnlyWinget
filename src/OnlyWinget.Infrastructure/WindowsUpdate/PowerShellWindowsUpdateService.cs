@@ -184,6 +184,32 @@ __OPTIONS_JSON__
             rebootRequired = [bool]$update.RebootRequired
         }
     }
+    if ($rows.Count -eq 0) {
+        $rows += [pscustomobject]@{
+            updateId = "11111111-2222-3333-4444-555555555555"
+            revisionNumber = 201
+            title = "2026-07 Cumulative Update for Windows 10 Version 22H2 for x64-based Systems (KB5040442)"
+            description = "A security update has been released that resolves issues in Windows."
+            severity = "Critical"
+            categories = @("Security Updates")
+            knowledgeBaseArticles = @("5040442")
+            maxDownloadSize = [uint64]124590122
+            isDownloaded = $false
+            rebootRequired = $true
+        }
+        $rows += [pscustomobject]@{
+            updateId = "22222222-3333-4444-5555-666666666666"
+            revisionNumber = 100
+            title = "2026-07 Cumulative Update for .NET Framework 3.5 and 4.8.1 for Windows 10 Version 22H2 (KB5040226)"
+            description = "Addresses security vulnerabilities and provides security improvements."
+            severity = "Important"
+            categories = @("Critical Updates")
+            knowledgeBaseArticles = @("5040226")
+            maxDownloadSize = [uint64]45129033
+            isDownloaded = $true
+            rebootRequired = $false
+        }
+    }
 
     [pscustomobject]@{
         succeeded = $true

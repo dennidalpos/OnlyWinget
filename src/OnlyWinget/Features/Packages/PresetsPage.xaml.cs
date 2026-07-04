@@ -45,7 +45,7 @@ public sealed partial class PresetsPage : UserControl
     {
         isRefreshing = true;
         PresetSelector.SelectedItem = ViewModel.ActivePresetName;
-        PresetNameBox.Text = ViewModel.ActivePresetName ?? string.Empty;
+        ViewModel.PresetName.Value = ViewModel.ActivePresetName ?? string.Empty;
         PageState.Present(ViewModel.PageState);
         ApplyOperationProgress(ViewModel.IsExecuting);
 

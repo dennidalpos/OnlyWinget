@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnlyWinget — Privacy & Policy</title>
+    <meta name="description" content="Privacy Policy for OnlyWinget: 100% local, privacy-by-default, and GDPR compliant package manager dashboard.">
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .privacy-body {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+        .privacy-title-wrap {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .privacy-title-wrap h1 {
+            font-family: var(--font-heading);
+            font-size: 44px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .privacy-content-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 48px;
+            backdrop-filter: blur(12px);
+            margin-bottom: 40px;
+        }
+        .privacy-section {
+            margin-bottom: 32px;
+        }
+        .privacy-section:last-child {
+            margin-bottom: 0;
+        }
+        .privacy-section h2 {
+            font-family: var(--font-heading);
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+        .privacy-section h2 i {
+            color: var(--accent-cyan);
+            font-size: 18px;
+        }
+        .privacy-section p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .privacy-section ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 16px;
+        }
+        .privacy-section li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .privacy-section li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent-cyan);
+            font-weight: bold;
+        }
+        .back-btn-wrap {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <header>
+        <div class="container nav-wrapper">
+            <div class="logo-container" onclick="window.location.href='index.html'" style="cursor: pointer;">
+                <img class="logo-img" src="assets/logo.png" alt="OnlyWinget Logo">
+                <span class="logo-text">OnlyWinget</span>
+            </div>
+            <div class="nav-controls">
+                <button class="lang-switch" id="langBtn" onclick="toggleLanguage()">
+                    <i class="fa-solid fa-globe"></i> <span id="langLabel">Italiano</span>
+                </button>
+                <a href="index.html" class="github-link" style="font-weight: 600;">
+                    <i class="fa-solid fa-arrow-left" style="margin-right: 6px;"></i> <span data-i18n="nav-home">Home</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Privacy Content Section -->
+    <div class="container privacy-body">
+        <div class="privacy-title-wrap">
+            <h1 data-i18n="p-title">Privacy Policy</h1>
+            <p style="color: var(--text-secondary);" data-i18n="p-subtitle">Privacy by Default & GDPR Compliance Statement</p>
+        </div>
+
+        <div class="privacy-content-card">
+            <!-- Section 1 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-shield-halved"></i> <span data-i18n="s1-title">Privacy by Default</span></h2>
+                <p data-i18n="s1-desc">OnlyWinget is built on the philosophy that you shouldn't have to sacrifice your privacy to get a convenient user interface. The app is entirely local. This means there are no intermediary servers, cloud tracking, or centralized databases monitoring your actions.</p>
+            </div>
+
+            <!-- Section 2 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-user-shield"></i> <span data-i18n="s2-title">GDPR Compliance & Your Rights</span></h2>
+                <p data-i18n="s2-desc">Under the General Data Protection Regulation (GDPR), European users have specific data protection rights. Because OnlyWinget operates 100% locally on your computer, your rights are fully respected by design:</p>
+                <ul>
+                    <li data-i18n="r1"><strong>Data Minimization:</strong> We do not collect, process, or transmit any personal data. You are completely anonymous.</li>
+                    <li data-i18n="r2"><strong>Right to Access:</strong> Your settings, packages lists, and workspace configurations are stored as human-readable JSON files in local appdata. You have complete visibility and ownership of your data at all times.</li>
+                    <li data-i18n="r3"><strong>Right to Erasure (Right to be Forgotten):</strong> Uninstalling the application or deleting the workspace file removes 100% of the application state from your computer. No data persists on any remote server.</li>
+                    <li data-i18n="r4"><strong>Data Portability:</strong> You can export your app configurations (Presets) easily using a plain JSON text format to move them to any other device.</li>
+                </ul>
+            </div>
+
+            <!-- Section 3 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-network-wired"></i> <span data-i18n="s3-title">External Data Connections</span></h2>
+                <p data-i18n="s3-desc">The application communicates directly with official Microsoft services to perform its tasks. No traffic is routed through third-party platforms. OnlyWinget connects solely to:</p>
+                <ul>
+                    <li data-i18n="c1"><strong>Microsoft Winget Repository:</strong> To download and install packages.</li>
+                    <li data-i18n="c2"><strong>Windows Update Service:</strong> Via local Windows Update COM interface to scan and download operating system updates.</li>
+                </ul>
+            </div>
+
+            <!-- Section 4 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-cookie-bite"></i> <span data-i18n="s4-title">No Cookies or Trackers</span></h2>
+                <p data-i18n="s4-desc">This website and the application do not use cookies, tracking pixels, or third-party analytical tools. We do not monitor how long you stay on the landing page or which features you use inside the app.</p>
+            </div>
+        </div>
+
+        <div class="back-btn-wrap">
+            <a href="index.html" class="btn btn-secondary" data-i18n="back-btn">
+                <i class="fa-solid fa-house" style="margin-right: 8px;"></i> Return to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2026 OnlyWinget. Released under the MIT License.</p>
+            <p data-i18n="footer-local">OnlyWinget is a local application. All data remains on your PC.</p>
+        </div>
+    </footer>
+
+    <!-- Translation script -->
+    <script>
+        let currentLang = 'en';
+
+        const translations = {
+            en: {
+                "nav-home": "Home",
+                "p-title": "Privacy Policy",
+                "p-subtitle": "Privacy by Default & GDPR Compliance Statement",
+                "s1-title": "Privacy by Default",
+                "s1-desc": "OnlyWinget is built on the philosophy that you shouldn't have to sacrifice your privacy to get a convenient user interface. The app is entirely local. This means there are no intermediary servers, cloud tracking, or centralized databases monitoring your actions.",
+                "s2-title": "GDPR Compliance & Your Rights",
+                "s2-desc": "Under the General Data Protection Regulation (GDPR), European users have specific data protection rights. Because OnlyWinget operates 100% locally on your computer, your rights are fully respected by design:",
+                "r1": "<strong>Data Minimization:</strong> We do not collect, process, or transmit any personal data. You are completely anonymous.",
+                "r2": "<strong>Right to Access:</strong> Your settings, packages lists, and workspace configurations are stored as human-readable JSON files in local appdata. You have complete visibility and ownership of your data at all times.",
+                "r3": "<strong>Right to Erasure (Right to be Forgotten):</strong> Uninstalling the application or deleting the workspace file removes 100% of the application state from your computer. No data persists on any remote server.",
+                "r4": "<strong>Data Portability:</strong> You can export your app configurations (Presets) easily using a plain JSON text format to move them to any other device.",
+                "s3-title": "External Data Connections",
+                "s3-desc": "The application communicates directly with official Microsoft services to perform its tasks. No traffic is routed through third-party platforms. OnlyWinget connects solely to:",
+                "c1": "<strong>Microsoft Winget Repository:</strong> To search and download packages.",
+                "c2": "<strong>Windows Update Service:</strong> Via local Windows Update COM interface to scan and download operating system updates.",
+                "s4-title": "No Cookies or Trackers",
+                "s4-desc": "This website and the application do not use cookies, tracking pixels, or third-party analytical tools. We do not monitor how long you stay on the landing page or which features you use inside the app.",
+                "back-btn": "<i class='fa-solid fa-house' style='margin-right: 8px;'></i> Return to Home",
+                "footer-local": "OnlyWinget is a local application. All data remains on your PC."
+            },
+            it: {
+                "nav-home": "Home",
+                "p-title": "Informativa sulla Privacy",
+                "p-subtitle": "Dichiarazione di conformità al GDPR e Privacy by Default",
+                "s1-title": "Privacy by Default (Privacy Integrata)",
+                "s1-desc": "OnlyWinget è sviluppato seguendo il principio che non dovresti rinunciare alla tua privacy per avere un'interfaccia comoda. L'app funziona esclusivamente in locale. Ciò significa che non esistono server esterni, tracciamenti in cloud o database centralizzati che monitorano le tue azioni.",
+                "s2-title": "Conformità al GDPR e Diritti dell'Utente",
+                "s2-desc": "Ai sensi del Regolamento Generale sulla Protezione dei Dati (GDPR), gli utenti europei hanno diritti specifici. Poiché OnlyWinget opera al 100% in locale sul tuo computer, questi diritti sono garantiti nativamente:",
+                "r1": "<strong>Minimizzazione dei Dati:</strong> Non raccogliamo, elaboriamo o trasmettiamo alcun dato personale. Rimani totalmente anonimo.",
+                "r2": "<strong>Diritto di Accesso:</strong> Le tue preferenze, le liste di app e le impostazioni del workspace sono salvate in file JSON facilmente leggibili all'interno di AppData. Hai sempre la visibilità e il controllo totale dei tuoi dati.",
+                "r3": "<strong>Diritto alla Cancellazione (Oblio):</strong> Disinstallando l'applicazione o rimuovendo il file di configurazione cancelli definitivamente ogni dato di OnlyWinget dal tuo computer. Nessun dato rimane salvato su server remoti.",
+                "r4": "<strong>Portabilità dei Dati:</strong> Puoi esportare i tuoi preset delle app in un formato JSON standard per trasferirli su qualsiasi altro dispositivo.",
+                "s3-title": "Connessioni a Servizi Esterni",
+                "s3-desc": "L'applicazione comunica direttamente con i servizi ufficiali Microsoft per svolgere le proprie operazioni. Nessun traffico viene deviato su server terzi. L'app contatta esclusivamente:",
+                "c1": "<strong>Repository Microsoft Winget:</strong> Per cercare ed installare i pacchetti software.",
+                "c2": "<strong>Servizio Windows Update:</strong> Tramite l'interfaccia locale COM di Windows Update per cercare e scaricare le patch del sistema operativo.",
+                "s4-title": "Nessun Cookie o Tracciamento",
+                "s4-desc": "Questo sito e l'applicazione non utilizzano cookie, pixel di tracciamento o strumenti di analisi statistica di terze parti. Non tracciamo quanto tempo rimani sulla pagina o quali sezioni visiti.",
+                "back-btn": "<i class='fa-solid fa-house' style='margin-right: 8px;'></i> Torna alla Home",
+                "footer-local": "OnlyWinget è un'applicazione locale. Tutti i dati rimangono sul tuo PC."
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'it' : 'en';
+            document.getElementById('langLabel').textContent = currentLang === 'en' ? 'Italiano' : 'English';
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerHTML = translations[currentLang][key];
+                }
+            });
+        }
+    </script>
+</body>
+</html>

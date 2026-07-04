@@ -53,11 +53,11 @@
                         <TextBox x:Name="PresetNameBox" Grid.Row="2" AutomationProperties.AutomationId="PresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
                         
                         <design:OnlyWingetWrapPanel Grid.Row="3" HorizontalSpacing="8" VerticalSpacing="8">
-                            <Button x:Name="AddPresetBtn" Click="OnAddPresetClick" Style="{StaticResource AddPrimaryButtonStyle}" />
-                            <Button x:Name="RenamePresetBtn" Click="OnRenamePresetClick" Style="{StaticResource EditButtonStyle}" />
-                            <Button x:Name="RemovePresetBtn" Click="OnRemovePresetClick" Style="{StaticResource DeleteButtonStyle}" />
-                            <Button x:Name="ImportPresetBtn" Click="OnImportPresetClick" Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button x:Name="ExportPresetBtn" Click="OnExportPresetClick" Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button x:Name="AddPresetBtn" Click="OnAddPresetClick" Style="{StaticResource AddPrimaryButtonStyle}" AutomationProperties.AutomationId="AddPresetBtn" />
+                            <Button x:Name="RenamePresetBtn" Click="OnRenamePresetClick" Style="{StaticResource EditButtonStyle}" AutomationProperties.AutomationId="RenamePresetBtn" />
+                            <Button x:Name="RemovePresetBtn" Click="OnRemovePresetClick" Style="{StaticResource DeleteButtonStyle}" AutomationProperties.AutomationId="RemovePresetBtn" />
+                            <Button x:Name="ImportPresetBtn" Click="OnImportPresetClick" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.AutomationId="ImportPresetBtn" />
+                            <Button x:Name="ExportPresetBtn" Click="OnExportPresetClick" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.AutomationId="ExportPresetBtn" />
                         </design:OnlyWingetWrapPanel>
                     </Grid>
                 </Border>
@@ -79,9 +79,9 @@
                         <TextBox x:Name="PackageSourceBox" Grid.Row="2" AutomationProperties.AutomationId="PresetPackageSourceTextBox" Style="{StaticResource FormTextBoxStyle}" HorizontalAlignment="Stretch"/>
                         
                         <design:OnlyWingetWrapPanel Grid.Row="3" HorizontalSpacing="8" VerticalSpacing="8">
-                            <Button x:Name="AddPackageBtn" Click="OnAddPackageClick" Style="{StaticResource AddPrimaryButtonStyle}" />
-                            <Button x:Name="EditPackageBtn" Click="OnEditPackageClick" Style="{StaticResource EditButtonStyle}" />
-                            <Button x:Name="RemovePackageBtn" Click="OnRemovePackageClick" Style="{StaticResource DeleteButtonStyle}" />
+                            <Button x:Name="AddPackageBtn" Click="OnAddPackageClick" Style="{StaticResource AddPrimaryButtonStyle}" AutomationProperties.AutomationId="AddPackageBtn" />
+                            <Button x:Name="EditPackageBtn" Click="OnEditPackageClick" Style="{StaticResource EditButtonStyle}" AutomationProperties.AutomationId="EditPackageBtn" />
+                            <Button x:Name="RemovePackageBtn" Click="OnRemovePackageClick" Style="{StaticResource DeleteButtonStyle}" AutomationProperties.AutomationId="RemovePackageBtn" />
                         </design:OnlyWingetWrapPanel>
                     </Grid>
                 </Border>

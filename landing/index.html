@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnlyWinget — Install Your Favorite Apps Instantly</title>
+    <meta name="description" content="The easiest way to install, update, and manage your Windows applications and system updates in one clean dashboard.">
+    <link rel="stylesheet" href="index.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <header>
+        <div class="container nav-wrapper">
+            <div class="logo-container">
+                <img class="logo-img" src="assets/logo.png" alt="OnlyWinget Logo">
+                <span class="logo-text">OnlyWinget</span>
+            </div>
+            <div class="nav-controls">
+                <button class="lang-switch" id="langBtn" onclick="toggleLanguage()">
+                    <i class="fa-solid fa-globe"></i> <span id="langLabel">Italiano</span>
+                </button>
+                <a href="privacy.html" class="github-link" style="font-weight: 600;">
+                    <i class="fa-solid fa-user-lock" style="margin-right: 6px;"></i> <span data-i18n="nav-privacy">Privacy</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <span class="hero-badge" data-i18n="badge">Secure & Private App</span>
+            <h1 data-i18n="hero-title">Set Up Your Windows PC <span>In One Click</span></h1>
+            <p class="hero-subtitle" data-i18n="hero-subtitle">
+                An easy-to-use, beautiful application to install, update, and manage all your favorite software at once. Keep your computer clean and fully updated with zero configuration and absolute privacy.
+            </p>
+            <div class="hero-ctas">
+                <a href="build/setup.exe" class="btn btn-primary" data-i18n="cta-download">
+                    <i class="fa-solid fa-download" style="margin-right: 8px;"></i> Download Setup
+                </a>
+                <a href="#how-it-works" class="btn btn-secondary" data-i18n="cta-how">
+                    <i class="fa-solid fa-play" style="margin-right: 8px;"></i> See How It Works
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-i18n="features-title">Simple. Clean. Secure.</h2>
+                <p data-i18n="features-subtitle">All your essential software utility controls brought together in a modern desktop interface.</p>
+            </div>
+            
+            <div class="features-grid">
+                <!-- Feature 1 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-list-check"></i></div>
+                    <h3 data-i18n="f1-title">Personalized App Lists</h3>
+                    <p data-i18n="f1-desc">Save a list of your daily programs, export it, and install all of them on any new computer in a single step.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                    <h3 data-i18n="f2-title">Instant Search</h3>
+                    <p data-i18n="f2-desc">Find thousands of safe, official programs immediately. No need to search on multiple websites or download messy installers.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-rotate"></i></div>
+                    <h3 data-i18n="f3-title">System Updates</h3>
+                    <p data-i18n="f3-desc">Check and apply Windows updates easily. Keep your system secure without diving into complex control panels.</p>
+                </div>
+                <!-- Feature 4 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-user-shield"></i></div>
+                    <h3 data-i18n="f4-title">100% Private by Default</h3>
+                    <p data-i18n="f4-desc">Everything runs directly on your PC. No online accounts, no registration, and absolutely no data tracking or advertising.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery & Interactive Guide Section -->
+    <section class="gallery-section" id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2 data-i18n="guide-title">How OnlyWinget Works</h2>
+                <p data-i18n="guide-subtitle">Take a quick look at how easy it is to manage your programs and system updates.</p>
+            </div>
+
+            <!-- Flow Tabs Selector -->
+            <div class="gallery-tabs">
+                <button class="tab-btn active" onclick="switchFlow('create_preset', this)" data-i18n="tab-presets">App Lists</button>
+                <button class="tab-btn" onclick="switchFlow('search_apps', this)" data-i18n="tab-search">Search Programs</button>
+                <button class="tab-btn" onclick="switchFlow('install_apps', this)" data-i18n="tab-install">Batch Installation</button>
+                <button class="tab-btn" onclick="switchFlow('windows_update', this)" data-i18n="tab-updates">Windows Update</button>
+            </div>
+
+            <!-- Interactive Gallery Display -->
+            <div class="gallery-display">
+                <div class="gallery-content">
+                    <!-- Images for flow 1 -->
+                    <img id="img-create_preset-1" src="assets/gallery/create_preset/01_presets_empty.png" class="active" alt="Create App List">
+                    <img id="img-create_preset-2" src="assets/gallery/create_preset/02_preset_created.png" alt="List Created">
+                    <img id="img-create_preset-3" src="assets/gallery/create_preset/03_package_added.png" alt="App Added to List">
+                    
+                    <!-- Images for flow 2 -->
+                    <img id="img-search_apps-1" src="assets/gallery/search_apps/01_search_results.png" alt="Search Results">
+                    <img id="img-search_apps-2" src="assets/gallery/search_apps/02_search_added.png" alt="Add Searched App">
+                    
+                    <!-- Images for flow 3 -->
+                    <img id="img-install_apps-1" src="assets/gallery/install_apps/01_preset_ready.png" alt="List Ready to Install">
+                    <img id="img-install_apps-2" src="assets/gallery/install_apps/02_install_progress.png" alt="Installing Apps">
+                    
+                    <!-- Images for flow 4 -->
+                    <img id="img-windows_update-1" src="assets/gallery/windows_update/01_windows_update_tab.png" alt="Update Tab">
+                    <img id="img-windows_update-2" src="assets/gallery/windows_update/02_scan_in_progress.png" alt="Scanning for Updates">
+                </div>
+
+                <div class="gallery-info">
+                    <h3 id="flowTitle" data-i18n="flow1-title">Creating an App List</h3>
+                    <ul class="steps-list" id="stepsList">
+                        <!-- Populated dynamically via Javascript -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2026 OnlyWinget. Released under the MIT License.</p>
+            <p><a href="privacy.html" style="font-weight: 600;" data-i18n="footer-privacy">Privacy Policy (GDPR Compliant)</a> | <span data-i18n="footer-local">All data remains securely on your computer.</span></p>
+        </div>
+    </footer>
+
+    <!-- Interactive script for Language and Gallery -->
+    <script>
+        let currentLang = 'en';
+        let activeFlow = 'create_preset';
+        let activeStep = 1;
+
+        const translations = {
+            en: {
+                badge: "Secure & Private App",
+                "nav-privacy": "Privacy Policy",
+                "hero-title": "Set Up Your Windows PC <span>In One Click</span>",
+                "hero-subtitle": "An easy-to-use, beautiful application to install, update, and manage all your favorite software at once. Keep your computer clean and fully updated with zero configuration and absolute privacy.",
+                "cta-download": "<i class='fa-solid fa-download' style='margin-right: 8px;'></i> Download Setup",
+                "cta-how": "<i class='fa-solid fa-play' style='margin-right: 8px;'></i> See How It Works",
+                "features-title": "Simple. Clean. Secure.",
+                "features-subtitle": "All your essential software utility controls brought together in a modern desktop interface.",
+                "f1-title": "Personalized App Lists",
+                "f1-desc": "Save a list of your daily programs, export it, and install all of them on any new computer in a single step.",
+                "f2-title": "Instant Search",
+                "f2-desc": "Find thousands of safe, official programs immediately. No need to search on multiple websites or download messy installers.",
+                "f3-title": "System Updates",
+                "f3-desc": "Check and apply Windows updates easily. Keep your system secure without diving into complex control panels.",
+                "f4-title": "100% Private by Default",
+                "f4-desc": "Everything runs directly on your PC. No online accounts, no registration, and absolutely no data tracking or advertising.",
+                "guide-title": "How OnlyWinget Works",
+                "guide-subtitle": "Take a quick look at how easy it is to manage your programs and system updates.",
+                "tab-presets": "App Lists",
+                "tab-search": "Search Programs",
+                "tab-install": "Batch Installation",
+                "tab-updates": "Windows Update",
+                "footer-privacy": "Privacy Policy (GDPR Compliant)",
+                "footer-local": "All data remains securely on your computer.",
+                
+                // Flow titles
+                "flow-create_preset-title": "Creating an App List",
+                "flow-search_apps-title": "Searching for Programs",
+                "flow-install_apps-title": "Batch Installing Programs",
+                "flow-windows_update-title": "Updating Windows System",
+                
+                // Steps translations
+                flows: {
+                    create_preset: [
+                        { step: 1, text: "Open the application to see your clean, empty dashboard." },
+                        { step: 2, text: "Type a name for your custom list (e.g. MyDailyApps) and click 'Add' to create it." },
+                        { step: 3, text: "Type the name or ID of a program you want to add and insert it directly into the list." }
+                    ],
+                    search_apps: [
+                        { step: 1, text: "Click the Search tab, type a program name (e.g. 'VLC') and press Enter. Safe official results appear instantly." },
+                        { step: 2, text: "Select the software you want from the list and click 'Add Selected' to save it to your active list." }
+                    ],
+                    install_apps: [
+                        { step: 1, text: "Go back to your List tab. All your chosen programs are compiled and ready to go." },
+                        { step: 2, text: "Click 'Apply Install' to install all selected programs automatically in the background." }
+                    ],
+                    windows_update: [
+                        { step: 1, text: "Go to the Update center to check for new operating system patches." },
+                        { step: 2, text: "Click 'Scan Windows Updates' to easily scan and download critical security updates." }
+                    ]
+                }
+            },
+            it: {
+                badge: "Applicazione Sicura e Privata",
+                "nav-privacy": "Informativa Privacy",
+                "hero-title": "Configura il Tuo PC Windows <span>In Un Click</span>",
+                "hero-subtitle": "Un'applicazione bella e semplice per installare, aggiornare e gestire tutti i tuoi programmi preferiti insieme. Mantieni il tuo computer pulito e aggiornato senza configurazioni e nel rispetto totale della tua privacy.",
+                "cta-download": "<i class='fa-solid fa-download' style='margin-right: 8px;'></i> Scarica Installer",
+                "cta-how": "<i class='fa-solid fa-play' style='margin-right: 8px;'></i> Scopri Come Funziona",
+                "features-title": "Semplice. Pulito. Sicuro.",
+                "features-subtitle": "Tutti i tuoi strumenti essenziali per la gestione dei software riuniti in una moderna interfaccia desktop.",
+                "f1-title": "Liste di App Personalizzate",
+                "f1-desc": "Salva una lista dei programmi che usi ogni giorno, esportala e installali tutti su un nuovo PC in un solo passaggio.",
+                "f2-title": "Ricerca Immediata",
+                "f2-desc": "Trova migliaia di programmi ufficiali e sicuri all'istante. Non serve cercare sui browser o scaricare file rischiosi.",
+                "f3-title": "Aggiornamenti di Sistema",
+                "f3-desc": "Controlla ed esegui gli aggiornamenti di Windows in modo semplice, senza navigare in menu di controllo complessi.",
+                "f4-title": "100% Privato di Default",
+                "f4-desc": "Tutto viene eseguito solo sul tuo computer. Nessun account online, nessuna registrazione, nessun tracciamento o pubblicità.",
+                "guide-title": "Come Funziona OnlyWinget",
+                "guide-subtitle": "Guarda com'è facile gestire i tuoi programmi e mantenere aggiornato il sistema.",
+                "tab-presets": "Liste di App",
+                "tab-search": "Cerca Programmi",
+                "tab-install": "Installazione Multipla",
+                "tab-updates": "Windows Update",
+                "footer-privacy": "Informativa sulla Privacy (Conforme GDPR)",
+                "footer-local": "Tutti i dati rimangono memorizzati in modo sicuro sul tuo PC.",
+                
+                // Flow titles
+                "flow-create_preset-title": "Creazione di una Lista di App",
+                "flow-search_apps-title": "Ricerca di Programmi",
+                "flow-install_apps-title": "Installazione Automatica in Blocco",
+                "flow-windows_update-title": "Aggiornamento di Windows",
+                
+                // Steps translations
+                flows: {
+                    create_preset: [
+                        { step: 1, text: "Apri l'applicazione per vedere la tua dashboard pulita e pronta." },
+                        { step: 2, text: "Scrivi un nome per la tua lista (es. LeMieApp) e clicca su 'Aggiungi' per crearla." },
+                        { step: 3, text: "Scrivi il nome o l'ID del software che ti interessa e inseriscilo direttamente nella tabella." }
+                    ],
+                    search_apps: [
+                        { step: 1, text: "Vai alla scheda Cerca, digita il nome del programma (es. 'VLC') e premi Invio. I risultati ufficiali appaiono subito." },
+                        { step: 2, text: "Seleziona i software desiderati dalla lista e clicca 'Aggiungi Selezionati' per salvarli nella tua lista." }
+                    ],
+                    install_apps: [
+                        { step: 1, text: "Ritorna alla scheda della Lista. Tutti i programmi scelti sono pronti per essere installati." },
+                        { step: 2, text: "Clicca su 'Applica Installazione' per installare automaticamente tutte le app in background." }
+                    ],
+                    windows_update: [
+                        { step: 1, text: "Vai nella sezione Aggiornamenti per verificare la presenza di nuove patch del sistema operativo." },
+                        { step: 2, text: "Clicca su 'Scansiona Windows Updates' per cercare e scaricare facilmente gli aggiornamenti di sicurezza." }
+                    ]
+                }
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'it' : 'en';
+            
+            // Update button label
+            document.getElementById('langLabel').textContent = currentLang === 'en' ? 'Italiano' : 'English';
+            
+            // Translate all elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerHTML = translations[currentLang][key];
+                }
+            });
+
+            // Update current flow title and steps list
+            updateFlowInfo();
+        }
+
+        function switchFlow(flowName, buttonEl) {
+            activeFlow = flowName;
+            activeStep = 1;
+            
+            // Update active state on tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            buttonEl.classList.add('active');
+
+            // Show first image of new flow, hide all others
+            document.querySelectorAll('.gallery-content img').forEach(img => img.classList.remove('active'));
+            const firstImg = document.getElementById(`img-${flowName}-1`);
+            if (firstImg) firstImg.classList.add('active');
+
+            updateFlowInfo();
+        }
+
+        function selectStep(stepNum) {
+            activeStep = stepNum;
+            
+            // Update active state on step list items
+            document.querySelectorAll('.step-item').forEach(item => item.classList.remove('active'));
+            const currentItem = document.getElementById(`step-item-${stepNum}`);
+            if (currentItem) currentItem.classList.add('active');
+
+            // Update visible image in gallery
+            document.querySelectorAll('.gallery-content img').forEach(img => img.classList.remove('active'));
+            const currentImg = document.getElementById(`img-${activeFlow}-${stepNum}`);
+            if (currentImg) currentImg.classList.add('active');
+        }
+
+        function updateFlowInfo() {
+            // Update flow title
+            const flowTitleKey = `flow-${activeFlow}-title`;
+            document.getElementById('flowTitle').textContent = translations[currentLang][flowTitleKey];
+
+            // Render steps list
+            const steps = translations[currentLang].flows[activeFlow];
+            const stepsListEl = document.getElementById('stepsList');
+            stepsListEl.innerHTML = '';
+
+            steps.forEach(step => {
+                const li = document.createElement('li');
+                li.className = `step-item ${step.step === activeStep ? 'active' : ''}`;
+                li.id = `step-item-${step.step}`;
+                li.setAttribute('onclick', `selectStep(${step.step})`);
+                
+                li.innerHTML = `
+                    <span class="step-num">${step.step}.</span>
+                    <span class="step-text">${step.text}</span>
+                `;
+                stepsListEl.appendChild(li);
+            });
+        }
+
+        // Initialize view with first flow
+        updateFlowInfo();
+    </script>
+</body>
+</html>

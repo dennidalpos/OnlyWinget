@@ -1,0 +1,57 @@
+# OnlyWinget — Social Media Posts & Catchy Hooks
+
+Below is a set of promotional posts for OnlyWinget, optimized for platforms like LinkedIn, X (Twitter), and Reddit, in both English and Italian.
+
+---
+
+## English Posts
+
+### Post 1: The Hook for Developers (LinkedIn / Twitter)
+**Hook:** Stop spending hours setting up fresh Windows machines. 🕒
+
+Tired of manually searching, downloading, and running installers for every single tool? OnlyWinget brings a clean, modern GUI to Windows package management, powered by Microsoft's official winget CLI.
+- 📦 **Create app lists (Presets):** Save your dev environments and restore them on any computer with one click.
+- 🔍 **Instant Search:** Find and select the exact versions you need.
+- 🔄 **Windows Update Integration:** Check local updates and Windows Updates side-by-side.
+
+Clean, open-source, and lightning-fast. Try OnlyWinget today!
+👉 https://github.com/dennidalpos/OnlyWinget
+
+#Windows10 #Windows11 #Developers #DevOps #Productivity #OpenSource #Winget
+
+### Post 2: Short & Catchy (X / Twitter)
+**Hook:** Windows setups shouldn't be a chore. 💻✨
+
+Meet OnlyWinget, the sleek WinUI 3 dashboard that turns winget into a visual powerhouse. Manage your apps, create reusable setups, and scan Windows Updates all in one beautiful dark-mode interface. 
+
+Zero bloat. Zero tracking. Just speed.
+Try it now: https://github.com/dennidalpos/OnlyWinget
+
+#productivity #winui3 #opensource #sysadmin
+
+---
+
+## Italian Posts
+
+### Post 1: Per Sviluppatori e Professionisti (LinkedIn / Facebook)
+**Hook:** Smetti di perdere tempo configurando PC da zero! 🕒💻
+
+Ogni volta che cambi computer devi riscaricare decine di installer manualmente? Con OnlyWinget gestisci i pacchetti Windows in una frazione del tempo tramite una splendida interfaccia grafica nativa WinUI 3 per winget.
+- 📦 **Liste personalizzate (Preset):** Crea la tua lista di app preferite e installala su qualsiasi PC in un click.
+- 🔍 **Ricerca immediata:** Cerca migliaia di app stabili e pronte per l'installazione.
+- 🔄 **Windows Update integrato:** Controlla e installa gli aggiornamenti di sistema e delle app in un solo posto.
+
+Nessun bloatware, open-source e super leggero.
+Scaricalo qui: https://github.com/dennidalpos/OnlyWinget
+
+#Windows11 #SviluppoSoftware #Produttivita #OpenSource #SysAdmin #OnlyWinget
+
+### Post 2: Veloce e Diretto (X / Twitter)
+**Hook:** Il gestore di pacchetti definitivo per Windows. 🚀
+
+OnlyWinget unisce la potenza del comando winget a un'interfaccia Fluent e moderna. Salva i tuoi software preferiti in un file Preset ed esportali ovunque per configurare nuovi computer all'istante.
+
+Interamente localizzato in Italiano e Inglese.
+Provalo subito: https://github.com/dennidalpos/OnlyWinget
+
+#Windows #Productivity #Developer #OpenSource #FluentDesign
