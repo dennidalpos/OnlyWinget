@@ -23,7 +23,10 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <StackPanel Spacing="4">
                                 <TextBlock x:Name="ActivePresetText" Style="{StaticResource SectionTitleTextBlockStyle}" AutomationProperties.AutomationId="DashboardActivePreset" />
-                                <InfoBar x:Name="OperationalStatus" IsOpen="True" IsClosable="False" AutomationProperties.AutomationId="DashboardOperationalStatus" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                    <FontIcon x:Name="OperationalIcon" Glyph="&#xE930;" FontSize="16" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="OperationalText" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <Button x:Name="OpenPackagesButton" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages" />

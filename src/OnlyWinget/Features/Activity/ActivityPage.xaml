@@ -20,7 +20,7 @@
                 <Border Style="{StaticResource CardStyle}">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="160" /><ColumnDefinition Width="160" /></Grid.ColumnDefinitions>
-                        <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" VerticalAlignment="Center" />
+                        <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Left" Width="480" VerticalAlignment="Center" />
                         <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="160" VerticalAlignment="Center">
                             <ComboBoxItem Tag="all" />
                             <ComboBoxItem Tag="Information" />
@@ -61,9 +61,6 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-                <InfoBar x:Name="UndoBar" Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="12" IsClosable="True" Severity="Informational">
-                    <InfoBar.ActionButton><Button x:Name="UndoButton" Click="OnUndoClear" /></InfoBar.ActionButton>
-                </InfoBar>
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>

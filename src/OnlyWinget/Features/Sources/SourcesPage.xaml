@@ -28,8 +28,14 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <TextBlock x:Name="AddSourceSectionText" Grid.ColumnSpan="2" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                            <TextBox x:Name="SourceNameBox" Grid.Row="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox x:Name="SourceArgumentBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Grid Grid.Row="1" HorizontalAlignment="Stretch">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="480"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="480"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
                         </Grid>
                     </Border>
                     <Border Grid.Row="1" Style="{StaticResource CardStyle}">
@@ -55,7 +61,7 @@
                                                 <TextBlock Text="{x:Bind Type, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                                                <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" IsOn="{x:Bind IsEnabled, Mode=OneTime}" Toggled="OnSourceEnabledToggled" />
+                                                <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" DataContextChanged="OnSourceToggleDataContextChanged" />
                                                 <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                             </StackPanel>
                                         </Grid>

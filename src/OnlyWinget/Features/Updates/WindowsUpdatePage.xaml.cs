@@ -18,6 +18,7 @@ public sealed partial class WindowsUpdatePage : UserControl
         ViewModel = new(Dispatch);
         InitializeComponent();
         ViewModel.PropertyChanged += OnViewModelChanged;
+        PageState.CancelRequested += OnOperationCancelRequested;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -74,13 +75,13 @@ public sealed partial class WindowsUpdatePage : UserControl
     {
         if (ViewModel.IsBusy)
         {
-            OperationStatus.Show(TextResources.Get("Operation_WindowsUpdate_Title"), TextResources.Get(ViewModel.IsInstalling ? "Progress_InstallingWindowsUpdates" : "Progress_ScanningWindowsUpdates"), canCancel: true);
+            PageState.Show(TextResources.Get("Operation_WindowsUpdate_Title"), TextResources.Get(ViewModel.IsInstalling ? "Progress_InstallingWindowsUpdates" : "Progress_ScanningWindowsUpdates"), canCancel: true);
         }
         else if (wasBusy)
         {
             var error = ViewModel.Error;
             var reboot = ViewModel.RebootRequired;
-            OperationStatus.Complete(error ?? TextResources.Get(reboot ? "WindowsUpdates_RebootRequired" : "Progress_Completed"), error is not null);
+            PageState.Complete(error ?? TextResources.Get(reboot ? "WindowsUpdates_RebootRequired" : "Progress_Completed"), error is not null);
         }
         wasBusy = ViewModel.IsBusy;
     }

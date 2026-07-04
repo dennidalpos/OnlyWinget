@@ -1,5 +1,5 @@
 <UserControl x:Class="OnlyWinget.Features.Updates.WindowsUpdatePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:OnlyWinget.Controls" xmlns:states="using:OnlyWinget.DesignSystem.States" xmlns:commands="using:OnlyWinget.DesignSystem.Commands" xmlns:presentation="using:OnlyWinget.Presentation">
-    <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
             <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
@@ -20,6 +20,5 @@
                 <controls:OnlyWingetTableColumn Header="Title" BindingPath="Title" Width="320" IsPrimary="True"/><controls:OnlyWingetTableColumn Header="KB" BindingPath="KnowledgeBaseArticles" Width="120" IsTextSelectable="True"/><controls:OnlyWingetTableColumn Header="Severity" BindingPath="Severity" Width="120"/><controls:OnlyWingetTableColumn Header="Categories" BindingPath="Categories" Width="200"/><controls:OnlyWingetTableColumn Header="Size" BindingPath="MaxDownloadSize" Width="110"/><controls:OnlyWingetTableColumn Header="Downloaded" BindingPath="IsDownloaded" Width="110"/><controls:OnlyWingetTableColumn Header="Reboot" BindingPath="RebootRequired" Width="100"/><controls:OnlyWingetTableColumn Header="Revision" BindingPath="Revision" Width="90"/><controls:OnlyWingetTableColumn Header="Status" BindingPath="Status" Width="*"/>
             </controls:OnlyWingetTable>
         </Border>
-        <states:OperationBanner x:Name="OperationStatus" Grid.Row="3" CancelRequested="OnOperationCancelRequested"/>
     </Grid>
 </UserControl>

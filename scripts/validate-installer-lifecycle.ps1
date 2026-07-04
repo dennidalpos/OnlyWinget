@@ -19,6 +19,21 @@ if (Enter-InteractiveModeIfNoParameter -BoundParameters $PSBoundParameters -Scri
 }
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
+
+if (-not [string]::IsNullOrWhiteSpace($PreviousVersion)) {
+    $sanitizedPrevious = $PreviousVersion.Split('-', 2)[0]
+    try {
+        $parsedPrevious = [Version]$sanitizedPrevious
+    }
+    catch {
+        throw "Versione precedente non valida: '$PreviousVersion'. Usa una versione numerica, ad esempio 1.2.3."
+    }
+
+    if ($parsedPrevious.Major -ne 1 -or $parsedPrevious.Minor -ne 0) {
+        throw "La versione precedente ($PreviousVersion) deve appartenere alla versione 1.0 (es. 1.0.x) come da policy. / The previous version ($PreviousVersion) must belong to version 1.0 (e.g., 1.0.x) as per policy."
+    }
+}
+
 $packageScriptPath = Join-Path $PSScriptRoot 'package.ps1'
 $artifactsPath = Join-Path $repoRoot 'artifacts'
 $distPath = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
@@ -87,7 +102,20 @@ function Get-ProjectVersion {
         throw 'Versione progetto non trovata.'
     }
 
-    return $version.Trim()
+    $trimmed = $version.Trim()
+    $sanitized = $trimmed.Split('-', 2)[0]
+    try {
+        $parsedVersion = [Version]$sanitized
+    }
+    catch {
+        throw "Versione progetto non valida: '$trimmed'."
+    }
+
+    if ($parsedVersion.Major -ne 1 -or $parsedVersion.Minor -ne 0) {
+        throw "La versione del progetto deve rimanere alla versione 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$trimmed'. / The project version must be locked to version 1.0 (e.g., 1.0.x) as per policy. Detected version: '$trimmed'."
+    }
+
+    return $trimmed
 }
 
 function Get-DefaultPreviousVersion {

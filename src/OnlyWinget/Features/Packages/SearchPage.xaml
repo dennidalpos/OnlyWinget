@@ -10,7 +10,7 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
             <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <AutoSuggestBox x:Name="QueryBox" QuerySubmitted="OnQuerySubmitted" AutomationProperties.AutomationId="PackageSearchQuery" HorizontalAlignment="Stretch" MaxWidth="480" />
+                <AutoSuggestBox x:Name="QueryBox" QuerySubmitted="OnQuerySubmitted" AutomationProperties.AutomationId="PackageSearchQuery" HorizontalAlignment="Left" Width="480" />
                 <ProgressRing Grid.Column="1" Width="24" Height="24" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.IsLoading), Mode=OneWay}" />
                 <commands:OnlyWingetCommandBar Grid.Column="2" ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" />
             </Grid>

@@ -70,11 +70,34 @@ public sealed partial class SourcesPage : Page
         await viewModel.ExecuteAsync(args.Command.Id);
     }
 
-    private async void OnSourceEnabledToggled(object sender, RoutedEventArgs args)
+    private void OnSourceToggleDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
-        if (!viewModel.IsRefreshing && sender is ToggleSwitch { DataContext: SourceRow row } toggle)
+        if (sender is ToggleSwitch toggle)
         {
-            await viewModel.SetEnabledAsync(row, toggle.IsOn);
+            toggle.Toggled -= OnSourceEnabledToggled;
+            if (toggle.DataContext is SourceRow row)
+            {
+                toggle.IsOn = row.IsEnabled;
+            }
+            else
+            {
+                toggle.IsOn = false;
+            }
+            toggle.Toggled += OnSourceEnabledToggled;
+        }
+    }
+
+    private void OnSourceEnabledToggled(object sender, RoutedEventArgs args)
+    {
+        if (sender is ToggleSwitch { DataContext: SourceRow row } toggle)
+        {
+            if (toggle.IsOn != row.IsEnabled)
+            {
+                _ = DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await viewModel.SetEnabledAsync(row, toggle.IsOn);
+                });
+            }
         }
     }
 

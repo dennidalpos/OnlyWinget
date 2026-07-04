@@ -267,6 +267,10 @@ function Convert-ToInstallerVersion {
     $minor = if ($parsedVersion.Minor -ge 0) { $parsedVersion.Minor } else { 0 }
     $build = if ($parsedVersion.Build -ge 0) { $parsedVersion.Build } else { 0 }
 
+    if ($major -ne 1 -or $minor -ne 0) {
+        throw "La versione dell'applicazione deve essere bloccata a 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$RawVersion'. / The application version must be locked to version 1.0 (e.g., 1.0.x) as per policy. Detected version: '$RawVersion'."
+    }
+
     if ($major -gt 255 -or $minor -gt 255 -or $build -gt 65535) {
         throw "Versione MSI fuori range: '$RawVersion'. Windows Installer accetta major/minor <= 255 e build <= 65535."
     }

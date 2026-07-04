@@ -11,6 +11,7 @@
 ## Greenfield policy
 
 - Treat the product, UI, navigation, and presentation architecture as greenfield. Existing UI structure and public presentation types are not compatibility contracts.
+- Keep the application version locked to version 1.0 (e.g., 1.0.x) until explicitly instructed otherwise by the user. Do not increment the major or minor version. No migration scaffolding or database migrations are needed at this stage.
 - Prefer the clean target architecture over incremental compatibility. Destructive refactors, file and folder reorganization, replacement of presentation models, and deletion of superseded code are allowed when they produce a smaller coherent design.
 - Do not add adapters, shims, deprecated aliases, parallel old/new implementations, feature flags, or migration scaffolding for the current UI unless the user explicitly requires a staged rollout.
 - Remove obsolete x86, pre-WinUI, compatibility, migration, dead-code, duplicated UI, and historical scaffolding rather than extending or preserving it.

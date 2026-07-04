@@ -18,6 +18,7 @@ public sealed partial class ActivityPage : Page
         viewModel = new(Dispatch);
         ActivityList.ItemsSource = viewModel.Entries;
         viewModel.PropertyChanged += OnViewModelChanged;
+        PageState.ActionRequested += OnUndoClear;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -55,8 +56,6 @@ public sealed partial class ActivityPage : Page
         {
             ((ComboBoxItem)CategoryFilter.Items[index]).Content = TextResources.Get($"Activity_Category_{categories[index]}");
         }
-        UndoBar.Message = TextResources.Get("Activity_Cleared");
-        UndoButton.Content = TextResources.Get("Command_Undo");
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
@@ -70,7 +69,7 @@ public sealed partial class ActivityPage : Page
         {
             clearedEntries = App.Workflow.State.Activity.ToArray();
             App.Workflow.ClearActivity();
-            UndoBar.IsOpen = true;
+            PageState.ShowUndo(TextResources.Get("Activity_Cleared"), TextResources.Get("Command_Undo"));
         }
     }
 
@@ -91,12 +90,12 @@ public sealed partial class ActivityPage : Page
         if (sender is Button { Tag: ActivityRow entry }) App.UiServices.Clipboard.CopyText(ActivityViewModel.Format(entry));
     }
 
-    private void OnUndoClear(object sender, RoutedEventArgs args)
+    private void OnUndoClear(object? sender, EventArgs args)
     {
         if (clearedEntries is null) return;
         App.Workflow.RestoreActivity(clearedEntries);
         clearedEntries = null;
-        UndoBar.IsOpen = false;
+        PageState.Hide();
     }
 
     private void Dispatch(Action action)

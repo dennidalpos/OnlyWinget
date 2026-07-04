@@ -51,8 +51,35 @@ public sealed partial class DashboardPage : Page
     private void RefreshOverview()
     {
         ActivePresetText.Text = $"{TextResources.Get("Dashboard_ActivePreset")}: {viewModel.ActivePreset}";
-        OperationalStatus.Message = viewModel.OperationalStatus;
-        OperationalStatus.Severity = viewModel.HasWarning ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
+        OperationalText.Text = viewModel.OperationalStatus;
+
+        if (viewModel.HasWarning)
+        {
+            OperationalIcon.Glyph = "\uE7BA";
+            OperationalIcon.Foreground = GetSeverityBrush("SystemFillColorCautionBrush", Microsoft.UI.Colors.Orange);
+        }
+        else if (viewModel.OperationalStatus == TextResources.Get("Dashboard_Busy"))
+        {
+            OperationalIcon.Glyph = "\uE895";
+            OperationalIcon.Foreground = GetSeverityBrush("SystemFillColorAttentionBrush", Microsoft.UI.Colors.Blue);
+        }
+        else
+        {
+            OperationalIcon.Glyph = "\uE930";
+            OperationalIcon.Foreground = GetSeverityBrush("SystemFillColorSuccessBrush", Microsoft.UI.Colors.Green);
+        }
+    }
+
+    private Microsoft.UI.Xaml.Media.Brush GetSeverityBrush(string resourceKey, Windows.UI.Color fallbackColor)
+    {
+        if (Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(resourceKey, out var brush))
+        {
+            if (brush is Microsoft.UI.Xaml.Media.Brush b)
+            {
+                return b;
+            }
+        }
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(fallbackColor);
     }
 
     private void OnOpenPackages(object sender, RoutedEventArgs args) => App.Navigate("packages");

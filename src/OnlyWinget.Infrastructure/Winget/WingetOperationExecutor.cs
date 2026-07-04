@@ -46,12 +46,21 @@ public sealed class WingetOperationExecutor(
                     plan.Selections.Count));
             });
 
-            var commandResult = await commandRunner.RunAsync(
-                    "winget",
-                    commandBuilder.Build(selection),
-                    cancellationToken,
-                    commandProgress)
-                .ConfigureAwait(false);
+            WingetCommandResult commandResult;
+            try
+            {
+                commandResult = await commandRunner.RunAsync(
+                        "winget",
+                        commandBuilder.Build(selection),
+                        cancellationToken,
+                        commandProgress)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                global::System.Diagnostics.Debug.WriteLine($"WingetOperationExecutor.ExecuteAsync: {exception}");
+                commandResult = new WingetCommandResult(-1, string.Empty, exception.Message);
+            }
 
             results.Add(new OperationExecutionResult(
                 selection,

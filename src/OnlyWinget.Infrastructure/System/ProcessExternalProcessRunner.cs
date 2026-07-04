@@ -31,29 +31,60 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
 
         try
         {
-            process.Start();
-        }
-        catch (Win32Exception exception)
-        {
-            return new ExternalProcessResult(9009, string.Empty, exception.Message);
-        }
+            try
+            {
+                process.Start();
+            }
+            catch (Exception exception)
+            {
+                return new ExternalProcessResult(9009, string.Empty, exception.Message);
+            }
 
-        var standardOutput = ReadOutputAsync(process.StandardOutput, standardOutputLines, cancellationToken);
-        var standardError = process.StandardError.ReadToEndAsync(cancellationToken);
-        try
-        {
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            var standardOutput = ReadOutputAsync(process.StandardOutput, standardOutputLines, cancellationToken);
+            var standardError = process.StandardError.ReadToEndAsync(cancellationToken);
+            try
+            {
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                TryKill(process);
+                throw;
+            }
+
+            string stdout;
+            string stderr;
+            try
+            {
+                stdout = await standardOutput.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                stdout = string.Empty;
+                global::System.Diagnostics.Debug.WriteLine($"ProcessExternalProcessRunner.RunAsync (stdout): {ex}");
+            }
+
+            try
+            {
+                stderr = await standardError.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                stderr = ex.Message;
+                global::System.Diagnostics.Debug.WriteLine($"ProcessExternalProcessRunner.RunAsync (stderr): {ex}");
+            }
+
+            return new ExternalProcessResult(process.ExitCode, stdout, stderr);
         }
         catch (OperationCanceledException)
         {
-            TryKill(process);
             throw;
         }
-
-        return new ExternalProcessResult(
-            process.ExitCode,
-            await standardOutput.ConfigureAwait(false),
-            await standardError.ConfigureAwait(false));
+        catch (Exception exception)
+        {
+            global::System.Diagnostics.Debug.WriteLine($"ProcessExternalProcessRunner.RunAsync (general): {exception}");
+            return new ExternalProcessResult(-1, string.Empty, exception.Message);
+        }
     }
 
     private static async Task<string> ReadOutputAsync(
@@ -64,26 +95,33 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
         var output = new StringBuilder();
         var currentLine = new StringBuilder();
         var buffer = new char[256];
-        while (true)
+        try
         {
-            var read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-            if (read == 0)
+            while (true)
             {
-                break;
-            }
+                var read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
+                if (read == 0)
+                {
+                    break;
+                }
 
-            output.Append(buffer, 0, read);
-            for (var index = 0; index < read; index++)
-            {
-                if (buffer[index] is '\r' or '\n')
+                output.Append(buffer, 0, read);
+                for (var index = 0; index < read; index++)
                 {
-                    ReportLine(currentLine, outputLines);
-                }
-                else
-                {
-                    currentLine.Append(buffer[index]);
+                    if (buffer[index] is '\r' or '\n')
+                    {
+                        ReportLine(currentLine, outputLines);
+                    }
+                    else
+                    {
+                        currentLine.Append(buffer[index]);
+                    }
                 }
             }
+        }
+        catch (Exception exception)
+        {
+            global::System.Diagnostics.Debug.WriteLine($"ProcessExternalProcessRunner.ReadOutputAsync: {exception}");
         }
 
         ReportLine(currentLine, outputLines);

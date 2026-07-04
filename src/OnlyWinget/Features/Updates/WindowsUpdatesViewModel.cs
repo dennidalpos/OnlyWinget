@@ -60,7 +60,7 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
         finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
     }
 
-    private static string Empty(string? value) => string.IsNullOrWhiteSpace(value) ? TextResources.Get("Value_Unknown") : value;
+    private static string Empty(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
     private static WindowsUpdateDisplayRow ToDisplayRow(WindowsUpdateRow row) => new(
         row.UpdateId,
         row.RevisionNumber,
@@ -79,7 +79,7 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
 
     private static string FormatSize(ulong bytes)
     {
-        if (bytes == 0) return TextResources.Get("Value_Unknown");
+        if (bytes == 0) return "-";
         const double megabyte = 1024d * 1024d;
         const double gigabyte = megabyte * 1024d;
         return bytes >= gigabyte

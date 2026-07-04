@@ -21,6 +21,8 @@ public sealed partial class MainWindow : Window
     private readonly IReadOnlyDictionary<string, NavigationRoute> routes = App.UiServices.Navigation.Routes
         .ToDictionary(route => route.Id, StringComparer.Ordinal);
     private readonly Dictionary<string, Page> pageCache = new(StringComparer.Ordinal);
+    private string? lastLanguage;
+    private string? lastTheme;
 
     public MainWindow()
     {
@@ -28,6 +30,9 @@ public sealed partial class MainWindow : Window
         SystemBackdrop = new MicaBackdrop();
         ResizeWindow();
         ApplyWindowIcon();
+        var currentSettings = App.UiServices.Settings.Current;
+        lastLanguage = currentSettings.Language;
+        lastTheme = currentSettings.Theme;
         App.UiServices.Settings.Changed += OnSettingsChanged;
         Closed += OnClosed;
         RootNavigation.Loaded += OnLoaded;
@@ -47,17 +52,28 @@ public sealed partial class MainWindow : Window
     {
         _ = DispatcherQueue.TryEnqueue(() =>
         {
-            var selectedRoute = RootNavigation.SelectedItem is NavigationViewItem selected
-                ? selected.Tag?.ToString()
-                : null;
-            selectedRoute ??= routeDefinitions.Single(route => route.IsSettings).Id;
+            var currentSettings = App.UiServices.Settings.Current;
+            var languageChanged = lastLanguage != currentSettings.Language;
+            var themeChanged = lastTheme != currentSettings.Theme;
 
             App.ApplySettings();
-            ApplyTheme();
-            pageCache.Clear();
-            BuildNavigation();
-            SelectRoute(selectedRoute);
-            ShowPage(selectedRoute);
+
+            if (languageChanged || themeChanged)
+            {
+                lastLanguage = currentSettings.Language;
+                lastTheme = currentSettings.Theme;
+
+                var selectedRoute = RootNavigation.SelectedItem is NavigationViewItem selected
+                    ? selected.Tag?.ToString()
+                    : null;
+                selectedRoute ??= routeDefinitions.Single(route => route.IsSettings).Id;
+
+                ApplyTheme();
+                pageCache.Clear();
+                BuildNavigation();
+                SelectRoute(selectedRoute);
+                ShowPage(selectedRoute);
+            }
         });
     }
 

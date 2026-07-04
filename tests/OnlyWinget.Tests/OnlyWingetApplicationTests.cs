@@ -224,6 +224,43 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task ApplySelectedUpdatesContinueOperationsOnValidationFailure()
+    {
+        var updates = new StubUpdateLoader(
+            new PackageUpdate(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "2.1.0"),
+            new PackageUpdate(new PackageIdentity("Missing.App", "winget"), "Missing", "1.0.0", "1.1.0"));
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.1.0", "2.0.0", true, null),
+            new PackageResolution(new PackageIdentity("Missing.App", "winget"), null, null, null, false, new ClassifiedWingetError(WingetErrorKind.NotFound, "Package was not found.")));
+        var executor = new RecordingOperationExecutor(
+            new OperationExecutionSummary(
+                [
+                    new OperationExecutionResult(
+                        new PackageSelection(new PackageIdentity("Git.Git", "winget"), PackageAction.Upgrade),
+                        new WingetCommandResult(0, "upgraded", string.Empty),
+                        null)
+                ]));
+        var app = CreateApplication(updates: updates, resolver: resolver, executor: executor);
+        app.ContinueOperationsAfterFailure = true;
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(2, app.State.LastOperationResults.Count);
+
+        var gitResult = app.State.LastOperationResults.First(r => r.Selection.Package.Id == "Git.Git");
+        Assert.True(gitResult.Succeeded);
+
+        var missingResult = app.State.LastOperationResults.First(r => r.Selection.Package.Id == "Missing.App");
+        Assert.False(missingResult.Succeeded);
+        Assert.Equal("Package was not found.", missingResult.Error?.Message);
+    }
+
+    [Fact]
     public async Task WindowsUpdateScanAndInstallSelectedMapsResults()
     {
         var identity = new WindowsUpdateIdentity("update-1", 100);

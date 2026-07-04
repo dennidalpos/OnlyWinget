@@ -34,31 +34,59 @@ public sealed partial class SettingsPage : Page
         ResetButton.Content = TextResources.Get("Settings_ResetAction");
     }
 
-    private async void OnThemeChanged(object sender, SelectionChangedEventArgs args)
+    private void OnThemeChanged(object sender, SelectionChangedEventArgs args)
     {
         if (isInitializing || ThemePicker.SelectedItem is not ComboBoxItem)
         {
             return;
         }
 
-        await SaveSettingsAsync();
+        viewModel.Theme = SelectedTag(ThemePicker, "default");
+        _ = DispatcherQueue.TryEnqueue(async () =>
+        {
+            await viewModel.SaveAsync(CancellationToken.None);
+        });
     }
 
-    private async void OnLanguageChanged(object sender, SelectionChangedEventArgs args)
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs args)
     {
         if (isInitializing || LanguagePicker.SelectedItem is not ComboBoxItem)
         {
             return;
         }
 
-        await SaveSettingsAsync();
+        viewModel.Language = SelectedTag(LanguagePicker, "system");
+        _ = DispatcherQueue.TryEnqueue(async () =>
+        {
+            await viewModel.SaveAsync(CancellationToken.None);
+        });
     }
 
-    private async void OnSettingToggled(object sender, RoutedEventArgs args)
+    private void OnSettingToggled(object sender, RoutedEventArgs args)
     {
-        if (!isInitializing)
+        if (!isInitializing && sender is ToggleSwitch toggle)
         {
-            await SaveSettingsAsync();
+            if (ReferenceEquals(toggle, ConfirmDestructiveToggle) && toggle.IsOn == viewModel.ConfirmDestructiveActions) return;
+            if (ReferenceEquals(toggle, DiagnosticsToggle) && toggle.IsOn == viewModel.DiagnosticLogging) return;
+            if (ReferenceEquals(toggle, InstallBehaviorToggle) && toggle.IsOn == viewModel.ContinueOperationsAfterFailure) return;
+
+            if (ReferenceEquals(toggle, ConfirmDestructiveToggle))
+            {
+                viewModel.ConfirmDestructiveActions = toggle.IsOn;
+            }
+            else if (ReferenceEquals(toggle, DiagnosticsToggle))
+            {
+                viewModel.DiagnosticLogging = toggle.IsOn;
+            }
+            else if (ReferenceEquals(toggle, InstallBehaviorToggle))
+            {
+                viewModel.ContinueOperationsAfterFailure = toggle.IsOn;
+            }
+
+            _ = DispatcherQueue.TryEnqueue(async () =>
+            {
+                await viewModel.SaveAsync(CancellationToken.None);
+            });
         }
     }
 
@@ -91,16 +119,6 @@ public sealed partial class SettingsPage : Page
         ConfirmDestructiveToggle.IsOn = viewModel.ConfirmDestructiveActions;
         DiagnosticsToggle.IsOn = viewModel.DiagnosticLogging;
         InstallBehaviorToggle.IsOn = viewModel.ContinueOperationsAfterFailure;
-    }
-
-    private Task SaveSettingsAsync()
-    {
-        viewModel.Language = SelectedTag(LanguagePicker, "system");
-        viewModel.Theme = SelectedTag(ThemePicker, "default");
-        viewModel.ConfirmDestructiveActions = ConfirmDestructiveToggle.IsOn;
-        viewModel.DiagnosticLogging = DiagnosticsToggle.IsOn;
-        viewModel.ContinueOperationsAfterFailure = InstallBehaviorToggle.IsOn;
-        return viewModel.SaveAsync(CancellationToken.None);
     }
 
     private static string SelectedTag(ComboBox comboBox, string fallback) =>

@@ -18,6 +18,7 @@ public sealed partial class UpdatesPage : UserControl
         ViewModel = new(Dispatch);
         InitializeComponent();
         ViewModel.PropertyChanged += OnViewModelChanged;
+        PageState.CancelRequested += OnOperationCancelRequested;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -78,12 +79,12 @@ public sealed partial class UpdatesPage : UserControl
         var busy = ViewModel.IsBusy;
         if (busy)
         {
-            OperationStatus.Show(TextResources.Get("Operation_Updates_Title"), ViewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : TextResources.Get(ViewModel.Progress is null ? "Progress_Starting" : $"Progress_{ViewModel.Progress.Phase}"), ViewModel.Progress?.PackageId, ViewModel.Progress?.Percentage, ViewModel.IsExecuting);
+            PageState.Show(TextResources.Get("Operation_Updates_Title"), ViewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : TextResources.Get(ViewModel.Progress is null ? "Progress_Starting" : $"Progress_{ViewModel.Progress.Phase}"), ViewModel.Progress?.PackageId, ViewModel.Progress?.Percentage, ViewModel.IsExecuting);
         }
         else if (wasBusy)
         {
             var error = ViewModel.Error;
-            OperationStatus.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
+            PageState.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
         }
         wasBusy = busy;
     }

@@ -23,6 +23,7 @@ public sealed partial class PresetsPage : UserControl
         ViewModel.PackageId.PropertyChanged += OnFieldValidationChanged;
         ViewModel.PropertyChanged += OnViewModelChanged;
         PresetSelector.ItemsSource = ViewModel.PresetNames;
+        PageState.CancelRequested += OnOperationCancelRequested;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -123,12 +124,12 @@ public sealed partial class PresetsPage : UserControl
         var progress = ViewModel.Progress;
         if (isExecuting)
         {
-            OperationStatus.Show(TextResources.Get("Operation_Preset_Title"), TextResources.Get(progress is null ? "Progress_Starting" : $"Progress_{progress.Phase}"), progress?.PackageId, progress?.Percentage, true);
+            PageState.Show(TextResources.Get("Operation_Preset_Title"), TextResources.Get(progress is null ? "Progress_Starting" : $"Progress_{progress.Phase}"), progress?.PackageId, progress?.Percentage, true);
         }
         else if (wasExecuting)
         {
             var error = ViewModel.Error;
-            OperationStatus.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
+            PageState.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
         }
         wasExecuting = isExecuting;
     }
