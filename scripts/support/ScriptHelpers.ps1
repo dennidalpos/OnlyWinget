@@ -1,36 +1,5 @@
 $script:OnlyWingetScriptsRoot = Split-Path $PSScriptRoot -Parent
 $script:OnlyWingetRepositoryRoot = Split-Path $script:OnlyWingetScriptsRoot -Parent
-$script:OnlyWingetApprovedWindowsAppRuntimeRedistDownloads = @{}
-
-function Test-OnlyWingetInteractiveShell {
-    if ([Console]::IsInputRedirected) {
-        return $false
-    }
-
-    return $null -ne $Host -and
-        $null -ne $Host.UI -and
-        $null -ne $Host.UI.RawUI
-}
-
-function Read-OnlyWingetYesNo {
-    param(
-        [string]$Prompt,
-        [bool]$DefaultYes = $true
-    )
-
-    if (-not (Test-OnlyWingetInteractiveShell)) {
-        return $DefaultYes
-    }
-
-    $suffix = if ($DefaultYes) { '[S/n]' } else { '[s/N]' }
-    $answer = Read-Host "$Prompt $suffix"
-    if ([string]::IsNullOrWhiteSpace($answer)) {
-        return $DefaultYes
-    }
-
-    return $answer.Trim().StartsWith('s', [System.StringComparison]::OrdinalIgnoreCase) -or
-        $answer.Trim().StartsWith('y', [System.StringComparison]::OrdinalIgnoreCase)
-}
 
 function Test-OnlyWingetAutoInstallAllowed {
     param(
@@ -41,10 +10,7 @@ function Test-OnlyWingetAutoInstallAllowed {
         throw "$Description mancante. Installazione automatica disabilitata da ONLYWINGET_SKIP_AUTO_INSTALL=1."
     }
 
-    if (Test-OnlyWingetInteractiveShell) {
-        return Read-OnlyWingetYesNo -Prompt "$Description mancante. Installarlo ora?"
-    }
-
+    Write-Host "Installazione automatica prerequisito: $Description" -ForegroundColor Cyan
     return $true
 }
 
@@ -164,29 +130,7 @@ function Install-PowerShellModuleIfMissing {
     return $module
 }
 
-function Enter-InteractiveModeIfNoParameter {
-    param(
-        [hashtable]$BoundParameters,
-        [string]$ScriptRoot,
-        [switch]$NonInteractive
-    )
-
-    if ($NonInteractive) {
-        return $false
-    }
-
-    $effectiveParameterNames = @($BoundParameters.Keys | Where-Object { $_ -ne 'NonInteractive' })
-    if ($effectiveParameterNames.Count -gt 0) {
-        return $false
-    }
-
-    if (-not (Test-OnlyWingetInteractiveShell)) {
-        throw 'Script avviato senza parametri in una sessione non interattiva. Passa parametri espliciti oppure usa scripts/run.ps1 -Task <nome> -NonInteractive.'
-    }
-
-    & (Join-Path $ScriptRoot 'run.ps1')
-    return $true
-}
+# Esecuzione interattiva rimossa come da richiesta.
 
 function Install-WindowsAppRuntimeRedist {
     param(
@@ -227,13 +171,10 @@ function Install-WindowsAppRuntimeRedist {
     )
 
     if (-not (Test-Path -LiteralPath $zipPath)) {
-        if ((Test-OnlyWingetInteractiveShell) -and
-            -not $script:OnlyWingetApprovedWindowsAppRuntimeRedistDownloads.ContainsKey($WindowsAppSdkVersion) -and
-            -not (Read-OnlyWingetYesNo -Prompt "File redist Windows App Runtime $WindowsAppSdkVersion mancante per il bundle. Scaricarlo ora in '$dependencyRoot'?")) {
-            throw "Windows App Runtime installer richiesto per includere Microsoft.WindowsAppSDK $WindowsAppSdkVersion nel bundle."
+        if ($env:ONLYWINGET_SKIP_AUTO_INSTALL -eq '1') {
+            throw "Windows App Runtime redist $WindowsAppSdkVersion mancante. Download automatico disabilitato da ONLYWINGET_SKIP_AUTO_INSTALL=1."
         }
 
-        $script:OnlyWingetApprovedWindowsAppRuntimeRedistDownloads[$WindowsAppSdkVersion] = $true
         $downloaded = $false
         foreach ($downloadUrl in $downloadUrls) {
             try {

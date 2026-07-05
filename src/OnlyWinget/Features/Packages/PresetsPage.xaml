@@ -10,55 +10,48 @@
             </Grid.RowDefinitions>
             <Border Style="{StaticResource CardStyle}">
                 <design:OnlyWingetResponsivePanel ItemMinWidth="360" HorizontalSpacing="16" VerticalSpacing="12">
-                    <design:OnlyWingetWrapPanel HorizontalSpacing="16" VerticalSpacing="8" VerticalAlignment="Center">
-                        <!-- Preset Selection & Management -->
-                        <design:OnlyWingetWrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
-                            <TextBlock x:Name="PresetManagementText" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                            <ComboBox x:Name="PresetSelector" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector" Style="{StaticResource FormComboBoxStyle}" Width="160" VerticalAlignment="Center"/>
-                            
-                            <!-- Add Preset Compact Icon Button -->
-                            <Button x:Name="AddPresetBtn" AutomationProperties.AutomationId="AddPresetBtn" VerticalAlignment="Center" Padding="8,6">
-                                <SymbolIcon Symbol="Add" />
-                                <Button.Flyout>
-                                    <Flyout x:Name="AddPresetFlyout">
-                                        <StackPanel Spacing="8" Width="240">
-                                            <TextBox x:Name="PresetNameBox" AutomationProperties.AutomationId="PresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="SavePresetBtn" AutomationProperties.AutomationId="SavePresetBtn" Click="OnAddPresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
-                                        </StackPanel>
-                                    </Flyout>
-                                </Button.Flyout>
-                            </Button>
-                            
-                            <!-- Rename Preset Compact Icon Button -->
-                            <Button x:Name="RenamePresetBtn" AutomationProperties.AutomationId="RenamePresetBtn" VerticalAlignment="Center" Padding="8,6">
-                                <SymbolIcon Symbol="Edit" />
-                                <Button.Flyout>
-                                    <Flyout x:Name="RenamePresetFlyout">
-                                        <StackPanel Spacing="8" Width="240">
-                                            <TextBox x:Name="RenamePresetNameBox" AutomationProperties.AutomationId="RenamePresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="SaveRenamePresetBtn" AutomationProperties.AutomationId="SaveRenamePresetBtn" Click="OnRenamePresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
-                                        </StackPanel>
-                                    </Flyout>
-                                </Button.Flyout>
-                            </Button>
+                    <design:OnlyWingetWrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
+                        <TextBlock x:Name="PresetManagementText" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="PresetSelector" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector" Style="{StaticResource FormComboBoxStyle}" Width="160" VerticalAlignment="Center"/>
+                        
+                        <!-- Add Preset Compact Icon Button -->
+                        <Button x:Name="AddPresetBtn" AutomationProperties.AutomationId="AddPresetBtn" VerticalAlignment="Center" Padding="8,6">
+                            <SymbolIcon Symbol="Add" />
+                            <Button.Flyout>
+                                <Flyout x:Name="AddPresetFlyout">
+                                    <StackPanel Spacing="8" Width="240">
+                                        <TextBox x:Name="PresetNameBox" AutomationProperties.AutomationId="PresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="SavePresetBtn" AutomationProperties.AutomationId="SavePresetBtn" Click="OnAddPresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        
+                        <!-- Rename Preset Compact Icon Button -->
+                        <Button x:Name="RenamePresetBtn" AutomationProperties.AutomationId="RenamePresetBtn" VerticalAlignment="Center" Padding="8,6">
+                            <SymbolIcon Symbol="Edit" />
+                            <Button.Flyout>
+                                <Flyout x:Name="RenamePresetFlyout">
+                                    <StackPanel Spacing="8" Width="240">
+                                        <TextBox x:Name="RenamePresetNameBox" AutomationProperties.AutomationId="RenamePresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="SaveRenamePresetBtn" AutomationProperties.AutomationId="SaveRenamePresetBtn" Click="OnRenamePresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
 
-                            <!-- Delete Preset Compact Icon Button -->
-                            <Button x:Name="RemovePresetBtn" Click="OnRemovePresetClick" Foreground="{ThemeResource SystemFillColorCriticalBrush}" AutomationProperties.AutomationId="RemovePresetBtn" VerticalAlignment="Center" Padding="8,6">
-                                <SymbolIcon Symbol="Delete" />
-                            </Button>
-                        </design:OnlyWingetWrapPanel>
-
-                        <AppBarSeparator VerticalAlignment="Center"/>
+                        <!-- Delete Preset Compact Icon Button -->
+                        <Button x:Name="RemovePresetBtn" Click="OnRemovePresetClick" Foreground="{ThemeResource SystemFillColorCriticalBrush}" AutomationProperties.AutomationId="RemovePresetBtn" VerticalAlignment="Center" Padding="8,6">
+                            <SymbolIcon Symbol="Delete" />
+                        </Button>
 
                         <!-- Import/Export Compact Icon Buttons -->
-                        <design:OnlyWingetWrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
-                            <Button x:Name="ImportPresetBtn" Click="OnImportPresetClick" AutomationProperties.AutomationId="ImportPresetBtn" VerticalAlignment="Center" Padding="8,6">
-                                <SymbolIcon Symbol="Import" />
-                            </Button>
-                            <Button x:Name="ExportPresetBtn" Click="OnExportPresetClick" AutomationProperties.AutomationId="ExportPresetBtn" VerticalAlignment="Center" Padding="8,6">
-                                <SymbolIcon Symbol="Share" />
-                            </Button>
-                        </design:OnlyWingetWrapPanel>
+                        <Button x:Name="ImportPresetBtn" Click="OnImportPresetClick" AutomationProperties.AutomationId="ImportPresetBtn" VerticalAlignment="Center" Padding="8,6">
+                            <SymbolIcon Symbol="Import" />
+                        </Button>
+                        <Button x:Name="ExportPresetBtn" Click="OnExportPresetClick" AutomationProperties.AutomationId="ExportPresetBtn" VerticalAlignment="Center" Padding="8,6">
+                            <SymbolIcon Symbol="Share" />
+                        </Button>
                     </design:OnlyWingetWrapPanel>
                     
                     <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />

@@ -35,40 +35,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
-function Read-MenuChoice {
-    param(
-        [string]$Title,
-        [string[]]$Choices
-    )
-
-    Write-Host ''
-    Write-Host $Title -ForegroundColor Cyan
-    for ($index = 0; $index -lt $Choices.Count; $index++) {
-        Write-Host (" {0}. {1}" -f ($index + 1), $Choices[$index])
-    }
-
-    do {
-        $rawChoice = Read-Host 'Selezione'
-        $parsedChoice = 0
-        $isNumber = [int]::TryParse($rawChoice, [ref]$parsedChoice)
-    } while (-not $isNumber -or $parsedChoice -lt 1 -or $parsedChoice -gt $Choices.Count)
-
-    return $Choices[$parsedChoice - 1]
-}
-
-function Read-ConfigurationChoice {
-    $choice = Read-MenuChoice -Title 'Configurazione' -Choices @('Release', 'Debug')
-    return $choice
-}
-
-function Read-OptionalSwitch {
-    param(
-        [string]$Prompt,
-        [bool]$DefaultYes = $false
-    )
-
-    return Read-OnlyWingetYesNo -Prompt $Prompt -DefaultYes $DefaultYes
-}
+# Funzioni di menu interattivo rimosse come da richiesta.
 
 function Add-CommonPackageParameter {
     param(
@@ -153,49 +120,7 @@ function Invoke-OnlyWingetTask {
 }
 
 if ([string]::IsNullOrWhiteSpace($Task)) {
-    if ($NonInteractive) {
-        throw 'Passa -Task quando usi run.ps1 in modalita non interattiva.'
-    }
-
-    $Task = Read-MenuChoice -Title 'OnlyWinget task' -Choices @(
-        'Setup',
-        'Format',
-        'Lint',
-        'Typecheck',
-        'Test',
-        'Build',
-        'Package',
-        'Check',
-        'Clean',
-        'Dev',
-        'ValidateInstallerLifecycle',
-        'ValidateInstalledStartup',
-        'GenerateLandingSetup'
-    )
-
-    if ($Task -in @('Typecheck', 'Test', 'Build', 'Package', 'Check', 'Clean', 'Dev', 'ValidateInstallerLifecycle', 'GenerateLandingSetup')) {
-        $Configuration = Read-ConfigurationChoice
-    }
-
-    if ($Task -eq 'Format') {
-        $Fix = Read-OptionalSwitch -Prompt 'Applicare la formattazione invece di verificarla?' -DefaultYes:$false
-    }
-
-    if ($Task -eq 'Test' -or $Task -eq 'Check') {
-        $RunWingetSmoke = Read-OptionalSwitch -Prompt 'Eseguire anche gli smoke test winget reali?' -DefaultYes:$false
-    }
-
-    if ($Task -in @('Package', 'Check', 'ValidateInstallerLifecycle', 'GenerateLandingSetup')) {
-        $providedRuntimeInstaller = Read-Host 'Percorso WindowsAppRuntimeInstall.exe (invio per auto-download/cache/env)'
-        if (-not [string]::IsNullOrWhiteSpace($providedRuntimeInstaller)) {
-            $WindowsAppRuntimeInstallerPath = $providedRuntimeInstaller
-        }
-    }
-
-    if ($Task -eq 'Clean') {
-        $All = Read-OptionalSwitch -Prompt 'Pulizia aggressiva anche di .vs e packages?' -DefaultYes:$false
-        $NuGetCache = Read-OptionalSwitch -Prompt 'Pulire anche la cache NuGet/.NET?' -DefaultYes:$false
-    }
+    throw 'Il parametro -Task e'' obbligatorio. L''esecuzione interattiva e'' disabilitata. / The -Task parameter is required. Interactive execution is disabled.'
 }
 
 Invoke-OnlyWingetTask -SelectedTask $Task

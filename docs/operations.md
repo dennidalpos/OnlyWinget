@@ -2,32 +2,34 @@
 
 Run commands from the repository root in PowerShell 7+.
 
-## Interactive Runner
+## Runner Task Entrypoint
+
+Run tasks via the `run.ps1` script from the repository root:
 
 ```powershell
-.\scripts\run.ps1
+.\scripts\run.ps1 -Task Setup
 ```
 
-Running any direct script without parameters also opens this menu. In automation, use `run.ps1 -Task <name> -NonInteractive`.
+Running any direct script under `scripts/` without parameters executes its direct/default task immediately and non-interactively.
 
 ## Setup
 
 ```powershell
-.\scripts\run.ps1 -Task Setup -NonInteractive
+.\scripts\run.ps1 -Task Setup
 ```
 
 ## Fast Local Check
 
 ```powershell
-.\scripts\run.ps1 -Task Format -NoRestore -NonInteractive
-.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive
-.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
+.\scripts\run.ps1 -Task Format -NoRestore
+.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore
+.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore
 ```
 
 ## Full Gate
 
 ```powershell
-.\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
+.\scripts\run.ps1 -Task Check -Configuration Release
 ```
 
 The full gate restores, formats, lints scripts, typechecks, tests, builds, packages, and writes artifacts under `artifacts/`. Missing local prerequisites are installed where practical.
@@ -36,28 +38,28 @@ The full gate restores, formats, lints scripts, typechecks, tests, builds, packa
 
 | Task | Command |
 | --- | --- |
-| Restore | `.\scripts\run.ps1 -Task Setup -NonInteractive` |
-| Format check | `.\scripts\run.ps1 -Task Format -NoRestore -NonInteractive` |
-| PowerShell lint | `.\scripts\run.ps1 -Task Lint -NonInteractive` |
-| Typecheck | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` |
-| Test | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` |
-| Build | `.\scripts\run.ps1 -Task Build -Configuration Release -NonInteractive` |
-| Run app | `.\scripts\run.ps1 -Task Dev -Configuration Release -NonInteractive` |
-| Package setup | `.\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive` |
-| Clean outputs | `.\scripts\run.ps1 -Task Clean -Configuration Release -NonInteractive` |
+| Restore | `.\scripts\run.ps1 -Task Setup` |
+| Format check | `.\scripts\run.ps1 -Task Format -NoRestore` |
+| PowerShell lint | `.\scripts\run.ps1 -Task Lint` |
+| Typecheck | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore` |
+| Test | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore` |
+| Build | `.\scripts\run.ps1 -Task Build -Configuration Release` |
+| Run app | `.\scripts\run.ps1 -Task Dev -Configuration Release` |
+| Package setup | `.\scripts\run.ps1 -Task Package -Configuration Release -NoRestore` |
+| Clean outputs | `.\scripts\run.ps1 -Task Clean -Configuration Release` |
 
 ## Optional Validations
 
 Live `winget` smoke tests:
 
 ```powershell
-.\scripts\run.ps1 -Task Test -RunWingetSmoke -NonInteractive
+.\scripts\run.ps1 -Task Test -RunWingetSmoke
 ```
 
 Elevated installer lifecycle validation on a clean Windows host:
 
 ```powershell
-.\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
+.\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore
 ```
 
 ## Requirements

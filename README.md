@@ -50,27 +50,21 @@ winget --version
 
 ## Commands
 
-Interactive menu:
+Run task examples:
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1
-```
-
-Non-interactive examples:
-
-```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Setup -NonInteractive
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Format -NoRestore -NonInteractive
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Build -Configuration Release -NonInteractive
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Setup
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Format -NoRestore
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Test -Configuration Release -NoRestore
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Build -Configuration Release
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Package -Configuration Release -NoRestore
 ```
 
 Full local gate:
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Check -Configuration Release
 ```
 
 ## Project Links
