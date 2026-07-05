@@ -1,10 +1,7 @@
-using System.Text.Json.Serialization;
-
 namespace OnlyWinget.Domain.Packages;
 
 public sealed record PackageIdentity
 {
-    [JsonConstructor]
     public PackageIdentity(string id, string? source = null)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -27,7 +24,7 @@ public sealed record PackageIdentity
 
     public override int GetHashCode() =>
         HashCode.Combine(
-            Id.ToUpperInvariant(),
-            Source?.ToUpperInvariant() ?? string.Empty);
+            StringComparer.OrdinalIgnoreCase.GetHashCode(Id),
+            StringComparer.OrdinalIgnoreCase.GetHashCode(Source ?? string.Empty));
 }
 

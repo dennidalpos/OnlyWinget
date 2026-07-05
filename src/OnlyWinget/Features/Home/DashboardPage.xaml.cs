@@ -76,6 +76,13 @@ public sealed partial class DashboardPage : Page
     private void OnOpenUpdates(object sender, RoutedEventArgs args) => App.Navigate("updates");
     private void OnViewAllActivity(object sender, RoutedEventArgs args) => App.Navigate("activity");
 
+    public static Microsoft.UI.Xaml.Media.Brush GetThemeBrush(string key)
+    {
+        return Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(key, out var brush) && brush is Microsoft.UI.Xaml.Media.Brush b
+            ? b
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+    }
+
     private void Dispatch(Action action)
     {
         if (DispatcherQueue.HasThreadAccess)

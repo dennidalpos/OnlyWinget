@@ -7,18 +7,21 @@
         <design:PageScaffold.Body>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="8" Padding="0,0,0,24" MaxWidth="1000" HorizontalAlignment="Stretch">
+                    <!-- Appearance & Language Section -->
+                    <TextBlock x:Name="AppearanceGroupHeader" Style="{StaticResource SectionTitleTextBlockStyle}" Margin="4,12,0,8" />
+                    
                     <!-- Language Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Globe" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Globe" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="LanguageTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                                <TextBlock x:Name="LanguageDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                <TextBlock x:Name="LanguageTitle" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="LanguageDescription" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                             <ComboBox x:Name="LanguagePicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsLanguagePicker" Width="200" VerticalAlignment="Center">
                                 <ComboBoxItem Content="System default" Tag="system" />
@@ -30,16 +33,16 @@
 
                     <!-- Theme Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Highlight" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Highlight" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="ThemeTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                                <TextBlock x:Name="ThemeDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                <TextBlock x:Name="ThemeTitle" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="ThemeDescription" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                             <ComboBox x:Name="ThemePicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Theme, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsThemePicker" Width="200" VerticalAlignment="Center">
                                 <ComboBoxItem Content="System default" Tag="default" />
@@ -49,17 +52,20 @@
                         </Grid>
                     </Border>
 
+                    <!-- Safety & Behavior Section -->
+                    <TextBlock x:Name="BehaviorGroupHeader" Style="{StaticResource SectionTitleTextBlockStyle}" Margin="4,20,0,8" />
+
                     <!-- Confirm Destructive Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Important" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Important" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="ConfirmDestructiveText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                <TextBlock x:Name="ConfirmDestructiveText" Style="{ThemeResource BodyStrongTextBlockStyle}" />
                             </StackPanel>
                             <ToggleSwitch x:Name="ConfirmDestructiveToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ConfirmDestructiveActions, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" Header="" Margin="0" VerticalAlignment="Center" />
                         </Grid>
@@ -67,15 +73,15 @@
 
                     <!-- Diagnostics Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Document" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Document" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="DiagnosticsText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                <TextBlock x:Name="DiagnosticsText" Style="{ThemeResource BodyStrongTextBlockStyle}" />
                             </StackPanel>
                             <ToggleSwitch x:Name="DiagnosticsToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.DiagnosticLogging, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" Header="" Margin="0" VerticalAlignment="Center" />
                         </Grid>
@@ -83,32 +89,35 @@
 
                     <!-- Install Behavior Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Play" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Play" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="InstallBehaviorText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                <TextBlock x:Name="InstallBehaviorText" Style="{ThemeResource BodyStrongTextBlockStyle}" />
                             </StackPanel>
                             <ToggleSwitch x:Name="InstallBehaviorToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ContinueOperationsAfterFailure, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" Header="" Margin="0" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
 
+                    <!-- Maintenance Section -->
+                    <TextBlock x:Name="MaintenanceGroupHeader" Style="{StaticResource SectionTitleTextBlockStyle}" Margin="4,20,0,8" />
+
                     <!-- Reset Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Refresh" VerticalAlignment="Center" />
+                            <SymbolIcon Symbol="Refresh" VerticalAlignment="Center" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="ResetTitle" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                                <TextBlock x:Name="ResetDescription" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                <TextBlock x:Name="ResetTitle" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="ResetDescription" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                             <Button x:Name="ResetButton" Grid.Column="2" Style="{StaticResource DestructiveButtonStyle}" Click="OnReset" AutomationProperties.AutomationId="SettingsResetButton" VerticalAlignment="Center" />
                         </Grid>

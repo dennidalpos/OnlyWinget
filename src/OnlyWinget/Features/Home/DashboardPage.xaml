@@ -40,7 +40,7 @@
                         </ItemsRepeater.Layout>
                         <ItemsRepeater.ItemTemplate>
                             <DataTemplate x:DataType="home:DashboardMetric">
-                                <Border Style="{StaticResource MetricCardStyle}">
+                                <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1,3,1,1">
                                     <StackPanel>
                                         <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" />
                                         <TextBlock Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />

@@ -1,94 +1,116 @@
 <UserControl x:Class="OnlyWinget.Features.Packages.PresetsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:OnlyWinget.Controls" xmlns:states="using:OnlyWinget.DesignSystem.States" xmlns:commands="using:OnlyWinget.DesignSystem.Commands" xmlns:presentation="using:OnlyWinget.Presentation" xmlns:appPresentation="using:OnlyWinget.Application.Presentation" xmlns:design="using:OnlyWinget.DesignSystem.Controls">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid RowSpacing="12" Margin="0,0,0,16">
-            <VisualStateManager.VisualStateGroups>
-                <VisualStateGroup>
-                    <VisualState x:Name="WideLayout">
-                        <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="850" />
-                        </VisualState.StateTriggers>
-                    </VisualState>
-                    <VisualState x:Name="NarrowLayout">
-                        <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="0" />
-                        </VisualState.StateTriggers>
-                        <VisualState.Setters>
-                            <Setter Target="PresetCol.Width" Value="*" />
-                            <Setter Target="PackageCol.Width" Value="0" />
-                            <Setter Target="PackageRow.Height" Value="Auto" />
-                            <Setter Target="PackageCard.(Grid.Column)" Value="0" />
-                            <Setter Target="PackageCard.(Grid.Row)" Value="1" />
-                        </VisualState.Setters>
-                    </VisualState>
-                </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             <Border Style="{StaticResource CardStyle}">
-                <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <design:OnlyWingetWrapPanel HorizontalSpacing="16" VerticalSpacing="8" VerticalAlignment="Center">
+                        <!-- Preset Selection & Management -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock x:Name="PresetManagementText" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ComboBox x:Name="PresetSelector" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector" Style="{StaticResource FormComboBoxStyle}" Width="160" VerticalAlignment="Center"/>
+                            
+                            <!-- Add Preset Compact Icon Button -->
+                            <Button x:Name="AddPresetBtn" AutomationProperties.AutomationId="AddPresetBtn" VerticalAlignment="Center" Padding="8,6">
+                                <SymbolIcon Symbol="Add" />
+                                <Button.Flyout>
+                                    <Flyout x:Name="AddPresetFlyout">
+                                        <StackPanel Spacing="8" Width="240">
+                                            <TextBox x:Name="PresetNameBox" AutomationProperties.AutomationId="PresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="SavePresetBtn" AutomationProperties.AutomationId="SavePresetBtn" Click="OnAddPresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                            
+                            <!-- Rename Preset Compact Icon Button -->
+                            <Button x:Name="RenamePresetBtn" AutomationProperties.AutomationId="RenamePresetBtn" VerticalAlignment="Center" Padding="8,6">
+                                <SymbolIcon Symbol="Edit" />
+                                <Button.Flyout>
+                                    <Flyout x:Name="RenamePresetFlyout">
+                                        <StackPanel Spacing="8" Width="240">
+                                            <TextBox x:Name="RenamePresetNameBox" AutomationProperties.AutomationId="RenamePresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="SaveRenamePresetBtn" AutomationProperties.AutomationId="SaveRenamePresetBtn" Click="OnRenamePresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+
+                            <!-- Delete Preset Compact Icon Button -->
+                            <Button x:Name="RemovePresetBtn" Click="OnRemovePresetClick" Foreground="{ThemeResource SystemFillColorCriticalBrush}" AutomationProperties.AutomationId="RemovePresetBtn" VerticalAlignment="Center" Padding="8,6">
+                                <SymbolIcon Symbol="Delete" />
+                            </Button>
+                        </StackPanel>
+
+                        <AppBarSeparator VerticalAlignment="Center"/>
+
+                        <!-- Import/Export Compact Icon Buttons -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button x:Name="ImportPresetBtn" Click="OnImportPresetClick" AutomationProperties.AutomationId="ImportPresetBtn" VerticalAlignment="Center" Padding="8,6">
+                                <SymbolIcon Symbol="Import" />
+                            </Button>
+                            <Button x:Name="ExportPresetBtn" Click="OnExportPresetClick" AutomationProperties.AutomationId="ExportPresetBtn" VerticalAlignment="Center" Padding="8,6">
+                                <SymbolIcon Symbol="Share" />
+                            </Button>
+                        </StackPanel>
+                    </design:OnlyWingetWrapPanel>
+                    
+                    <commands:OnlyWingetCommandBar x:Name="CommandBar" Grid.Column="1" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />
+                </Grid>
             </Border>
-            <Grid x:Name="ManagementGrid" Grid.Row="1" ColumnSpacing="12" RowSpacing="12">
+            
+            <!-- Packages Section Header and Row Actions -->
+            <Grid Grid.Row="1" Margin="0,8,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="PresetCol" Width="*" />
-                    <ColumnDefinition x:Name="PackageCol" Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition x:Name="PresetRow" Height="Auto" />
-                    <RowDefinition x:Name="PackageRow" Height="0" />
-                </Grid.RowDefinitions>
+                <TextBlock x:Name="PackagesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock x:Name="PackageManagementText" Style="{StaticResource BodyTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0" Visibility="Collapsed" />
+                    <!-- Add Package Button + Flyout -->
+                    <Button x:Name="AddPackageBtn" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.AutomationId="AddPackageBtn" VerticalAlignment="Center">
+                        <Button.Flyout>
+                            <Flyout x:Name="AddPackageFlyout">
+                                <StackPanel Spacing="8" Width="240">
+                                    <TextBox x:Name="PackageIdBox" AutomationProperties.AutomationId="PresetPackageIdTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PackageId.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                    <TextBox x:Name="PackageSourceBox" AutomationProperties.AutomationId="PresetPackageSourceTextBox" Style="{StaticResource FormTextBoxStyle}" HorizontalAlignment="Stretch"/>
+                                    <Button x:Name="SavePackageBtn" AutomationProperties.AutomationId="SavePackageBtn" Click="OnAddPackageClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
 
-                <!-- Card 1: Preset Management -->
-                <Border x:Name="PresetCard" Style="{StaticResource CardStyle}">
-                    <Grid RowSpacing="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock x:Name="PresetManagementText" Style="{StaticResource SectionTitleTextBlockStyle}"/>
-                        
-                        <ComboBox x:Name="PresetSelector" Grid.Row="1" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector" Style="{StaticResource FormComboBoxStyle}" HorizontalAlignment="Stretch"/>
-                        
-                        <TextBox x:Name="PresetNameBox" Grid.Row="2" AutomationProperties.AutomationId="PresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                        
-                        <design:OnlyWingetWrapPanel Grid.Row="3" HorizontalSpacing="8" VerticalSpacing="8">
-                            <Button x:Name="AddPresetBtn" Click="OnAddPresetClick" Style="{StaticResource AddPrimaryButtonStyle}" AutomationProperties.AutomationId="AddPresetBtn" />
-                            <Button x:Name="RenamePresetBtn" Click="OnRenamePresetClick" Style="{StaticResource EditButtonStyle}" AutomationProperties.AutomationId="RenamePresetBtn" />
-                            <Button x:Name="RemovePresetBtn" Click="OnRemovePresetClick" Style="{StaticResource DeleteButtonStyle}" AutomationProperties.AutomationId="RemovePresetBtn" />
-                            <Button x:Name="ImportPresetBtn" Click="OnImportPresetClick" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.AutomationId="ImportPresetBtn" />
-                            <Button x:Name="ExportPresetBtn" Click="OnExportPresetClick" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.AutomationId="ExportPresetBtn" />
-                        </design:OnlyWingetWrapPanel>
-                    </Grid>
-                </Border>
+                    <!-- Edit Package Button + Flyout -->
+                    <Button x:Name="EditPackageBtn" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.AutomationId="EditPackageBtn" VerticalAlignment="Center">
+                        <Button.Flyout>
+                            <Flyout x:Name="EditPackageFlyout" Opened="OnEditPackageFlyoutOpened">
+                                <StackPanel Spacing="8" Width="240">
+                                    <TextBox x:Name="EditPackageIdBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PackageId.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                    <TextBox x:Name="EditPackageSourceBox" Style="{StaticResource FormTextBoxStyle}" HorizontalAlignment="Stretch"/>
+                                    <Button x:Name="SaveEditPackageBtn" AutomationProperties.AutomationId="SaveEditPackageBtn" Click="OnEditPackageClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
 
-                <!-- Card 2: Package Management -->
-                <Border x:Name="PackageCard" Grid.Column="1" Style="{StaticResource CardStyle}">
-                    <Grid RowSpacing="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock x:Name="PackageManagementText" Style="{StaticResource SectionTitleTextBlockStyle}"/>
-                        
-                        <TextBox x:Name="PackageIdBox" Grid.Row="1" AutomationProperties.AutomationId="PresetPackageIdTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PackageId.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                        
-                        <TextBox x:Name="PackageSourceBox" Grid.Row="2" AutomationProperties.AutomationId="PresetPackageSourceTextBox" Style="{StaticResource FormTextBoxStyle}" HorizontalAlignment="Stretch"/>
-                        
-                        <design:OnlyWingetWrapPanel Grid.Row="3" HorizontalSpacing="8" VerticalSpacing="8">
-                            <Button x:Name="AddPackageBtn" Click="OnAddPackageClick" Style="{StaticResource AddPrimaryButtonStyle}" AutomationProperties.AutomationId="AddPackageBtn" />
-                            <Button x:Name="EditPackageBtn" Click="OnEditPackageClick" Style="{StaticResource EditButtonStyle}" AutomationProperties.AutomationId="EditPackageBtn" />
-                            <Button x:Name="RemovePackageBtn" Click="OnRemovePackageClick" Style="{StaticResource DeleteButtonStyle}" AutomationProperties.AutomationId="RemovePackageBtn" />
-                        </design:OnlyWingetWrapPanel>
-                    </Grid>
-                </Border>
+                    <!-- Remove Package -->
+                    <Button x:Name="RemovePackageBtn" Click="OnRemovePackageClick" Style="{StaticResource DestructiveButtonStyle}" AutomationProperties.AutomationId="RemovePackageBtn" VerticalAlignment="Center"/>
+                </StackPanel>
             </Grid>
-            <TextBlock x:Name="PackagesSectionText" Grid.Row="2" Style="{StaticResource SectionTitleTextBlockStyle}"/>
-            <states:StatePresenter x:Name="PageState" Grid.Row="3"/>
-            <Border Grid.Row="4" Style="{StaticResource ListCardStyle}" MinHeight="300">
+            <states:StatePresenter x:Name="PageState" Grid.Row="2"/>
+            <Border Grid.Row="3" Style="{StaticResource ListCardStyle}" MinHeight="300">
                 <controls:OnlyWingetTable x:Name="PackageList" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled">
                     <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="180" IsPrimary="True" />
                     <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True" />
@@ -97,7 +119,7 @@
                     <controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="*" />
                 </controls:OnlyWingetTable>
             </Border>
-            <StackPanel Grid.Row="5" Spacing="8">
+            <StackPanel Grid.Row="4" Spacing="8">
                 <TextBlock x:Name="OperationResultsText" Style="{StaticResource SectionTitleTextBlockStyle}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.HasOperationResults), Mode=OneWay}"/>
                 <Border Style="{StaticResource ListCardStyle}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.HasOperationResults), Mode=OneWay}">
                     <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

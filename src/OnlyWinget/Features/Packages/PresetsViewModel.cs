@@ -123,6 +123,16 @@ public sealed class PresetsViewModel : FeatureViewModel
         catch (Exception exception) when (exception is not OperationCanceledException) { Workflow.ReportExternalFailure(TextResources.Get("Error_PresetExportWrite")); }
     }
 
+    public void PrepareEditFields(Action<string> setSourceText)
+    {
+        var selected = Workflow.State.SelectedPresetPackages.SingleOrDefault();
+        if (selected is not null)
+        {
+            PackageId.Value = selected.Id;
+            setSourceText(selected.Source ?? string.Empty);
+        }
+    }
+
     protected override void Refresh()
     {
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).Presets;

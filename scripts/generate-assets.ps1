@@ -14,14 +14,119 @@ $repoRoot = Split-Path $scriptRoot -Parent
 $targetFramework = 'net10.0-windows10.0.17763.0'
 $exePath = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe"
 
+# ==========================================
+# CENTRALIZED ASSET DISTRIBUTION & GENERATION
+# ==========================================
+
+$masterLogoPng = Join-Path $repoRoot 'assets/logos/logo.png'
+$masterLogoIco = Join-Path $repoRoot 'assets/logos/logo.ico'
+$masterWebKit = Join-Path $repoRoot 'assets/webkit.jpg'
+$masterPoster = Join-Path $repoRoot 'assets/poster.jpg'
+
+Write-Host "Distributing logos, web kit, and poster..." -ForegroundColor Cyan
+
+# 1. Distribute brand logos
+Copy-Item $masterLogoPng (Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget-icon.png') -Force
+Copy-Item $masterLogoPng (Join-Path $repoRoot 'landing/assets/logo.png') -Force
+Copy-Item $masterLogoIco (Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget.ico') -Force
+Copy-Item $masterLogoIco (Join-Path $repoRoot 'landing/favicon.ico') -Force
+
+# 2. Distribute web kit & poster
+Copy-Item $masterWebKit (Join-Path $repoRoot 'landing/assets/webkit.jpg') -Force
+Copy-Item $masterPoster (Join-Path $repoRoot 'landing/assets/poster.jpg') -Force
+
+# 3. Generate WiX installer BMPs programmatically
+function New-WixInstallerBmp {
+    param(
+        [string]$logoPngPath,
+        [string]$setupAssetsDir
+    )
+
+    Write-Host "Generating WiX Installer BMPs..." -ForegroundColor Cyan
+    Add-Type -AssemblyName System.Drawing
+
+    $bannerPath = Join-Path $setupAssetsDir "WixUIBanner.bmp"
+    $dialogPath = Join-Path $setupAssetsDir "WixUIDialog.bmp"
+
+    # Ensure setup assets directory exists
+    New-Item -ItemType Directory -Path $setupAssetsDir -Force | Out-Null
+
+    # Load logo
+    $logo = [System.Drawing.Image]::FromFile($logoPngPath)
+    try {
+        # 1. Generate WixUIBanner.bmp (493 x 58) as 24bpp BMP
+        $banner = New-Object System.Drawing.Bitmap(493, 58, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+        $gBanner = [System.Drawing.Graphics]::FromImage($banner)
+        try {
+            $c1 = [System.Drawing.ColorTranslator]::FromHtml("#0E0A16")
+            $c2 = [System.Drawing.ColorTranslator]::FromHtml("#1C122C")
+            $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+                (New-Object System.Drawing.Rectangle(0, 0, 493, 58)),
+                $c1, $c2, 0.0
+            )
+            $gBanner.FillRectangle($brush, 0, 0, 493, 58)
+            $brush.Dispose()
+
+            # Logo on the right side
+            $gBanner.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $gBanner.DrawImage($logo, 430, 5, 48, 48)
+
+            $banner.Save($bannerPath, [System.Drawing.Imaging.ImageFormat]::Bmp)
+            Write-Host "Generated WixUIBanner.bmp successfully." -ForegroundColor Green
+        }
+        finally {
+            $gBanner.Dispose()
+            $banner.Dispose()
+        }
+
+        # 2. Generate WixUIDialog.bmp (496 x 312) as 24bpp BMP
+        $dialog = New-Object System.Drawing.Bitmap(496, 312, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+        $gDialog = [System.Drawing.Graphics]::FromImage($dialog)
+        try {
+            $gDialog.Clear([System.Drawing.Color]::White)
+
+            # Left Sidebar Gradient
+            $c1 = [System.Drawing.ColorTranslator]::FromHtml("#0E0A16")
+            $c2 = [System.Drawing.ColorTranslator]::FromHtml("#1C122C")
+            $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+                (New-Object System.Drawing.Rectangle(0, 0, 164, 312)),
+                $c1, $c2, 90.0
+            )
+            $gDialog.FillRectangle($brush, 0, 0, 164, 312)
+            $brush.Dispose()
+
+            # Center logo inside sidebar
+            $gDialog.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $gDialog.DrawImage($logo, 42, 60, 80, 80)
+
+            $dialog.Save($dialogPath, [System.Drawing.Imaging.ImageFormat]::Bmp)
+            Write-Host "Generated WixUIDialog.bmp successfully." -ForegroundColor Green
+        }
+        finally {
+            $gDialog.Dispose()
+            $dialog.Dispose()
+        }
+    }
+    finally {
+        $logo.Dispose()
+    }
+}
+
+New-WixInstallerBmp -logoPngPath $masterLogoPng -setupAssetsDir (Join-Path $repoRoot 'src/OnlyWinget.Setup/Assets')
+
 # 1. Terminate any running instances of OnlyWinget
 Write-Host "Killing any running OnlyWinget instances..." -ForegroundColor Cyan
-taskkill /f /im OnlyWinget.exe 2>$null | Out-Null
+Get-Process OnlyWinget -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 1
+
+# Force rebuild to ensure the latest icons are compiled in
+if (Test-Path $exePath) {
+    Remove-Item $exePath -Force
+}
 
 # 2. Check executable
 if (-not (Test-Path $exePath)) {
-    Write-Host "Executable not found at $exePath. Building..." -ForegroundColor Cyan
+    Write-Host "Building executable to embed new icons..." -ForegroundColor Cyan
     & (Join-Path $scriptRoot 'build.ps1') -Configuration $Configuration -NoRestore
 }
 Assert-Path -Path $exePath -Description 'Built application executable'
@@ -30,7 +135,7 @@ Assert-Path -Path $exePath -Description 'Built application executable'
 $assetsDir = Join-Path $repoRoot 'assets'
 $galleryDir = Join-Path $repoRoot 'landing/assets/gallery'
 
-$flows = @('create_preset', 'search_apps', 'install_apps', 'windows_update')
+$flows = @('create_preset', 'search_apps', 'install_apps', 'windows_update', 'sources', 'activity', 'settings')
 foreach ($flow in $flows) {
     New-Item -ItemType Directory -Path (Join-Path $assetsDir $flow) -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $galleryDir $flow) -Force | Out-Null
@@ -59,6 +164,8 @@ try {
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("user32.dll")]
+        public static extern uint GetDpiForWindow(IntPtr hwnd);
     }
 '@
 
@@ -66,20 +173,32 @@ try {
     Add-Type -AssemblyName UIAutomationTypes
     Add-Type -AssemblyName System.Windows.Forms
 
-    # 4. Find the window handle
-    $window = winapp ui list-windows -a $appPid --json 2>$null | ConvertFrom-Json |
-        Where-Object { $_.processId -eq $appPid -and $_.className -ne '#32770' } |
-        Select-Object -First 1
-    
-    if ($null -eq $window) {
-        throw 'OnlyWinget main window not found.'
+    # 4. Find the window handle (with retries for robust launch timing)
+    Write-Host "Locating OnlyWinget main window handle..." -ForegroundColor Cyan
+    $hwnd = [IntPtr]::Zero
+    for ($i = 0; $i -lt 10; $i++) {
+        $window = winapp ui list-windows -a $appPid --json 2>$null | ConvertFrom-Json |
+            Where-Object { $_.processId -eq $appPid -and $_.className -ne '#32770' } |
+            Select-Object -First 1
+        if ($null -ne $window) {
+            $hwnd = [IntPtr]::new([int64]$window.hwnd)
+            break
+        }
+        Start-Sleep -Seconds 1
     }
 
-    $hwnd = [IntPtr]::new([int64]$window.hwnd)
+    if ($hwnd -eq [IntPtr]::Zero) {
+        throw 'OnlyWinget main window not found.'
+    }
     
-    # Resize window to standard premium layout (1280x800)
-    Write-Host "Resizing OnlyWinget window to 1280x800..." -ForegroundColor Cyan
-    if (-not [OnlyWingetUiTestNative]::MoveWindow($hwnd, 50, 50, 1280, 800, $true)) {
+    # Resize window to standard premium layout scaled for DPI (1280x800 effective)
+    $dpi = [OnlyWingetUiTestNative]::GetDpiForWindow($hwnd)
+    if ($dpi -eq 0) { $dpi = 96 }
+    $scale = $dpi / 96.0
+    $width = [int](1280 * $scale)
+    $height = [int](800 * $scale)
+    Write-Host "Resizing OnlyWinget window to $width x $height (DPI: $dpi, Scale: $scale)..." -ForegroundColor Cyan
+    if (-not [OnlyWingetUiTestNative]::MoveWindow($hwnd, 50, 50, $width, $height, $true)) {
         throw 'Failed to resize window.'
     }
     Start-Sleep -Milliseconds 500
@@ -93,13 +212,21 @@ try {
             [string]$Flow,
             [string]$Name
         )
-        Start-Sleep -Milliseconds 800
+        # Ensure window is visible and active in foreground before screenshot
+        [OnlyWingetUiTestNative]::ShowWindow($hwnd, 9) | Out-Null # SW_RESTORE
+        [OnlyWingetUiTestNative]::SetForegroundWindow($hwnd) | Out-Null
+        Start-Sleep -Milliseconds 500
+        
         $file = "$Name.png"
         $assetsPath = Join-Path $assetsDir "$Flow/$file"
         $galleryPath = Join-Path $galleryDir "$Flow/$file"
         
         Write-Host "Capturing screenshot: $Flow/$file" -ForegroundColor Yellow
         winapp ui screenshot -a $appPid -o $assetsPath -q
+        
+        if (-not (Test-Path $assetsPath)) {
+            throw "Screenshot file was not generated: $assetsPath"
+        }
         Copy-Item -Path $assetsPath -Destination $galleryPath -Force
     }
 
@@ -127,24 +254,42 @@ try {
     winapp ui invoke 'PackagesPresetTab' -a $appPid -q
     Save-FlowScreenshot -Flow 'create_preset' -Name '01_presets_empty'
 
-    # Enter Preset Name and Add
-    Send-KeysToControl 'PresetNameTextBox' 'DeveloperSuite'
+    # Open Add Preset Flyout, type name, capture with flyout open, and then save
     winapp ui invoke 'AddPresetBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
+    Send-KeysToControl 'PresetNameTextBox' 'DeveloperSuite'
     Save-FlowScreenshot -Flow 'create_preset' -Name '02_preset_created'
+    winapp ui invoke 'SavePresetBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
 
-    # Enter Package IDs
+    # Open Add Package Flyout and Add Visual Studio Code
+    winapp ui invoke 'AddPackageBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
+    Send-KeysToControl 'PresetPackageSourceTextBox' 'winget'
     Send-KeysToControl 'PresetPackageIdTextBox' 'Microsoft.VisualStudioCode'
-    winapp ui invoke 'AddPackageBtn' -a $appPid -q
+    winapp ui invoke 'SavePackageBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
 
-    Send-KeysToControl 'PresetPackageIdTextBox' '^aGit.Git'
+    # Add Git.Git
     winapp ui invoke 'AddPackageBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
+    Send-KeysToControl 'PresetPackageIdTextBox' 'Git.Git'
+    winapp ui invoke 'SavePackageBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
 
-    Send-KeysToControl 'PresetPackageIdTextBox' '^aGoogle.Chrome'
+    # Add Google.Chrome
     winapp ui invoke 'AddPackageBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
+    Send-KeysToControl 'PresetPackageIdTextBox' 'Google.Chrome'
+    winapp ui invoke 'SavePackageBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
 
-    Send-KeysToControl 'PresetPackageIdTextBox' '^aMicrosoft.PowerToys'
+    # Add Microsoft.PowerToys
     winapp ui invoke 'AddPackageBtn' -a $appPid -q
-
+    Start-Sleep -Milliseconds 400
+    Send-KeysToControl 'PresetPackageIdTextBox' 'Microsoft.PowerToys'
+    winapp ui invoke 'SavePackageBtn' -a $appPid -q
+    Start-Sleep -Milliseconds 400
 
     Save-FlowScreenshot -Flow 'create_preset' -Name '03_package_added'
 
@@ -174,8 +319,9 @@ try {
 
     # Start installation
     winapp ui invoke 'CommandInstallPreset' -a $appPid -q
-    Start-Sleep -Seconds 2
+    Start-Sleep -Milliseconds 300
     Save-FlowScreenshot -Flow 'install_apps' -Name '02_install_progress'
+    Start-Sleep -Seconds 2
 
     # ==========================================
     # FLOW 4: Windows Update
@@ -191,10 +337,35 @@ try {
     Start-Sleep -Seconds 8
     Save-FlowScreenshot -Flow 'windows_update' -Name '02_scan_in_progress'
 
+    # ==========================================
+    # FLOW 5: Sources Page
+    # ==========================================
+    Write-Host "Starting Flow 5: Sources Page..." -ForegroundColor Green
+    winapp ui invoke 'NavSources' -a $appPid -q
+    Start-Sleep -Seconds 2
+    Save-FlowScreenshot -Flow 'sources' -Name '01_sources_list'
+
+    # ==========================================
+    # FLOW 6: Activity Page
+    # ==========================================
+    Write-Host "Starting Flow 6: Activity Page..." -ForegroundColor Green
+    winapp ui invoke 'NavActivity' -a $appPid -q
+    Start-Sleep -Seconds 2
+    Save-FlowScreenshot -Flow 'activity' -Name '01_activity_log'
+
+    # ==========================================
+    # FLOW 7: Settings Page
+    # ==========================================
+    Write-Host "Starting Flow 7: Settings Page..." -ForegroundColor Green
+    winapp ui invoke 'SettingsItem' -a $appPid -q
+    Start-Sleep -Seconds 2
+    Save-FlowScreenshot -Flow 'settings' -Name '01_settings_tab'
 
     Write-Host "All flows automated and captured successfully!" -ForegroundColor Green
 }
 finally {
     Write-Host "Stopping OnlyWinget application..." -ForegroundColor Cyan
-    Stop-Process -Id $appPid -Force -ErrorAction SilentlyContinue
+    if ($null -ne $appPid) {
+        Stop-Process -Id $appPid -Force -ErrorAction SilentlyContinue
+    }
 }

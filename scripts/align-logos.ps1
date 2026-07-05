@@ -1,9 +1,34 @@
+Param(
+    [Parameter(Position = 0, Mandatory = $false)]
+    [string]$jpgLogoPath
+)
+
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$jpgLogoPath = "C:\Users\Utente\.gemini\antigravity\brain\432ca59d-b236-4373-8cf8-2a4a1ab118cd\onlywinget_logo_1783205350847.jpg"
 $assetsLogoDir = Join-Path $repoRoot 'assets/logos'
+
+if ([string]::IsNullOrWhiteSpace($jpgLogoPath)) {
+    # Try to find a local JPEG logo matching *logo*.jpg in script root, repo root, or assets
+    $potentialLogos = @(Get-ChildItem -Path $PSScriptRoot, $repoRoot, (Join-Path $repoRoot 'assets') -Filter "*logo*.jpg" -File -ErrorAction SilentlyContinue)
+    if ($potentialLogos.Count -gt 0) {
+        $jpgLogoPath = $potentialLogos[0].FullName
+        Write-Host "No logo path specified. Automatically discovered logo at: $jpgLogoPath" -ForegroundColor Yellow
+    } else {
+        Write-Error "Please specify the path to the JPEG logo file: .\align-logos.ps1 -jpgLogoPath <path-to-jpeg>"
+        return
+    }
+}
+
+if (-not (Test-Path $jpgLogoPath)) {
+    Write-Error "The specified logo file does not exist: $jpgLogoPath"
+    return
+}
+
+# Resolve to absolute path
+$jpgLogoPath = (Resolve-Path $jpgLogoPath).Path
+
 New-Item -ItemType Directory -Path $assetsLogoDir -Force | Out-Null
 
 $pngLogoPath = Join-Path $assetsLogoDir 'logo.png'

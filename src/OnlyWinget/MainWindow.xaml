@@ -3,22 +3,42 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="OnlyWinget">
-    <NavigationView
-        x:Name="RootNavigation"
-        CompactModeThresholdWidth="720"
-        ExpandedModeThresholdWidth="1100"
-        IsBackButtonVisible="Collapsed"
-        IsSettingsVisible="True"
-        PaneTitle="OnlyWinget"
-        PaneDisplayMode="Auto"
-        AutomationProperties.AutomationId="RootNavigation"
-        SelectionFollowsFocus="Enabled"
-        ItemInvoked="OnItemInvoked"
-        SelectionChanged="OnSelectionChanged">
-        <ContentControl
-            x:Name="PageHost"
-            Background="{ThemeResource LayerFillColorDefaultBrush}"
-            HorizontalContentAlignment="Stretch"
-            VerticalContentAlignment="Stretch" />
-    </NavigationView>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Custom Title Bar -->
+        <Grid x:Name="AppTitleBar" Height="44" Background="Transparent" VerticalAlignment="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                <Image Source="Assets/OnlyWinget-icon.png" Width="16" Height="16" Margin="0,0,8,0" />
+                <TextBlock Text="OnlyWinget" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        <NavigationView
+            Grid.Row="1"
+            x:Name="RootNavigation"
+            CompactModeThresholdWidth="720"
+            ExpandedModeThresholdWidth="1100"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="True"
+            PaneTitle=""
+            PaneDisplayMode="Auto"
+            AutomationProperties.AutomationId="RootNavigation"
+            SelectionFollowsFocus="Enabled"
+            ItemInvoked="OnItemInvoked"
+            SelectionChanged="OnSelectionChanged">
+            <ContentControl
+                x:Name="PageHost"
+                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                HorizontalContentAlignment="Stretch"
+                VerticalContentAlignment="Stretch" />
+        </NavigationView>
+    </Grid>
 </Window>

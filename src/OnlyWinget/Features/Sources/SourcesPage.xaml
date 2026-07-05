@@ -7,30 +7,6 @@
     xmlns:states="using:OnlyWinget.DesignSystem.States"
     xmlns:commands="using:OnlyWinget.DesignSystem.Commands">
     <Grid>
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup>
-                <VisualState x:Name="WideLayout">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="720" />
-                    </VisualState.StateTriggers>
-                </VisualState>
-                <VisualState x:Name="NarrowLayout">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="0" />
-                    </VisualState.StateTriggers>
-                    <VisualState.Setters>
-                        <Setter Target="SourceNameCol.Width" Value="*" />
-                        <Setter Target="SourceArgCol.Width" Value="0" />
-                        <Setter Target="ButtonRow.Height" Value="Auto" />
-                        <Setter Target="SourceArgumentBox.(Grid.Column)" Value="0" />
-                        <Setter Target="SourceArgumentBox.(Grid.Row)" Value="2" />
-                        <Setter Target="AddSourceBtnRow.(Grid.Row)" Value="3" />
-                        <Setter Target="AddSourceBtnRow.(Grid.ColumnSpan)" Value="1" />
-                    </VisualState.Setters>
-                </VisualState>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
-
         <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaSourcesBrush}">
             <design:PageScaffold.Commands>
                 <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
@@ -43,37 +19,43 @@
                     <Grid RowSpacing="{StaticResource PageSectionSpacing}">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <Border Style="{StaticResource CardStyle}">
-                            <Grid ColumnSpacing="16" RowSpacing="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition x:Name="SourceNameCol" Width="*" />
-                                    <ColumnDefinition x:Name="SourceArgCol" Width="*" />
-                                </Grid.ColumnDefinitions>
+                            <Grid RowSpacing="12">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition x:Name="SourceArgRow" Height="Auto" />
-                                    <RowDefinition x:Name="ButtonRow" Height="0" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock x:Name="AddSourceSectionText" Grid.ColumnSpan="2" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                                <TextBox x:Name="SourceNameBox" Grid.Row="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                                <TextBox x:Name="SourceArgumentBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                                <StackPanel x:Name="AddSourceBtnRow" Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+                                <TextBlock x:Name="AddSourceSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                <design:OnlyWingetResponsivePanel Grid.Row="1" ItemMinWidth="300" HorizontalSpacing="16" VerticalSpacing="12">
+                                    <TextBox x:Name="SourceNameBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                    <TextBox x:Name="SourceArgumentBox" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                </design:OnlyWingetResponsivePanel>
+                                <StackPanel x:Name="AddSourceBtnRow" Grid.Row="2" Orientation="Horizontal" Spacing="8">
                                     <Button x:Name="AddSourceBtn" Click="OnAddSourceClick" Style="{StaticResource AddPrimaryButtonStyle}" />
                                 </StackPanel>
                             </Grid>
                         </Border>
                         <Border Grid.Row="1" Style="{StaticResource CardStyle}">
-                            <Grid RowSpacing="10">
-                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <TextBlock x:Name="ManageSourcesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                                <design:OnlyWingetWrapPanel x:Name="SourceActions" Grid.Row="1" HorizontalSpacing="8" VerticalSpacing="8">
-                                    <Button x:Name="RefreshSourcesBtn" Click="OnRefreshSourcesClick" Style="{StaticResource RefreshButtonStyle}" />
-                                    <Button x:Name="UpdateSourcesBtn" Click="OnUpdateSourcesClick" Style="{StaticResource PrimaryButtonStyle}" />
-                                    <Button x:Name="RemoveSourceBtn" Click="OnRemoveSourceClick" Style="{StaticResource DeleteButtonStyle}" />
-                                    <Button x:Name="ResetSourcesBtn" Click="OnResetSourcesClick" Style="{StaticResource DestructiveButtonStyle}" />
-                                    <ProgressRing x:Name="LoadingRing" Width="24" Height="24" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" VerticalAlignment="Center" />
-                                </design:OnlyWingetWrapPanel>
-                                <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
+                            <Grid RowSpacing="12">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="ManageSourcesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <Button x:Name="RefreshSourcesBtn" Click="OnRefreshSourcesClick" Style="{StaticResource RefreshButtonStyle}" />
+                                        <Button x:Name="UpdateSourcesBtn" Click="OnUpdateSourcesClick" Style="{StaticResource PrimaryButtonStyle}" />
+                                        <Button x:Name="RemoveSourceBtn" Click="OnRemoveSourceClick" Style="{StaticResource DeleteButtonStyle}" />
+                                        <Button x:Name="ResetSourcesBtn" Click="OnResetSourcesClick" Style="{StaticResource DestructiveButtonStyle}" />
+                                        <ProgressRing x:Name="LoadingRing" Width="20" Height="20" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                    </StackPanel>
+                                </Grid>
+                                <ListView x:Name="SourceList" Grid.Row="1" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
                                     <ListView.ItemContainerStyle>
                                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
                                             <Setter Property="Padding" Value="0,8" />

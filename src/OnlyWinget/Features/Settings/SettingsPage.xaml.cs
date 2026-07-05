@@ -24,6 +24,9 @@ public sealed partial class SettingsPage : Page
     {
         Scaffold.Title = TextResources.Get("Settings_Title");
         Scaffold.Subtitle = TextResources.Get("Settings_Subtitle");
+        AppearanceGroupHeader.Text = TextResources.Get("Settings_Group_Appearance");
+        BehaviorGroupHeader.Text = TextResources.Get("Settings_Group_Behavior");
+        MaintenanceGroupHeader.Text = TextResources.Get("Settings_Group_Maintenance");
         LanguageTitle.Text = TextResources.Get("Settings_Language");
         LanguageDescription.Text = TextResources.Get("Settings_LanguageDescription");
         ThemeTitle.Text = TextResources.Get("Settings_Theme");

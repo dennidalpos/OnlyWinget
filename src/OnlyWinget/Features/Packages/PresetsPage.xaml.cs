@@ -24,6 +24,10 @@ public sealed partial class PresetsPage : UserControl
         ViewModel.PropertyChanged += OnViewModelChanged;
         PresetSelector.ItemsSource = ViewModel.PresetNames;
         PageState.CancelRequested += OnOperationCancelRequested;
+
+        // Wire events for flyouts opening
+        EditPackageFlyout.Opened += OnEditPackageFlyoutOpened;
+
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ApplyText();
@@ -59,26 +63,35 @@ public sealed partial class PresetsPage : UserControl
         PackageManagementText.Text = TextResources.Get("Section_PackageManagement");
         PackagesSectionText.Text = TextResources.Get("Section_Packages");
         OperationResultsText.Text = TextResources.Get("Section_OperationResults");
+
         PresetNameBox.Header = TextResources.Get("Preset_Name");
+        RenamePresetNameBox.Header = TextResources.Get("Preset_Name");
         PackageIdBox.Header = TextResources.Get("Package_Id");
         PackageSourceBox.Header = TextResources.Get("Package_Source");
+        EditPackageIdBox.Header = TextResources.Get("Package_Id");
+        EditPackageSourceBox.Header = TextResources.Get("Package_Source");
 
         PackageList.SelectionLabel = TextResources.Get("Command_Select_All");
         PackageList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Architecture" }.Select(TextResources.Get).ToArray());
 
         AddPresetBtn.Content = TextResources.Get("Command_Preset_Add");
+        SavePresetBtn.Content = TextResources.Get("Command_Preset_Add");
         RenamePresetBtn.Content = TextResources.Get("Command_Preset_Rename");
+        SaveRenamePresetBtn.Content = TextResources.Get("Command_Preset_Rename");
         RemovePresetBtn.Content = TextResources.Get("Command_Preset_Remove");
         ImportPresetBtn.Content = TextResources.Get("Command_Preset_Import");
         ExportPresetBtn.Content = TextResources.Get("Command_Preset_Export");
+
         AddPackageBtn.Content = TextResources.Get("Command_PresetPackage_Add");
+        SavePackageBtn.Content = TextResources.Get("Command_PresetPackage_Add");
         EditPackageBtn.Content = TextResources.Get("Command_PresetPackage_Edit");
+        SaveEditPackageBtn.Content = TextResources.Get("Command_PresetPackage_Edit");
         RemovePackageBtn.Content = TextResources.Get("Command_PresetPackage_Remove");
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        await ViewModel.ExecuteAsync(args.Command, PackageSourceBox.Text);
+        await ViewModel.ExecuteAsync(args.Command, string.Empty);
     }
 
     private void OnPresetChanged(object sender, SelectionChangedEventArgs args)
@@ -101,14 +114,16 @@ public sealed partial class PresetsPage : UserControl
         ViewModel.ToggleAll();
     }
 
-
-
     private void OnFieldValidationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
         PresetNameBox.Description = ViewModel.PresetName.Error;
+        RenamePresetNameBox.Description = ViewModel.PresetName.Error;
         PackageIdBox.Description = ViewModel.PackageId.Error;
+        EditPackageIdBox.Description = ViewModel.PackageId.Error;
         AutomationProperties.SetHelpText(PresetNameBox, ViewModel.PresetName.Error ?? string.Empty);
+        AutomationProperties.SetHelpText(RenamePresetNameBox, ViewModel.PresetName.Error ?? string.Empty);
         AutomationProperties.SetHelpText(PackageIdBox, ViewModel.PackageId.Error ?? string.Empty);
+        AutomationProperties.SetHelpText(EditPackageIdBox, ViewModel.PackageId.Error ?? string.Empty);
         ApplyValidationToCommands();
     }
 
@@ -131,14 +146,22 @@ public sealed partial class PresetsPage : UserControl
         CommandBar.SetCommands(ViewModel.Commands.Values
             .Where(c => topLevelCommandIds.Contains(c.Id)));
 
-        AddPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPreset) && ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
-        RenamePresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RenamePreset) && ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
+        AddPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPreset);
+        SavePresetBtn.IsEnabled = ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
+
+        RenamePresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RenamePreset);
+        SaveRenamePresetBtn.IsEnabled = ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
+
         RemovePresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RemovePreset);
         ImportPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.ImportPreset);
         ExportPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.ExportPreset);
 
-        AddPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPresetPackage) && ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
-        EditPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.EditPresetPackage) && ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
+        AddPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPresetPackage);
+        SavePackageBtn.IsEnabled = ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
+
+        EditPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.EditPresetPackage);
+        SaveEditPackageBtn.IsEnabled = ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
+
         RemovePackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RemovePresetPackages);
     }
 
@@ -159,20 +182,52 @@ public sealed partial class PresetsPage : UserControl
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();
 
-    private async void OnAddPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.AddPreset);
-    private async void OnRenamePresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RenamePreset);
-    private async void OnRemovePresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePreset);
-    private async void OnImportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ImportPreset);
-    private async void OnExportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ExportPreset);
-    private async void OnAddPackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.AddPresetPackage);
-    private async void OnEditPackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.EditPresetPackage);
-    private async void OnRemovePackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePresetPackages);
+    private async void OnAddPresetClick(object sender, RoutedEventArgs e)
+    {
+        await ExecuteCommandAsync(UiCommandId.AddPreset, PresetNameBox.Text);
+        AddPresetFlyout.Hide();
+    }
 
-    private async System.Threading.Tasks.Task ExecuteCommandAsync(UiCommandId id)
+    private async void OnRenamePresetClick(object sender, RoutedEventArgs e)
+    {
+        await ExecuteCommandAsync(UiCommandId.RenamePreset, RenamePresetNameBox.Text);
+        RenamePresetFlyout.Hide();
+    }
+
+    private async void OnRemovePresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePreset, string.Empty);
+    private async void OnImportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ImportPreset, string.Empty);
+    private async void OnExportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ExportPreset, string.Empty);
+
+    private async void OnAddPackageClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Commands.TryGetValue(UiCommandId.AddPresetPackage, out var command))
+        {
+            await ViewModel.ExecuteAsync(command, PackageSourceBox.Text);
+        }
+        AddPackageFlyout.Hide();
+    }
+
+    private async void OnEditPackageClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Commands.TryGetValue(UiCommandId.EditPresetPackage, out var command))
+        {
+            await ViewModel.ExecuteAsync(command, EditPackageSourceBox.Text);
+        }
+        EditPackageFlyout.Hide();
+    }
+
+    private async void OnRemovePackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePresetPackages, string.Empty);
+
+    private void OnEditPackageFlyoutOpened(object? sender, object e)
+    {
+        ViewModel.PrepareEditFields(source => EditPackageSourceBox.Text = source);
+    }
+
+    private async System.Threading.Tasks.Task ExecuteCommandAsync(UiCommandId id, string source)
     {
         if (ViewModel.Commands.TryGetValue(id, out var command))
         {
-            await ViewModel.ExecuteAsync(command, PackageSourceBox.Text);
+            await ViewModel.ExecuteAsync(command, source);
         }
     }
 

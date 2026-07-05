@@ -6,6 +6,7 @@
     <title>OnlyWinget — Privacy & Policy</title>
     <meta name="description" content="Privacy Policy for OnlyWinget: 100% local, privacy-by-default, and GDPR compliant package manager dashboard.">
     <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .privacy-body {
@@ -32,6 +33,7 @@
             border-radius: 20px;
             padding: 48px;
             backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             margin-bottom: 40px;
         }
         .privacy-section {
@@ -81,6 +83,29 @@
         .back-btn-wrap {
             text-align: center;
         }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.07);
+            border-color: var(--accent-purple);
+            box-shadow: 0 6px 20px rgba(155, 81, 224, 0.15);
+        }
+        
+        @media (max-width: 600px) {
+            .privacy-content-card {
+                padding: 24px;
+            }
+            .privacy-title-wrap h1 {
+                font-size: 32px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -96,7 +121,7 @@
                 <button class="lang-switch" id="langBtn" onclick="toggleLanguage()">
                     <i class="fa-solid fa-globe"></i> <span id="langLabel">Italiano</span>
                 </button>
-                <a href="index.html" class="github-link" style="font-weight: 600;">
+                <a href="index.html" class="privacy-link" style="font-weight: 600;">
                     <i class="fa-solid fa-arrow-left" style="margin-right: 6px;"></i> <span data-i18n="nav-home">Home</span>
                 </a>
             </div>
@@ -156,7 +181,7 @@
     <!-- Footer -->
     <footer>
         <div class="container">
-            <p>© 2026 OnlyWinget. Released under the MIT License.</p>
+            <p>© 2026 OnlyWinget. All rights reserved.</p>
             <p data-i18n="footer-local">OnlyWinget is a local application. All data remains on your PC.</p>
         </div>
     </footer>
@@ -167,6 +192,7 @@
 
         const translations = {
             en: {
+                titleTag: "OnlyWinget — Privacy & Policy",
                 "nav-home": "Home",
                 "p-title": "Privacy Policy",
                 "p-subtitle": "Privacy by Default & GDPR Compliance Statement",
@@ -188,6 +214,7 @@
                 "footer-local": "OnlyWinget is a local application. All data remains on your PC."
             },
             it: {
+                titleTag: "OnlyWinget — Informativa Privacy",
                 "nav-home": "Home",
                 "p-title": "Informativa sulla Privacy",
                 "p-subtitle": "Dichiarazione di conformità al GDPR e Privacy by Default",
@@ -195,7 +222,7 @@
                 "s1-desc": "OnlyWinget è sviluppato seguendo il principio che non dovresti rinunciare alla tua privacy per avere un'interfaccia comoda. L'app funziona esclusivamente in locale. Ciò significa che non esistono server esterni, tracciamenti in cloud o database centralizzati che monitorano le tue azioni.",
                 "s2-title": "Conformità al GDPR e Diritti dell'Utente",
                 "s2-desc": "Ai sensi del Regolamento Generale sulla Protezione dei Dati (GDPR), gli utenti europei hanno diritti specifici. Poiché OnlyWinget opera al 100% in locale sul tuo computer, questi diritti sono garantiti nativamente:",
-                "r1": "<strong>Minimizzazione dei Dati:</strong> Non raccogliamo, elaboriamo o trasmettiamo alcun dato personale. Rimani totalmente anonimo.",
+                "r1": "<strong>Minimizzazione dei Dati:</strong> Non raccogliamo, elaboriamo o trasmetiamo alcun dato personale. Rimani totalmente anonimo.",
                 "r2": "<strong>Diritto di Accesso:</strong> Le tue preferenze, le liste di app e le impostazioni del workspace sono salvate in file JSON facilmente leggibili all'interno di AppData. Hai sempre la visibilità e il controllo totale dei tuoi dati.",
                 "r3": "<strong>Diritto alla Cancellazione (Oblio):</strong> Disinstallando l'applicazione o rimuovendo il file di configurazione cancelli definitivamente ogni dato di OnlyWinget dal tuo computer. Nessun dato rimane salvato su server remoti.",
                 "r4": "<strong>Portabilità dei Dati:</strong> Puoi esportare i tuoi preset delle app in un formato JSON standard per trasferirli su qualsiasi altro dispositivo.",
@@ -213,6 +240,7 @@
         function toggleLanguage() {
             currentLang = currentLang === 'en' ? 'it' : 'en';
             document.getElementById('langLabel').textContent = currentLang === 'en' ? 'Italiano' : 'English';
+            document.title = translations[currentLang].titleTag;
             
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');

@@ -11,7 +11,8 @@ param(
         'Clean',
         'Dev',
         'ValidateInstallerLifecycle',
-        'ValidateInstalledStartup'
+        'ValidateInstalledStartup',
+        'GenerateLandingSetup'
     )]
     [string]$Task,
     [ValidateSet('Debug', 'Release')]
@@ -140,6 +141,14 @@ function Invoke-OnlyWingetTask {
             Assert-Path -Path $scriptPath -Description 'Installed startup validation script'
             & $scriptPath -ExePath $InstalledExePath -NonInteractive
         }
+        'GenerateLandingSetup' {
+            $parameters = @{
+                Configuration = $Configuration
+                NoRestore = $NoRestore
+            }
+            Add-CommonPackageParameter -Parameters $parameters
+            & (Join-Path $PSScriptRoot 'generate-landing-setup.ps1') @parameters -NonInteractive
+        }
     }
 }
 
@@ -160,10 +169,11 @@ if ([string]::IsNullOrWhiteSpace($Task)) {
         'Clean',
         'Dev',
         'ValidateInstallerLifecycle',
-        'ValidateInstalledStartup'
+        'ValidateInstalledStartup',
+        'GenerateLandingSetup'
     )
 
-    if ($Task -in @('Typecheck', 'Test', 'Build', 'Package', 'Check', 'Clean', 'Dev', 'ValidateInstallerLifecycle')) {
+    if ($Task -in @('Typecheck', 'Test', 'Build', 'Package', 'Check', 'Clean', 'Dev', 'ValidateInstallerLifecycle', 'GenerateLandingSetup')) {
         $Configuration = Read-ConfigurationChoice
     }
 
@@ -175,7 +185,7 @@ if ([string]::IsNullOrWhiteSpace($Task)) {
         $RunWingetSmoke = Read-OptionalSwitch -Prompt 'Eseguire anche gli smoke test winget reali?' -DefaultYes:$false
     }
 
-    if ($Task -eq 'Package' -or $Task -eq 'Check' -or $Task -eq 'ValidateInstallerLifecycle') {
+    if ($Task -in @('Package', 'Check', 'ValidateInstallerLifecycle', 'GenerateLandingSetup')) {
         $providedRuntimeInstaller = Read-Host 'Percorso WindowsAppRuntimeInstall.exe (invio per auto-download/cache/env)'
         if (-not [string]::IsNullOrWhiteSpace($providedRuntimeInstaller)) {
             $WindowsAppRuntimeInstallerPath = $providedRuntimeInstaller

@@ -22,6 +22,13 @@ public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewMod
     protected override void Refresh()
     {
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).Dashboard;
+        Metrics[0].AccentKey = "AreaHomeBrush";
+        Metrics[1].AccentKey = "AreaPackagesBrush";
+        Metrics[2].AccentKey = "AreaHomeBrush";
+        Metrics[3].AccentKey = "AreaUpdatesBrush";
+        Metrics[4].AccentKey = "AreaSourcesBrush";
+        Metrics[5].AccentKey = "AreaActivityBrush";
+
         Metrics[0].Value = state.IsWingetAvailable switch
         {
             true => TextResources.Get("Dashboard_Winget_Available"),
@@ -53,7 +60,9 @@ public sealed class DashboardMetric : ObservableObject
 {
     private string value = string.Empty;
     private string label = string.Empty;
+    private string accentKey = "AreaHomeBrush";
 
     public string Value { get => value; set => SetProperty(ref this.value, value); }
     public string Label { get => label; set => SetProperty(ref label, value); }
+    public string AccentKey { get => accentKey; set => SetProperty(ref accentKey, value); }
 }
