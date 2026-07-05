@@ -17,7 +17,7 @@ public sealed class WingetUpdateLoader(
                 cancellationToken)
             .ConfigureAwait(false);
 
-        var rawOutput = JoinOutput(result);
+        var rawOutput = WingetOutputHelpers.JoinOutput(result);
         if (!result.Succeeded)
         {
             return WingetOperationOutcome<PackageUpdate>.Failure(
@@ -35,16 +35,16 @@ public sealed class WingetUpdateLoader(
 
     private static PackageUpdate? ToUpdate(IReadOnlyDictionary<string, string> row, string requestedSource)
     {
-        if (!TryGetAny(row, out var id, "Id") ||
-            !TryGetAny(row, out var version, "Version", "Versione") ||
-            !TryGetAny(row, out var available, "Available", "Disponibile") ||
+        if (!WingetOutputHelpers.TryGet(row, "Id", out var id) ||
+            !WingetOutputHelpers.TryGet(row, "Version", out var version) ||
+            !WingetOutputHelpers.TryGet(row, "Available", out var available) ||
             id.Any(char.IsWhiteSpace))
         {
             return null;
         }
 
-        TryGetAny(row, out var name, "Name", "Nome");
-        TryGetAny(row, out var source, "Source", "Origine");
+        WingetOutputHelpers.TryGet(row, "Name", out var name);
+        WingetOutputHelpers.TryGet(row, "Source", out var source);
 
         return new PackageUpdate(
             new PackageIdentity(id, string.IsNullOrWhiteSpace(source) ? requestedSource : source),
@@ -52,24 +52,4 @@ public sealed class WingetUpdateLoader(
             version,
             available);
     }
-
-    private static bool TryGet(IReadOnlyDictionary<string, string> row, string key, out string value) =>
-        row.TryGetValue(key, out value!) && !string.IsNullOrWhiteSpace(value);
-
-    private static bool TryGetAny(IReadOnlyDictionary<string, string> row, out string value, params string[] keys)
-    {
-        foreach (var key in keys)
-        {
-            if (TryGet(row, key, out value))
-            {
-                return true;
-            }
-        }
-
-        value = string.Empty;
-        return false;
-    }
-
-    private static string JoinOutput(WingetCommandResult result) =>
-        string.Join(Environment.NewLine, result.StandardOutput, result.StandardError).Trim();
 }

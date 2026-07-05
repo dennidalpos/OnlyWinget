@@ -34,6 +34,10 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `clean.ps1` | Direct guarded cleanup action; without parameters opens the menu. |
 | `validate-installer-lifecycle.ps1` | Direct elevated clean-host lifecycle validation; without parameters opens the menu. |
 | `validate-installed-startup.ps1` | Verifies that an installed executable starts and remains responsive. |
+| `align-logos.ps1` | Converts the master brand logo from JPEG to standard PNG/ICO formats and distributes them to application and landing assets. |
+| `generate-assets.ps1` | Distributes brand assets, generates WiX installer BMPs, and runs UI automation in demo mode to capture workflow screenshots. |
+| `generate-landing-setup.ps1` | Bundles the setup installer and portable ZIP, copies them to the landing page build directory, and updates landing download links. |
+| `sync-win-dev-skills.ps1` | Clones and synchronizes WinUI 3 developer skills from the microsoft/win-dev-skills repository to `.agents/skills`. |
 
 Support files live under `scripts/support/` and are not standalone entrypoints.
 

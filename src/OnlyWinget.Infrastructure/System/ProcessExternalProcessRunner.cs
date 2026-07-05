@@ -16,6 +16,10 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(arguments);
 
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+        var effectiveToken = linkedCts.Token;
+
         using var process = new Process();
         process.StartInfo.FileName = command;
         process.StartInfo.UseShellExecute = false;
@@ -40,15 +44,19 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
                 return new ExternalProcessResult(9009, string.Empty, exception.Message);
             }
 
-            var standardOutput = ReadOutputAsync(process.StandardOutput, standardOutputLines, cancellationToken);
-            var standardError = process.StandardError.ReadToEndAsync(cancellationToken);
+            var standardOutput = ReadOutputAsync(process.StandardOutput, standardOutputLines, effectiveToken);
+            var standardError = process.StandardError.ReadToEndAsync(effectiveToken);
             try
             {
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                await process.WaitForExitAsync(effectiveToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 TryKill(process);
+                if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException($"Process execution timed out after 120 seconds: {command}");
+                }
                 throw;
             }
 

@@ -4,7 +4,7 @@ using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget.Infrastructure.Storage;
 
-public sealed class JsonWorkspaceStore(string filePath) : IWorkspaceStore
+public sealed class JsonWorkspaceStore(string filePath, Action<string, Exception>? logger = null) : IWorkspaceStore
 {
     private readonly SemaphoreSlim saveGate = new(1, 1);
 
@@ -18,7 +18,7 @@ public sealed class JsonWorkspaceStore(string filePath) : IWorkspaceStore
         get
         {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            return Path.Combine(localAppData, "OnlyWinget", "workspace-v1.json");
+            return Path.Combine(localAppData, StorageConstants.ApplicationFolderName, "workspace-v1.json");
         }
     }
 
@@ -39,8 +39,9 @@ public sealed class JsonWorkspaceStore(string filePath) : IWorkspaceStore
                 document = await JsonSerializer.DeserializeAsync<WorkspaceDocument>(stream, JsonOptions, cancellationToken)
                     .ConfigureAwait(false);
             }
-            catch (JsonException)
+            catch (JsonException exception)
             {
+                logger?.Invoke("JsonWorkspaceStore.LoadAsync", exception);
                 return WorkspaceState.Empty;
             }
 

@@ -2,6 +2,41 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class WingetTableParser
 {
+    private static readonly Dictionary<string, string> HeaderTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Name", "Name" },
+        { "Nome", "Name" },
+        { "Nom", "Name" },
+        { "Nombre", "Name" },
+
+        { "Id", "Id" },
+        { "ID.", "Id" },
+
+        { "Version", "Version" },
+        { "Versione", "Version" },
+        { "Versión", "Version" },
+
+        { "Available", "Available" },
+        { "Disponibile", "Available" },
+        { "Disponible", "Available" },
+        { "Verfügbar", "Available" },
+
+        { "Source", "Source" },
+        { "Origine", "Source" },
+        { "Quelle", "Source" },
+        { "Origen", "Source" },
+
+        { "Match", "Match" },
+        { "Corrispondenza", "Match" },
+        { "Treffer", "Match" },
+
+        { "Argument", "Argument" },
+        { "Argomento", "Argument" },
+
+        { "Explicit", "Explicit" },
+        { "Specificato", "Explicit" }
+    };
+
     public IReadOnlyList<IReadOnlyDictionary<string, string>> Parse(string output)
     {
         if (string.IsNullOrWhiteSpace(output))
@@ -91,14 +126,15 @@ public sealed class WingetTableParser
             return false;
         }
 
-        return StartsWithToken(header, index, "Id") ||
-            StartsWithToken(header, index, "Version") ||
-            StartsWithToken(header, index, "Versione") ||
-            StartsWithToken(header, index, "Available") ||
-            StartsWithToken(header, index, "Disponibile") ||
-            StartsWithToken(header, index, "Source") ||
-            StartsWithToken(header, index, "Origine") ||
-            StartsWithToken(header, index, "Match");
+        foreach (var key in HeaderTranslations.Keys)
+        {
+            if (StartsWithToken(header, index, key))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool StartsWithToken(string text, int index, string token)
@@ -118,11 +154,18 @@ public sealed class WingetTableParser
         var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < starts.Length && index < headers.Length; index++)
         {
-            var value = SliceColumn(line, starts, index).Trim();
-            if (!string.IsNullOrWhiteSpace(headers[index]))
+            var rawHeader = headers[index];
+            if (string.IsNullOrWhiteSpace(rawHeader))
             {
-                row[headers[index]] = value;
+                continue;
             }
+
+            var value = SliceColumn(line, starts, index).Trim();
+            var normalizedHeader = HeaderTranslations.TryGetValue(rawHeader, out var translated)
+                ? translated
+                : rawHeader;
+
+            row[normalizedHeader] = value;
         }
 
         return row;

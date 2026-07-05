@@ -7,6 +7,7 @@ public sealed record Preset
     public Preset(string name, IReadOnlyList<PackageIdentity> packages)
     {
         Name = NormalizeName(name);
+        ArgumentNullException.ThrowIfNull(packages);
         Packages = packages.ToArray();
     }
 

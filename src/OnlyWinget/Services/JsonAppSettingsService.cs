@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget.Services;
 
@@ -16,7 +17,7 @@ internal sealed class JsonAppSettingsService : IAppSettingsService
 
     public static string DefaultFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "OnlyWinget",
+        StorageConstants.ApplicationFolderName,
         "settings.json");
 
     public event EventHandler? Changed;

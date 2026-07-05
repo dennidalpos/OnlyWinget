@@ -4,7 +4,7 @@ using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget.Infrastructure.Storage;
 
-public sealed class JsonSourcePreferenceStore(string filePath) : ISourcePreferenceStore
+public sealed class JsonSourcePreferenceStore(string filePath, Action<string, Exception>? logger = null) : ISourcePreferenceStore
 {
     private readonly SemaphoreSlim saveGate = new(1, 1);
 
@@ -15,7 +15,7 @@ public sealed class JsonSourcePreferenceStore(string filePath) : ISourcePreferen
 
     public static string DefaultFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "OnlyWinget",
+        StorageConstants.ApplicationFolderName,
         "source-preferences-v1.json");
 
     public async Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken)
@@ -37,8 +37,9 @@ public sealed class JsonSourcePreferenceStore(string filePath) : ISourcePreferen
                     ? Normalize(new SourcePreferences(document.DisabledSources ?? []))
                     : SourcePreferences.Empty;
             }
-            catch (JsonException)
+            catch (JsonException exception)
             {
+                logger?.Invoke("JsonSourcePreferenceStore.LoadAsync", exception);
                 return SourcePreferences.Empty;
             }
         }

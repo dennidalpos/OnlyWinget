@@ -29,7 +29,7 @@ internal static class AppComposition
         if (isDemo)
         {
             var demoApp = new OnlyWingetApplication(
-                new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath),
+                new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath, AppDiagnostics.WriteException),
                 new OnlyWinget.Services.DemoSystemCapabilityService(),
                 new OnlyWinget.Services.DemoPackageSearchService(),
                 new OnlyWinget.Services.DemoPackageResolver(),
@@ -37,7 +37,7 @@ internal static class AppComposition
                 new OnlyWinget.Services.DemoWindowsUpdateService(),
                 new OnlyWinget.Services.DemoWingetSourceService(),
                 new OnlyWinget.Services.DemoOperationExecutor(),
-                sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath));
+                sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath, AppDiagnostics.WriteException));
 
             demoApp.ExceptionLogger = AppDiagnostics.WriteException;
             return demoApp;
@@ -50,7 +50,7 @@ internal static class AppComposition
         var capabilityService = new SystemCapabilityService(processRunner);
 
         var app = new OnlyWingetApplication(
-            new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath),
+            new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath, AppDiagnostics.WriteException),
             capabilityService,
             new WingetPackageSearchService(runner, parser, classifier),
             new WingetPackageResolver(runner, classifier),
@@ -58,7 +58,7 @@ internal static class AppComposition
             new PowerShellWindowsUpdateService(processRunner, capabilityService),
             new WingetSourceService(runner, parser, classifier),
             new WingetOperationExecutor(runner, new WingetCommandBuilder(), classifier),
-            sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath));
+            sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath, AppDiagnostics.WriteException));
 
         app.ExceptionLogger = AppDiagnostics.WriteException;
         return app;

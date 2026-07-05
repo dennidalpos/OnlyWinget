@@ -66,7 +66,7 @@ public sealed class WingetSourceService(
 
     private WingetOperationOutcome<WingetSource> CreateOutcome(WingetCommandResult result, bool parseSources)
     {
-        var rawOutput = JoinOutput(result);
+        var rawOutput = WingetOutputHelpers.JoinOutput(result);
         if (!result.Succeeded)
         {
             return WingetOperationOutcome<WingetSource>.Failure(
@@ -87,13 +87,13 @@ public sealed class WingetSourceService(
 
     private static WingetSource? ToSource(IReadOnlyDictionary<string, string> row)
     {
-        if (!TryGetAny(row, out var name, "Name", "Nome") || string.IsNullOrWhiteSpace(name))
+        if (!WingetOutputHelpers.TryGet(row, "Name", out var name))
         {
             return null;
         }
 
-        TryGetAny(row, out var argument, "Argument", "Argomento");
-        TryGetAny(row, out var explicitValue, "Explicit", "Contenuti espliciti");
+        WingetOutputHelpers.TryGet(row, "Argument", out var argument);
+        WingetOutputHelpers.TryGet(row, "Explicit", out var explicitValue);
 
         return new WingetSource(
             name.Trim(),
@@ -102,25 +102,8 @@ public sealed class WingetSourceService(
             string.IsNullOrWhiteSpace(argument) ? WingetSourceStatus.Unknown : WingetSourceStatus.Available);
     }
 
-    private static bool TryGetAny(IReadOnlyDictionary<string, string> row, out string value, params string[] keys)
-    {
-        foreach (var key in keys)
-        {
-            if (row.TryGetValue(key, out value!) && !string.IsNullOrWhiteSpace(value))
-            {
-                return true;
-            }
-        }
-
-        value = string.Empty;
-        return false;
-    }
-
     private static bool IsTrue(string value) =>
         value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
         value.Equals("si", StringComparison.OrdinalIgnoreCase) ||
         value.Equals("sì", StringComparison.OrdinalIgnoreCase);
-
-    private static string JoinOutput(WingetCommandResult result) =>
-        string.Join(Environment.NewLine, result.StandardOutput, result.StandardError).Trim();
 }

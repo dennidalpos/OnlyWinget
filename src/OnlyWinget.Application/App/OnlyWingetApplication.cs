@@ -712,7 +712,7 @@ public sealed class OnlyWingetApplication(
                             var validated = await ValidatePackageAsync(selection.Package, cancellationToken).ConfigureAwait(false);
                             validatedSelections.Add(new PackageSelection(validated.Package, selection.Action));
                         }
-                        catch (Exception exception) when (exception is not OperationCanceledException)
+                        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
                         {
                             if (!ContinueOperationsAfterFailure)
                             {
@@ -986,7 +986,7 @@ public sealed class OnlyWingetApplication(
         {
             return Fail(exception.Message);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             ExceptionLogger?.Invoke("OnlyWingetApplication.RunAsync", exception);
             return Fail(fallbackError);

@@ -10,6 +10,7 @@ public sealed record OperationPlan
         {
             throw new ArgumentException("Plan name is required.", nameof(name));
         }
+        ArgumentNullException.ThrowIfNull(selections);
 
         Name = name.Trim();
         Selections = selections.ToArray();

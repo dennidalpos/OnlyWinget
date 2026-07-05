@@ -34,8 +34,8 @@ public sealed class WingetTableParserTests
 
         var row = Assert.Single(rows);
         Assert.Equal("Git.Git", row["Id"]);
-        Assert.Equal("2.54.0", row["Versione"]);
-        Assert.Equal("winget", row["Origine"]);
+        Assert.Equal("2.54.0", row["Version"]);
+        Assert.Equal("winget", row["Source"]);
     }
 
     [Fact]
