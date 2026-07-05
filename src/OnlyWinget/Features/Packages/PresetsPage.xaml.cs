@@ -74,13 +74,22 @@ public sealed partial class PresetsPage : UserControl
         PackageList.SelectionLabel = TextResources.Get("Command_Select_All");
         PackageList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Architecture" }.Select(TextResources.Get).ToArray());
 
-        AddPresetBtn.Content = TextResources.Get("Command_Preset_Add");
+        ToolTipService.SetToolTip(AddPresetBtn, TextResources.Get("Command_Preset_Add"));
+        AutomationProperties.SetName(AddPresetBtn, TextResources.Get("Command_Preset_Add"));
         SavePresetBtn.Content = TextResources.Get("Command_Preset_Add");
-        RenamePresetBtn.Content = TextResources.Get("Command_Preset_Rename");
+
+        ToolTipService.SetToolTip(RenamePresetBtn, TextResources.Get("Command_Preset_Rename"));
+        AutomationProperties.SetName(RenamePresetBtn, TextResources.Get("Command_Preset_Rename"));
         SaveRenamePresetBtn.Content = TextResources.Get("Command_Preset_Rename");
-        RemovePresetBtn.Content = TextResources.Get("Command_Preset_Remove");
-        ImportPresetBtn.Content = TextResources.Get("Command_Preset_Import");
-        ExportPresetBtn.Content = TextResources.Get("Command_Preset_Export");
+
+        ToolTipService.SetToolTip(RemovePresetBtn, TextResources.Get("Command_Preset_Remove"));
+        AutomationProperties.SetName(RemovePresetBtn, TextResources.Get("Command_Preset_Remove"));
+
+        ToolTipService.SetToolTip(ImportPresetBtn, TextResources.Get("Command_Preset_Import"));
+        AutomationProperties.SetName(ImportPresetBtn, TextResources.Get("Command_Preset_Import"));
+
+        ToolTipService.SetToolTip(ExportPresetBtn, TextResources.Get("Command_Preset_Export"));
+        AutomationProperties.SetName(ExportPresetBtn, TextResources.Get("Command_Preset_Export"));
 
         AddPackageBtn.Content = TextResources.Get("Command_PresetPackage_Add");
         SavePackageBtn.Content = TextResources.Get("Command_PresetPackage_Add");

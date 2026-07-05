@@ -41,20 +41,24 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
-                                <Grid Grid.Row="0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <design:OnlyWingetWrapPanel Grid.Row="0" HorizontalSpacing="16" VerticalSpacing="8" VerticalAlignment="Center">
                                     <TextBlock x:Name="ManageSourcesSectionText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="RefreshSourcesBtn" Click="OnRefreshSourcesClick" Style="{StaticResource RefreshButtonStyle}" />
-                                        <Button x:Name="UpdateSourcesBtn" Click="OnUpdateSourcesClick" Style="{StaticResource PrimaryButtonStyle}" />
-                                        <Button x:Name="RemoveSourceBtn" Click="OnRemoveSourceClick" Style="{StaticResource DeleteButtonStyle}" />
-                                        <Button x:Name="ResetSourcesBtn" Click="OnResetSourcesClick" Style="{StaticResource DestructiveButtonStyle}" />
+                                    <design:OnlyWingetWrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
+                                        <Button x:Name="RefreshSourcesBtn" Click="OnRefreshSourcesClick" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Refresh" />
+                                        </Button>
+                                        <Button x:Name="UpdateSourcesBtn" Click="OnUpdateSourcesClick" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Sync" />
+                                        </Button>
+                                        <Button x:Name="RemoveSourceBtn" Click="OnRemoveSourceClick" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Delete" />
+                                        </Button>
+                                        <Button x:Name="ResetSourcesBtn" Click="OnResetSourcesClick" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Undo" />
+                                        </Button>
                                         <ProgressRing x:Name="LoadingRing" Width="20" Height="20" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                    </StackPanel>
-                                </Grid>
+                                    </design:OnlyWingetWrapPanel>
+                                </design:OnlyWingetWrapPanel>
                                 <ListView x:Name="SourceList" Grid.Row="1" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
                                     <ListView.ItemContainerStyle>
                                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">

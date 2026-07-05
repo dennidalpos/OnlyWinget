@@ -57,10 +57,18 @@ public sealed partial class SourcesPage : Page
         SourceArgumentBox.Header = TextResources.Get("Source_Argument");
 
         AddSourceBtn.Content = TextResources.Get("Command_Sources_Add");
-        RefreshSourcesBtn.Content = TextResources.Get("Command_Sources_Refresh");
-        UpdateSourcesBtn.Content = TextResources.Get("Command_Sources_Update");
-        RemoveSourceBtn.Content = TextResources.Get("Command_Sources_Remove");
-        ResetSourcesBtn.Content = TextResources.Get("Command_Sources_Reset");
+
+        ToolTipService.SetToolTip(RefreshSourcesBtn, TextResources.Get("Command_Sources_Refresh"));
+        AutomationProperties.SetName(RefreshSourcesBtn, TextResources.Get("Command_Sources_Refresh"));
+
+        ToolTipService.SetToolTip(UpdateSourcesBtn, TextResources.Get("Command_Sources_Update"));
+        AutomationProperties.SetName(UpdateSourcesBtn, TextResources.Get("Command_Sources_Update"));
+
+        ToolTipService.SetToolTip(RemoveSourceBtn, TextResources.Get("Command_Sources_Remove"));
+        AutomationProperties.SetName(RemoveSourceBtn, TextResources.Get("Command_Sources_Remove"));
+
+        ToolTipService.SetToolTip(ResetSourcesBtn, TextResources.Get("Command_Sources_Reset"));
+        AutomationProperties.SetName(ResetSourcesBtn, TextResources.Get("Command_Sources_Reset"));
     }
 
 
