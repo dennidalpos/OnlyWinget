@@ -26,6 +26,7 @@ public sealed class OnlyWingetApplication(
 {
     public bool ContinueOperationsAfterFailure { get; set; }
     public Action<string, Exception>? ExceptionLogger { get; set; }
+    public Action<AppLogLevel, string, string>? Logger { get; set; }
 
     private readonly PresetDocumentService presetDocuments = new();
     private readonly OperationPlanner operationPlanner = new();
@@ -456,10 +457,15 @@ public sealed class OnlyWingetApplication(
                     lastWindowsUpdateResults.AddRange(outcome.Rows);
                     foreach (var result in outcome.Rows)
                     {
-                        AddActivity(
-                            result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error,
-                            result.Title,
-                            string.IsNullOrWhiteSpace(result.Message) ? result.ResultCode : result.Message);
+                        var severity = result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error;
+                        var logMessage = result.Succeeded
+                            ? "Completed."
+                            : (string.IsNullOrWhiteSpace(result.Message) ? $"Result Code: {result.ResultCode}" : $"{result.Message} (Result Code: {result.ResultCode})");
+                        AddActivity(severity, result.Title, logMessage);
+                        Logger?.Invoke(
+                            AppLogLevel.Verbose,
+                            $"[Windows Update Result] Title: {result.Title}, Succeeded: {result.Succeeded}, ResultCode: {result.ResultCode}, Message: {result.Message}",
+                            nameof(InstallSelectedWindowsUpdatesAsync));
                     }
 
                     if (outcome.Rows.Any(result => !result.Succeeded))
@@ -750,9 +756,15 @@ public sealed class OnlyWingetApplication(
                         lastOperationResults.AddRange(summary.Results);
                         foreach (var result in summary.Results)
                         {
-                            var severity = result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error;
+                            var severity = result.Error?.Kind == WingetErrorKind.NoUpdates
+                                ? ActivitySeverity.Warning
+                                : (result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error);
                             var message = CreateOperationActivityMessage(result);
                             AddActivity(severity, result.Selection.Package.Id, string.IsNullOrWhiteSpace(message) ? "Completed." : message);
+                            Logger?.Invoke(
+                                AppLogLevel.Verbose,
+                                $"[Package Result] ID: {result.Selection.Package.Id}, Action: {result.Selection.Action}, Succeeded: {result.Succeeded}, ExitCode: {result.CommandResult.ExitCode}, StdOut: {result.CommandResult.StandardOutput.Trim()}, StdErr: {result.CommandResult.StandardError.Trim()}",
+                                nameof(ApplySelectedUpdatesAsync));
                         }
 
                         var succeededPackages = summary.Results
@@ -943,21 +955,28 @@ public sealed class OnlyWingetApplication(
 
     private static string CreateOperationActivityMessage(OperationExecutionResult result)
     {
+        var exitCode = result.CommandResult.ExitCode;
+        var exitCodeSuffix = exitCode != 0
+            ? $" (Exit code: {exitCode} / 0x{exitCode:X8})"
+            : string.Empty;
+
         if (result.Error is not null)
         {
-            return string.IsNullOrWhiteSpace(result.CommandResult.StandardError)
+            var baseMsg = string.IsNullOrWhiteSpace(result.CommandResult.StandardError)
                 ? result.Error.Message
                 : $"{result.Error.Message} {result.CommandResult.StandardError.Trim()}";
+            return baseMsg + exitCodeSuffix;
         }
 
         var output = result.CommandResult.StandardOutput.Trim();
         if (!string.IsNullOrWhiteSpace(output))
         {
-            return output;
+            return output + exitCodeSuffix;
         }
 
         var errorOutput = result.CommandResult.StandardError.Trim();
-        return string.IsNullOrWhiteSpace(errorOutput) ? "Completed." : errorOutput;
+        var finalMsg = string.IsNullOrWhiteSpace(errorOutput) ? "Completed." : errorOutput;
+        return finalMsg + exitCodeSuffix;
     }
 
     private async Task<ApplicationActionResult> RunAsync(
@@ -973,22 +992,27 @@ public sealed class OnlyWingetApplication(
         busyState = state;
         userVisibleError = null;
         NotifyStateChanged();
+        Logger?.Invoke(AppLogLevel.Verbose, $"Starting operation {state}...", "RunAsync");
         try
         {
             await action().ConfigureAwait(false);
+            Logger?.Invoke(AppLogLevel.Verbose, $"Operation {state} completed successfully.", "RunAsync");
             return ApplicationActionResult.Success;
         }
         catch (OperationCanceledException)
         {
+            Logger?.Invoke(AppLogLevel.Information, $"Operation {state} was cancelled.", "RunAsync");
             return Fail("Operation cancelled.");
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
         {
+            Logger?.Invoke(AppLogLevel.Warning, $"Operation {state} failed with user error: {exception.Message}", "RunAsync");
             return Fail(exception.Message);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             ExceptionLogger?.Invoke("OnlyWingetApplication.RunAsync", exception);
+            Logger?.Invoke(AppLogLevel.Error, $"Operation {state} failed: {exception}", "RunAsync");
             return Fail(fallbackError);
         }
         finally
@@ -1046,8 +1070,17 @@ public sealed class OnlyWingetApplication(
         return ApplicationActionResult.Failure(error);
     }
 
-    private void AddActivity(ActivitySeverity severity, string title, string message) =>
+    private void AddActivity(ActivitySeverity severity, string title, string message)
+    {
         activity.Add(new ActivityEntry(clock.GetUtcNow(), severity, title, message));
+        var logLevel = severity switch
+        {
+            ActivitySeverity.Error => AppLogLevel.Error,
+            ActivitySeverity.Warning => AppLogLevel.Warning,
+            _ => AppLogLevel.Information
+        };
+        Logger?.Invoke(logLevel, $"[Activity] {title}: {message}", nameof(AddActivity));
+    }
 
     private Preset? ActivePreset =>
         workspace.ActivePresetName is null

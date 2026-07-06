@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class WingetTableParser
@@ -28,13 +30,21 @@ public sealed class WingetTableParser
 
         { "Match", "Match" },
         { "Corrispondenza", "Match" },
+        { "Correspondance", "Match" },
+        { "Coincidencia", "Match" },
+        { "Übereinstimmung", "Match" },
         { "Treffer", "Match" },
 
         { "Argument", "Argument" },
         { "Argomento", "Argument" },
+        { "Argumento", "Argument" },
 
         { "Explicit", "Explicit" },
-        { "Specificato", "Explicit" }
+        { "Specificato", "Explicit" },
+
+        { "Type", "Type" },
+        { "Tipo", "Type" },
+        { "Typ", "Type" }
     };
 
     public IReadOnlyList<IReadOnlyDictionary<string, string>> Parse(string output)
@@ -57,7 +67,8 @@ public sealed class WingetTableParser
         }
 
         var header = lines[separatorIndex - 1];
-        var starts = GetColumnStarts(header).ToArray();
+        var separatorLine = lines[separatorIndex];
+        var starts = GetColumnStarts(header, separatorLine).ToArray();
         if (starts.Length == 0)
         {
             return [];
@@ -86,7 +97,7 @@ public sealed class WingetTableParser
             }
 
             var header = lines[index - 1];
-            if (GetColumnStarts(header).Skip(1).Any())
+            if (GetColumnStarts(header, line).Skip(1).Any())
             {
                 return index;
             }
@@ -95,15 +106,35 @@ public sealed class WingetTableParser
         return -1;
     }
 
-    private static IEnumerable<int> GetColumnStarts(string header)
+    private static IEnumerable<int> GetColumnStarts(string header, string separatorLine)
     {
         var yielded = new HashSet<int>();
-        if (!string.IsNullOrWhiteSpace(header))
+        if (string.IsNullOrWhiteSpace(header))
+        {
+            yield break;
+        }
+
+        // 1. Try separator line spacing first if it contains spaces separating dashes
+        if (!string.IsNullOrWhiteSpace(separatorLine) && separatorLine.Contains(' '))
         {
             yielded.Add(0);
             yield return 0;
+            for (var index = 1; index < separatorLine.Length; index++)
+            {
+                if (separatorLine[index] == '-' && char.IsWhiteSpace(separatorLine[index - 1]))
+                {
+                    if (index < header.Length && yielded.Add(index))
+                    {
+                        yield return index;
+                    }
+                }
+            }
+            yield break;
         }
 
+        // 2. Fallback to header character index parsing
+        yielded.Add(0);
+        yield return 0;
         for (var index = 1; index < header.Length; index++)
         {
             var isFixedWidthStart = index >= 2 &&

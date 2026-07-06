@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OnlyWinget — Set Up Your Windows PC In One Click</title>
-    <meta name="description" content="A clean, private, and automatic dashboard to install, update, and manage your Windows applications.">
+    <title>OnlyWinget — The Safest & Fastest Way to Set Up Your Windows PC</title>
+    <meta name="description" content="Download and update all your Windows applications in one click. No registration, no adware, and zero tracking. 100% safe and automatic.">
     <link rel="stylesheet" href="index.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <!-- FontAwesome for icons -->
@@ -15,7 +15,7 @@
     <!-- Header & Navigation -->
     <header>
         <div class="container nav-wrapper">
-            <div class="logo-container">
+            <div class="logo-container" onclick="window.location.reload()" style="cursor: pointer;">
                 <img class="logo-img" src="assets/logo.png" alt="OnlyWinget Logo">
                 <span class="logo-text">OnlyWinget</span>
             </div>
@@ -33,11 +33,16 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <span class="hero-badge" id="hero-badge" data-i18n="badge">100% Private & Open Source</span>
-            <h1 id="hero-title" data-i18n="title">Set Up Your PC <span>In One Click</span></h1>
+            <span class="hero-badge" id="hero-badge" data-i18n="badge">100% Safe, Private & Ad-Free</span>
+            <h1 id="hero-title" data-i18n="title">Set Up Your Windows PC <span>Without the Hassle</span></h1>
             <p class="hero-subtitle" id="hero-subtitle" data-i18n="subtitle">
-                A modern, lightweight Windows dashboard to search, install, and update your favorite applications safely.
+                Stop searching sketchy websites for installers and clicking "Next" a hundred times. OnlyWinget downloads and installs all your favorite apps automatically, in seconds, safely.
             </p>
+            <div class="hero-bullets">
+                <div class="bullet-item"><i class="fa-solid fa-circle-check"></i> <span data-i18n="b1">No adware or junkware</span></div>
+                <div class="bullet-item"><i class="fa-solid fa-circle-check"></i> <span data-i18n="b2">Automatic skip of setup wizards</span></div>
+                <div class="bullet-item"><i class="fa-solid fa-circle-check"></i> <span data-i18n="b3">No account or registration required</span></div>
+            </div>
             <div class="hero-ctas">
                 <a href="build/OnlyWinget-1.0.2-setup.exe" class="btn btn-primary" id="cta-download" data-i18n="download">
                     <i class="fa-solid fa-download" style="margin-right: 8px;"></i> Download OnlyWinget
@@ -45,6 +50,40 @@
                 <a href="build/OnlyWinget-1.0.2-portable-x64.zip" class="btn btn-secondary-download" id="cta-portable" data-i18n="downloadPortable">
                     <i class="fa-solid fa-file-zipper" style="margin-right: 8px;"></i> Portable Version (.zip)
                 </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="comparison-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="comp-title" data-i18n="compTitle">Say Goodbye to Shady Installers</h2>
+                <p id="comp-subtitle" data-i18n="compSubtitle">Installing software on Windows used to be a chore. Not anymore.</p>
+            </div>
+            <div class="comparison-grid">
+                <!-- Old Way Card -->
+                <div class="comparison-card old-way">
+                    <div class="card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <h3 data-i18n="compOldTitle">The Old, Painful Way</h3>
+                    <ul class="comparison-list">
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld1">Search for each app on web search engines</span></li>
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld2">Avoid fake download buttons and malware</span></li>
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld3">Click "Next" dozens of times and decline unwanted junkware</span></li>
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld4">Repeat for every single program you need</span></li>
+                    </ul>
+                </div>
+                <!-- OnlyWinget Card -->
+                <div class="comparison-card new-way">
+                    <div class="card-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <h3 data-i18n="compNewTitle">The Safe & Simple Way</h3>
+                    <ul class="comparison-list">
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew1">Search and select from 8,000+ verified official apps</span></li>
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew2">Install everything in bulk with zero clicks required</span></li>
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew3">Save your app list to set up any new PC instantly</span></li>
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew4">Keep everything updated from a single dashboard</span></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </section>
@@ -164,25 +203,44 @@
 
         const translations = {
             en: {
-                titleTag: "OnlyWinget — Set Up Your Windows PC In One Click",
-                badge: "100% Private & Open Source",
-                title: "Set Up Your PC <span>In One Click</span>",
-                subtitle: "A modern, lightweight Windows dashboard to search, install, and update your favorite applications safely.",
+                titleTag: "OnlyWinget — The Safest & Fastest Way to Set Up Your Windows PC",
+                badge: "100% Safe, Private & Ad-Free",
+                title: "Set Up Your Windows PC <span>Without the Hassle</span>",
+                subtitle: "Stop searching sketchy websites for installers and clicking 'Next' a hundred times. OnlyWinget downloads and installs all your favorite apps automatically, in seconds, safely.",
                 download: "<i class='fa-solid fa-download' style='margin-right: 8px;'></i> Download OnlyWinget",
                 downloadPortable: "<i class='fa-solid fa-file-zipper' style='margin-right: 8px;'></i> Portable Version (.zip)",
                 privacy: "Privacy Policy",
                 
+                // Hero bullets
+                b1: "No adware or junkware",
+                b2: "Automatic skip of setup wizards",
+                b3: "No account or registration required",
+
+                // Comparison section
+                compTitle: "Say Goodbye to Shady Installers",
+                compSubtitle: "Installing software on Windows used to be a chore. Not anymore.",
+                compOldTitle: "The Old, Painful Way",
+                compOld1: "Search for each app on web search engines",
+                compOld2: "Avoid fake download buttons and malware",
+                compOld3: "Click 'Next' dozens of times and decline unwanted junkware",
+                compOld4: "Repeat for every single program you need",
+                compNewTitle: "The Safe & Simple Way",
+                compNew1: "Search and select from 8,000+ verified official apps",
+                compNew2: "Install everything in bulk with zero clicks required",
+                compNew3: "Save your app list to set up any new PC instantly",
+                compNew4: "Keep everything updated from a single dashboard",
+
                 // Features
                 featuresTitle: "Designed for Windows 10 & 11",
                 featuresSubtitle: "A sleek, native desktop utility built for efficiency, privacy, and control.",
-                f1Title: "App Lists (Presets)",
-                f1Desc: "Save your favorite tools into presets and deploy them onto a new computer instantly.",
-                f2Title: "Instant Search",
-                f2Desc: "Find thousands of official packages powered by the Microsoft Winget repository.",
-                f3Title: "Windows Update",
-                f3Desc: "Scan, download, and install system patches directly from a clean interface.",
-                f4Title: "100% Offline & Private",
-                f4Desc: "No registration, no tracking, and no external servers. All data remains on your PC.",
+                f1Title: "Custom App Lists",
+                f1Desc: "Create custom lists of your favorite programs (like office tools, media players, or games) and install them on any computer.",
+                f2Title: "Safe Search",
+                f2Desc: "Find official software in a database verified by Microsoft. No dangerous mirror sites or bundled viruses.",
+                f3Title: "One-Click System Updates",
+                f3Desc: "Scan and install operating system updates and your installed apps together, keeping your PC secure.",
+                f4Title: "100% Local & Private",
+                f4Desc: "We don't collect analytics, tracking data, or require you to sign up. All configurations remain safely on your PC.",
                 
                 // Gallery
                 galleryTitle: "See It In Action",
@@ -195,21 +253,21 @@
                 // Steps
                 steps: {
                     presets: [
-                        "Open the app to see a clean, ready-to-use presets dashboard.",
-                        "Give your preset a name (e.g. 'DevPack') and click Add.",
-                        "Insert the package ID to add it to your selection."
+                        "Open the application and click the '+' button to start a new list.",
+                        "Give your list a simple name (like 'HomeApps' or 'Work') and save it.",
+                        "Add programs to this list so you can install them whenever you want."
                     ],
                     search: [
-                        "Go to the Search tab, type a query, and press Enter to search the repo.",
-                        "Select the apps and click Add Selected to add them to your active preset."
+                        "Go to the Search tab and type the name of the app you need (e.g., VLC, Spotify).",
+                        "Check the box next to the apps you want, and click 'Add Selected' to save them to your list."
                     ],
                     install: [
-                        "All selected packages will appear in your preset list.",
-                        "Click Apply Install to install all packages silently in the background."
+                        "All your selected apps will appear in your customized list.",
+                        "Click 'Apply Install'. OnlyWinget will install everything automatically without asking you any questions."
                     ],
                     updates: [
-                        "Navigate to the Updates section to view local system patch status.",
-                        "Click Scan Windows Updates to search and install critical security patches."
+                        "Go to the Updates tab to check if your Windows system is up to date.",
+                        "Click 'Scan Windows Updates' to search and install security patches in one click."
                     ]
                 },
                 
@@ -217,25 +275,44 @@
                 footerNote: "All rights reserved. All data remains securely on your computer."
             },
             it: {
-                titleTag: "OnlyWinget — Configura il Tuo PC Windows In Un Click",
-                badge: "100% Privato & Open Source",
-                title: "Configura il Tuo PC <span>In Un Click</span>",
-                subtitle: "Una dashboard moderna e leggera per cercare, installare e aggiornare le tue applicazioni preferite su Windows in sicurezza.",
+                titleTag: "OnlyWinget — Il Modo Più Sicuro e Veloce per Configurare il Tuo PC Windows",
+                badge: "100% Sicuro, Privato e Senza Pubblicità",
+                title: "Configura il tuo PC Windows <span>Senza Stress</span>",
+                subtitle: "Smetti di cercare programmi su siti web sospetti e cliccare 'Avanti' cento volte. OnlyWinget scarica e installa tutte le tue app preferite in automatico, in pochi secondi, in totale sicurezza.",
                 download: "<i class='fa-solid fa-download' style='margin-right: 8px;'></i> Scarica OnlyWinget",
                 downloadPortable: "<i class='fa-solid fa-file-zipper' style='margin-right: 8px;'></i> Versione Portabile (.zip)",
                 privacy: "Informativa Privacy",
                 
+                // Hero bullets
+                b1: "Niente pubblicità o adware",
+                b2: "Salta gli installatori in automatico",
+                b3: "Nessun account o registrazione",
+
+                // Comparison section
+                compTitle: "Dì Addio agli Installatori Sospetti",
+                compSubtitle: "Installare programmi su Windows è sempre stato frustrante. Ora non più.",
+                compOldTitle: "Il Vecchio Metodo Frustrante",
+                compOld1: "Cerca ogni programma su Google sperando sia il sito ufficiale",
+                compOld2: "Fai attenzione a falsi pulsanti di download e malware",
+                compOld3: "Clicca 'Avanti' decine di volte rifiutando programmi spazzatura",
+                compOld4: "Ripeti l'intera procedura per ogni singola applicazione",
+                compNewTitle: "Il Metodo Sicuro e Semplice",
+                compNew1: "Cerca e seleziona tra oltre 8.000 app ufficiali e verificate",
+                compNew2: "Installa tutto in blocco senza dover fare alcun click aggiuntivo",
+                compNew3: "Salva la tua lista per configurare qualsiasi nuovo PC all'istante",
+                compNew4: "Mantieni tutto aggiornato da una sola schermata pulita",
+
                 // Features
                 featuresTitle: "Progettato per Windows 10 & 11",
                 featuresSubtitle: "Una utility desktop elegante e nativa, progettata per efficienza, privacy e controllo.",
-                f1Title: "Liste di App (Preset)",
-                f1Desc: "Salva i tuoi software preferiti in un file Preset ed esportali ovunque per configurare nuovi PC.",
-                f2Title: "Ricerca Immediata",
-                f2Desc: "Trova migliaia di programmi ufficiali e sicuri gestiti direttamente dal repository Microsoft Winget.",
-                f3Title: "Windows Update",
-                f3Desc: "Scansiona, scarica e installa gli aggiornamenti del sistema operativo da un'interfaccia pulita.",
-                f4Title: "100% Offline e Privato",
-                f4Desc: "Nessun account, tracciamento o server esterno. Tutti i dati rimangono memorizzati sul tuo computer.",
+                f1Title: "Liste App Personalizzate",
+                f1Desc: "Crea liste personalizzate delle tue app preferite (es. programmi d'ufficio, lettori video, utility) e installale su qualsiasi computer.",
+                f2Title: "Ricerca Sicura",
+                f2Desc: "Trova software ufficiali in un archivio sicuro verificato da Microsoft. Niente siti ingannevoli o virus nascosti.",
+                f3Title: "Aggiorna Tutto in 1 Click",
+                f3Desc: "Controlla e installa gli aggiornamenti di Windows e delle tue app in contemporanea, per un PC sempre protetto.",
+                f4Title: "100% Locale e Privato",
+                f4Desc: "Non raccogliamo dati d'uso o statistiche, e non serve creare un account. Le impostazioni restano sul tuo PC.",
                 
                 // Gallery
                 galleryTitle: "Guardalo in Azione",
@@ -248,21 +325,21 @@
                 // Steps
                 steps: {
                     presets: [
-                        "Apri l'app per visualizzare una dashboard dei preset pulita e pronta.",
-                        "Assegna un nome al preset (es. 'DevPack') e clicca Aggiungi.",
-                        "Inserisci l'ID del pacchetto per aggiungerlo direttamente alla tua selezione."
+                        "Apri l'applicazione e clicca sul pulsante '+' per iniziare una nuova lista.",
+                        "Assegna alla lista un nome semplice (come 'ProgrammiBase' o 'Ufficio') e salvala.",
+                        "Aggiungi i programmi a questa lista per poterli installare quando vuoi."
                     ],
                     search: [
-                        "Vai alla scheda Ricerca, scrivi un nome e premi Invio per cercare nel repository.",
-                        "Seleziona le app e clicca Aggiungi Selezionati per salvarle nel preset attivo."
+                        "Vai alla scheda Ricerca e scrivi il nome del programma che ti serve (es. VLC, Chrome).",
+                        "Spunta la casella accanto alle app desiderate e clicca 'Aggiungi Selezionati' per salvarle nella lista."
                     ],
                     install: [
-                        "Tutti i programmi selezionati appariranno nella lista del preset.",
-                        "Clicca Applica Installazione per installarli silenziosamente in background."
+                        "Tutti i programmi scelti appariranno riepilogati nella tua lista personalizzata.",
+                        "Clicca su 'Applica Installazione'. OnlyWinget farà tutto da solo, senza interromperti."
                     ],
                     updates: [
-                        "Vai alla sezione Aggiornamenti per verificare lo stato delle patch locali.",
-                        "Clicca Scansiona Windows Updates per cercare e installare patch di sicurezza."
+                        "Vai alla sezione Aggiornamenti per controllare se il tuo sistema Windows è aggiornato.",
+                        "Clicca su 'Scansiona Windows Updates' per cercare e installare le patch di sicurezza in un click."
                     ]
                 },
                 

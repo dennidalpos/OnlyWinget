@@ -188,7 +188,7 @@ public static class PresentationStateMapper
                         update.IsDownloaded,
                         update.RebootRequired,
                         state.SelectedWindowsUpdates.Any(selected => WindowsUpdateEquals(selected, update.Identity)),
-                        result is null ? null : result.Succeeded ? "Succeeded" : "Failed",
+                        result is null ? null : result.Succeeded ? "Operation_Status_Succeeded" : $"Operation_Status_Failed{(string.IsNullOrWhiteSpace(result.Message) ? string.Empty : $" ({result.Message})")}",
                         result?.Message ?? (result?.RebootRequired == true ? "Restart required." : null));
                 })
                 .ToArray(),
@@ -254,14 +254,34 @@ public static class PresentationStateMapper
 
     private static OperationResultRow[] CreateOperationResultRows(OnlyWingetState state) =>
         state.LastOperationResults
-            .Select(result => new OperationResultRow(
-                result.Selection.Package.Id,
-                result.Selection.Package.Source,
-                result.Selection.Action,
-                result.Succeeded,
-                result.Succeeded ? "Succeeded" : "Failed",
-                result.Error?.Message ?? EmptyToNull(result.CommandResult.StandardError),
-                EmptyToNull(result.CommandResult.StandardOutput)))
+            .Select(result =>
+            {
+                var isWarning = result.Error?.Kind == WingetErrorKind.NoUpdates;
+                var exitCode = result.CommandResult.ExitCode;
+                var exitCodeSuffix = exitCode != 0
+                    ? $" (Exit code: {exitCode} / 0x{exitCode:X8})"
+                    : string.Empty;
+
+                var errorDetails = result.Error?.Message ?? EmptyToNull(result.CommandResult.StandardError);
+                if (errorDetails is not null && exitCode != 0)
+                {
+                    errorDetails = errorDetails + exitCodeSuffix;
+                }
+                else if (errorDetails is null && exitCode != 0)
+                {
+                    errorDetails = $"Command failed{exitCodeSuffix}";
+                }
+
+                return new OperationResultRow(
+                    result.Selection.Package.Id,
+                    result.Selection.Package.Source,
+                    result.Selection.Action,
+                    result.Succeeded,
+                    isWarning,
+                    isWarning ? "Operation_Status_Warning" : (result.Succeeded ? "Operation_Status_Succeeded" : "Operation_Status_Failed"),
+                    errorDetails,
+                    EmptyToNull(result.CommandResult.StandardOutput));
+            })
             .ToArray();
 
     private static string? EmptyToNull(string? value) =>

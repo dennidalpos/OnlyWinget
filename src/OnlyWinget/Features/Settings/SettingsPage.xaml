@@ -87,6 +87,28 @@
                         </Grid>
                     </Border>
 
+                    <!-- Log Level Setting Card -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <SymbolIcon Symbol="List" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock x:Name="LogLevelTitle" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="LogLevelDescription" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ComboBox x:Name="LogLevelPicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.LogLevel, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsLogLevelPicker" Width="200" VerticalAlignment="Center">
+                                <ComboBoxItem Content="Verbose (Vrb)" Tag="Verbose" />
+                                <ComboBoxItem Content="Information (Info)" Tag="Information" />
+                                <ComboBoxItem Content="Warning (Warn)" Tag="Warning" />
+                                <ComboBoxItem Content="Error (Err)" Tag="Error" />
+                            </ComboBox>
+                        </Grid>
+                    </Border>
+
                     <!-- Install Behavior Setting Card -->
                     <Border Style="{StaticResource CardStyle}">
                         <Grid ColumnSpacing="16">

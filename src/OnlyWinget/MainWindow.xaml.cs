@@ -40,6 +40,9 @@ public sealed partial class MainWindow : Window
         RootNavigation.Loaded += OnLoaded;
         ApplyTheme();
         BuildNavigation();
+        ApplyMenuSettings();
+        typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+            .SetValue(PaneResizer, Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast));
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
         ShowPage("home");
     }
@@ -59,6 +62,7 @@ public sealed partial class MainWindow : Window
             var themeChanged = lastTheme != currentSettings.Theme;
 
             App.ApplySettings();
+            ApplyMenuSettings();
 
             if (languageChanged || themeChanged)
             {
@@ -175,6 +179,23 @@ public sealed partial class MainWindow : Window
         RootNavigation.MenuItems.Clear();
         foreach (var route in routeDefinitions)
         {
+            var brushKey = route.Id switch
+            {
+                "home" => "AreaHomeBrush",
+                "packages" => "AreaPackagesBrush",
+                "updates" => "AreaUpdatesBrush",
+                "sources" => "AreaSourcesBrush",
+                "activity" => "AreaActivityBrush",
+                "settings" => "AreaSettingsBrush",
+                _ => null
+            };
+
+            Brush? brush = null;
+            if (brushKey is not null && Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(brushKey, out var res) && res is Brush b)
+            {
+                brush = b;
+            }
+
             if (route.IsSettings)
             {
                 if (RootNavigation.SettingsItem is NavigationViewItem settingsItem)
@@ -182,6 +203,10 @@ public sealed partial class MainWindow : Window
                     settingsItem.Content = TextResources.Get(route.LabelResourceKey);
                     settingsItem.Tag = route.Id;
                     settingsItem.Icon = new SymbolIcon(route.Icon);
+                    if (brush is not null)
+                    {
+                        settingsItem.Resources["NavigationViewSelectionIndicatorForeground"] = brush;
+                    }
                 }
                 continue;
             }
@@ -192,6 +217,10 @@ public sealed partial class MainWindow : Window
                 Tag = route.Id,
                 Icon = new SymbolIcon(route.Icon)
             };
+            if (brush is not null)
+            {
+                item.Resources["NavigationViewSelectionIndicatorForeground"] = brush;
+            }
             AutomationProperties.SetAutomationId(item, $"Nav{char.ToUpperInvariant(route.Id[0])}{route.Id[1..]}");
             RootNavigation.MenuItems.Add(item);
         }
@@ -208,5 +237,185 @@ public sealed partial class MainWindow : Window
         var windowHandle = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
         AppWindow.GetFromWindowId(windowId).SetIcon(iconPath);
+    }
+
+    private void ApplyMenuSettings()
+    {
+        var settings = App.UiServices.Settings.Current;
+
+        // Apply width
+        RootNavigation.OpenPaneLength = settings.MenuWidth > 0 ? settings.MenuWidth : 280;
+
+        // Apply pin state
+        if (settings.IsMenuPinned)
+        {
+            RootNavigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Left;
+            RootNavigation.IsPaneOpen = true;
+        }
+        else
+        {
+            RootNavigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Auto;
+        }
+
+        // Update pin item content & icon
+        if (PinMenuItem is not null)
+        {
+            PinMenuItem.Content = TextResources.Get(settings.IsMenuPinned ? "Menu_Unpin" : "Menu_Pin");
+            if (PinMenuIcon is FontIcon fontIcon)
+            {
+                fontIcon.Glyph = settings.IsMenuPinned ? "\uE840" : "\uE718";
+            }
+        }
+
+        if (OpenLogsItem is not null)
+        {
+            OpenLogsItem.Content = TextResources.Get("Menu_OpenLogs");
+        }
+
+        UpdateResizer();
+    }
+
+    private void UpdateResizer()
+    {
+        if (RootNavigation == null || PaneResizer == null) return;
+
+        bool isPaneOpen = RootNavigation.IsPaneOpen;
+        bool isLeftMode = RootNavigation.PaneDisplayMode != NavigationViewPaneDisplayMode.Top;
+
+        if (isPaneOpen && isLeftMode)
+        {
+            PaneResizer.Visibility = Visibility.Visible;
+            PaneResizer.Margin = new Thickness(RootNavigation.OpenPaneLength - 4, 0, 0, 0);
+        }
+        else
+        {
+            PaneResizer.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private Brush GetActiveSectionBrush()
+    {
+        string? routeId = (RootNavigation.SelectedItem as NavigationViewItem)?.Tag as string;
+        routeId ??= "home";
+        var brushKey = routeId switch
+        {
+            "home" => "AreaHomeBrush",
+            "packages" => "AreaPackagesBrush",
+            "updates" => "AreaUpdatesBrush",
+            "sources" => "AreaSourcesBrush",
+            "activity" => "AreaActivityBrush",
+            "settings" => "AreaSettingsBrush",
+            _ => "SystemControlForegroundAccentBrush"
+        };
+        if (Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(brushKey, out var res) && res is Brush b)
+        {
+            return b;
+        }
+        return new SolidColorBrush(Colors.DodgerBlue);
+    }
+
+    private void OnPaneClosing(NavigationView sender, NavigationViewPaneClosingEventArgs args)
+    {
+        if (App.UiServices.Settings.Current.IsMenuPinned)
+        {
+            args.Cancel = true;
+        }
+    }
+
+    private void OnPaneOpened(NavigationView sender, object args)
+    {
+        UpdateResizer();
+    }
+
+    private void OnPaneClosed(NavigationView sender, object args)
+    {
+        UpdateResizer();
+    }
+
+    private void OnDisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args)
+    {
+        UpdateResizer();
+    }
+
+    private async void OnPinMenuTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        var currentSettings = App.UiServices.Settings.Current;
+        var newPinState = !currentSettings.IsMenuPinned;
+        var updatedSettings = currentSettings with { IsMenuPinned = newPinState };
+        await App.UiServices.Settings.SaveAsync(updatedSettings, CancellationToken.None);
+    }
+
+    private void OnOpenLogsTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        AppDiagnostics.OpenLog();
+    }
+
+    private bool isDraggingResizer;
+    private double dragStartPaneLength;
+    private double dragStartPointerX;
+
+    private void OnResizerPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        var border = (Border)sender;
+        var properties = e.GetCurrentPoint(border).Properties;
+        if (properties.IsLeftButtonPressed)
+        {
+            isDraggingResizer = true;
+            border.CapturePointer(e.Pointer);
+            dragStartPaneLength = RootNavigation.OpenPaneLength;
+            var point = e.GetCurrentPoint(RootNavigation);
+            dragStartPointerX = point.Position.X;
+            ResizerVisualLine.Opacity = 1.0;
+            e.Handled = true;
+        }
+    }
+
+    private void OnResizerPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (isDraggingResizer)
+        {
+            var point = e.GetCurrentPoint(RootNavigation);
+            var deltaX = point.Position.X - dragStartPointerX;
+            var newLength = dragStartPaneLength + deltaX;
+            newLength = Math.Max(150, Math.Min(500, newLength));
+            RootNavigation.OpenPaneLength = newLength;
+            UpdateResizer();
+            e.Handled = true;
+        }
+    }
+
+    private async void OnResizerPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (isDraggingResizer)
+        {
+            isDraggingResizer = false;
+            var border = (Border)sender;
+            border.ReleasePointerCapture(e.Pointer);
+            var point = e.GetCurrentPoint(border);
+            var isOver = point.Position.X >= 0 && point.Position.X <= border.ActualWidth &&
+                         point.Position.Y >= 0 && point.Position.Y <= border.ActualHeight;
+            if (!isOver)
+            {
+                ResizerVisualLine.Opacity = 0.0;
+            }
+            var currentSettings = App.UiServices.Settings.Current;
+            var updatedSettings = currentSettings with { MenuWidth = RootNavigation.OpenPaneLength };
+            await App.UiServices.Settings.SaveAsync(updatedSettings, CancellationToken.None);
+            e.Handled = true;
+        }
+    }
+
+    private void OnResizerPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        ResizerVisualLine.Background = GetActiveSectionBrush();
+        ResizerVisualLine.Opacity = 1.0;
+    }
+
+    private void OnResizerPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (!isDraggingResizer)
+        {
+            ResizerVisualLine.Opacity = 0.0;
+        }
     }
 }

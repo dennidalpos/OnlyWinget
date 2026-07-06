@@ -20,9 +20,9 @@ public static class PresentationValues
     public static Visibility NotSelected(object? selectedItem, object item) =>
         Visibility(!ReferenceEquals(selectedItem, item));
 
-    public static Microsoft.UI.Xaml.Media.Brush StatusBrush(bool succeeded)
+    public static Microsoft.UI.Xaml.Media.Brush StatusBrush(bool succeeded, bool isWarning)
     {
-        var resourceKey = succeeded ? "SystemFillColorSuccessBrush" : "SystemFillColorCriticalBrush";
+        var resourceKey = isWarning ? "SystemFillColorCautionBrush" : (succeeded ? "SystemFillColorSuccessBrush" : "SystemFillColorCriticalBrush");
         if (Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(resourceKey, out var brush))
         {
             if (brush is Microsoft.UI.Xaml.Media.Brush b)
@@ -30,7 +30,7 @@ public static class PresentationValues
                 return b;
             }
         }
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(succeeded ? Microsoft.UI.Colors.Green : Microsoft.UI.Colors.Red);
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(isWarning ? Microsoft.UI.Colors.Orange : (succeeded ? Microsoft.UI.Colors.Green : Microsoft.UI.Colors.Red));
     }
 
     public static Visibility HasErrorDetails(string? errorDetails) =>

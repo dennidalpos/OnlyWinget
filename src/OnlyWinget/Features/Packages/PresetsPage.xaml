@@ -117,7 +117,7 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1" Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" Foreground="{x:Bind presentation:PresentationValues.StatusBrush(Succeeded), Mode=OneTime}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" Foreground="{x:Bind presentation:PresentationValues.StatusBrush(Succeeded, IsWarning), Mode=OneTime}" VerticalAlignment="Center" />
                                             <TextBlock Grid.Column="2" Text="{x:Bind ErrorDetails, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" Visibility="{x:Bind presentation:PresentationValues.HasErrorDetails(ErrorDetails), Mode=OneTime}" />
                                         </Grid>
                                     </Border>

@@ -61,19 +61,44 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     }
 
     private static string Empty(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
-    private static WindowsUpdateDisplayRow ToDisplayRow(WindowsUpdateRow row) => new(
-        row.UpdateId,
-        row.RevisionNumber,
-        row.RevisionNumber.ToString(System.Globalization.CultureInfo.CurrentCulture),
-        row.Title,
-        Empty(row.KnowledgeBaseArticles),
-        Empty(row.Severity),
-        Empty(row.Categories),
-        FormatSize(row.MaxDownloadSize),
-        FormatBoolean(row.IsDownloaded),
-        FormatBoolean(row.RebootRequired),
-        row.IsSelected,
-        Empty(row.Status));
+    private static WindowsUpdateDisplayRow ToDisplayRow(WindowsUpdateRow row)
+    {
+        string statusText = "-";
+        if (!string.IsNullOrWhiteSpace(row.Status))
+        {
+            if (row.Status.StartsWith("Operation_Status_"))
+            {
+                var spaceIndex = row.Status.IndexOf(' ');
+                if (spaceIndex > 0)
+                {
+                    var key = row.Status.Substring(0, spaceIndex);
+                    var suffix = row.Status.Substring(spaceIndex);
+                    statusText = TextResources.Get(key) + suffix;
+                }
+                else
+                {
+                    statusText = TextResources.Get(row.Status);
+                }
+            }
+            else
+            {
+                statusText = TextResources.Get(row.Status);
+            }
+        }
+        return new(
+            row.UpdateId,
+            row.RevisionNumber,
+            row.RevisionNumber.ToString(System.Globalization.CultureInfo.CurrentCulture),
+            row.Title,
+            Empty(row.KnowledgeBaseArticles),
+            Empty(row.Severity),
+            Empty(row.Categories),
+            FormatSize(row.MaxDownloadSize),
+            FormatBoolean(row.IsDownloaded),
+            FormatBoolean(row.RebootRequired),
+            row.IsSelected,
+            statusText);
+    }
 
     private static string FormatBoolean(bool value) => TextResources.Get(value ? "Value_Yes" : "Value_No");
 

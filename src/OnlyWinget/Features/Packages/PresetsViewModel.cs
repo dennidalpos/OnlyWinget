@@ -143,7 +143,10 @@ public sealed class PresetsViewModel : FeatureViewModel
             Name = string.IsNullOrWhiteSpace(row.Name) ? TextResources.Get("Value_Unknown") : row.Name,
             Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version
         }), PackageKey);
-        OperationResults.ReplaceWith(state.OperationResults);
+        OperationResults.ReplaceWith(state.OperationResults.Select(row => row with
+        {
+            Status = TextResources.Get(row.Status)
+        }));
         Commands = state.Commands.ToDictionary(command => command.Id);
         ActivePresetName = state.ActivePresetName;
         HeaderState = state.HeaderState;

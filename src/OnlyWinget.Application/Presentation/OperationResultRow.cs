@@ -7,6 +7,7 @@ public sealed record OperationResultRow(
     string? Source,
     PackageAction Action,
     bool Succeeded,
+    bool IsWarning,
     string Status,
     string? ErrorDetails,
     string? Output);

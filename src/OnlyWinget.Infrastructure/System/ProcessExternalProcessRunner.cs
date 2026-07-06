@@ -154,8 +154,17 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
                 process.Kill(entireProcessTree: true);
             }
         }
-        catch (Exception)
+        catch (Win32Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"[ProcessRunner] Failed to kill process tree due to a Win32 error: {exception.Message} (Error code: {exception.NativeErrorCode})");
+        }
+        catch (InvalidOperationException exception)
+        {
+            global::System.Diagnostics.Debug.WriteLine($"[ProcessRunner] Failed to kill process tree because process was invalid/already closed: {exception.Message}");
+        }
+        catch (Exception exception)
+        {
+            global::System.Diagnostics.Debug.WriteLine($"[ProcessRunner] Unexpected exception when killing process tree: {exception}");
         }
     }
 }

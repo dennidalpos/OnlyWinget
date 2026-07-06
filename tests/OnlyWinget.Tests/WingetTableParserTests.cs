@@ -53,4 +53,23 @@ public sealed class WingetTableParserTests
 
         Assert.Equal("Git.Git", Assert.Single(rows)["Id"]);
     }
+
+    [Fact]
+    public void ParseReadsCompactTablesUsingSeparatorSpaces()
+    {
+        const string output = """
+            Nome    Id          Versione
+            ------- ----------- --------
+            AppOne  Company.One 1.0.0
+            AppTwo  Company.Two 2.0.0
+            """;
+
+        var rows = new WingetTableParser().Parse(output);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("Company.One", rows[0]["Id"]);
+        Assert.Equal("1.0.0", rows[0]["Version"]);
+        Assert.Equal("Company.Two", rows[1]["Id"]);
+        Assert.Equal("2.0.0", rows[1]["Version"]);
+    }
 }

@@ -33,6 +33,8 @@ public sealed partial class SettingsPage : Page
         ThemeDescription.Text = TextResources.Get("Settings_ThemeDescription");
         ConfirmDestructiveText.Text = TextResources.Get("Settings_ConfirmDestructive");
         DiagnosticsText.Text = TextResources.Get("Settings_Diagnostics");
+        LogLevelTitle.Text = TextResources.Get("Settings_LogLevel");
+        LogLevelDescription.Text = TextResources.Get("Settings_LogLevelDescription");
         InstallBehaviorText.Text = TextResources.Get("Settings_InstallBehavior");
         ResetTitle.Text = TextResources.Get("Settings_Reset");
         ResetDescription.Text = TextResources.Get("Settings_ResetDescription");

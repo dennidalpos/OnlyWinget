@@ -1,4 +1,5 @@
 using OnlyWinget.Application.App;
+using OnlyWinget.Application.System;
 using OnlyWinget.Services;
 using System.Globalization;
 
@@ -40,6 +41,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _ => null
         };
         AppDiagnostics.IsEnabled = settings.DiagnosticLogging;
+        AppDiagnostics.MinLogLevel = Enum.TryParse<AppLogLevel>(settings.LogLevel, out var level) ? level : AppLogLevel.Information;
         Workflow.ContinueOperationsAfterFailure = settings.ContinueOperationsAfterFailure;
     }
 

@@ -63,7 +63,7 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{x:Bind Timestamp}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Grid.Column="1" Text="{x:Bind Severity}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind activity:ActivityViewModel.LocalizeSeverity(Severity), Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                         <TextBlock Grid.Column="2" Text="{x:Bind Title}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                                     </Grid>
                                 </Expander.Header>

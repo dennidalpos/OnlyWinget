@@ -40,6 +40,7 @@ internal static class AppComposition
                 sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath, AppDiagnostics.WriteException));
 
             demoApp.ExceptionLogger = AppDiagnostics.WriteException;
+            demoApp.Logger = AppDiagnostics.Write;
             return demoApp;
         }
 
@@ -61,6 +62,7 @@ internal static class AppComposition
             sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath, AppDiagnostics.WriteException));
 
         app.ExceptionLogger = AppDiagnostics.WriteException;
+        app.Logger = AppDiagnostics.Write;
         return app;
     }
 }

@@ -54,7 +54,10 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
             Architecture = TextResources.Get(row.Architecture),
             Status = TextResources.Get(row.Status ?? "Update_Status_Available")
         }), PackageKey);
-        OperationResults.ReplaceWith(state.OperationResults);
+        OperationResults.ReplaceWith(state.OperationResults.Select(row => row with
+        {
+            Status = TextResources.Get(row.Status)
+        }));
         Commands = state.Commands.ToDictionary(command => command.Id);
         IsLoading = state.IsLoading;
         IsExecuting = state.IsExecuting;

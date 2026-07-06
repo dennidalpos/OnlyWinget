@@ -132,8 +132,8 @@ public sealed class OnlyWingetApplicationTests
         Assert.False(result.Succeeded);
         Assert.Equal("Missing.App", Assert.Single(app.State.Updates).Package.Id);
         var row = Assert.Single(PresentationStateMapper.FromApplicationState(app.State).Updates.Updates);
-        Assert.Equal("Failed", row.Status);
-        Assert.Equal("Package was not found.", row.ErrorDetails);
+        Assert.Equal("Operation_Status_Failed", row.Status);
+        Assert.Equal("Package was not found. (Exit code: 1 / 0x00000001)", row.ErrorDetails);
     }
 
     [Fact]
@@ -167,6 +167,21 @@ public sealed class OnlyWingetApplicationTests
         Assert.Equal(2, app.State.LastOperationResults.Count);
         Assert.True(app.State.LastOperationResults[0].Succeeded);
         Assert.True(app.State.LastOperationResults[1].Succeeded);
+
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+        Assert.Equal(2, presentation.Updates.OperationResults.Count);
+        var gitResult = presentation.Updates.OperationResults.First(r => r.PackageId == "Git.Git");
+        var warningResult = presentation.Updates.OperationResults.First(r => r.PackageId == "NotApplicable.App");
+
+        Assert.Equal("Operation_Status_Succeeded", gitResult.Status);
+        Assert.False(gitResult.IsWarning);
+
+        Assert.Equal("Operation_Status_Warning", warningResult.Status);
+        Assert.True(warningResult.IsWarning);
+
+        var warningActivity = app.State.Activity.FirstOrDefault(a => a.Title == "NotApplicable.App");
+        Assert.NotNull(warningActivity);
+        Assert.Equal(ActivitySeverity.Warning, warningActivity.Severity);
     }
 
     [Fact]
@@ -251,8 +266,8 @@ public sealed class OnlyWingetApplicationTests
         var row = Assert.Single(presentation.Updates.Updates);
 
         Assert.False(result.Succeeded);
-        Assert.Equal("Failed", row.Status);
-        Assert.Equal("Package was not found.", row.ErrorDetails);
+        Assert.Equal("Operation_Status_Failed", row.Status);
+        Assert.Equal("Package was not found. (Exit code: 1 / 0x00000001)", row.ErrorDetails);
         Assert.Single(presentation.Updates.OperationResults);
     }
 

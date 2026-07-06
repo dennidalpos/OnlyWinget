@@ -33,12 +33,46 @@
             AutomationProperties.AutomationId="RootNavigation"
             SelectionFollowsFocus="Enabled"
             ItemInvoked="OnItemInvoked"
-            SelectionChanged="OnSelectionChanged">
+            SelectionChanged="OnSelectionChanged"
+            PaneClosing="OnPaneClosing"
+            PaneOpened="OnPaneOpened"
+            PaneClosed="OnPaneClosed"
+            DisplayModeChanged="OnDisplayModeChanged">
+            <NavigationView.PaneFooter>
+                <StackPanel Orientation="Vertical" Spacing="4" Margin="4,0,4,12">
+                    <NavigationViewItem x:Name="PinMenuItem" Tapped="OnPinMenuTapped">
+                        <NavigationViewItem.Icon>
+                            <FontIcon x:Name="PinMenuIcon" Glyph="&#xE718;" />
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+                    <NavigationViewItem x:Name="OpenLogsItem" Tapped="OnOpenLogsTapped">
+                        <NavigationViewItem.Icon>
+                            <SymbolIcon Symbol="Document" />
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+                </StackPanel>
+            </NavigationView.PaneFooter>
             <ContentControl
                 x:Name="PageHost"
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
                 HorizontalContentAlignment="Stretch"
                 VerticalContentAlignment="Stretch" />
         </NavigationView>
+
+        <!-- Resizer Bar Overlay -->
+        <Border
+            x:Name="PaneResizer"
+            Grid.Row="1"
+            Width="8"
+            HorizontalAlignment="Left"
+            Background="Transparent"
+            Visibility="Collapsed"
+            PointerPressed="OnResizerPointerPressed"
+            PointerMoved="OnResizerPointerMoved"
+            PointerReleased="OnResizerPointerReleased"
+            PointerEntered="OnResizerPointerEntered"
+            PointerExited="OnResizerPointerExited">
+            <Border x:Name="ResizerVisualLine" Width="2" HorizontalAlignment="Center" Background="{ThemeResource SystemControlBackgroundListLowBrush}" Opacity="0" />
+        </Border>
     </Grid>
 </Window>

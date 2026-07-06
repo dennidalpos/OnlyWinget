@@ -5,4 +5,7 @@ internal sealed record AppSettings(
     string Theme = "default",
     bool ConfirmDestructiveActions = true,
     bool DiagnosticLogging = true,
-    bool ContinueOperationsAfterFailure = true);
+    string LogLevel = "Information",
+    bool ContinueOperationsAfterFailure = true,
+    bool IsMenuPinned = false,
+    double MenuWidth = 280);
