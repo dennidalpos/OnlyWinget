@@ -137,6 +137,39 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task ApplySelectedUpdatesTreatsNoUpdatesAsSuccess()
+    {
+        var updates = new StubUpdateLoader(
+            new PackageUpdate(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "2.1.0"),
+            new PackageUpdate(new PackageIdentity("NotApplicable.App", "winget"), "NotApplicable", "1.0.0", "1.1.0"));
+        var executor = new RecordingOperationExecutor(
+            new OperationExecutionSummary(
+                [
+                    new OperationExecutionResult(
+                        new PackageSelection(new PackageIdentity("Git.Git", "winget"), PackageAction.Upgrade),
+                        new WingetCommandResult(0, "upgraded", string.Empty),
+                        null),
+                    new OperationExecutionResult(
+                        new PackageSelection(new PackageIdentity("NotApplicable.App", "winget"), PackageAction.Upgrade),
+                        new WingetCommandResult(1, string.Empty, "Non è stato trovato alcun aggiornamento applicabile."),
+                        new ClassifiedWingetError(WingetErrorKind.NoUpdates, "Non è stato trovato alcun aggiornamento applicabile."))
+                ]));
+        var app = CreateApplication(updates: updates, executor: executor);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        var result = await app.ApplySelectedUpdatesAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(app.State.Updates);
+        Assert.Equal(2, app.State.LastOperationResults.Count);
+        Assert.True(app.State.LastOperationResults[0].Succeeded);
+        Assert.True(app.State.LastOperationResults[1].Succeeded);
+    }
+
+    [Fact]
     public async Task RefreshUpdatesKeepsSuccessfulSourcesAndReportsPartialFailures()
     {
         var updates = new StubUpdateLoader(
@@ -384,18 +417,15 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
-    public async Task StartupRefreshesFinalSourceListWhenSourceUpdateFails()
+    public async Task StartupRefreshesSourceList()
     {
         var sources = new StubSourceService(
-            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available))
-        {
-            FailUpdate = true
-        };
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
         var app = CreateApplication(sources: sources);
 
         await new ApplicationStartupOrchestrator(app).InitializeAsync(CancellationToken.None);
 
-        Assert.Equal(["update", "list"], sources.Calls);
+        Assert.Equal(["list"], sources.Calls);
         Assert.Equal("winget", Assert.Single(app.State.Sources).Name);
     }
 

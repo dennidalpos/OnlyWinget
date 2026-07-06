@@ -17,13 +17,8 @@ public sealed class ApplicationStartupOrchestrator(OnlyWingetApplication applica
             return;
         }
 
-        var update = await application.UpdateSourcesAsync(cancellationToken).ConfigureAwait(false);
+        await application.RefreshSourcesAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
-        if (!update.Succeeded)
-        {
-            await application.RefreshSourcesAsync(cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-        }
 
         await application.RefreshWorkspacePackageMetadataAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();

@@ -7,5 +7,5 @@ public sealed record OperationExecutionResult(
     WingetCommandResult CommandResult,
     ClassifiedWingetError? Error)
 {
-    public bool Succeeded => CommandResult.Succeeded;
+    public bool Succeeded => CommandResult.Succeeded || Error?.Kind == WingetErrorKind.NoUpdates;
 }

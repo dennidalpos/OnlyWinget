@@ -25,7 +25,11 @@ public sealed class WingetErrorClassifier
             "No applicable update found",
             "No available upgrade found",
             "Nessun aggiornamento disponibile",
-            "Nessun aggiornamento applicabile"))
+            "Nessun aggiornamento applicabile",
+            "Non è stato trovato alcun aggiornamento applicabile",
+            "non si applica al sistema o ai requisiti",
+            "does not apply to the system or requirements",
+            "No applicable update was found"))
         {
             kind = WingetErrorKind.NoUpdates;
         }

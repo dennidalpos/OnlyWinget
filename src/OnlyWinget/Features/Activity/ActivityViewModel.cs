@@ -31,10 +31,19 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
     public static string Category(ActivityRow entry)
     {
         var value = $"{entry.Title} {entry.Message}";
-        if (value.Contains("Windows Update", StringComparison.OrdinalIgnoreCase) || value.Contains("restart", StringComparison.OrdinalIgnoreCase)) return "windows";
-        if (value.Contains("source", StringComparison.OrdinalIgnoreCase)) return "sources";
-        if (value.Contains("preset", StringComparison.OrdinalIgnoreCase) || value.Contains("workspace", StringComparison.OrdinalIgnoreCase)) return "presets";
-        if (value.Contains("package", StringComparison.OrdinalIgnoreCase) || value.Contains("winget", StringComparison.OrdinalIgnoreCase) || value.Contains("update", StringComparison.OrdinalIgnoreCase)) return "packages";
+        if (value.Contains("Windows Update", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("restart", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("riavvio", StringComparison.OrdinalIgnoreCase)) return "windows";
+        if (value.Contains("preset", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("workspace", StringComparison.OrdinalIgnoreCase)) return "presets";
+        if (value.Contains("package", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("winget", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("update", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("pacchetto", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("aggiornamento", StringComparison.OrdinalIgnoreCase)) return "packages";
+        if (value.Contains("source", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("origine", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("origini", StringComparison.OrdinalIgnoreCase)) return "sources";
         return "system";
     }
 

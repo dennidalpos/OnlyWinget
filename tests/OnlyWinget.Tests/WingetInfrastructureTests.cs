@@ -111,10 +111,14 @@ public sealed class WingetInfrastructureTests
 
         var notFound = classifier.Classify(new WingetCommandResult(1, string.Empty, "No package found matching input criteria."));
         var noUpdates = classifier.Classify(new WingetCommandResult(1, string.Empty, "No applicable update found."));
+        var noUpdatesIt = classifier.Classify(new WingetCommandResult(1, string.Empty, "Non è stato trovato alcun aggiornamento applicabile. Una versione più recente del pacchetto è disponibile in un'origine configurata, ma non si applica al sistema o ai requisiti."));
+        var noUpdatesEngMsg = classifier.Classify(new WingetCommandResult(1, string.Empty, "A newer version of the package is available in a configured source, but does not apply to the system or requirements."));
         var source = classifier.Classify(new WingetCommandResult(1, string.Empty, "Failed when searching source: winget"));
 
         Assert.Equal(WingetErrorKind.NotFound, notFound?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdates?.Kind);
+        Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesIt?.Kind);
+        Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesEngMsg?.Kind);
         Assert.Equal(WingetErrorKind.SourceUnavailable, source?.Kind);
     }
 
