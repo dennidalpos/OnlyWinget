@@ -159,6 +159,7 @@ public sealed partial class OnlyWingetTable : UserControl
         for (int i = 0; i < Columns.Count; i++)
         {
             var col = Columns[i];
+            if (col.IsManuallyResized) continue;
 
             // Start with header width
             double maxTextWidth = 0;
@@ -283,59 +284,58 @@ public sealed partial class OnlyWingetTable : UserControl
             Grid.SetRow(filterBox, 1);
             cellGrid.Children.Add(filterBox);
 
-            if (!isLast)
+            var resizeHandle = new CursorGrid
             {
-                var resizeHandle = new CursorGrid
-                {
-                    Width = 12,
-                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Stretch,
-                    Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast)
-                };
+                Width = 12,
+                Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast)
+            };
+            Grid.SetRowSpan(resizeHandle, 2);
 
-                int colIndex = index;
-                bool isDragging = false;
-                double originalWidth = 0;
-                double startPointerX = 0;
+            int colIndex = index;
+            bool isDragging = false;
+            double originalWidth = 0;
+            double startPointerX = 0;
 
-                resizeHandle.PointerPressed += (s, args) =>
-                {
-                    var pointerPoint = args.GetCurrentPoint(this);
-                    startPointerX = pointerPoint.Position.X;
-                    originalWidth = layoutHelper.GetWidth(colIndex);
-                    isDragging = resizeHandle.CapturePointer(args.Pointer);
-                    args.Handled = true;
-                };
+            resizeHandle.PointerPressed += (s, args) =>
+            {
+                var pointerPoint = args.GetCurrentPoint(this);
+                startPointerX = pointerPoint.Position.X;
+                originalWidth = layoutHelper.GetWidth(colIndex);
+                isDragging = resizeHandle.CapturePointer(args.Pointer);
+                args.Handled = true;
+            };
 
-                resizeHandle.PointerMoved += (s, args) =>
-                {
-                    if (!isDragging) return;
-                    var pointerPoint = args.GetCurrentPoint(this);
-                    double deltaX = pointerPoint.Position.X - startPointerX;
-                    double newWidth = Math.Max(originalWidth + deltaX, 90); // min width matches filter TextBox minimum
-                    Columns[colIndex].Width = new GridLength(newWidth);
-                    RecalculateWidths(ActualWidth);
-                    args.Handled = true;
-                };
+            resizeHandle.PointerMoved += (s, args) =>
+            {
+                if (!isDragging) return;
+                var pointerPoint = args.GetCurrentPoint(this);
+                double deltaX = pointerPoint.Position.X - startPointerX;
+                double newWidth = Math.Max(originalWidth + deltaX, 90); // min width matches filter TextBox minimum
+                Columns[colIndex].Width = new GridLength(newWidth);
+                Columns[colIndex].IsManuallyResized = true;
+                RecalculateWidths(ActualWidth);
+                args.Handled = true;
+            };
 
-                resizeHandle.PointerReleased += (s, args) =>
+            resizeHandle.PointerReleased += (s, args) =>
+            {
+                if (isDragging)
                 {
-                    if (isDragging)
-                    {
-                        resizeHandle.ReleasePointerCapture(args.Pointer);
-                        isDragging = false;
-                        args.Handled = true;
-                    }
-                };
-
-                resizeHandle.PointerCaptureLost += (s, args) =>
-                {
+                    resizeHandle.ReleasePointerCapture(args.Pointer);
                     isDragging = false;
-                };
+                    args.Handled = true;
+                }
+            };
 
-                cellGrid.Children.Add(resizeHandle);
-            }
+            resizeHandle.PointerCaptureLost += (s, args) =>
+            {
+                isDragging = false;
+            };
+
+            cellGrid.Children.Add(resizeHandle);
 
             var cell = new Border
             {

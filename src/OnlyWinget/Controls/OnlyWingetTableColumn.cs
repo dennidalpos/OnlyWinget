@@ -9,4 +9,5 @@ public sealed class OnlyWingetTableColumn : DependencyObject
     public GridLength Width { get; set; } = new(160);
     public bool IsPrimary { get; set; }
     public bool IsTextSelectable { get; set; }
+    public bool IsManuallyResized { get; set; }
 }
