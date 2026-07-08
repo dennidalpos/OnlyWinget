@@ -15,9 +15,8 @@
                 <states:StatePresenter x:Name="PageState" />
             </design:PageScaffold.State>
             <design:PageScaffold.Body>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <Grid RowSpacing="{StaticResource PageSectionSpacing}">
-                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid RowSpacing="{StaticResource PageSectionSpacing}" VerticalAlignment="Stretch">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <Border Style="{StaticResource CardStyle}">
                             <Grid RowSpacing="12">
                                 <Grid.RowDefinitions>
@@ -96,7 +95,6 @@
                             </Grid>
                         </Border>
                     </Grid>
-                </ScrollViewer>
             </design:PageScaffold.Body>
         </design:PageScaffold>
     </Grid>

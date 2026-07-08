@@ -80,7 +80,23 @@ public sealed partial class ActivityPage : Page
 
     private void OnSearchChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args) => ApplyFilter();
     private void OnFilterChanged(object sender, SelectionChangedEventArgs args) => ApplyFilter();
-    private void OnActivityColumnFilterChanged(object sender, TextChangedEventArgs args) => ApplyColumnFilter();
+    private void OnActivityColumnFilterChanged(object sender, TextChangedEventArgs args)
+    {
+        if (sender is TextBox box)
+        {
+            var caretIndex = box.SelectionStart;
+            var selectionLength = box.SelectionLength;
+
+            ApplyColumnFilter();
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                box.Focus(FocusState.Programmatic);
+                box.SelectionStart = caretIndex;
+                box.SelectionLength = selectionLength;
+            });
+        }
+    }
 
     private void ApplyFilter()
     {

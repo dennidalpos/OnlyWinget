@@ -1,13 +1,12 @@
 <UserControl x:Class="OnlyWinget.Features.Packages.PresetsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:OnlyWinget.Controls" xmlns:states="using:OnlyWinget.DesignSystem.States" xmlns:commands="using:OnlyWinget.DesignSystem.Commands" xmlns:presentation="using:OnlyWinget.Presentation" xmlns:appPresentation="using:OnlyWinget.Application.Presentation" xmlns:design="using:OnlyWinget.DesignSystem.Controls">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid RowSpacing="12" Margin="0,0,0,16">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Grid RowSpacing="12" Margin="0,0,0,16" VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
             <Border Style="{StaticResource CardStyle}">
                 <design:OnlyWingetResponsivePanel ItemMinWidth="360" HorizontalSpacing="16" VerticalSpacing="12">
                     <design:OnlyWingetWrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
@@ -128,5 +127,4 @@
                 </Border>
             </StackPanel>
         </Grid>
-    </ScrollViewer>
 </UserControl>

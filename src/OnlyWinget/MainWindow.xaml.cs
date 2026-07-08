@@ -462,4 +462,13 @@ public sealed partial class MainWindow : Window
             ResizerVisualLine.Opacity = 0.0;
         }
     }
+
+    private void OnMainPageScrollViewerSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is ScrollViewer sv)
+        {
+            PageHost.Width = Math.Max(960, sv.ViewportWidth);
+            PageHost.Height = Math.Max(600, sv.ViewportHeight);
+        }
+    }
 }

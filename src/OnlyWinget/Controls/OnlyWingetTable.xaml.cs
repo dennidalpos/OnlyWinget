@@ -38,7 +38,6 @@ public sealed partial class OnlyWingetTable : UserControl
         Unloaded += OnUnloaded;
         Rows.ItemClick += OnItemClick;
         SizeChanged += OnSizeChanged;
-        Rows.PointerWheelChanged += OnRowsPointerWheelChanged;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -48,17 +47,10 @@ public sealed partial class OnlyWingetTable : UserControl
             UpdateCollectionSubscription(collection);
         }
 
-        var parentScrollViewer = FindAncestorScrollViewer();
-        if (parentScrollViewer != null)
-        {
-            Rows.SetValue(ScrollViewer.VerticalScrollModeProperty, ScrollMode.Disabled);
-            Rows.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
-        }
-        else
-        {
-            Rows.SetValue(ScrollViewer.VerticalScrollModeProperty, ScrollMode.Enabled);
-            Rows.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
-        }
+        Rows.SetValue(ScrollViewer.VerticalScrollModeProperty, ScrollMode.Enabled);
+        Rows.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
+        Rows.SetValue(ScrollViewer.HorizontalScrollModeProperty, ScrollMode.Enabled);
+        Rows.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
 
         Rebuild();
     }
@@ -559,24 +551,6 @@ public sealed partial class OnlyWingetTable : UserControl
         return null;
     }
 
-    private void OnRowsPointerWheelChanged(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        var parentScrollViewer = FindAncestorScrollViewer();
-        if (parentScrollViewer is null) return;
-
-        var pointerPoint = e.GetCurrentPoint(Rows);
-        var properties = pointerPoint.Properties;
-        if (!properties.IsHorizontalMouseWheel)
-        {
-            var delta = properties.MouseWheelDelta;
-            if (delta != 0)
-            {
-                parentScrollViewer.ChangeView(null, parentScrollViewer.VerticalOffset - delta, null, false);
-                e.Handled = true;
-            }
-        }
-    }
-
     private void OnColumnFilterChanged(object sender, TextChangedEventArgs args)
     {
         if (sender is not TextBox { Tag: string bindingPath } box)
@@ -594,7 +568,17 @@ public sealed partial class OnlyWingetTable : UserControl
             columnFilters[bindingPath] = value;
         }
 
+        var caretIndex = box.SelectionStart;
+        var selectionLength = box.SelectionLength;
+
         ApplyFilters();
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            box.Focus(FocusState.Programmatic);
+            box.SelectionStart = caretIndex;
+            box.SelectionLength = selectionLength;
+        });
     }
 
     private void ApplyFilters()

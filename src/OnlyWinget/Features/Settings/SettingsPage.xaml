@@ -5,8 +5,7 @@
     xmlns:design="using:OnlyWinget.DesignSystem.Controls">
     <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaSettingsBrush}">
         <design:PageScaffold.Body>
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="8" Padding="0,0,0,24" MaxWidth="1000" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="8" Padding="0,0,0,24" MaxWidth="1000" HorizontalAlignment="Stretch">
                     <!-- Appearance & Language Section -->
                     <TextBlock x:Name="AppearanceGroupHeader" Style="{StaticResource SectionTitleTextBlockStyle}" Margin="4,12,0,8" />
                     
@@ -145,7 +144,6 @@
                         </Grid>
                     </Border>
                 </StackPanel>
-            </ScrollViewer>
         </design:PageScaffold.Body>
     </design:PageScaffold>
 </Page>
