@@ -22,7 +22,7 @@
                 <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="230" IsTextSelectable="True" />
                 <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="100" />
                 <controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="100" />
-                <controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="120" />
+                <controls:OnlyWingetTableColumn Header="Publisher" BindingPath="Publisher" Width="160" />
                 <controls:OnlyWingetTableColumn Header="Match" BindingPath="Match" Width="*" />
             </controls:OnlyWingetTable>
         </Border>

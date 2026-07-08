@@ -41,7 +41,7 @@ public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).Search;
         Results.SynchronizeWith(state.Results.Select(row => row with
         {
-            Architecture = TextResources.Get(row.Architecture),
+            Publisher = TextResources.Get(row.Publisher),
             Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version,
             Match = string.IsNullOrWhiteSpace(row.Match) ? TextResources.Get("Value_Unknown") : row.Match
         }), PackageKey);

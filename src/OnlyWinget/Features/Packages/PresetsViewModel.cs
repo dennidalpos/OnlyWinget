@@ -145,7 +145,7 @@ public sealed class PresetsViewModel : FeatureViewModel
         PresetNames.SynchronizeWith(state.PresetNames, name => name);
         Packages.SynchronizeWith(state.Packages.Select(row => row with
         {
-            Architecture = TextResources.Get(row.Architecture),
+            Publisher = TextResources.Get(row.Publisher),
             Name = string.IsNullOrWhiteSpace(row.Name) ? TextResources.Get("Value_Unknown") : row.Name,
             Version = string.IsNullOrWhiteSpace(row.Version) ? TextResources.Get("Value_Unknown") : row.Version
         }), PackageKey);

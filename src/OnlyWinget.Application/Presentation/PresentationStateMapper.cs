@@ -65,7 +65,7 @@ public static class PresentationStateMapper
                         metadata?.Name,
                         package.Source,
                         metadata?.Version,
-                        FormatArchitectures(metadata),
+                        FormatPublisher(metadata),
                         state.SelectedPresetPackages.Contains(package));
                 })
                 .ToArray() ?? [],
@@ -105,7 +105,7 @@ public static class PresentationStateMapper
                         result.Name,
                         result.Package.Source,
                         result.Version,
-                        FormatArchitectures(metadata),
+                        FormatPublisher(metadata),
                         result.Match,
                         state.SelectedSearchPackages.Contains(result.Package));
                 })
@@ -141,7 +141,7 @@ public static class PresentationStateMapper
                         update.InstalledVersion,
                         update.AvailableVersion,
                         state.PackageMetadata.TryGetValue(update.Package, out var metadata)
-                            ? FormatArchitectures(metadata)
+                            ? FormatPublisher(metadata)
                             : "Value_Unknown",
                         state.SelectedUpdates.Contains(update.Package),
                         result?.Status ?? "Update_Status_Available",
@@ -287,10 +287,10 @@ public static class PresentationStateMapper
     private static string? EmptyToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static string FormatArchitectures(PackageResolution? metadata) =>
-        metadata?.Architectures is { Count: > 0 } architectures
-            ? string.Join(", ", architectures)
-            : "Architecture_Automatic";
+    private static string FormatPublisher(PackageResolution? metadata) =>
+        string.IsNullOrWhiteSpace(metadata?.Publisher)
+            ? "Value_Unknown"
+            : metadata.Publisher;
 
     private static bool WindowsUpdateEquals(WindowsUpdateIdentity left, WindowsUpdateIdentity right) =>
         string.Equals(left.UpdateId, right.UpdateId, StringComparison.OrdinalIgnoreCase) &&

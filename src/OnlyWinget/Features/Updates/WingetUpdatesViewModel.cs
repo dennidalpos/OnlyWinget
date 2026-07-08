@@ -51,7 +51,7 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).Updates;
         Updates.SynchronizeWith(state.Updates.Select(row => row with
         {
-            Architecture = TextResources.Get(row.Architecture),
+            Publisher = TextResources.Get(row.Publisher),
             Status = TextResources.Get(row.Status ?? "Update_Status_Available")
         }), PackageKey);
         OperationResults.ReplaceWith(state.OperationResults.Select(row => row with

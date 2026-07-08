@@ -72,7 +72,7 @@ public sealed partial class PresetsPage : UserControl
         EditPackageSourceBox.Header = TextResources.Get("Package_Source");
 
         PackageList.SelectionLabel = TextResources.Get("Command_Select_All");
-        PackageList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Architecture" }.Select(TextResources.Get).ToArray());
+        PackageList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Publisher" }.Select(TextResources.Get).ToArray());
 
         ToolTipService.SetToolTip(AddPresetBtn, TextResources.Get("Command_Preset_Add"));
         AutomationProperties.SetName(AddPresetBtn, TextResources.Get("Command_Preset_Add"));

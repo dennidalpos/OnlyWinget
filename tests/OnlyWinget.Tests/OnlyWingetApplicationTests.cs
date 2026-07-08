@@ -216,7 +216,7 @@ public sealed class OnlyWingetApplicationTests
         await app.RefreshUpdatesAsync(CancellationToken.None);
 
         var row = Assert.Single(PresentationStateMapper.FromApplicationState(app.State).Updates.Updates);
-        Assert.Equal("Architecture_Automatic", row.Architecture);
+        Assert.Equal("Value_Unknown", row.Publisher);
         Assert.Equal("Update_Status_Available", row.Status);
     }
 
@@ -225,7 +225,9 @@ public sealed class OnlyWingetApplicationTests
     {
         var search = new StubPackageSearch(
             new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "Moniker: git"));
-        var app = CreateApplication(search: search);
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "The Git Development Community", true, null));
+        var app = CreateApplication(search: search, resolver: resolver);
 
         app.AddPreset("Default");
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
@@ -236,9 +238,32 @@ public sealed class OnlyWingetApplicationTests
         var presentation = PresentationStateMapper.FromApplicationState(app.State);
 
         Assert.Equal("Default", presentation.Presets.ActivePresetName);
-        Assert.Single(presentation.Search.Results);
+        var row = Assert.Single(presentation.Search.Results);
+        Assert.Equal("The Git Development Community", row.Publisher);
         Assert.True(presentation.Search.Commands.Single(command => command.Id == UiCommandId.AddSearchResults).IsEnabled);
         Assert.False(presentation.Updates.Commands.Single(command => command.Id == UiCommandId.CancelOperation).IsEnabled);
+    }
+
+    [Fact]
+    public async Task SearchResolvesPublisherMetadataForEveryResult()
+    {
+        var search = new StubPackageSearch(
+            new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null),
+            new PackageSearchResult(new PackageIdentity("Google.Chrome", "winget"), "Google Chrome", "150.0", null));
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "The Git Development Community", true, null),
+            new PackageResolution(new PackageIdentity("Google.Chrome", "winget"), "Google Chrome", "150.0", "Google LLC", true, null));
+        var app = CreateApplication(search: search, resolver: resolver);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.SearchAsync("chrome", CancellationToken.None);
+
+        var rows = PresentationStateMapper.FromApplicationState(app.State).Search.Results;
+
+        Assert.Equal(2, resolver.Requests.Count);
+        Assert.Contains(rows, row => row.PackageId == "Git.Git" && row.Publisher == "The Git Development Community");
+        Assert.Contains(rows, row => row.PackageId == "Google.Chrome" && row.Publisher == "Google LLC");
     }
 
     [Fact]
@@ -679,8 +704,11 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class StubPackageResolver(params PackageResolution[] resolutions) : IPackageResolver
     {
+        public List<PackageIdentity> Requests { get; } = [];
+
         public Task<PackageResolution> ResolveAsync(PackageIdentity package, CancellationToken cancellationToken)
         {
+            Requests.Add(package);
             var resolution = resolutions.FirstOrDefault(candidate =>
                 string.Equals(candidate.Package.Id, package.Id, StringComparison.OrdinalIgnoreCase) &&
                 (package.Source is null || candidate.Package.Source is null ||

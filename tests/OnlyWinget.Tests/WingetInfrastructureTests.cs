@@ -243,18 +243,21 @@ public sealed class WingetInfrastructureTests
         Assert.True(resolution.IsResolved);
         Assert.Equal("Git", resolution.Name);
         Assert.Equal("2.0.0", resolution.Version);
+        Assert.Equal("The Git Development Community", resolution.Publisher);
         Assert.Equal("winget", resolution.Package.Source);
         Assert.Equal(["x64", "arm64"], resolution.Architectures);
         Assert.Null(resolution.Error);
     }
 
-    [Fact]
-    public async Task PackageResolverMapsNameFromItalianShowOutput()
+    [Theory]
+    [InlineData("Autore", "Google LLC")]
+    [InlineData("Editore", "VideoLAN")]
+    public async Task PackageResolverMapsLocalizedPublisherFromShowOutput(string publisherLabel, string publisher)
     {
-        const string output = """
+        var output = $"""
             Trovato VLC media player [VideoLAN.VLC]
             Versione: 3.0.23
-            Editore: VideoLAN
+            {publisherLabel}: {publisher}
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
         var resolver = new WingetPackageResolver(runner, new WingetErrorClassifier());
@@ -264,6 +267,7 @@ public sealed class WingetInfrastructureTests
         Assert.True(resolution.IsResolved);
         Assert.Equal("VLC media player", resolution.Name);
         Assert.Equal("3.0.23", resolution.Version);
+        Assert.Equal(publisher, resolution.Publisher);
     }
 
     [Fact]

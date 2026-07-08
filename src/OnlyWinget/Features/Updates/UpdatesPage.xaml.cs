@@ -51,7 +51,7 @@ public sealed partial class UpdatesPage : UserControl
     private void ApplyText()
     {
         UpdateList.SelectionLabel = TextResources.Get("Command_Select_All");
-        UpdateList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Installed", "Header_Available", "Header_Architecture", "Header_Status" }.Select(TextResources.Get).ToArray());
+        UpdateList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Installed", "Header_Available", "Header_Publisher", "Header_Status" }.Select(TextResources.Get).ToArray());
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)

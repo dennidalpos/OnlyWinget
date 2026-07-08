@@ -5,5 +5,5 @@ public sealed record PresetPackageRow(
     string? Name,
     string? Source,
     string? Version,
-    string Architecture,
+    string Publisher,
     bool IsSelected);

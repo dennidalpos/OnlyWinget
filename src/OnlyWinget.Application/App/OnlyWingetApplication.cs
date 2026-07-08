@@ -267,6 +267,10 @@ public sealed class OnlyWingetApplication(
                         .ToArray();
                     searchResults.Clear();
                     searchResults.AddRange(distinctResults);
+                    var metadataFailureCount = await RefreshPackageMetadataAsync(
+                            searchResults.Select(result => result.Package),
+                            cancellationToken)
+                        .ConfigureAwait(false);
                     searchSelection.ReplaceAvailable(searchResults.Select(result => result.Package));
                     AddActivity(ActivitySeverity.Information, "Search completed", $"{searchResults.Count} result(s).");
                     if (sourceErrors.Count > 0)
@@ -275,6 +279,14 @@ public sealed class OnlyWingetApplication(
                             ActivitySeverity.Warning,
                             "Some sources could not be searched",
                             string.Join(Environment.NewLine, sourceErrors));
+                    }
+
+                    if (metadataFailureCount > 0)
+                    {
+                        AddActivity(
+                            ActivitySeverity.Warning,
+                            "Some package publishers could not be resolved",
+                            $"{metadataFailureCount} package(s).");
                     }
                 },
                 "Unable to search packages.")
@@ -365,27 +377,10 @@ public sealed class OnlyWingetApplication(
                     updates.Clear();
                     updates.AddRange(distinctUpdates);
 
-                    using var semaphore = new SemaphoreSlim(4);
-                    var resolveTasks = updates.Select(async update =>
-                    {
-                        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-                        try
-                        {
-                            var resolution = await packageResolver.ResolveAsync(update.Package, cancellationToken).ConfigureAwait(false);
-                            if (resolution.IsResolved)
-                            {
-                                lock (packageMetadata)
-                                {
-                                    packageMetadata[update.Package] = resolution;
-                                }
-                            }
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    }).ToArray();
-                    await Task.WhenAll(resolveTasks).ConfigureAwait(false);
+                    await RefreshPackageMetadataAsync(
+                            updates.Select(update => update.Package),
+                            cancellationToken)
+                        .ConfigureAwait(false);
 
                     updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
@@ -508,27 +503,7 @@ public sealed class OnlyWingetApplication(
                         .SelectMany(preset => preset.Packages)
                         .Distinct()
                         .ToArray();
-                    using var semaphore = new SemaphoreSlim(4);
-                    var tasks = packages.Select(async package =>
-                    {
-                        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-                        try
-                        {
-                            var resolution = await packageResolver.ResolveAsync(package, cancellationToken).ConfigureAwait(false);
-                            if (resolution.IsResolved)
-                            {
-                                lock (packageMetadata)
-                                {
-                                    packageMetadata[package] = resolution;
-                                }
-                            }
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    }).ToArray();
-                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                    await RefreshPackageMetadataAsync(packages, cancellationToken).ConfigureAwait(false);
 
                     AddActivity(ActivitySeverity.Information, "Package metadata refreshed", $"{packageMetadata.Count} package(s).");
                 },
@@ -812,7 +787,7 @@ public sealed class OnlyWingetApplication(
             windowsUpdateSelection.Selected.ToArray(),
             windowsUpdateSelection.HeaderState,
             lastWindowsUpdateResults.ToArray(),
-            new Dictionary<PackageIdentity, PackageResolution>(packageMetadata),
+            SnapshotPackageMetadata(),
             capabilities,
             sources.ToArray(),
             sourceError,
@@ -935,8 +910,76 @@ public sealed class OnlyWingetApplication(
         return match;
     }
 
-    public PackageResolution? GetPackageMetadata(PackageIdentity package) =>
-        packageMetadata.GetValueOrDefault(package);
+    public PackageResolution? GetPackageMetadata(PackageIdentity package)
+    {
+        lock (packageMetadata)
+        {
+            return packageMetadata.GetValueOrDefault(package);
+        }
+    }
+
+    private Dictionary<PackageIdentity, PackageResolution> SnapshotPackageMetadata()
+    {
+        lock (packageMetadata)
+        {
+            return new Dictionary<PackageIdentity, PackageResolution>(packageMetadata);
+        }
+    }
+
+    private async Task<int> RefreshPackageMetadataAsync(
+        IEnumerable<PackageIdentity> packages,
+        CancellationToken cancellationToken)
+    {
+        var unresolvedCount = 0;
+        var distinctPackages = packages
+            .Distinct()
+            .Where(package =>
+            {
+                lock (packageMetadata)
+                {
+                    return !packageMetadata.ContainsKey(package);
+                }
+            })
+            .ToArray();
+
+        using var semaphore = new SemaphoreSlim(4);
+        var tasks = distinctPackages.Select(async package =>
+        {
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var resolution = await packageResolver.ResolveAsync(package, cancellationToken).ConfigureAwait(false);
+                if (resolution.IsResolved)
+                {
+                    lock (packageMetadata)
+                    {
+                        packageMetadata[package] = resolution;
+                        packageMetadata[resolution.Package] = resolution;
+                    }
+                }
+                else
+                {
+                    Interlocked.Increment(ref unresolvedCount);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                ExceptionLogger?.Invoke(exception.Message, exception);
+                Interlocked.Increment(ref unresolvedCount);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }).ToArray();
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+        return unresolvedCount;
+    }
 
     private void ReconcileSourcePreferences()
     {

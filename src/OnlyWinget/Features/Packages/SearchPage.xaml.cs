@@ -43,7 +43,7 @@ public sealed partial class SearchPage : UserControl
         QueryBox.PlaceholderText = TextResources.Get("Search_Query");
         QueryBox.Header = TextResources.Get("Search_Query");
         ResultList.SelectionLabel = TextResources.Get("Command_Select_All");
-        ResultList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Architecture", "Header_Match" }.Select(TextResources.Get).ToArray());
+        ResultList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Publisher", "Header_Match" }.Select(TextResources.Get).ToArray());
     }
 
     private async void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)

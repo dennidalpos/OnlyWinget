@@ -99,7 +99,7 @@
                     <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True" />
                     <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="120" />
                     <controls:OnlyWingetTableColumn Header="Version" BindingPath="Version" Width="110" />
-                    <controls:OnlyWingetTableColumn Header="Architecture" BindingPath="Architecture" Width="*" />
+                    <controls:OnlyWingetTableColumn Header="Publisher" BindingPath="Publisher" Width="*" />
                 </controls:OnlyWingetTable>
             </Border>
             <StackPanel Grid.Row="4" Spacing="8">

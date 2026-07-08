@@ -6,7 +6,7 @@ public sealed record UpdateRow(
     string? Source,
     string InstalledVersion,
     string AvailableVersion,
-    string Architecture,
+    string Publisher,
     bool IsSelected,
     string? Status,
     string? ErrorDetails,
