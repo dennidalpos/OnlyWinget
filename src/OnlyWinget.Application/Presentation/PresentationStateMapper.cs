@@ -66,10 +66,13 @@ public static class PresentationStateMapper
                         package.Source,
                         metadata?.Version,
                         FormatPublisher(metadata),
-                        state.SelectedPresetPackages.Contains(package));
+                        state.IncludedPresetPackages.Contains(package));
                 })
+                .OrderBy(row => EmptyToNull(row.Name) ?? row.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.Source, StringComparer.OrdinalIgnoreCase)
                 .ToArray() ?? [],
-            state.PresetSelectionHeader,
+            state.PresetInstallHeader,
             operationResults,
             [
                 new(UiCommandId.AddPreset, "Command_Preset_Add", !isExecuting, UiCommandKind.Primary, Icon: "Add"),
@@ -80,7 +83,7 @@ public static class PresentationStateMapper
                 new(UiCommandId.RemovePresetPackages, "Command_PresetPackage_Remove", hasSelectedPackages && !isExecuting, UiCommandKind.Destructive),
                 new(UiCommandId.ImportPreset, "Command_Preset_Import", !isExecuting, Placement: UiCommandPlacement.Overflow),
                 new(UiCommandId.ExportPreset, "Command_Preset_Export", hasPreset && !isExecuting, Placement: UiCommandPlacement.Overflow),
-                new(UiCommandId.SaveWorkspace, "Command_Workspace_Save", !isExecuting, Placement: UiCommandPlacement.Overflow, Icon: "Save"),
+                new(UiCommandId.SaveWorkspace, "Command_Workspace_Save", !isExecuting, Icon: "Save"),
                 new(UiCommandId.InstallPreset, "Command_Preset_ApplyInstall", hasPackages && canUseWinget && !isExecuting, UiCommandKind.Primary, Icon: "Download"),
                 new(UiCommandId.UninstallPreset, "Command_Preset_ApplyUninstall", hasPackages && canUseWinget && !isExecuting, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_UninstallPreset_Message"),
                 new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isExecuting, UiCommandKind.Cancel, Icon: "Cancel")
@@ -109,6 +112,9 @@ public static class PresentationStateMapper
                         result.Match,
                         state.SelectedSearchPackages.Contains(result.Package));
                 })
+                .OrderBy(row => EmptyToNull(row.Name) ?? row.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.Source, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             state.SearchSelectionHeader,
             [
@@ -148,6 +154,9 @@ public static class PresentationStateMapper
                         result?.ErrorDetails,
                         result?.Output);
                 })
+                .OrderBy(row => EmptyToNull(row.Name) ?? row.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.Source, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             state.UpdatesSelectionHeader,
             operationResults,
@@ -191,6 +200,8 @@ public static class PresentationStateMapper
                         result is null ? null : result.Succeeded ? "Operation_Status_Succeeded" : $"Operation_Status_Failed{(string.IsNullOrWhiteSpace(result.Message) ? string.Empty : $" ({result.Message})")}",
                         result?.Message ?? (result?.RebootRequired == true ? "Restart required." : null));
                 })
+                .OrderBy(row => row.Title, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.UpdateId, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             state.WindowsUpdatesSelectionHeader,
             state.LastWindowsUpdateResults
@@ -228,6 +239,7 @@ public static class PresentationStateMapper
                     source.IsExplicit ? "Source_Type_User" : "Source_Type_Default",
                     source.Status.ToString(),
                     source.IsEnabled))
+                .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             [
                 new(UiCommandId.RefreshSources, "Command_Sources_Refresh", canUseWinget && !isLoading, UiCommandKind.Primary, Icon: "Refresh"),
@@ -245,6 +257,8 @@ public static class PresentationStateMapper
         return new ActivityPresentationState(
             state.Activity
                 .Select(entry => new ActivityRow(entry.Timestamp, entry.Severity, entry.Title, entry.Message))
+                .OrderByDescending(row => row.Timestamp)
+                .ThenBy(row => row.Title, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             [
                 new(UiCommandId.ExportActivity, "Command_Activity_Export", state.Activity.Count > 0, Icon: "Save"),

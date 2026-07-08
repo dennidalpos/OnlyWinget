@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Media;
 using OnlyWinget.Application.App;
+using OnlyWinget.Presentation;
 using OnlyWinget.Shell;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
@@ -24,6 +25,8 @@ public sealed partial class MainWindow : Window
     private readonly CancellationTokenSource windowLifetime = new();
     private string? lastLanguage;
     private string? lastTheme;
+    private string currentRouteId = "home";
+    private bool isRestoringNavigation;
 
     public MainWindow()
     {
@@ -138,8 +141,13 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    private async void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
+        if (isRestoringNavigation)
+        {
+            return;
+        }
+
         var tag = args.IsSettingsSelected
             ? routeDefinitions.Single(route => route.IsSettings).Id
             : (args.SelectedItem as NavigationViewItem)?.Tag as string;
@@ -148,15 +156,23 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (!await ConfirmCurrentNavigationAsync())
+        {
+            isRestoringNavigation = true;
+            SelectRoute(currentRouteId);
+            isRestoringNavigation = false;
+            return;
+        }
+
         ShowPage(tag);
     }
 
-    private void OnItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    private async void OnItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
         var tag = args.IsSettingsInvoked
             ? routeDefinitions.Single(route => route.IsSettings).Id
             : (args.InvokedItemContainer as NavigationViewItem)?.Tag as string;
-        if (tag is not null && routes.ContainsKey(tag)) ShowPage(tag);
+        if (tag is not null && routes.ContainsKey(tag) && await ConfirmCurrentNavigationAsync()) ShowPage(tag);
     }
 
     private void ShowPage(string tag)
@@ -171,7 +187,14 @@ public sealed partial class MainWindow : Window
         {
             PageHost.Content = page;
         }
+
+        currentRouteId = tag;
     }
+
+    private async Task<bool> ConfirmCurrentNavigationAsync() =>
+        PageHost.Content is IPendingNavigationGuard guard
+            ? await guard.ConfirmNavigationAsync()
+            : true;
 
     internal void Navigate(string routeId)
     {

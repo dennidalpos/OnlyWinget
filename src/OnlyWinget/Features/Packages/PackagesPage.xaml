@@ -7,7 +7,7 @@
     xmlns:presentation="using:OnlyWinget.Presentation">
     <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaPackagesBrush}">
         <design:PageScaffold.Commands>
-            <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind PresetMode}" AutomationProperties.AutomationId="PackagesModes">
+            <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind PresetMode}" SelectionChanged="OnModeSelectionChanged" AutomationProperties.AutomationId="PackagesModes">
                 <SelectorBarItem x:Name="PresetMode" Icon="Library" AutomationProperties.AutomationId="PackagesPresetTab" />
                 <SelectorBarItem x:Name="SearchMode" Icon="Find" AutomationProperties.AutomationId="PackagesSearchTab" />
             </SelectorBar>

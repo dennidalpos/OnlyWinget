@@ -18,6 +18,7 @@
             <Grid RowSpacing="12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource CardStyle}">
@@ -45,7 +46,19 @@
                         </ComboBox>
                     </Grid>
                 </Border>
-                <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None">
+                <Grid Grid.Row="1" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="ActivityTimeFilterBox" TextChanged="OnActivityColumnFilterChanged" />
+                    <TextBox x:Name="ActivitySeverityFilterBox" Grid.Column="1" TextChanged="OnActivityColumnFilterChanged" />
+                    <TextBox x:Name="ActivityTitleFilterBox" Grid.Column="2" TextChanged="OnActivityColumnFilterChanged" />
+                    <TextBox x:Name="ActivityMessageFilterBox" Grid.Column="3" TextChanged="OnActivityColumnFilterChanged" />
+                </Grid>
+                <ListView x:Name="ActivityList" Grid.Row="2" SelectionMode="None">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
                             <Setter Property="Padding" Value="0,4" />

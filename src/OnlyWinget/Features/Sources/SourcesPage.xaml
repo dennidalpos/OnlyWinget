@@ -39,6 +39,7 @@
                             <Grid RowSpacing="12">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <design:OnlyWingetWrapPanel Grid.Row="0" HorizontalSpacing="12" VerticalSpacing="8" VerticalAlignment="Center">
@@ -57,7 +58,19 @@
                                     </Button>
                                     <ProgressRing x:Name="LoadingRing" Width="20" Height="20" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" VerticalAlignment="Center" Margin="8,0,0,0" />
                                 </design:OnlyWingetWrapPanel>
-                                <ListView x:Name="SourceList" Grid.Row="1" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
+                                <Grid Grid.Row="1" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="140" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="SourceNameFilterBox" TextChanged="OnSourceFilterChanged" />
+                                    <TextBox x:Name="SourceArgumentFilterBox" Grid.Column="1" TextChanged="OnSourceFilterChanged" />
+                                    <TextBox x:Name="SourceTypeFilterBox" Grid.Column="2" TextChanged="OnSourceFilterChanged" />
+                                    <TextBox x:Name="SourceStatusFilterBox" Grid.Column="3" TextChanged="OnSourceFilterChanged" />
+                                </Grid>
+                                <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
                                     <ListView.ItemContainerStyle>
                                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
                                             <Setter Property="Padding" Value="0,8" />
@@ -73,7 +86,7 @@
                                                     <TextBlock Text="{x:Bind Type, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                                                    <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" DataContextChanged="OnSourceToggleDataContextChanged" />
+                                                    <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" IsOn="{x:Bind IsEnabled, Mode=OneWay}" Toggled="OnSourceEnabledToggled" />
                                                     <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                                 </StackPanel>
                                             </Grid>

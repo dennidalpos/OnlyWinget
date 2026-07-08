@@ -55,6 +55,10 @@ public sealed partial class SourcesPage : Page
         ManageSourcesSectionText.Text = TextResources.Get("Section_ManageSources");
         SourceNameBox.Header = TextResources.Get("Source_Name");
         SourceArgumentBox.Header = TextResources.Get("Source_Argument");
+        SourceNameFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Name"));
+        SourceArgumentFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Argument"));
+        SourceTypeFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Type"));
+        SourceStatusFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Status"));
 
         AddSourceBtn.Content = TextResources.Get("Command_Sources_Add");
 
@@ -91,21 +95,13 @@ public sealed partial class SourcesPage : Page
         await viewModel.ExecuteAsync(args.Command.Id);
     }
 
-    private void OnSourceToggleDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    private void OnSourceFilterChanged(object sender, TextChangedEventArgs args)
     {
-        if (sender is ToggleSwitch toggle)
-        {
-            toggle.Toggled -= OnSourceEnabledToggled;
-            if (toggle.DataContext is SourceRow row)
-            {
-                toggle.IsOn = row.IsEnabled;
-            }
-            else
-            {
-                toggle.IsOn = false;
-            }
-            toggle.Toggled += OnSourceEnabledToggled;
-        }
+        viewModel.SetListFilters(
+            SourceNameFilterBox.Text,
+            SourceArgumentFilterBox.Text,
+            SourceTypeFilterBox.Text,
+            SourceStatusFilterBox.Text);
     }
 
     private void OnSourceEnabledToggled(object sender, RoutedEventArgs args)

@@ -27,11 +27,20 @@ public sealed class SelectionState<TKey>
 
     public bool IsSelected(TKey key) => selected.Contains(key);
 
-    public void ReplaceAvailable(IEnumerable<TKey> keys)
+    public void ReplaceAvailable(IEnumerable<TKey> keys, bool selectAvailable = false)
     {
         available.Clear();
         available.UnionWith(keys);
         selected.IntersectWith(available);
+        if (selectAvailable)
+        {
+            selected.UnionWith(available);
+        }
+    }
+
+    public void ClearSelection()
+    {
+        selected.Clear();
     }
 
     public void SetSelected(TKey key, bool isSelected)

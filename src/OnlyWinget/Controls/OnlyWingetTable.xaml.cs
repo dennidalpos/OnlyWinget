@@ -17,6 +17,8 @@ public sealed partial class OnlyWingetTable : UserControl
     internal readonly TableLayoutHelper layoutHelper = new();
     private Grid? headerGrid;
     private bool hasAutoFitDone;
+    private readonly Dictionary<string, string> columnFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ObservableCollection<object> filteredItems = [];
 
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource), typeof(IEnumerable), typeof(OnlyWingetTable), new PropertyMetadata(null, OnItemsSourceChanged));
@@ -24,6 +26,8 @@ public sealed partial class OnlyWingetTable : UserControl
         nameof(HeaderSelection), typeof(bool?), typeof(OnlyWingetTable), new PropertyMetadata(false, OnHeaderSelectionChanged));
     public static readonly DependencyProperty IsSelectionEnabledProperty = DependencyProperty.Register(
         nameof(IsSelectionEnabled), typeof(bool), typeof(OnlyWingetTable), new PropertyMetadata(true, OnStructureChanged));
+    public static readonly DependencyProperty ToggleOnRowClickProperty = DependencyProperty.Register(
+        nameof(ToggleOnRowClick), typeof(bool), typeof(OnlyWingetTable), new PropertyMetadata(true));
 
     public OnlyWingetTable()
     {
@@ -34,6 +38,7 @@ public sealed partial class OnlyWingetTable : UserControl
         Unloaded += OnUnloaded;
         Rows.ItemClick += OnItemClick;
         SizeChanged += OnSizeChanged;
+        Rows.PointerWheelChanged += OnRowsPointerWheelChanged;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -42,6 +47,19 @@ public sealed partial class OnlyWingetTable : UserControl
         {
             UpdateCollectionSubscription(collection);
         }
+
+        var parentScrollViewer = FindAncestorScrollViewer();
+        if (parentScrollViewer != null)
+        {
+            Rows.SetValue(ScrollViewer.VerticalScrollModeProperty, ScrollMode.Disabled);
+            Rows.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
+        }
+        else
+        {
+            Rows.SetValue(ScrollViewer.VerticalScrollModeProperty, ScrollMode.Enabled);
+            Rows.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
+        }
+
         Rebuild();
     }
 
@@ -54,11 +72,18 @@ public sealed partial class OnlyWingetTable : UserControl
     public IEnumerable? ItemsSource { get => (IEnumerable?)GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
     public bool? HeaderSelection { get => (bool?)GetValue(HeaderSelectionProperty); set => SetValue(HeaderSelectionProperty, value); }
     public bool IsSelectionEnabled { get => (bool)GetValue(IsSelectionEnabledProperty); set => SetValue(IsSelectionEnabledProperty, value); }
+    public bool ToggleOnRowClick { get => (bool)GetValue(ToggleOnRowClickProperty); set => SetValue(ToggleOnRowClickProperty, value); }
     public string SelectionBindingPath { get; set; } = "IsSelected";
     public string SelectionLabel { get; set; } = "Select all";
 
     public event EventHandler<OnlyWingetTableSelectionEventArgs>? SelectionToggled;
     public event EventHandler? ToggleAllRequested;
+    public event EventHandler<OnlyWingetTableRowEventArgs>? RowInvoked;
+
+    internal void RaiseSelectionToggled(object item, bool isSelected)
+    {
+        SelectionToggled?.Invoke(this, new OnlyWingetTableSelectionEventArgs(item, isSelected));
+    }
 
     public void SetHeaders(params string[] headers)
     {
@@ -69,8 +94,8 @@ public sealed partial class OnlyWingetTable : UserControl
     private static void OnItemsSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
         var table = (OnlyWingetTable)sender;
-        table.Rows.ItemsSource = args.NewValue as IEnumerable;
         table.UpdateCollectionSubscription(args.NewValue as INotifyCollectionChanged);
+        table.ApplyFilters();
         table.SynchronizeSelection();
         table.hasAutoFitDone = false;
         table.AutoFitColumns();
@@ -91,6 +116,7 @@ public sealed partial class OnlyWingetTable : UserControl
 
     private void OnItemsSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        ApplyFilters();
         SynchronizeSelection();
         if (e.Action == NotifyCollectionChangedAction.Add || e.Action == NotifyCollectionChangedAction.Reset)
         {
@@ -164,7 +190,8 @@ public sealed partial class OnlyWingetTable : UserControl
             }
 
             // Constrain between 60px and 450px
-            double finalWidth = Math.Max(60, Math.Min(maxTextWidth, 450));
+            // Minimum 90px: the header filter TextBox needs ~88px (64px min + 12px margin each side)
+            double finalWidth = Math.Max(90, Math.Min(maxTextWidth, 450));
 
             col.Width = new GridLength(finalWidth);
         }
@@ -188,7 +215,8 @@ public sealed partial class OnlyWingetTable : UserControl
         Rows.Header = BuildHeader();
         Rows.SelectionMode = ListViewSelectionMode.None;
         Rows.IsItemClickEnabled = IsSelectionEnabled;
-        Rows.ItemsSource = ItemsSource;
+        ApplyFilters();
+        Rows.ItemsSource = filteredItems;
         SynchronizeSelection();
     }
 
@@ -221,7 +249,7 @@ public sealed partial class OnlyWingetTable : UserControl
                 Text = Columns[index].Header,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
-                Padding = new Thickness(12, 8, 12, 8)
+                Padding = new Thickness(12, 0, 12, 0)
             };
             header.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderTextBlockStyle"];
             var isLast = index == Columns.Count - 1;
@@ -229,9 +257,31 @@ public sealed partial class OnlyWingetTable : UserControl
             var cellGrid = new Grid
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch
+                VerticalAlignment = VerticalAlignment.Stretch,
+                RowSpacing = 6,
+                Padding = new Thickness(0, 8, 0, 8),
+                // Prevent content (filter TextBox) from overflowing the column boundary
+                MaxWidth = layoutHelper.GetWidth(index)
             };
+            cellGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            cellGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             cellGrid.Children.Add(header);
+
+            var filterBox = new TextBox
+            {
+                PlaceholderText = string.Format(
+                    global::System.Globalization.CultureInfo.CurrentCulture,
+                    global::OnlyWinget.TextResources.Get("Filter_Column_Placeholder"),
+                    Columns[index].Header),
+                Margin = new Thickness(12, 0, 12, 0),
+                MinWidth = 0,
+                Tag = Columns[index].BindingPath,
+                Text = columnFilters.GetValueOrDefault(Columns[index].BindingPath) ?? string.Empty
+            };
+            AutomationProperties.SetName(filterBox, filterBox.PlaceholderText);
+            filterBox.TextChanged += OnColumnFilterChanged;
+            Grid.SetRow(filterBox, 1);
+            cellGrid.Children.Add(filterBox);
 
             if (!isLast)
             {
@@ -263,7 +313,7 @@ public sealed partial class OnlyWingetTable : UserControl
                     if (!isDragging) return;
                     var pointerPoint = args.GetCurrentPoint(this);
                     double deltaX = pointerPoint.Position.X - startPointerX;
-                    double newWidth = Math.Max(originalWidth + deltaX, 50); // min width 50px
+                    double newWidth = Math.Max(originalWidth + deltaX, 90); // min width matches filter TextBox minimum
                     Columns[colIndex].Width = new GridLength(newWidth);
                     RecalculateWidths(ActualWidth);
                     args.Handled = true;
@@ -300,6 +350,12 @@ public sealed partial class OnlyWingetTable : UserControl
             Grid.SetColumn(cell, index + (IsSelectionEnabled ? 1 : 0));
             headerGrid.Children.Add(cell);
         }
+        double total = (IsSelectionEnabled ? layoutHelper.CheckBoxWidth : 0);
+        for (int i = 0; i < Columns.Count; i++)
+        {
+            total += layoutHelper.GetWidth(i);
+        }
+        headerGrid.Width = total;
         var headerBorder = new Border { Padding = new Thickness(0), CornerRadius = new CornerRadius(8, 8, 0, 0), Child = headerGrid };
         headerBorder.Style = (Style)global::Microsoft.UI.Xaml.Application.Current.Resources["TableHeaderSurfaceStyle"];
         return headerBorder;
@@ -409,7 +465,7 @@ public sealed partial class OnlyWingetTable : UserControl
         layoutHelper.CheckBoxWidth = checkboxWidth;
         for (int i = 0; i < Columns.Count; i++)
         {
-            layoutHelper.SetWidth(i, Math.Max(calculatedWidths[i], 50));
+            layoutHelper.SetWidth(i, Math.Max(calculatedWidths[i], 90));
         }
 
         UpdateHeaderGridWidths();
@@ -419,12 +475,15 @@ public sealed partial class OnlyWingetTable : UserControl
     {
         if (headerGrid is null) return;
 
+        double total = 0;
         int colIndex = 0;
         if (IsSelectionEnabled)
         {
             if (headerGrid.ColumnDefinitions.Count > colIndex)
             {
-                headerGrid.ColumnDefinitions[colIndex].Width = new GridLength(layoutHelper.CheckBoxWidth);
+                var w = layoutHelper.CheckBoxWidth;
+                headerGrid.ColumnDefinitions[colIndex].Width = new GridLength(w);
+                total += w;
             }
             colIndex++;
         }
@@ -433,10 +492,23 @@ public sealed partial class OnlyWingetTable : UserControl
         {
             if (headerGrid.ColumnDefinitions.Count > colIndex)
             {
-                headerGrid.ColumnDefinitions[colIndex].Width = new GridLength(layoutHelper.GetWidth(i));
+                var w = layoutHelper.GetWidth(i);
+                headerGrid.ColumnDefinitions[colIndex].Width = new GridLength(w);
+                total += w;
+
+                // Update the MaxWidth on the inner cellGrid so the filter TextBox
+                // does not overflow the column boundary
+                foreach (var child in headerGrid.Children)
+                {
+                    if (child is Border border && Grid.GetColumn(border) == colIndex && border.Child is Grid cellGrid)
+                    {
+                        cellGrid.MaxWidth = w;
+                    }
+                }
             }
             colIndex++;
         }
+        headerGrid.Width = total;
     }
 
     private void SynchronizeSelection()
@@ -459,8 +531,96 @@ public sealed partial class OnlyWingetTable : UserControl
     {
         var item = e.ClickedItem;
         if (item is null) return;
+        if (!ToggleOnRowClick)
+        {
+            RowInvoked?.Invoke(this, new OnlyWingetTableRowEventArgs(item));
+            return;
+        }
         var isSelected = item.GetType().GetProperty(SelectionBindingPath)?.GetValue(item) is true;
         SelectionToggled?.Invoke(this, new OnlyWingetTableSelectionEventArgs(item, !isSelected));
+    }
+
+    private ScrollViewer? FindAncestorScrollViewer()
+    {
+        DependencyObject curr = VisualTreeHelper.GetParent(this);
+        while (curr != null)
+        {
+            if (curr is ScrollViewer sv) return sv;
+            curr = VisualTreeHelper.GetParent(curr);
+        }
+        return null;
+    }
+
+    private void OnRowsPointerWheelChanged(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        var parentScrollViewer = FindAncestorScrollViewer();
+        if (parentScrollViewer is null) return;
+
+        var pointerPoint = e.GetCurrentPoint(Rows);
+        var properties = pointerPoint.Properties;
+        if (!properties.IsHorizontalMouseWheel)
+        {
+            var delta = properties.MouseWheelDelta;
+            if (delta != 0)
+            {
+                parentScrollViewer.ChangeView(null, parentScrollViewer.VerticalOffset - delta, null, false);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void OnColumnFilterChanged(object sender, TextChangedEventArgs args)
+    {
+        if (sender is not TextBox { Tag: string bindingPath } box)
+        {
+            return;
+        }
+
+        var value = box.Text.Trim();
+        if (value.Length == 0)
+        {
+            columnFilters.Remove(bindingPath);
+        }
+        else
+        {
+            columnFilters[bindingPath] = value;
+        }
+
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredItems.Clear();
+        if (ItemsSource is null)
+        {
+            Rows.ItemsSource = filteredItems;
+            return;
+        }
+
+        foreach (var item in ItemsSource)
+        {
+            if (item is not null && MatchesFilters(item))
+            {
+                filteredItems.Add(item);
+            }
+        }
+
+        Rows.ItemsSource = filteredItems;
+    }
+
+    private bool MatchesFilters(object item)
+    {
+        foreach (var filter in columnFilters)
+        {
+            var value = item.GetType().GetProperty(filter.Key)?.GetValue(item)?.ToString() ?? string.Empty;
+            if (!value.Contains(filter.Value, StringComparison.CurrentCultureIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 
@@ -660,6 +820,7 @@ public sealed class OnlyWingetTableRow : Grid
         {
             ColumnDefinitions[colIndex].Width = new GridLength(newWidth);
         }
+        UpdateRowWidth();
     }
 
     private void OnCheckBoxWidthChanged(double newWidth)
@@ -668,6 +829,7 @@ public sealed class OnlyWingetTableRow : Grid
         {
             ColumnDefinitions[0].Width = new GridLength(newWidth);
         }
+        UpdateRowWidth();
     }
 
     private void SyncWidths(OnlyWingetTable parentTable)
@@ -688,6 +850,7 @@ public sealed class OnlyWingetTableRow : Grid
                 ColumnDefinitions[colIndex].Width = new GridLength(layoutHelper.GetWidth(i));
             }
         }
+        UpdateRowWidth();
     }
 
     private void InitializeRow()
@@ -787,6 +950,17 @@ public sealed class OnlyWingetTableRow : Grid
         }
 
         UpdateAutomationProperties();
+        UpdateRowWidth();
+    }
+
+    private void UpdateRowWidth()
+    {
+        double total = 0;
+        foreach (var colDef in ColumnDefinitions)
+        {
+            total += colDef.Width.Value;
+        }
+        Width = total;
     }
 
     private void UpdateAutomationProperties()
@@ -816,4 +990,9 @@ public sealed class OnlyWingetTableRow : Grid
         }
         return null;
     }
+}
+
+public sealed class OnlyWingetTableRowEventArgs(object item) : EventArgs
+{
+    public object Item { get; } = item;
 }

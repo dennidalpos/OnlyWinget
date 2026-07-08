@@ -45,6 +45,10 @@ public sealed partial class ActivityPage : Page
         Scaffold.Title = TextResources.Get("Activity_Title");
         Scaffold.Subtitle = TextResources.Get("Activity_Subtitle");
         SearchBox.PlaceholderText = TextResources.Get("Activity_Search");
+        ActivityTimeFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Time"));
+        ActivitySeverityFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Severity"));
+        ActivityTitleFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Title"));
+        ActivityMessageFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Message"));
         ((ComboBoxItem)SeverityFilter.Items[0]).Content = TextResources.Get("Activity_AllSeverities");
         for (var index = 1; index < SeverityFilter.Items.Count; index++)
         {
@@ -76,6 +80,7 @@ public sealed partial class ActivityPage : Page
 
     private void OnSearchChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args) => ApplyFilter();
     private void OnFilterChanged(object sender, SelectionChangedEventArgs args) => ApplyFilter();
+    private void OnActivityColumnFilterChanged(object sender, TextChangedEventArgs args) => ApplyColumnFilter();
 
     private void ApplyFilter()
     {
@@ -83,6 +88,18 @@ public sealed partial class ActivityPage : Page
         {
             var selectedCategory = CategoryFilter?.SelectedItem as ComboBoxItem;
             viewModel.SetFilter(SearchBox.Text, selected.Tag?.ToString() ?? "all", selectedCategory?.Tag?.ToString() ?? "all");
+        }
+    }
+
+    private void ApplyColumnFilter()
+    {
+        if (viewModel is not null && ActivityTimeFilterBox is not null)
+        {
+            viewModel.SetColumnFilters(
+                ActivityTimeFilterBox.Text,
+                ActivitySeverityFilterBox.Text,
+                ActivityTitleFilterBox.Text,
+                ActivityMessageFilterBox.Text);
         }
     }
 

@@ -7,7 +7,7 @@ public abstract class FeatureViewModel(OnlyWingetApplication workflow, Action<Ac
 {
     private bool isDisposed;
 
-    protected OnlyWingetApplication Workflow { get; } = workflow;
+    internal OnlyWingetApplication Workflow { get; } = workflow;
 
     public void Activate()
     {

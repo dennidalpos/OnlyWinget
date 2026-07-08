@@ -13,7 +13,7 @@ public static class ObservableCollectionExtensions
         }
     }
 
-    public static void SynchronizeWith<T, TKey>(this ObservableCollection<T> target, IEnumerable<T> source, Func<T, TKey> keySelector)
+    public static void SynchronizeWith<T, TKey>(this ObservableCollection<T> target, IEnumerable<T> source, Func<T, TKey> keySelector, System.Action<T, T>? updateAction = null)
         where TKey : notnull
     {
         var desired = source.ToArray();
@@ -50,7 +50,11 @@ public static class ObservableCollectionExtensions
                 target.Move(currentIndex, index);
             }
 
-            if (!EqualityComparer<T>.Default.Equals(target[index], desired[index]))
+            if (updateAction != null)
+            {
+                updateAction(target[index], desired[index]);
+            }
+            else if (!EqualityComparer<T>.Default.Equals(target[index], desired[index]))
             {
                 target[index] = desired[index];
             }

@@ -34,7 +34,18 @@ public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(
     }
 
     public Task SearchAsync(string query) => RunAsync(token => Workflow.SearchAsync(query, token));
-    public Task AddSelectedAsync() => RunAsync(token => Workflow.AddSelectedSearchResultsToActivePresetAsync(token));
+    public async Task AddSelectedAsync()
+    {
+        var added = false;
+        await RunAsync(async token =>
+        {
+            added = (await Workflow.AddSelectedSearchResultsToActivePresetAsync(token)).Succeeded;
+        });
+        if (added)
+        {
+            await RunAsync(token => Workflow.SaveWorkspaceAsync(token));
+        }
+    }
 
     protected override void Refresh()
     {

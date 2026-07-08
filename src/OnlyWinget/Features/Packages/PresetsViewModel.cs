@@ -1,4 +1,5 @@
 using OnlyWinget.Application.Presentation;
+using OnlyWinget.Application.App;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Selection;
 using OnlyWinget.Application.Presets;
@@ -39,7 +40,8 @@ public sealed class PresetsViewModel : FeatureViewModel
 
     public void SetActivePreset(string name) => Workflow.SetActivePreset(name);
     public void ToggleAll() => Workflow.ToggleAllPresetPackages();
-    public void Toggle(PresetPackageRow row) => Workflow.TogglePresetPackage(new PackageIdentity(row.PackageId, row.Source));
+    public void Toggle(PresetPackageRow row) => Workflow.TogglePresetPackageInclusion(new PackageIdentity(row.PackageId, row.Source));
+    public void Select(PresetPackageRow row) => Workflow.SelectPresetPackage(new PackageIdentity(row.PackageId, row.Source));
     public void Cancel() => cancellation?.Cancel();
 
     public async Task ExecuteAsync(UiCommand command, string source)
@@ -50,33 +52,55 @@ public sealed class PresetsViewModel : FeatureViewModel
             case UiCommandId.AddPreset:
                 if (Validate(PresetName))
                 {
-                    Workflow.AddPreset(PresetName.Value.Trim());
+                    if (Workflow.AddPreset(PresetName.Value.Trim()).Succeeded)
+                    {
+                        await AutoSaveWorkspaceAsync();
+                    }
                     PresetName.Clear();
                 }
                 break;
             case UiCommandId.RenamePreset:
                 if (Validate(PresetName))
                 {
-                    Workflow.RenameActivePreset(PresetName.Value.Trim());
+                    if (Workflow.RenameActivePreset(PresetName.Value.Trim()).Succeeded)
+                    {
+                        await AutoSaveWorkspaceAsync();
+                    }
                     PresetName.Clear();
                 }
                 break;
-            case UiCommandId.RemovePreset: Workflow.RemoveActivePreset(); break;
+            case UiCommandId.RemovePreset:
+                if (Workflow.RemoveActivePreset().Succeeded)
+                {
+                    await AutoSaveWorkspaceAsync();
+                }
+                break;
             case UiCommandId.AddPresetPackage:
                 if (Validate(PackageId))
                 {
-                    await RunAsync(token => Workflow.AddPackageToActivePresetAsync(Package(source), token));
+                    if (await RunResultAsync(token => Workflow.AddPackageToActivePresetAsync(Package(source), token)))
+                    {
+                        await AutoSaveWorkspaceAsync();
+                    }
                     PackageId.Clear();
                 }
                 break;
             case UiCommandId.EditPresetPackage when Workflow.State.SelectedPresetPackages.SingleOrDefault() is { } selected:
                 if (Validate(PackageId))
                 {
-                    await RunAsync(token => Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), token));
+                    if (await RunResultAsync(token => Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), token)))
+                    {
+                        await AutoSaveWorkspaceAsync();
+                    }
                     PackageId.Clear();
                 }
                 break;
-            case UiCommandId.RemovePresetPackages: Workflow.RemoveSelectedPackagesFromActivePreset(); break;
+            case UiCommandId.RemovePresetPackages:
+                if (Workflow.RemoveSelectedPackagesFromActivePreset().Succeeded)
+                {
+                    await AutoSaveWorkspaceAsync();
+                }
+                break;
             case UiCommandId.ImportPreset: await ImportAsync(); break;
             case UiCommandId.ExportPreset: await ExportAsync(); break;
             case UiCommandId.SaveWorkspace: await RunAsync(token => Workflow.SaveWorkspaceAsync(token)); break;
@@ -100,6 +124,19 @@ public sealed class PresetsViewModel : FeatureViewModel
         finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
     }
 
+    private async Task<bool> RunResultAsync(Func<CancellationToken, Task<ApplicationActionResult>> action)
+    {
+        var succeeded = false;
+        await RunAsync(async token =>
+        {
+            succeeded = (await action(token)).Succeeded;
+        });
+        return succeeded;
+    }
+
+    private Task AutoSaveWorkspaceAsync() =>
+        RunAsync(token => Workflow.SaveWorkspaceAsync(token));
+
     private Task ApplyAsync(PackageAction action) =>
         RunAsync(token => Workflow.ApplyActivePresetAsync(action, token));
 
@@ -107,14 +144,19 @@ public sealed class PresetsViewModel : FeatureViewModel
     {
         try
         {
+            var imported = false;
             await RunAsync(async token =>
             {
                 var json = await App.UiServices.FilePicker.PickAndReadTextAsync(App.WindowId, ".json", token);
                 if (json is not null)
                 {
-                    await Workflow.ImportPresetAsync(json, token);
+                    imported = (await Workflow.ImportPresetAsync(json, token)).Succeeded;
                 }
             });
+            if (imported)
+            {
+                await AutoSaveWorkspaceAsync();
+            }
         }
         catch (Exception exception) when (exception is not OperationCanceledException) { Workflow.ReportExternalFailure(TextResources.Get("Error_PresetImportRead")); }
     }

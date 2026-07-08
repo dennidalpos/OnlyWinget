@@ -608,6 +608,127 @@ public sealed class OnlyWingetApplicationTests
         Assert.Equal(entries, app.State.Activity);
     }
 
+    [Fact]
+    public async Task PresetsAreStoredAndExposedSortedByName()
+    {
+        var app = CreateApplication();
+        Assert.True(app.AddPreset("ZPreset").Succeeded);
+        Assert.True(app.AddPreset("APreset").Succeeded);
+        Assert.True(app.AddPreset("MPreset").Succeeded);
+
+        // Workspace normalization happens on save
+        var saveResult = await app.SaveWorkspaceAsync(CancellationToken.None);
+        Assert.True(saveResult.Succeeded);
+
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+        Assert.Equal(new[] { "APreset", "MPreset", "ZPreset" }, app.State.Workspace.Presets.Select(p => p.Name));
+        Assert.Equal(new[] { "APreset", "MPreset", "ZPreset" }, presentation.Presets.PresetNames);
+    }
+
+    [Fact]
+    public async Task SearchUpdatePresetPresentationRowsAreSortedDeterministically()
+    {
+        // 1. Search Results
+        var search = new StubPackageSearch(
+            new PackageSearchResult(new PackageIdentity("Z.Z", "winget"), "ZName", "1.0", null),
+            new PackageSearchResult(new PackageIdentity("A.A", "winget"), "AName", "1.0", null));
+        var app = CreateApplication(search: search);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.SearchAsync("test", CancellationToken.None);
+
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+        Assert.Equal("AName", presentation.Search.Results[0].Name);
+        Assert.Equal("ZName", presentation.Search.Results[1].Name);
+
+        // 2. Windows Updates
+        var winUpdates = new StubWindowsUpdateService(
+            [
+                new WindowsUpdateItem(new WindowsUpdateIdentity("ZId", 1), "ZTitle", "Description", "Critical", ["OS"], ["KB2"], 100UL, true, true),
+                new WindowsUpdateItem(new WindowsUpdateIdentity("AId", 1), "ATitle", "Description", "Critical", ["OS"], ["KB1"], 100UL, true, true)
+            ],
+            []);
+        app = CreateApplication(windowsUpdates: winUpdates);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.ScanWindowsUpdatesAsync(new WindowsUpdateOptions(), CancellationToken.None);
+
+        presentation = PresentationStateMapper.FromApplicationState(app.State);
+        Assert.Equal("ATitle", presentation.WindowsUpdates.Updates[0].Title);
+        Assert.Equal("ZTitle", presentation.WindowsUpdates.Updates[1].Title);
+
+        // 3. Preset Packages
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Z.Package", "winget"), "Z.Package", "1.0", "Publisher", true, null),
+            new PackageResolution(new PackageIdentity("A.Package", "winget"), "A.Package", "1.0", "Publisher", true, null));
+        app = CreateApplication(resolver: resolver);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        await app.AddPackageToActivePresetAsync(new PackageIdentity("Z.Package", "winget"), CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(new PackageIdentity("A.Package", "winget"), CancellationToken.None);
+
+        presentation = PresentationStateMapper.FromApplicationState(app.State);
+        Assert.Equal("A.Package", presentation.Presets.Packages[0].PackageId);
+        Assert.Equal("Z.Package", presentation.Presets.Packages[1].PackageId);
+    }
+
+    [Fact]
+    public async Task PresetInstallPlansIncludeAllByDefaultAndExcludeSkipped()
+    {
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([]));
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("A.Pkg", "winget"), "A.Pkg", "1.0", "Publisher", true, null),
+            new PackageResolution(new PackageIdentity("B.Pkg", "winget"), "B.Pkg", "1.0", "Publisher", true, null));
+        var app = CreateApplication(executor: executor, resolver: resolver);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        var pkg1 = new PackageIdentity("A.Pkg", "winget");
+        var pkg2 = new PackageIdentity("B.Pkg", "winget");
+        await app.AddPackageToActivePresetAsync(pkg1, CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(pkg2, CancellationToken.None);
+
+        // All included by default
+        Assert.Contains(pkg1, app.State.IncludedPresetPackages);
+        Assert.Contains(pkg2, app.State.IncludedPresetPackages);
+
+        // Toggle pkg2 to skip it
+        app.TogglePresetPackageInclusion(pkg2);
+        Assert.Contains(pkg1, app.State.IncludedPresetPackages);
+        Assert.DoesNotContain(pkg2, app.State.IncludedPresetPackages);
+
+        // Apply active preset (Install)
+        await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
+
+        // Plan should only contain pkg1
+        Assert.NotNull(executor.LastPlan);
+        var planPkg = Assert.Single(executor.LastPlan.Selections);
+        Assert.Equal(pkg1.Id, planPkg.Package.Id);
+    }
+
+    [Fact]
+    public void RemovingAPresetRequiresConfirmationInCommandPath()
+    {
+        var app = CreateApplication();
+        app.AddPreset("Default");
+        var presentation = PresentationStateMapper.FromApplicationState(app.State);
+        var removeCmd = presentation.Presets.Commands.Single(c => c.Id == UiCommandId.RemovePreset);
+        Assert.Equal("Dialog_RemovePreset_Message", removeCmd.ConfirmationResourceKey);
+    }
+
+    [Fact]
+    public async Task SaveWorkspaceSavesStateToStore()
+    {
+        var store = new MemoryWorkspaceStore();
+        var app = CreateApplication(workspaceStore: store);
+        app.AddPreset("NewPreset");
+
+        Assert.Equal(0, store.SaveCount);
+        var result = await app.SaveWorkspaceAsync(CancellationToken.None);
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, store.SaveCount);
+    }
+
     private static OnlyWingetApplication CreateApplication(
         SystemCapabilities? capabilities = null,
         StubPackageSearch? search = null,
@@ -617,10 +738,11 @@ public sealed class OnlyWingetApplicationTests
         StubSourceService? sources = null,
         RecordingOperationExecutor? executor = null,
         ISourcePreferenceStore? sourcePreferences = null,
-        ISystemCapabilityService? capabilityService = null)
+        ISystemCapabilityService? capabilityService = null,
+        IWorkspaceStore? workspaceStore = null)
     {
         return new OnlyWingetApplication(
-            new MemoryWorkspaceStore(),
+            workspaceStore ?? new MemoryWorkspaceStore(),
             capabilityService ?? new StubSystemCapabilityService(capabilities),
             search ?? new StubPackageSearch(),
             resolver ?? new StubPackageResolver(),
@@ -634,11 +756,13 @@ public sealed class OnlyWingetApplicationTests
     private sealed class MemoryWorkspaceStore : IWorkspaceStore
     {
         private WorkspaceState state = WorkspaceState.Empty;
+        public int SaveCount { get; set; }
 
         public Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(state);
 
         public Task SaveAsync(WorkspaceState state, CancellationToken cancellationToken)
         {
+            SaveCount++;
             this.state = state;
             return Task.CompletedTask;
         }

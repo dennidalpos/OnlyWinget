@@ -18,7 +18,7 @@
                         <Button x:Name="AddPresetBtn" AutomationProperties.AutomationId="AddPresetBtn" VerticalAlignment="Center" Padding="8,6">
                             <SymbolIcon Symbol="Add" />
                             <Button.Flyout>
-                                <Flyout x:Name="AddPresetFlyout">
+                                <Flyout x:Name="AddPresetFlyout" Opened="OnPendingFlyoutOpened" Closed="OnPendingFlyoutClosed">
                                     <StackPanel Spacing="8" Width="240">
                                         <TextBox x:Name="PresetNameBox" AutomationProperties.AutomationId="PresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="SavePresetBtn" AutomationProperties.AutomationId="SavePresetBtn" Click="OnAddPresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
@@ -31,7 +31,7 @@
                         <Button x:Name="RenamePresetBtn" AutomationProperties.AutomationId="RenamePresetBtn" VerticalAlignment="Center" Padding="8,6">
                             <SymbolIcon Symbol="Edit" />
                             <Button.Flyout>
-                                <Flyout x:Name="RenamePresetFlyout">
+                                <Flyout x:Name="RenamePresetFlyout" Opened="OnPendingFlyoutOpened" Closed="OnPendingFlyoutClosed">
                                     <StackPanel Spacing="8" Width="240">
                                         <TextBox x:Name="RenamePresetNameBox" AutomationProperties.AutomationId="RenamePresetNameTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PresetName.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="SaveRenamePresetBtn" AutomationProperties.AutomationId="SaveRenamePresetBtn" Click="OnRenamePresetClick" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" />
@@ -66,7 +66,7 @@
                 <!-- Add Package Button + Flyout -->
                 <Button x:Name="AddPackageBtn" Style="{StaticResource AddPrimaryButtonStyle}" AutomationProperties.AutomationId="AddPackageBtn" VerticalAlignment="Center">
                     <Button.Flyout>
-                        <Flyout x:Name="AddPackageFlyout">
+                        <Flyout x:Name="AddPackageFlyout" Opened="OnPendingFlyoutOpened" Closed="OnPendingFlyoutClosed">
                             <StackPanel Spacing="8" Width="240">
                                 <TextBox x:Name="PackageIdBox" AutomationProperties.AutomationId="PresetPackageIdTextBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PackageId.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
                                 <TextBox x:Name="PackageSourceBox" AutomationProperties.AutomationId="PresetPackageSourceTextBox" Style="{StaticResource FormTextBoxStyle}" HorizontalAlignment="Stretch"/>
@@ -79,7 +79,7 @@
                 <!-- Edit Package Button + Flyout -->
                 <Button x:Name="EditPackageBtn" Style="{StaticResource EditButtonStyle}" AutomationProperties.AutomationId="EditPackageBtn" VerticalAlignment="Center">
                     <Button.Flyout>
-                        <Flyout x:Name="EditPackageFlyout" Opened="OnEditPackageFlyoutOpened">
+                        <Flyout x:Name="EditPackageFlyout" Opened="OnEditPackageFlyoutOpened" Closed="OnPendingFlyoutClosed">
                             <StackPanel Spacing="8" Width="240">
                                 <TextBox x:Name="EditPackageIdBox" Style="{StaticResource FormTextBoxStyle}" Text="{x:Bind ViewModel.PackageId.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
                                 <TextBox x:Name="EditPackageSourceBox" Style="{StaticResource FormTextBoxStyle}" HorizontalAlignment="Stretch"/>
@@ -94,7 +94,7 @@
             </design:OnlyWingetWrapPanel>
             <states:StatePresenter x:Name="PageState" Grid.Row="2"/>
             <Border Grid.Row="3" Style="{StaticResource ListCardStyle}" MinHeight="300">
-                <controls:OnlyWingetTable x:Name="PackageList" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled">
+                <controls:OnlyWingetTable x:Name="PackageList" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" ToggleOnRowClick="False" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled" RowInvoked="OnPackageRowInvoked">
                     <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="180" IsPrimary="True" />
                     <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="240" IsTextSelectable="True" />
                     <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="120" />

@@ -11,6 +11,10 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
     private string query = string.Empty;
     private string severity = "all";
     private string category = "all";
+    private string timeFilter = string.Empty;
+    private string severityFilter = string.Empty;
+    private string titleFilter = string.Empty;
+    private string messageFilter = string.Empty;
     private FeatureState pageState = FeatureState.Ready;
 
     public ObservableCollection<ActivityRow> Entries { get; } = [];
@@ -22,6 +26,15 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
         query = search.Trim();
         severity = selectedSeverity;
         category = selectedCategory;
+        ApplyFilter();
+    }
+
+    public void SetColumnFilters(string time, string severityValue, string title, string message)
+    {
+        timeFilter = time.Trim();
+        severityFilter = severityValue.Trim();
+        titleFilter = title.Trim();
+        messageFilter = message.Trim();
         ApplyFilter();
     }
 
@@ -69,6 +82,13 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
         Entries.ReplaceWith(allEntries.Where(entry =>
             (query.Length == 0 || entry.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || entry.Message.Contains(query, StringComparison.CurrentCultureIgnoreCase)) &&
             (severity == "all" || string.Equals(entry.Severity.ToString(), severity, StringComparison.Ordinal)) &&
-            (category == "all" || Category(entry) == category)));
+            (category == "all" || Category(entry) == category) &&
+            Matches(entry.Timestamp.ToString("g", System.Globalization.CultureInfo.CurrentCulture), timeFilter) &&
+            Matches(LocalizeSeverity(entry.Severity), severityFilter) &&
+            Matches(entry.Title, titleFilter) &&
+            Matches(entry.Message, messageFilter)));
     }
+
+    private static bool Matches(string value, string filter) =>
+        filter.Length == 0 || value.Contains(filter, StringComparison.CurrentCultureIgnoreCase);
 }

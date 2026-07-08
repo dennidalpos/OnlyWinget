@@ -31,6 +31,7 @@ public sealed class OnlyWingetApplication(
     private readonly PresetDocumentService presetDocuments = new();
     private readonly OperationPlanner operationPlanner = new();
     private readonly SelectionState<PackageIdentity> presetSelection = new();
+    private readonly SelectionState<PackageIdentity> presetInstallSelection = new();
     private readonly SelectionState<PackageIdentity> searchSelection = new();
     private readonly SelectionState<PackageIdentity> updateSelection = new();
     private readonly SelectionState<WindowsUpdateIdentity> windowsUpdateSelection = new();
@@ -113,7 +114,7 @@ public sealed class OnlyWingetApplication(
                 throw new InvalidOperationException("A preset with the same name already exists.");
             }
 
-            workspace = new WorkspaceState([.. workspace.Presets, preset], preset.Name);
+            workspace = NormalizeWorkspace(new WorkspaceState([.. workspace.Presets, preset], preset.Name));
             RefreshPresetSelection();
             AddActivity(ActivitySeverity.Success, "Preset added", preset.Name);
         });
@@ -217,7 +218,16 @@ public sealed class OnlyWingetApplication(
 
     public ApplicationActionResult TogglePresetPackage(PackageIdentity package) => ToggleSelection(presetSelection, package);
 
-    public ApplicationActionResult ToggleAllPresetPackages() => Run(presetSelection.ToggleAll);
+    public ApplicationActionResult TogglePresetPackageInclusion(PackageIdentity package) => ToggleSelection(presetInstallSelection, package);
+
+    public ApplicationActionResult ToggleAllPresetPackages() => Run(presetInstallSelection.ToggleAll);
+
+    public ApplicationActionResult SelectPresetPackage(PackageIdentity package) =>
+        Run(() =>
+        {
+            presetSelection.ClearSelection();
+            presetSelection.SetSelected(package, true);
+        });
 
     public async Task<ApplicationActionResult> SearchAsync(string query, CancellationToken cancellationToken)
     {
@@ -413,7 +423,10 @@ public sealed class OnlyWingetApplication(
                     }
 
                     windowsUpdates.Clear();
-                    windowsUpdates.AddRange(outcome.Rows.DistinctBy(update => WindowsUpdateFingerprint(update.Identity)));
+                    windowsUpdates.AddRange(outcome.Rows
+                        .DistinctBy(update => WindowsUpdateFingerprint(update.Identity))
+                        .OrderBy(update => update.Title, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(update => update.Identity.UpdateId, StringComparer.OrdinalIgnoreCase));
                     windowsUpdateSelection.ReplaceAvailable(windowsUpdates.Select(update => update.Identity));
                     AddActivity(ActivitySeverity.Information, "Windows Update scan completed", $"{windowsUpdates.Count} update(s).");
                 },
@@ -617,7 +630,11 @@ public sealed class OnlyWingetApplication(
         CancellationToken cancellationToken,
         IProgress<OperationProgress>? progress = null)
     {
-        var plan = operationPlanner.CreatePresetPlan(RequireActivePreset(), action);
+        var active = RequireActivePreset();
+        var includedPackages = active.Packages
+            .Where(package => presetInstallSelection.Selected.Contains(package))
+            .ToArray();
+        var plan = operationPlanner.CreatePresetPlan(new Preset(active.Name, includedPackages), action);
         return await ExecutePlanAsync(plan, cancellationToken, progress).ConfigureAwait(false);
     }
 
@@ -664,7 +681,7 @@ public sealed class OnlyWingetApplication(
             }
 
             var validatedPreset = new Preset(preset.Name, validatedPackages);
-            workspace = new WorkspaceState([.. workspace.Presets, validatedPreset], validatedPreset.Name);
+            workspace = NormalizeWorkspace(new WorkspaceState([.. workspace.Presets, validatedPreset], validatedPreset.Name));
             RefreshPresetSelection();
             AddActivity(ActivitySeverity.Success, "Preset imported", validatedPreset.Name);
         }, "Unable to import and validate the preset.").ConfigureAwait(false);
@@ -776,7 +793,8 @@ public sealed class OnlyWingetApplication(
             workspace,
             active,
             presetSelection.Selected.ToArray(),
-            presetSelection.HeaderState,
+            presetInstallSelection.Selected.ToArray(),
+            presetInstallSelection.HeaderState,
             searchResults.ToArray(),
             searchSelection.Selected.ToArray(),
             searchSelection.HeaderState,
@@ -789,7 +807,7 @@ public sealed class OnlyWingetApplication(
             lastWindowsUpdateResults.ToArray(),
             SnapshotPackageMetadata(),
             capabilities,
-            sources.ToArray(),
+            sources.OrderBy(source => source.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
             sourceError,
             activity.ToArray(),
             lastOperationResults.ToArray(),
@@ -1161,14 +1179,26 @@ public sealed class OnlyWingetApplication(
 
     private void RefreshPresetSelection()
     {
-        presetSelection.ReplaceAvailable(ActivePreset?.Packages ?? []);
+        var packages = ActivePreset?.Packages ?? [];
+        presetSelection.ReplaceAvailable(packages);
+        presetInstallSelection.ReplaceAvailable(packages, selectAvailable: true);
     }
 
     private static WorkspaceState NormalizeWorkspace(WorkspaceState state)
     {
         var presets = state.Presets
             .GroupBy(preset => preset.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.First())
+            .Select(group =>
+            {
+                var preset = group.First();
+                return new Preset(
+                    preset.Name,
+                    preset.Packages
+                        .OrderBy(package => package.Id, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(package => package.Source, StringComparer.OrdinalIgnoreCase)
+                        .ToArray());
+            })
+            .OrderBy(preset => preset.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
         var activeName = state.ActivePresetName is not null &&
             presets.Any(preset => PresetNameEquals(preset.Name, state.ActivePresetName))
