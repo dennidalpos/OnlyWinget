@@ -2,16 +2,16 @@
 
 ## Version
 
-Update `src/OnlyWinget/OnlyWinget.csproj`:
+The repository is locked to the `1.0.x` release line until explicitly changed. For a patch release, update `src/OnlyWinget/OnlyWinget.csproj`:
 
 ```xml
-<Version>MAJOR.MINOR.PATCH</Version>
-<AssemblyVersion>MAJOR.MINOR.PATCH.0</AssemblyVersion>
-<FileVersion>MAJOR.MINOR.PATCH.0</FileVersion>
-<InformationalVersion>MAJOR.MINOR.PATCH</InformationalVersion>
+<Version>1.0.PATCH</Version>
+<AssemblyVersion>1.0.PATCH.0</AssemblyVersion>
+<FileVersion>1.0.PATCH.0</FileVersion>
+<InformationalVersion>1.0.PATCH</InformationalVersion>
 ```
 
-Use annotated tags named `vMAJOR.MINOR.PATCH`.
+Use annotated tags named `v1.0.PATCH`.
 
 ## Required Checks
 
@@ -33,7 +33,7 @@ Then run the hosted GitHub Actions `build-gate` workflow for the exact release c
 Publish the unified setup EXE:
 
 ```text
-artifacts/dist/OnlyWinget/Release/OnlyWinget-<version>-setup.exe
+artifacts/dist/OnlyWinget/Release/OnlyWinget-1.0.PATCH-setup.exe
 ```
 
 Internal MSI files are diagnostic artifacts, not the primary end-user download.
@@ -41,8 +41,8 @@ Internal MSI files are diagnostic artifacts, not the primary end-user download.
 ## Tag
 
 ```powershell
-git tag -a vMAJOR.MINOR.PATCH -m "OnlyWinget MAJOR.MINOR.PATCH"
-git push origin vMAJOR.MINOR.PATCH
+git tag -a v1.0.PATCH -m "OnlyWinget 1.0.PATCH"
+git push origin v1.0.PATCH
 ```
 
 Publish the GitHub release from that verified tag and attach the setup EXE.

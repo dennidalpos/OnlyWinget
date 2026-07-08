@@ -52,7 +52,8 @@ public sealed partial class SettingsPage : Page
         {
             try
             {
-                await ViewModel.SaveAsync(CancellationToken.None);
+                using var cancellation = new CancellationTokenSource();
+                await ViewModel.SaveAsync(cancellation.Token);
             }
             catch (Exception exception)
             {
@@ -74,7 +75,8 @@ public sealed partial class SettingsPage : Page
         isInitializing = true;
         try
         {
-            await ViewModel.ResetAsync(CancellationToken.None);
+            using var cancellation = new CancellationTokenSource();
+            await ViewModel.ResetAsync(cancellation.Token);
         }
         catch (Exception exception)
         {

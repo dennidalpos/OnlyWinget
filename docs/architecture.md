@@ -1,12 +1,12 @@
 # Architecture
 
-OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows.
+OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows and explicit Windows Update scans.
 
 ## Layout
 
 - `src/OnlyWinget.Domain`: package identity, presets, batch selection, operation plans, status, and validation primitives.
-- `src/OnlyWinget.Application`: use-case services, preset import/export, workspace storage contracts, and winget boundaries.
-- `src/OnlyWinget.Infrastructure`: JSON workspace persistence and winget command parsing/building adapters.
+- `src/OnlyWinget.Application`: use-case orchestration, preset import/export, workspace/source-preference storage contracts, capability contracts, and `winget`/Windows Update ports.
+- `src/OnlyWinget.Infrastructure`: JSON workspace/source-preference persistence, process execution, capability probing, `winget` command adapters, and Windows Update PowerShell integration.
 - `src/OnlyWinget`: WinUI 3 presentation shell targeting `.NET 10` and Windows 10 build `17763`.
 - `src/OnlyWinget.Setup`: WiX setup sources, packaged by `scripts/package.ps1` rather than included as an SDK project in the solution.
 - `tests/OnlyWinget.Tests`: xUnit tests for non-UI behavior.
@@ -25,25 +25,25 @@ The presentation layer can reference infrastructure for composition. Domain does
 
 ## Local State
 
-The workspace schema is:
+The local JSON files are:
 
 ```text
 %LOCALAPPDATA%\OnlyWinget\workspace-v1.json
+%LOCALAPPDATA%\OnlyWinget\source-preferences-v1.json
+%LOCALAPPDATA%\OnlyWinget\settings.json
 ```
 
 Preset exchange supports only `onlywinget.preset.v1`.
 
-No legacy sample preset is shipped with the repository. Presets are created in the app or imported explicitly in the current exchange format.
-
 ## Capabilities
 
-Application startup checks OS support, `winget`, PowerShell, and Windows Update COM availability through one capability service. Presentation commands are disabled when a required capability is unavailable, and infrastructure services return structured failures instead of invoking unsupported APIs.
+Application startup loads the workspace, checks OS support, checks `winget`, lists sources, and probes PowerShell plus Windows Update COM availability through `ISystemCapabilityService`. Presentation commands are disabled when a required capability is unavailable, and infrastructure services return structured failures instead of invoking unsupported APIs.
 
 ## Presentation
 
 The WinUI shell is route-driven through `Shell/NavigationRegistry.cs`. User-facing routes are Home, Packages, Updates, Sources, Activity, and Settings; Packages and Updates own their provider-specific modes instead of exposing technical modules in primary navigation.
 
-Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and the state controls provide consistent inline status and operation progress. `OnlyWingetTable` owns shared header/row columns, horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding. Packages and Updates declare both modes in one route-owned visual tree; mode switches change visibility instead of constructing nested pages at runtime. Feature ViewModels own operations, cancellation, validation, confirmation, and picker orchestration through the existing UI services.
+Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and state controls provide consistent inline status and operation progress. `OnlyWingetTable` owns shared header/row columns, horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding. Packages and Updates declare provider modes inside route-owned visual trees. Feature ViewModels own operations, cancellation, validation, confirmation, clipboard, settings, and picker orchestration through the UI service collection created in `AppComposition`.
 
 ## Installer
 

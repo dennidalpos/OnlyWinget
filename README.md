@@ -12,7 +12,7 @@
   <img alt="Languages" src="https://img.shields.io/badge/UI-English%20%7C%20Italian-555" />
 </p>
 
-OnlyWinget is a Windows desktop app for managing local `winget` workflows from a WinUI 3 UI: curated presets, package search, update review, and repeatable install or uninstall batches.
+OnlyWinget is a Windows desktop app for managing local update workflows from a WinUI 3 UI: curated `winget` presets, package search, source control, update review, Windows Update scans, and repeatable install or uninstall batches.
 
 ## Highlights
 
@@ -20,8 +20,9 @@ OnlyWinget is a Windows desktop app for managing local `winget` workflows from a
 | --- | --- |
 | Presets | Create package lists, import/export the current `onlywinget.preset.v1` format, and run selected install/uninstall actions. |
 | Search | Search local `winget` sources, resolve package identity, and add selected results in batches. |
-| Updates | Review available upgrades, select all or specific rows, and apply selected updates. |
-| Safety | Clean architecture boundaries, cancellable operation design, current-format-only import, and local-only workspace storage. |
+| Updates | Review available `winget` upgrades and Windows Update results, select all or specific rows, and apply selected updates. |
+| Sources | Inspect `winget` sources, update/reset source metadata, add/remove sources, and persist disabled-source preferences locally. |
+| Safety | Clean architecture boundaries, cancellable operation design, current-format-only preset import, and local-only JSON storage. |
 | Installer | Unified Windows setup EXE with an x64 self-contained MSI payload. |
 
 ## Metrics
@@ -32,7 +33,7 @@ OnlyWinget is a Windows desktop app for managing local `winget` workflows from a
 | Test suite | xUnit tests under `tests/OnlyWinget.Tests` |
 | UI languages | English, Italian |
 | Release artifacts | 1 x64 setup EXE, 1 internal x64 MSI, and 1 x64 portable ZIP |
-| Local data root | `%LOCALAPPDATA%\OnlyWinget` |
+| Local data root | `%LOCALAPPDATA%\OnlyWinget` (`workspace-v1.json`, `source-preferences-v1.json`, `settings.json`) |
 
 ## Requirements
 
@@ -53,18 +54,18 @@ winget --version
 Run task examples:
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Setup
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Format -NoRestore
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Test -Configuration Release -NoRestore
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Build -Configuration Release
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Package -Configuration Release -NoRestore
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Setup -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Format -NoRestore -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Build -Configuration Release -NonInteractive
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive
 ```
 
 Full local gate:
 
 ```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Check -Configuration Release
+pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```
 
 ## Project Links

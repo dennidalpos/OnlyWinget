@@ -35,8 +35,6 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
-# Funzioni di menu interattivo rimosse come da richiesta.
-
 function Add-CommonPackageParameter {
     param(
         [hashtable]$Parameters

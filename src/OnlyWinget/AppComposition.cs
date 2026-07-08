@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using OnlyWinget.Application.App;
 using OnlyWinget.Infrastructure.Storage;
 using OnlyWinget.Infrastructure.System;
@@ -25,25 +24,6 @@ internal static class AppComposition
 
     public static OnlyWingetApplication CreateWorkflow()
     {
-        var isDemo = System.Environment.GetCommandLineArgs().Contains("--demo", StringComparer.OrdinalIgnoreCase);
-        if (isDemo)
-        {
-            var demoApp = new OnlyWingetApplication(
-                new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath, AppDiagnostics.WriteException),
-                new OnlyWinget.Services.DemoSystemCapabilityService(),
-                new OnlyWinget.Services.DemoPackageSearchService(),
-                new OnlyWinget.Services.DemoPackageResolver(),
-                new OnlyWinget.Services.DemoUpdateLoader(),
-                new OnlyWinget.Services.DemoWindowsUpdateService(),
-                new OnlyWinget.Services.DemoWingetSourceService(),
-                new OnlyWinget.Services.DemoOperationExecutor(),
-                sourcePreferenceStore: new JsonSourcePreferenceStore(JsonSourcePreferenceStore.DefaultFilePath, AppDiagnostics.WriteException));
-
-            demoApp.ExceptionLogger = AppDiagnostics.WriteException;
-            demoApp.Logger = AppDiagnostics.Write;
-            return demoApp;
-        }
-
         var processRunner = new ProcessExternalProcessRunner();
         var runner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
         var parser = new WingetTableParser();

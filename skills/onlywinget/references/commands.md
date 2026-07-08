@@ -1,6 +1,6 @@
 # OnlyWinget Development Commands Reference
 
-All workspace build, lint, format, test, and packaging tasks are routed through PowerShell scripts located in the [scripts/](file:///d:/GITHUB/OnlyWinget/scripts) directory. Do not run raw dotnet commands or manual msbuild parameters; always use the wrapper scripts.
+All workspace build, lint, format, test, launch, validation, and packaging tasks are routed through PowerShell scripts located in the [scripts/](file:///d:/GITHUB/OnlyWinget/scripts) directory. Prefer the wrapper scripts over raw `dotnet` or manual MSBuild parameters.
 
 ---
 
@@ -70,6 +70,12 @@ OnlyWinget targets the `win-x64` platform. Release packages include both a self-
 Validates the MSI install, upgrade path from previous versions, and clean uninstall on the current system (requires an elevated clean x64 Windows environment):
 ```powershell
 .\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
+```
+
+### Installed Startup Validation
+Verifies that an installed executable starts and remains responsive:
+```powershell
+.\scripts\run.ps1 -Task ValidateInstalledStartup -NonInteractive
 ```
 
 ### Graphical UI Automation Tests

@@ -13,7 +13,7 @@ Infrastructure      ──> Application ──> Domain
 
 ### Domain Layer (`OnlyWinget.Domain`)
 - **Location**: `src/OnlyWinget.Domain`
-- **Role**: Contains enterprise business logic, core entities, and rules.
+- **Role**: Contains core package, preset, operation, and selection rules.
 - **Dependencies**: **None**. It is pure, platform-agnostic C#.
 - **Key Types**:
   - `PackageIdentity` (sealed record): Unique key representing a winget package. Binds `Id` (case-insensitive) and an optional `Source`.
@@ -27,9 +27,9 @@ Infrastructure      ──> Application ──> Domain
 - **Role**: Coordinates use cases, manages application state, defines ports (interfaces), and maps model data for presentation.
 - **Dependencies**: Depends **only** on the Domain layer.
 - **Key Types**:
-  - `OnlyWingetApplication`: The central orchestrator (god-class) maintaining all active application state (workspace, presets, updates, selections, capabilities, busy state).
+  - `OnlyWingetApplication`: The central workflow orchestrator maintaining active state (workspace, presets, sources, updates, selections, capabilities, busy state).
   - `OnlyWingetState` (sealed record): An immutable snapshot of the entire application state.
-  - **Ports (Interfaces)**: Defines how the application interacts with external services (e.g., `ISystemCapabilityService`, `IWingetCommandRunner`, `IWindowsUpdateService`, `IWorkspaceStore`).
+  - **Ports (Interfaces)**: Defines how the application interacts with external services (e.g., `ISystemCapabilityService`, `IWingetCommandRunner`, `IWindowsUpdateService`, `IWorkspaceStore`, `ISourcePreferenceStore`).
   - **Presentation Mapping**: Maps `OnlyWingetState` to view-model presentation records (e.g., `DashboardPresentationState`, `UpdatesPresentationState`) via the `PresentationStateMapper`.
   - `UiCommand`: Metadata describing standard UI action commands, including labels, icon keys, and enabled states.
 
@@ -43,17 +43,17 @@ Infrastructure      ──> Application ──> Domain
   - `WingetTableParser`: Parses winget's tabular CLI stdout. Uses multi-language column header localization (EN, IT, FR, ES, DE) to support running on different system locales.
   - `WingetErrorClassifier`: Classifies CLI string outputs to map failures into structured `WingetErrorKind` enums.
   - `PowerShellWindowsUpdateService`: Connects to Windows Update Agent API via COM (`Microsoft.Update.Session`) inside base64 encoded PowerShell scripts, parsing returned JSON models.
-  - `JsonWorkspaceStore` / `JsonSourcePreferenceStore`: Implements transactional file-based JSON persistence in `%LOCALAPPDATA%\OnlyWinget\`.
+  - `JsonWorkspaceStore` / `JsonSourcePreferenceStore`: Implements file-based JSON persistence in `%LOCALAPPDATA%\OnlyWinget\` with instance-scoped serialization.
 
 ### WinUI Presentation Layer (`OnlyWinget`)
 - **Location**: `src/OnlyWinget`
 - **Role**: Entry point of the application and the Graphical User Interface built on WinUI 3.
 - **Dependencies**: Depends on Application, Domain, and Infrastructure layers.
 - **Key Implementations**:
-  - `AppComposition`: The static composition root that builds services and constructs the `OnlyWingetApplication` instance.
+  - `AppComposition`: The static composition root that builds UI services and real infrastructure services, then constructs the `OnlyWingetApplication` instance.
   - `MainWindow`: Customs the title bar, configures Mica system backdrop, and hosts the navigation shell (`NavigationView`) with a page factory and page instance cache.
   - `TextResources`: Internal localization dictionary (no RESW/RESX). Supports English and Italian.
-  - **Custom Controls**: Reusable custom layouts such as `OnlyWingetTable` (virtualized custom list-view grid table with tri-state selection header) and `StatePresenter` (loading/empty/error state visual transitions).
+  - **Custom Controls**: Reusable layouts such as `OnlyWingetTable` (custom list-view grid table with tri-state selection header) and `StatePresenter` (loading/empty/error state visual transitions).
 
 ---
 
@@ -64,7 +64,7 @@ Infrastructure      ──> Application ──> Domain
 - **In-Memory Thread Safety**:
   Modifications to shared caches and dictionaries (e.g., `packageMetadata`) must be wrapped in standard C# `lock` synchronization statements.
 - **File Persistence Safety**:
-  Write/read operations in transactional JSON stores (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`) must be synchronized using instance-scoped `SemaphoreSlim(1,1)` locks. Writes must be atomic (writing to a `.tmp` file and then executing a transactional `File.Move` replace).
+  Write/read operations in JSON stores (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`) and app settings writes must be synchronized using instance-scoped `SemaphoreSlim(1,1)` locks.
 
 ---
 

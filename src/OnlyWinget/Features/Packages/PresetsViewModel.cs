@@ -107,8 +107,14 @@ public sealed class PresetsViewModel : FeatureViewModel
     {
         try
         {
-            var json = await App.UiServices.FilePicker.PickAndReadTextAsync(App.WindowId, ".json", CancellationToken.None);
-            if (json is not null) await RunAsync(token => Workflow.ImportPresetAsync(json, token));
+            await RunAsync(async token =>
+            {
+                var json = await App.UiServices.FilePicker.PickAndReadTextAsync(App.WindowId, ".json", token);
+                if (json is not null)
+                {
+                    await Workflow.ImportPresetAsync(json, token);
+                }
+            });
         }
         catch (Exception exception) when (exception is not OperationCanceledException) { Workflow.ReportExternalFailure(TextResources.Get("Error_PresetImportRead")); }
     }
@@ -118,7 +124,7 @@ public sealed class PresetsViewModel : FeatureViewModel
         if (Workflow.State.ActivePreset is not { } active) return;
         try
         {
-            await App.UiServices.FilePicker.PickAndWriteTextAsync(App.WindowId, PresetDocumentService.GetExportFileName(active.Name), ".json", "Preset_FileType", Workflow.ExportActivePreset(), CancellationToken.None);
+            await RunAsync(token => App.UiServices.FilePicker.PickAndWriteTextAsync(App.WindowId, PresetDocumentService.GetExportFileName(active.Name), ".json", "Preset_FileType", Workflow.ExportActivePreset(), token));
         }
         catch (Exception exception) when (exception is not OperationCanceledException) { Workflow.ReportExternalFailure(TextResources.Get("Error_PresetExportWrite")); }
     }

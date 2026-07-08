@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     private readonly IReadOnlyDictionary<string, NavigationRoute> routes = App.UiServices.Navigation.Routes
         .ToDictionary(route => route.Id, StringComparer.Ordinal);
     private readonly Dictionary<string, Page> pageCache = new(StringComparer.Ordinal);
+    private readonly CancellationTokenSource windowLifetime = new();
     private string? lastLanguage;
     private string? lastTheme;
 
@@ -51,6 +52,8 @@ public sealed partial class MainWindow : Window
     {
         App.UiServices.Settings.Changed -= OnSettingsChanged;
         Closed -= OnClosed;
+        windowLifetime.Cancel();
+        windowLifetime.Dispose();
     }
 
     private void OnSettingsChanged(object? sender, EventArgs args)
@@ -124,7 +127,10 @@ public sealed partial class MainWindow : Window
         RootNavigation.Loaded -= OnLoaded;
         try
         {
-            await new ApplicationStartupOrchestrator(App.Workflow).InitializeAsync(CancellationToken.None);
+            await new ApplicationStartupOrchestrator(App.Workflow).InitializeAsync(windowLifetime.Token);
+        }
+        catch (OperationCanceledException) when (windowLifetime.IsCancellationRequested)
+        {
         }
         catch (Exception exception)
         {
@@ -342,7 +348,7 @@ public sealed partial class MainWindow : Window
         var currentSettings = App.UiServices.Settings.Current;
         var newPinState = !currentSettings.IsMenuPinned;
         var updatedSettings = currentSettings with { IsMenuPinned = newPinState };
-        await App.UiServices.Settings.SaveAsync(updatedSettings, CancellationToken.None);
+        await SaveSettingsAsync(updatedSettings, "MainWindow.OnPinMenuTapped");
     }
 
     private void OnOpenLogsTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
@@ -400,8 +406,23 @@ public sealed partial class MainWindow : Window
             }
             var currentSettings = App.UiServices.Settings.Current;
             var updatedSettings = currentSettings with { MenuWidth = RootNavigation.OpenPaneLength };
-            await App.UiServices.Settings.SaveAsync(updatedSettings, CancellationToken.None);
+            await SaveSettingsAsync(updatedSettings, "MainWindow.OnResizerPointerReleased");
             e.Handled = true;
+        }
+    }
+
+    private async Task SaveSettingsAsync(Services.AppSettings settings, string caller)
+    {
+        try
+        {
+            await App.UiServices.Settings.SaveAsync(settings, windowLifetime.Token);
+        }
+        catch (OperationCanceledException) when (windowLifetime.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException(caller, exception);
         }
     }
 

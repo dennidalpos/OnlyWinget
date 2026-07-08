@@ -5,7 +5,7 @@ description: Use this skill when developing, testing, packaging, or modifying th
 
 # OnlyWinget Development Skill
 
-This skill acts as the primary developer guide and runtime instructions for agents working on the [OnlyWinget](file:///d:/GITHUB/OnlyWinget) project. It ensures that all modifications preserve the Clean Architecture boundaries, use the correct tools/scripts, and adhere to structural rules.
+This skill is the project-specific developer guide for agents working on [OnlyWinget](file:///d:/GITHUB/OnlyWinget). It keeps changes aligned with the Clean Architecture boundaries, script workflow, WinUI presentation rules, and packaging targets.
 
 ## Documentation Map
 
@@ -22,7 +22,7 @@ This skill acts as the primary developer guide and runtime instructions for agen
 
 2. **Concurrency & Thread Safety**:
    - Guard shared in-memory updates (like `packageMetadata` additions) with `lock` sync primitives.
-   - Guard file/persistence writes (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`) using instance-scoped `SemaphoreSlim(1,1)`.
+   - Guard file/persistence writes (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`, app settings storage) using instance-scoped `SemaphoreSlim(1,1)`.
    - Always pass a real `CancellationToken` to every cancellable operation. Never use `CancellationToken.None` for work designed to support cancellation.
 
 3. **WinUI Presentation & MVVM**:
@@ -37,7 +37,7 @@ This skill acts as the primary developer guide and runtime instructions for agen
 
 5. **External Processes & COM**:
    - Centralize OS/winget/PowerShell capability checks in `ISystemCapabilityService`.
-   - Scan Windows Updates only on explicit user action; discovery scans must not require administrative elevation.
+   - Scan Windows Update only on explicit user action; read-only discovery must not require administrative elevation.
    - Guard all process execution (`ProcessExternalProcessRunner`) and COM interop with structured failure handling. Return actionable results (`WingetOperationOutcome`, `WindowsUpdateOperationOutcome`).
 
 ## Workflow Verification

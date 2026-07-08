@@ -62,7 +62,8 @@ public sealed partial class ActivityPage : Page
     {
         if (args.Command.Id == UiCommandId.ExportActivity)
         {
-            await App.UiServices.FilePicker.PickAndWriteTextAsync(App.WindowId, "OnlyWinget-activity.log", ".log", "FileType_Log", viewModel.ExportText(), CancellationToken.None);
+            using var cancellation = new CancellationTokenSource();
+            await App.UiServices.FilePicker.PickAndWriteTextAsync(App.WindowId, "OnlyWinget-activity.log", ".log", "FileType_Log", viewModel.ExportText(), cancellation.Token);
         }
         else if (args.Command.Id == UiCommandId.ClearActivity &&
             await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Command_Activity_Clear", args.Command.ConfirmationResourceKey ?? "Dialog_ClearActivity_Message"))
