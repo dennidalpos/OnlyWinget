@@ -64,11 +64,21 @@ Keep only verified, actionable residual work in execution order. Remove complete
 
 ## Workflow
 
-1. Run `.\scripts\sync-win-dev-skills.ps1` to update WinUI developer skills, then inspect applicable instructions, relevant files, and `git status --short`; preserve existing changes.
-2. Make the smallest coherent change. Add or update tests for behavior changes.
-3. Use `scripts/run.ps1` tasks instead of ad hoc equivalents.
-4. For WinUI changes, build, launch, confirm a responsive top-level window, and leave the verified app running. Terminate running application instances (e.g., `taskkill /f /im OnlyWinget.exe`) if clean tasks fail due to lock issues.
-5. Before handoff, run `git status --short` and `git ls-files`.
+1. Update developer skills by running:
+   ```powershell
+   .\scripts\sync-win-dev-skills.ps1
+   .\scripts\install-skills.ps1
+   ```
+   Then, inspect applicable developer skill instructions using `view_file`, check relevant source files, and run `git status --short` to preserve existing local changes.
+2. Load and inspect relevant skills before any coding or architectural change:
+   - For Clean Architecture layers, concurrency rules, and domain boundaries: [onlywinget](file:///.agents/skills/onlywinget/SKILL.md)
+   - For general controls, layout, and cursors: [winui](file:///.agents/skills/winui/SKILL.md)
+   - For MVVM, bindings, and quality checks: [winui-code-review](file:///.agents/skills/winui-code-review/SKILL.md)
+   - For theme resources, brushes, and designs: [winui-design](file:///.agents/skills/winui-design/SKILL.md)
+3. Make the smallest coherent change. Add or update tests for behavior changes.
+4. Use `scripts/run.ps1` tasks instead of ad hoc equivalents.
+5. For WinUI changes, build, launch, confirm a responsive top-level window, and leave the verified app running. Terminate running application instances (e.g., `taskkill /f /im OnlyWinget.exe`) if clean tasks fail due to lock issues.
+6. Before handoff, run `git status --short` and `git ls-files`.
 
 ## Commands
 

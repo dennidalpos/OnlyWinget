@@ -276,6 +276,7 @@ public sealed partial class OnlyWingetTable : UserControl
                     Columns[index].Header),
                 Margin = new Thickness(12, 0, 12, 0),
                 MinWidth = 0,
+                MaxWidth = Math.Max(0, layoutHelper.GetWidth(index) - 24),
                 Tag = Columns[index].BindingPath,
                 Text = columnFilters.GetValueOrDefault(Columns[index].BindingPath) ?? string.Empty
             };
@@ -503,6 +504,13 @@ public sealed partial class OnlyWingetTable : UserControl
                     if (child is Border border && Grid.GetColumn(border) == colIndex && border.Child is Grid cellGrid)
                     {
                         cellGrid.MaxWidth = w;
+                        foreach (var innerChild in cellGrid.Children)
+                        {
+                            if (innerChild is TextBox textBox)
+                            {
+                                textBox.MaxWidth = Math.Max(0, w - 24);
+                            }
+                        }
                     }
                 }
             }

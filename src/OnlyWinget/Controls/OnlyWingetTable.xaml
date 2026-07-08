@@ -19,14 +19,7 @@
             </DataTemplate>
         </ListView.ItemTemplate>
         <ListView.Resources>
-            <Style TargetType="ListViewHeaderItem">
-                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="Margin" Value="0" />
-                <Setter Property="MinHeight" Value="0" />
-                <Setter Property="MinWidth" Value="0" />
-            </Style>
+            <Style TargetType="ListViewHeaderItem" BasedOn="{StaticResource TableHeaderContainerStyle}" />
         </ListView.Resources>
     </ListView>
 </UserControl>
