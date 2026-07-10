@@ -443,7 +443,8 @@ public sealed class WingetInfrastructureTests
             string command,
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
-            IProgress<WingetProgress>? progress = null)
+            IProgress<WingetProgress>? progress = null,
+            TimeSpan? timeout = null)
         {
             LastCommand = command;
             LastArguments = arguments.ToArray();
@@ -474,7 +475,8 @@ public sealed class WingetInfrastructureTests
             string command,
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
-            IProgress<string>? standardOutputLines = null)
+            IProgress<string>? standardOutputLines = null,
+            TimeSpan? timeout = null)
         {
             LastArguments = arguments.ToArray();
             Calls.Add(LastArguments);

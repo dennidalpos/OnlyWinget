@@ -54,7 +54,8 @@ public sealed class WingetOperationExecutor(
                         "winget",
                         commandBuilder.Build(selection),
                         cancellationToken,
-                        commandProgress)
+                        commandProgress,
+                        global::System.TimeSpan.FromMinutes(30))
                     .ConfigureAwait(false);
             }
             catch (Exception exception)

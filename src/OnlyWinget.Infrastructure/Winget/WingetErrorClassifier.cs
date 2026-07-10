@@ -46,6 +46,8 @@ public sealed class WingetErrorClassifier
         else if (ContainsAny(
             text,
             "Failed when searching source",
+            "Failed when opening source",
+            "0x8a15005e",
             "source agreements",
             "source is not configured",
             "No sources are configured",

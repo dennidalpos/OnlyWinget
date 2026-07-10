@@ -16,7 +16,8 @@ public sealed class ProcessWingetCommandRunner(
         string command,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
-        IProgress<WingetProgress>? progress = null)
+        IProgress<WingetProgress>? progress = null,
+        TimeSpan? timeout = null)
     {
         progress?.Report(new WingetProgress(WingetProgressPhase.Starting, 0, null));
         var lineProgress = progress is null
@@ -28,8 +29,25 @@ public sealed class ProcessWingetCommandRunner(
                     progress.Report(parsed);
                 }
             });
-        var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress)
+        var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
             .ConfigureAwait(false);
+
+        if (!result.Succeeded &&
+            !(command == "winget" && arguments.Count > 1 && arguments[0] == "source" && arguments[1] == "reset") &&
+            (result.StandardOutput.Contains("0x8a15005e") ||
+             result.StandardError.Contains("0x8a15005e") ||
+             result.StandardOutput.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase) ||
+             result.StandardError.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase)))
+        {
+            var resetResult = await processRunner.RunAsync("winget", ["source", "reset", "--force"], cancellationToken, timeout: timeout)
+                .ConfigureAwait(false);
+            if (resetResult.Succeeded)
+            {
+                result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
+                    .ConfigureAwait(false);
+            }
+        }
+
         progress?.Report(new WingetProgress(
             result.Succeeded ? WingetProgressPhase.Completed : WingetProgressPhase.Failed,
             result.Succeeded ? 100 : null,

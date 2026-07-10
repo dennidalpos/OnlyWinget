@@ -28,7 +28,7 @@ public sealed class PowerShellWindowsUpdateService(
         }
 
         var script = ApplyOptions(ScanScript, options);
-        var result = await RunPowerShellAsync(script, cancellationToken).ConfigureAwait(false);
+        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(10)).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateItemDto>(result);
         return envelope.Succeeded
             ? WindowsUpdateOperationOutcome<WindowsUpdateItem>.Success(
@@ -58,7 +58,7 @@ public sealed class PowerShellWindowsUpdateService(
             JsonOptions);
         var script = ApplyOptions(InstallScript, options)
             .Replace("__SELECTED_JSON__", EscapePowerShellHereString(selectedJson), StringComparison.Ordinal);
-        var result = await RunPowerShellAsync(script, cancellationToken).ConfigureAwait(false);
+        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30)).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateInstallResultDto>(result);
         return envelope.Succeeded
             ? WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(
@@ -69,13 +69,14 @@ public sealed class PowerShellWindowsUpdateService(
                 result.StandardOutput);
     }
 
-    private async Task<ExternalProcessResult> RunPowerShellAsync(string script, CancellationToken cancellationToken)
+    private async Task<ExternalProcessResult> RunPowerShellAsync(string script, CancellationToken cancellationToken, global::System.TimeSpan? timeout = null)
     {
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         return await commandRunner.RunAsync(
                 "powershell.exe",
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
-                cancellationToken)
+                cancellationToken,
+                timeout: timeout)
             .ConfigureAwait(false);
     }
 

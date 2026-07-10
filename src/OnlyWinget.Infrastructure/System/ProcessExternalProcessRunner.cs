@@ -11,14 +11,20 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
         string command,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
-        IProgress<string>? standardOutputLines = null)
+        IProgress<string>? standardOutputLines = null,
+        TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(arguments);
 
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-        var effectiveToken = linkedCts.Token;
+        var actualTimeout = timeout ?? TimeSpan.FromSeconds(120);
+        using var timeoutCts = actualTimeout != Timeout.InfiniteTimeSpan
+            ? new CancellationTokenSource(actualTimeout)
+            : null;
+        using var linkedCts = timeoutCts is not null
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
+            : null;
+        var effectiveToken = linkedCts?.Token ?? cancellationToken;
 
         using var process = new Process();
         process.StartInfo.FileName = command;
@@ -53,9 +59,9 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
             catch (OperationCanceledException)
             {
                 TryKill(process);
-                if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                if (timeoutCts is not null && timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {
-                    throw new TimeoutException($"Process execution timed out after 120 seconds: {command}");
+                    throw new TimeoutException($"Process execution timed out after {actualTimeout.TotalSeconds} seconds: {command}");
                 }
                 throw;
             }

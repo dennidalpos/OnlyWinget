@@ -6,5 +6,6 @@ public interface IWingetCommandRunner
         string command,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
-        IProgress<WingetProgress>? progress = null);
+        IProgress<WingetProgress>? progress = null,
+        TimeSpan? timeout = null);
 }
