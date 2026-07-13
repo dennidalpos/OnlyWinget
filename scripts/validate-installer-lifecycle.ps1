@@ -52,7 +52,8 @@ function Get-InstalledOnlyWingetProduct {
     )
 
     $roots = @(
-        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+        'HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
     )
 
     foreach ($root in $roots) {

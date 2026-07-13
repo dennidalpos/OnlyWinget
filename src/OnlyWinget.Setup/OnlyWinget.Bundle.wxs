@@ -15,15 +15,7 @@
           DisableRemove="yes">
     <Variable Name="InstallDesktopShortcut" Type="numeric" Value="0" />
 
-    <Variable Name="WindowsBuildNumber" Type="string" Value="0" />
     <Variable Name="WingetFileExists" Type="numeric" Value="0" />
-
-    <util:RegistrySearch Id="WindowsBuildNumberSearch"
-                         Root="HKLM"
-                         Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
-                         Value="CurrentBuildNumber"
-                         Variable="WindowsBuildNumber"
-                         Result="value" />
 
     <util:FileSearch Id="SearchWingetExe"
                      Path="[LocalAppDataFolder]Microsoft\WindowsApps\winget.exe"
