@@ -499,18 +499,7 @@ public sealed class OnlyWingetApplication(
                 async () =>
                 {
                     RequireWinget();
-                    if (!defaultSourcesConfigured)
-                    {
-                        var resetOutcome = await sourceService.ResetSourcesAsync(cancellationToken).ConfigureAwait(false);
-                        if (resetOutcome.Succeeded)
-                        {
-                            defaultSourcesConfigured = true;
-                            await sourcePreferences.SaveAsync(
-                                    new SourcePreferences(disabledSources.ToArray(), DefaultSourcesConfigured: true),
-                                    cancellationToken)
-                                .ConfigureAwait(false);
-                        }
-                    }
+                    await EnsureOfficialSourcesConfiguredAsync(cancellationToken).ConfigureAwait(false);
                     var outcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
                     ApplySourceOutcome(outcome, updateRows: true);
                     AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{sources.Count} source(s).");
@@ -1080,6 +1069,87 @@ public sealed class OnlyWingetApplication(
         {
             var source = sources[index];
             sources[index] = source with { IsEnabled = !disabledSources.Contains(source.Name) };
+        }
+    }
+
+    private async Task EnsureOfficialSourcesConfiguredAsync(CancellationToken cancellationToken)
+    {
+        var listOutcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
+        if (!listOutcome.Succeeded)
+        {
+            return;
+        }
+
+        var currentSources = listOutcome.Rows;
+        var isOlderOs = capabilities.WindowsBuildNumber.HasValue && capabilities.WindowsBuildNumber.Value < 19041;
+        var isOlderWinget = false;
+        if (!string.IsNullOrWhiteSpace(capabilities.WingetVersion))
+        {
+            var verStr = capabilities.WingetVersion.TrimStart('v').Split('-')[0];
+            if (Version.TryParse(verStr, out var wingetVer))
+            {
+                if (wingetVer < new Version(1, 4))
+                {
+                    isOlderWinget = true;
+                }
+            }
+        }
+
+        var targetWingetUrl = (isOlderOs || isOlderWinget)
+            ? "https://winget.azureedge.net/cache"
+            : "https://cdn.winget.microsoft.com/cache";
+
+        var targetMsStoreUrl = "https://storeedgefd.dsx.mp.microsoft.com/v9.0";
+
+        // Verify and update "winget" source
+        var wingetSource = currentSources.FirstOrDefault(s => string.Equals(s.Name, "winget", StringComparison.OrdinalIgnoreCase));
+        if (wingetSource == null)
+        {
+            await sourceService.AddSourceAsync("winget", targetWingetUrl, cancellationToken).ConfigureAwait(false);
+        }
+        else if (!string.Equals(wingetSource.Argument.Trim().TrimEnd('/'), targetWingetUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            var removeOutcome = await sourceService.RemoveSourceAsync("winget", cancellationToken).ConfigureAwait(false);
+            if (removeOutcome.Succeeded)
+            {
+                await sourceService.AddSourceAsync("winget", targetWingetUrl, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        // Verify and update "msstore" source
+        var msstoreSource = currentSources.FirstOrDefault(s => string.Equals(s.Name, "msstore", StringComparison.OrdinalIgnoreCase));
+        if (msstoreSource == null)
+        {
+            await sourceService.AddSourceAsync("msstore", targetMsStoreUrl, cancellationToken).ConfigureAwait(false);
+        }
+        else if (!string.Equals(msstoreSource.Argument.Trim().TrimEnd('/'), targetMsStoreUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            var removeOutcome = await sourceService.RemoveSourceAsync("msstore", cancellationToken).ConfigureAwait(false);
+            if (removeOutcome.Succeeded)
+            {
+                await sourceService.AddSourceAsync("msstore", targetMsStoreUrl, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        // Ensure default sources are enabled (active)
+        var preferencesChanged = false;
+        if (disabledSources.Contains("winget"))
+        {
+            disabledSources.Remove("winget");
+            preferencesChanged = true;
+        }
+        if (disabledSources.Contains("msstore"))
+        {
+            disabledSources.Remove("msstore");
+            preferencesChanged = true;
+        }
+
+        if (preferencesChanged || !defaultSourcesConfigured)
+        {
+            defaultSourcesConfigured = true;
+            await sourcePreferences.SaveAsync(
+                new SourcePreferences(disabledSources.ToArray(), DefaultSourcesConfigured: true),
+                cancellationToken).ConfigureAwait(false);
         }
     }
 

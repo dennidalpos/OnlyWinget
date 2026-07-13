@@ -10,8 +10,23 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
     {
         var isSupportedOs = OperatingSystem.IsWindows() &&
             Environment.OSVersion.Version.Build >= MinimumSupportedBuild;
-        var isWingetAvailable = await IsCommandAvailableAsync("winget", ["--version"], cancellationToken)
-            .ConfigureAwait(false);
+
+        var wingetVersion = (string?)null;
+        var isWingetAvailable = false;
+        try
+        {
+            var wingetResult = await commandRunner.RunAsync("winget", ["--version"], cancellationToken).ConfigureAwait(false);
+            if (wingetResult.Succeeded && !string.IsNullOrWhiteSpace(wingetResult.StandardOutput))
+            {
+                isWingetAvailable = true;
+                wingetVersion = wingetResult.StandardOutput.Trim();
+            }
+        }
+        catch
+        {
+            // Leave winget as unavailable
+        }
+
         var isPowerShellAvailable = await IsCommandAvailableAsync(
                 "powershell.exe",
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$PSVersionTable.PSVersion.ToString()"],
@@ -22,12 +37,16 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
             ? await CheckWindowsUpdateComAsync(cancellationToken).ConfigureAwait(false)
             : new WindowsUpdateCapability(false, null);
 
+        var buildNumber = OperatingSystem.IsWindows() ? Environment.OSVersion.Version.Build : (int?)null;
+
         return new SystemCapabilities(
             isSupportedOs,
             isWingetAvailable,
             isPowerShellAvailable,
             windowsUpdate.IsAvailable,
-            windowsUpdate.UnavailableReason);
+            windowsUpdate.UnavailableReason,
+            wingetVersion,
+            buildNumber);
     }
 
     private async Task<WindowsUpdateCapability> CheckWindowsUpdateComAsync(CancellationToken cancellationToken)

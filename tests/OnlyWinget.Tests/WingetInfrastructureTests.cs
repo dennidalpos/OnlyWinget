@@ -26,6 +26,11 @@ public sealed class WingetInfrastructureTests
         Assert.True(capabilities.IsWingetAvailable);
         Assert.True(capabilities.IsPowerShellAvailable);
         Assert.True(capabilities.IsWindowsUpdateComAvailable);
+        Assert.Equal("v1.9.0", capabilities.WingetVersion);
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(Environment.OSVersion.Version.Build, capabilities.WindowsBuildNumber);
+        }
         Assert.Contains(runner.CommandCalls, call => call.Command == "winget" && call.Arguments.SequenceEqual(["--version"]));
         Assert.Contains(runner.CommandCalls, call => call.Command == "powershell.exe");
     }

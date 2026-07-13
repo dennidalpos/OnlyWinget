@@ -15,6 +15,9 @@
           DisableRemove="yes">
     <Variable Name="InstallDesktopShortcut" Type="numeric" Value="0" />
 
+    <Variable Name="WindowsBuildNumber" Type="string" Value="0" />
+    <Variable Name="WingetFileExists" Type="numeric" Value="0" />
+
     <util:RegistrySearch Id="WindowsBuildNumberSearch"
                          Root="HKLM"
                          Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
@@ -22,8 +25,17 @@
                          Variable="WindowsBuildNumber"
                          Result="value" />
 
+    <util:FileSearch Id="SearchWingetExe"
+                     Path="[LocalAppDataFolder]Microsoft\WindowsApps\winget.exe"
+                     Variable="WingetFileExists"
+                     Result="exists" />
+
     <bal:Condition Message="OnlyWinget requires Windows 10 version 1809 build 17763 or newer, or Windows 11. Install on an updated Windows client and rerun setup. Verify with: winver">
       VersionNT64 AND VersionNT >= v10.0 AND WindowsBuildNumber >= 17763
+    </bal:Condition>
+
+    <bal:Condition Message="OnlyWinget richiede Windows Package Manager (winget). Installa l'App Installer dal Microsoft Store e riprova. / OnlyWinget requires Windows Package Manager (winget). Install App Installer from the Microsoft Store and retry.">
+      WingetFileExists OR (WindowsBuildNumber >= 22000)
     </bal:Condition>
 
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">

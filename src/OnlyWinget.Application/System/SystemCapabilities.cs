@@ -5,9 +5,11 @@ public sealed record SystemCapabilities(
     bool? IsWingetAvailable,
     bool? IsPowerShellAvailable,
     bool? IsWindowsUpdateComAvailable,
-    string? WindowsUpdateUnavailableReason)
+    string? WindowsUpdateUnavailableReason,
+    string? WingetVersion = null,
+    int? WindowsBuildNumber = null)
 {
-    public static SystemCapabilities Unknown { get; } = new(null, null, null, null, null);
+    public static SystemCapabilities Unknown { get; } = new(null, null, null, null, null, null, null);
 
     public bool CanUseWinget => IsSupportedOs == true && IsWingetAvailable == true;
 

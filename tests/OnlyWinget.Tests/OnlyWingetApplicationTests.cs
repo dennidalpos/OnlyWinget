@@ -35,11 +35,11 @@ public sealed class OnlyWingetApplicationTests
     public async Task SearchAddSelectedResolvesPackagesAndSkipsDuplicates()
     {
         var search = new StubPackageSearch(
-            new PackageSearchResult(new PackageIdentity("Git.Git"), "Git", "2.0.0", null),
-            new PackageSearchResult(new PackageIdentity("Microsoft.PowerToys"), "PowerToys", "1.0.0", null));
+            new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "winget"),
+            new PackageSearchResult(new PackageIdentity("Microsoft.PowerToys", "winget"), "PowerToys", "1.0.0", "winget"));
         var resolver = new StubPackageResolver(
-            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null, true, null),
-            new PackageResolution(new PackageIdentity("Microsoft.PowerToys", "winget"), "PowerToys", "1.0.0", null, true, null));
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "winget", true, null),
+            new PackageResolution(new PackageIdentity("Microsoft.PowerToys", "winget"), "PowerToys", "1.0.0", "winget", true, null));
         var app = CreateApplication(search: search, resolver: resolver);
 
         app.AddPreset("Default");
@@ -59,9 +59,9 @@ public sealed class OnlyWingetApplicationTests
     public async Task SearchAddSelectedCreatesDefaultPresetWhenWorkspaceIsEmpty()
     {
         var search = new StubPackageSearch(
-            new PackageSearchResult(new PackageIdentity("Git.Git"), "Git", "2.0.0", null));
+            new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "winget"));
         var resolver = new StubPackageResolver(
-            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null, true, null));
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "winget", true, null));
         var app = CreateApplication(search: search, resolver: resolver);
 
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
@@ -377,7 +377,8 @@ public sealed class OnlyWingetApplicationTests
         Assert.True(presentation.Dashboard.IsWingetAvailable);
         Assert.Equal(1, presentation.Dashboard.PresetCount);
         Assert.Equal(1, presentation.Dashboard.ActivePresetPackageCount);
-        var source = Assert.Single(presentation.Sources.Sources);
+        Assert.Equal(2, presentation.Sources.Sources.Count);
+        var source = presentation.Sources.Sources.Single(s => s.Name == "winget");
         Assert.Equal("winget", source.Name);
         Assert.Equal("Source_Type_Default", source.Type);
         Assert.True(presentation.Sources.Commands.Single(command => command.Id == UiCommandId.UpdateSources).IsEnabled);
@@ -460,13 +461,14 @@ public sealed class OnlyWingetApplicationTests
     public async Task StartupRefreshesSourceList()
     {
         var sources = new StubSourceService(
-            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+            new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available),
+            new WingetSource("msstore", "https://storeedgefd.dsx.mp.microsoft.com/v9.0", false, WingetSourceStatus.Available));
         var app = CreateApplication(sources: sources);
 
         await new ApplicationStartupOrchestrator(app).InitializeAsync(CancellationToken.None);
 
-        Assert.Equal(["list"], sources.Calls);
-        Assert.Equal("winget", Assert.Single(app.State.Sources).Name);
+        Assert.Equal(["list", "list"], sources.Calls);
+        Assert.Equal(2, app.State.Sources.Count);
     }
 
     [Fact]
@@ -812,19 +814,134 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
-    public async Task StartupResetsDefaultSourcesIfFirstRun()
+    public async Task StartupConfiguresDefaultSourcesIfFirstRun()
     {
         var sources = new StubSourceService();
-        var preferences = new MemorySourcePreferenceStore();
-        await preferences.SaveAsync(new SourcePreferences([], DefaultSourcesConfigured: false), CancellationToken.None);
-
+        var preferences = new MemorySourcePreferenceStore { State = new SourcePreferences([], DefaultSourcesConfigured: false) };
         var app = CreateApplication(sources: sources, sourcePreferences: preferences);
+
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.RefreshSourcesAsync(CancellationToken.None);
 
-        Assert.Contains("reset", sources.Calls);
+        Assert.Contains(sources.Calls, c => c.StartsWith("add:winget:"));
+        Assert.Contains(sources.Calls, c => c.StartsWith("add:msstore:"));
         var updatedPrefs = await preferences.LoadAsync(CancellationToken.None);
         Assert.True(updatedPrefs.DefaultSourcesConfigured);
+    }
+
+    [Fact]
+    public void DefaultPreferencesAreEmpty()
+    {
+        var preferences = SourcePreferences.Empty;
+        Assert.Empty(preferences.DisabledSources);
+        Assert.False(preferences.DefaultSourcesConfigured);
+    }
+
+    [Fact]
+    public async Task EnsureOfficialSourcesConfigured_AddsMissingSources_WithCorrectCdnUrlForNewOsAndWinget()
+    {
+        var capabilities = new SystemCapabilities(
+            IsSupportedOs: true,
+            IsWingetAvailable: true,
+            IsPowerShellAvailable: true,
+            IsWindowsUpdateComAvailable: true,
+            WindowsUpdateUnavailableReason: null,
+            WingetVersion: "1.8.1791",
+            WindowsBuildNumber: 19041
+        );
+
+        var sources = new StubSourceService();
+        var app = CreateApplication(capabilities: capabilities, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        var result = await app.RefreshSourcesAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Contains(sources.Calls, c => c.StartsWith("add:winget:https://cdn.winget.microsoft.com/cache"));
+        Assert.Contains(sources.Calls, c => c.StartsWith("add:msstore:https://storeedgefd.dsx.mp.microsoft.com/v9.0"));
+        Assert.Contains(app.State.Sources, s => s.Name == "winget" && s.IsEnabled);
+        Assert.Contains(app.State.Sources, s => s.Name == "msstore" && s.IsEnabled);
+    }
+
+    [Fact]
+    public async Task EnsureOfficialSourcesConfigured_AddsMissingSources_WithLegacyAzureEdgeUrlForOldOsOrWinget()
+    {
+        var capabilities = new SystemCapabilities(
+            IsSupportedOs: true,
+            IsWingetAvailable: true,
+            IsPowerShellAvailable: true,
+            IsWindowsUpdateComAvailable: true,
+            WindowsUpdateUnavailableReason: null,
+            WingetVersion: "1.1.1234",
+            WindowsBuildNumber: 17763
+        );
+
+        var sources = new StubSourceService();
+        var app = CreateApplication(capabilities: capabilities, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        var result = await app.RefreshSourcesAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Contains(sources.Calls, c => c.StartsWith("add:winget:https://winget.azureedge.net/cache"));
+        Assert.Contains(app.State.Sources, s => s.Name == "winget" && s.IsEnabled);
+    }
+
+    [Fact]
+    public async Task EnsureOfficialSourcesConfigured_ReplacesIncorrectUrl()
+    {
+        var capabilities = new SystemCapabilities(
+            IsSupportedOs: true,
+            IsWingetAvailable: true,
+            IsPowerShellAvailable: true,
+            IsWindowsUpdateComAvailable: true,
+            WindowsUpdateUnavailableReason: null,
+            WingetVersion: "1.8.1791",
+            WindowsBuildNumber: 19041
+        );
+
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://winget.azureedge.net/cache", false, WingetSourceStatus.Available)
+        );
+        var app = CreateApplication(capabilities: capabilities, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        var result = await app.RefreshSourcesAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Contains(sources.Calls, c => c == "remove:winget");
+        Assert.Contains(sources.Calls, c => c.StartsWith("add:winget:https://cdn.winget.microsoft.com/cache"));
+    }
+
+    [Fact]
+    public async Task EnsureOfficialSourcesConfigured_EnablesOfficialSourcesByDefault()
+    {
+        var capabilities = new SystemCapabilities(
+            IsSupportedOs: true,
+            IsWingetAvailable: true,
+            IsPowerShellAvailable: true,
+            IsWindowsUpdateComAvailable: true,
+            WindowsUpdateUnavailableReason: null,
+            WingetVersion: "1.8.1791",
+            WindowsBuildNumber: 19041
+        );
+
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available)
+        );
+        var preferences = new SourcePreferences(["winget"], DefaultSourcesConfigured: true);
+        var prefStore = new MemorySourcePreferenceStore { State = preferences };
+        var app = CreateApplication(capabilities: capabilities, sources: sources, sourcePreferences: prefStore);
+
+        await app.LoadWorkspaceAsync(CancellationToken.None);
+        Assert.Contains("winget", prefStore.State.DisabledSources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        var result = await app.RefreshSourcesAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(prefStore.State.DisabledSources);
+        Assert.Contains(app.State.Sources, s => s.Name == "winget" && s.IsEnabled);
     }
 
     private static OnlyWingetApplication CreateApplication(
@@ -868,7 +985,7 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class MemorySourcePreferenceStore : ISourcePreferenceStore
     {
-        public SourcePreferences State { get; private set; } = new SourcePreferences([], DefaultSourcesConfigured: true);
+        public SourcePreferences State { get; set; } = new SourcePreferences([], DefaultSourcesConfigured: true);
 
         public Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(State);
 
@@ -982,16 +1099,23 @@ public sealed class OnlyWingetApplicationTests
         }
     }
 
-    private sealed class StubSourceService(params WingetSource[] sources) : IWingetSourceService
+    private sealed class StubSourceService : IWingetSourceService
     {
         public bool FailUpdate { get; init; }
 
         public List<string> Calls { get; } = [];
 
+        private readonly List<WingetSource> list;
+
+        public StubSourceService(params WingetSource[] sources)
+        {
+            list = new List<WingetSource>(sources);
+        }
+
         public Task<WingetOperationOutcome<WingetSource>> ListSourcesAsync(CancellationToken cancellationToken)
         {
             Calls.Add("list");
-            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(list.ToArray(), string.Empty));
         }
 
         public Task<WingetOperationOutcome<WingetSource>> UpdateSourcesAsync(CancellationToken cancellationToken)
@@ -1001,24 +1125,36 @@ public sealed class OnlyWingetApplicationTests
                 ? WingetOperationOutcome<WingetSource>.Failure(
                     new ClassifiedWingetError(WingetErrorKind.SourceUnavailable, "Update failed."),
                     string.Empty)
-                : WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+                : WingetOperationOutcome<WingetSource>.Success(list.ToArray(), string.Empty));
         }
 
         public Task<WingetOperationOutcome<WingetSource>> AddSourceAsync(
             string name,
             string argument,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+            CancellationToken cancellationToken)
+        {
+            Calls.Add($"add:{name}:{argument}");
+            list.RemoveAll(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+            list.Add(new WingetSource(name, argument, false, WingetSourceStatus.Available));
+            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(list.ToArray(), string.Empty));
+        }
 
         public Task<WingetOperationOutcome<WingetSource>> RemoveSourceAsync(
             string name,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+            CancellationToken cancellationToken)
+        {
+            Calls.Add($"remove:{name}");
+            list.RemoveAll(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(list.ToArray(), string.Empty));
+        }
 
         public Task<WingetOperationOutcome<WingetSource>> ResetSourcesAsync(CancellationToken cancellationToken)
         {
             Calls.Add("reset");
-            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+            list.Clear();
+            list.Add(new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available));
+            list.Add(new WingetSource("msstore", "https://storeedgefd.dsx.mp.microsoft.com/v9.0", false, WingetSourceStatus.Available));
+            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(list.ToArray(), string.Empty));
         }
     }
 
