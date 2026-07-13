@@ -113,9 +113,7 @@ Test-Ui 'Source toggle can be changed and restored' {
 
 Test-Ui 'Import picker can be cancelled without mutation' {
     winapp ui invoke 'NavPackages' -a $AppPid -q
-    winapp ui invoke 'MoreButton' -a $AppPid -q
-    winapp ui wait-for 'CommandImportPreset' -a $AppPid -t 3000 -q
-    winapp ui invoke 'CommandImportPreset' -a $AppPid -q
+    winapp ui invoke 'ImportPresetBtn' -a $AppPid -q
     Start-Sleep -Seconds 2
     $picker = winapp ui list-windows --json 2>$null | ConvertFrom-Json |
         Where-Object {
@@ -145,12 +143,12 @@ Test-Ui 'Shared tables and progress controls expose accessibility metadata' {
     $tableCode = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Controls/OnlyWingetTable.xaml.cs')
     $presetXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Packages/PresetsPage.xaml')
     $updatesXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/Features/Updates/UpdatesPage.xaml')
-    $bannerXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/DesignSystem/States/OperationBanner.xaml')
+    $bannerXaml = Get-Content -Raw (Join-Path $repoRoot 'src/OnlyWinget/DesignSystem/States/StatePresenter.xaml')
     if ($tableXaml -notmatch 'ListView' -or
         $tableCode -notmatch 'AutomationProperties.SetName' -or
-        $tableCode -notmatch 'ListViewSelectionMode.Multiple' -or
-        $presetXaml -notmatch 'OperationBanner' -or
-        $updatesXaml -notmatch 'OperationBanner' -or
+        $tableCode -notmatch 'ListViewSelectionMode.None' -or
+        $presetXaml -notmatch 'StatePresenter' -or
+        $updatesXaml -notmatch 'StatePresenter' -or
         $bannerXaml -notmatch 'AutomationProperties.LiveSetting="Polite"' -or
         $bannerXaml -notmatch 'ProgressBar') {
         throw 'Metadati di accessibilita del progresso incompleti.'
@@ -225,6 +223,7 @@ if ($CaptureAllRoutes) {
     Save-RouteScreenshot '04-updates-winget-populated'
 
     winapp ui invoke 'UpdatesWindowsTab' -a $AppPid -q
+    Start-Sleep -Seconds 2
     winapp ui click 'CommandScanWindowsUpdates' -a $AppPid -q
     winapp ui wait-for 'CommandScanWindowsUpdates' -a $AppPid -p IsEnabled --value True -t 90000 -q
     Save-RouteScreenshot '05-updates-windows-populated'

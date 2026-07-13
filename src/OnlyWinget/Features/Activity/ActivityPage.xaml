@@ -26,11 +26,11 @@
                 <Border Style="{StaticResource CardStyle}">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" MaxWidth="480" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" VerticalAlignment="Center" />
+                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
                         <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Content="{services:Localize Key=Activity_AllSeverities}" Tag="all" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Information}" Tag="Information" />

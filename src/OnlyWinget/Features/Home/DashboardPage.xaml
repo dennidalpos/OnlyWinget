@@ -37,11 +37,11 @@
                 </Border>
                 <ItemsRepeater x:Name="MetricRepeater" Grid.Row="1">
                     <ItemsRepeater.Layout>
-                        <UniformGridLayout MaximumRowsOrColumns="6" MinItemWidth="170" MinColumnSpacing="12" MinRowSpacing="12" ItemsStretch="Fill" Orientation="Horizontal" />
+                        <UniformGridLayout MaximumRowsOrColumns="6" MinItemWidth="170" MinItemHeight="90" MinColumnSpacing="12" MinRowSpacing="12" ItemsStretch="None" Orientation="Horizontal" />
                     </ItemsRepeater.Layout>
                     <ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="home:DashboardMetric">
-                            <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1,3,1,1">
+                            <Border Width="180" Height="90" Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1">
                                 <StackPanel>
                                     <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" />
                                     <TextBlock Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />

@@ -28,8 +28,20 @@
                                 </Grid.RowDefinitions>
                                 <TextBlock x:Name="AddSourceSectionText" Text="{services:Localize Key=Section_AddSource}" Style="{StaticResource SectionTitleTextBlockStyle}" />
                                 <design:OnlyWingetResponsivePanel Grid.Row="1" ItemMinWidth="300" HorizontalSpacing="16" VerticalSpacing="12">
-                                    <TextBox x:Name="SourceNameBox" Header="{services:Localize Key=Source_Name}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                                    <TextBox x:Name="SourceArgumentBox" Header="{services:Localize Key=Source_Argument}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                    <Grid HorizontalAlignment="Stretch">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MaxWidth="480" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="SourceNameBox" Header="{services:Localize Key=Source_Name}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                    </Grid>
+                                    <Grid HorizontalAlignment="Stretch">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MaxWidth="480" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="SourceArgumentBox" Header="{services:Localize Key=Source_Argument}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                    </Grid>
                                 </design:OnlyWingetResponsivePanel>
                                 <StackPanel x:Name="AddSourceBtnRow" Grid.Row="2" Orientation="Horizontal" Spacing="8">
                                     <Button x:Name="AddSourceBtn" Content="{services:Localize Key=Command_Sources_Add}" Click="OnAddSourceClick" Style="{StaticResource AddPrimaryButtonStyle}" />

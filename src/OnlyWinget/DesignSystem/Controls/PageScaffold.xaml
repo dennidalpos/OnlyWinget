@@ -32,13 +32,17 @@
                     </VisualState>
                 </VisualStateGroup>
             </VisualStateManager.VisualStateGroups>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MaxWidth="{StaticResource PageMaxWidth}" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Grid x:Name="HeaderGrid" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" ColumnSpacing="16" RowSpacing="12">
+            <Grid x:Name="HeaderGrid" Grid.Column="0" HorizontalAlignment="Stretch" ColumnSpacing="16" RowSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="HeaderCol0" Width="*" />
                     <ColumnDefinition x:Name="HeaderCol1" Width="Auto" />
@@ -60,8 +64,8 @@
                 </Grid>
                 <ContentPresenter x:Name="CommandsPresenter" Grid.Column="1" Grid.Row="0" Content="{x:Bind Commands, Mode=OneWay}" VerticalAlignment="Bottom" />
             </Grid>
-            <ContentPresenter Grid.Row="1" Content="{x:Bind State, Mode=OneWay}" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" />
-            <ContentPresenter Grid.Row="2" Content="{x:Bind Body, Mode=OneWay}" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-            <ContentPresenter Grid.Row="3" Content="{x:Bind Footer, Mode=OneWay}" MaxWidth="{StaticResource PageMaxWidth}" HorizontalAlignment="Stretch" />
+            <ContentPresenter Grid.Row="1" Grid.Column="0" Content="{x:Bind State, Mode=OneWay}" HorizontalAlignment="Stretch" />
+            <ContentPresenter Grid.Row="2" Grid.Column="0" Content="{x:Bind Body, Mode=OneWay}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+            <ContentPresenter Grid.Row="3" Grid.Column="0" Content="{x:Bind Footer, Mode=OneWay}" HorizontalAlignment="Stretch" />
         </Grid>
 </UserControl>
