@@ -6,7 +6,8 @@
     xmlns:states="using:OnlyWinget.DesignSystem.States"
     xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
     xmlns:presentation="using:OnlyWinget.Presentation"
-    xmlns:appPresentation="using:OnlyWinget.Application.Presentation">
+    xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
+    xmlns:services="using:OnlyWinget.Services">
     <Grid RowSpacing="12" VerticalAlignment="Stretch">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -19,14 +20,14 @@
         </Border>
         <states:StatePresenter x:Name="PageState" Grid.Row="1" />
         <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
-            <controls:OnlyWingetTable x:Name="UpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" AutomationProperties.AutomationId="UpdateList" ToggleAllRequested="OnToggleAllUpdates" SelectionToggled="OnUpdateSelectionToggled">
-                <controls:OnlyWingetTableColumn Header="Name" BindingPath="Name" Width="210" IsPrimary="True" />
-                <controls:OnlyWingetTableColumn Header="Package ID" BindingPath="PackageId" Width="250" IsTextSelectable="True" />
-                <controls:OnlyWingetTableColumn Header="Source" BindingPath="Source" Width="100" />
-                <controls:OnlyWingetTableColumn Header="Installed" BindingPath="InstalledVersion" Width="110" />
-                <controls:OnlyWingetTableColumn Header="Available" BindingPath="AvailableVersion" Width="120" />
-                <controls:OnlyWingetTableColumn Header="Publisher" BindingPath="Publisher" Width="160" />
-                <controls:OnlyWingetTableColumn Header="Status" BindingPath="Status" Width="*" />
+            <controls:OnlyWingetTable x:Name="UpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="UpdateList" ToggleAllRequested="OnToggleAllUpdates" SelectionToggled="OnUpdateSelectionToggled">
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Name}" BindingPath="Name" Width="210" IsPrimary="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_PackageId}" BindingPath="PackageId" Width="250" IsTextSelectable="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Source}" BindingPath="Source" Width="100" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Installed}" BindingPath="InstalledVersion" Width="110" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Available}" BindingPath="AvailableVersion" Width="120" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Publisher}" BindingPath="Publisher" Width="160" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Status}" BindingPath="Status" Width="*" />
             </controls:OnlyWingetTable>
         </Border>
         <Border Grid.Row="3" Style="{StaticResource ListCardStyle}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.HasOperationResults), Mode=OneWay}">

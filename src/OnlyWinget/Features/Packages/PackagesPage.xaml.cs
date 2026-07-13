@@ -11,10 +11,6 @@ public sealed partial class PackagesPage : Page, IPendingNavigationGuard
     public PackagesPage()
     {
         InitializeComponent();
-        Scaffold.Title = TextResources.Get("Nav_Packages");
-        Scaffold.Subtitle = TextResources.Get("Packages_Subtitle");
-        PresetMode.Text = TextResources.Get("Packages_PresetsMode");
-        SearchMode.Text = TextResources.Get("Packages_SearchMode");
         lastSelectedItem = PresetMode;
     }
 

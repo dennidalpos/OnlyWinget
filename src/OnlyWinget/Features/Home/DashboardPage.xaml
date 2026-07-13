@@ -4,9 +4,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:home="using:OnlyWinget.Features.Home"
-    xmlns:presentation="using:OnlyWinget.Application.Presentation"
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
+    xmlns:services="using:OnlyWinget.Services"
     xmlns:states="using:OnlyWinget.DesignSystem.States">
-    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaHomeBrush}">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Dashboard_Title}" Subtitle="OnlyWinget" AreaAccentBrush="{ThemeResource AreaHomeBrush}">
         <design:PageScaffold.State>
             <states:StatePresenter x:Name="PageState" />
         </design:PageScaffold.State>
@@ -21,15 +23,15 @@
                     <Grid ColumnSpacing="16">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel Spacing="4">
-                            <TextBlock x:Name="ActivePresetText" Style="{StaticResource SectionTitleTextBlockStyle}" AutomationProperties.AutomationId="DashboardActivePreset" />
+                            <TextBlock x:Name="ActivePresetText" Text="{x:Bind viewModel.ActivePresetDisplay, Mode=OneWay}" Style="{StaticResource SectionTitleTextBlockStyle}" AutomationProperties.AutomationId="DashboardActivePreset" />
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                                <FontIcon x:Name="OperationalIcon" Glyph="&#xE930;" FontSize="16" VerticalAlignment="Center" />
-                                <TextBlock x:Name="OperationalText" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center"/>
+                                <FontIcon x:Name="OperationalIcon" Glyph="{x:Bind presentation:PresentationValues.OperationalGlyph(viewModel.HasWarning, viewModel.IsBusy), Mode=OneWay}" Foreground="{x:Bind presentation:PresentationValues.OperationalForeground(viewModel.HasWarning, viewModel.IsBusy), Mode=OneWay}" FontSize="16" VerticalAlignment="Center" />
+                                <TextBlock x:Name="OperationalText" Text="{x:Bind viewModel.OperationalStatus, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <Button x:Name="OpenPackagesButton" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages" />
-                            <Button x:Name="OpenUpdatesButton" Click="OnOpenUpdates" AutomationProperties.AutomationId="DashboardOpenUpdates" />
+                            <Button x:Name="OpenPackagesButton" Content="{services:Localize Key=Dashboard_OpenPackages}" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages" />
+                            <Button x:Name="OpenUpdatesButton" Content="{services:Localize Key=Dashboard_OpenUpdates}" Click="OnOpenUpdates" AutomationProperties.AutomationId="DashboardOpenUpdates" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -56,12 +58,12 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="RecentActivityText" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                            <HyperlinkButton x:Name="ViewAllActivityButton" Grid.Column="1" Click="OnViewAllActivity" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RecentActivityText" Text="{services:Localize Key=Dashboard_RecentActivity}" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
+                            <HyperlinkButton x:Name="ViewAllActivityButton" Content="{services:Localize Key=Dashboard_ViewAllActivity}" Grid.Column="1" Click="OnViewAllActivity" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl x:Name="ActivityList" Grid.Row="1" AutomationProperties.AutomationId="DashboardActivityList">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="presentation:ActivityRow">
+                                <DataTemplate x:DataType="appPresentation:ActivityRow">
                                     <Border Style="{StaticResource TableRowDividerStyle}" Padding="0,8">
                                         <StackPanel Spacing="3">
                                             <StackPanel Orientation="Horizontal" Spacing="10">

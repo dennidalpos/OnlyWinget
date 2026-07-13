@@ -4,12 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:updates="using:OnlyWinget.Features.Updates"
-    xmlns:presentation="using:OnlyWinget.Presentation">
-    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaUpdatesBrush}">
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:services="using:OnlyWinget.Services">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Nav_Updates}" Subtitle="{services:Localize Key=Updates_Subtitle}" AreaAccentBrush="{ThemeResource AreaUpdatesBrush}">
         <design:PageScaffold.Commands>
             <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind WingetMode}" AutomationProperties.AutomationId="UpdatesModes">
-                <SelectorBarItem x:Name="WingetMode" Icon="Sync" AutomationProperties.AutomationId="UpdatesWingetTab" />
-                <SelectorBarItem x:Name="WindowsMode" Icon="Download" AutomationProperties.AutomationId="UpdatesWindowsTab" />
+                <SelectorBarItem x:Name="WingetMode" Text="{services:Localize Key=Updates_WingetMode}" Icon="Sync" AutomationProperties.AutomationId="UpdatesWingetTab" />
+                <SelectorBarItem x:Name="WindowsMode" Text="{services:Localize Key=Updates_WindowsMode}" Icon="Download" AutomationProperties.AutomationId="UpdatesWindowsTab" />
             </SelectorBar>
         </design:PageScaffold.Commands>
         <design:PageScaffold.Body>

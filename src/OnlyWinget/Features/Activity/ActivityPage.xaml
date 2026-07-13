@@ -5,9 +5,11 @@
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
     xmlns:states="using:OnlyWinget.DesignSystem.States"
-    xmlns:presentation="using:OnlyWinget.Application.Presentation"
-    xmlns:activity="using:OnlyWinget.Features.Activity">
-    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaActivityBrush}">
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
+    xmlns:activity="using:OnlyWinget.Features.Activity"
+    xmlns:services="using:OnlyWinget.Services">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Activity_Title}" Subtitle="{services:Localize Key=Activity_Subtitle}" AreaAccentBrush="{ThemeResource AreaActivityBrush}">
         <design:PageScaffold.Commands>
             <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
         </design:PageScaffold.Commands>
@@ -28,21 +30,21 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <AutoSuggestBox x:Name="SearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" VerticalAlignment="Center" />
+                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" MaxWidth="480" VerticalAlignment="Center" />
                         <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="140" VerticalAlignment="Center">
-                            <ComboBoxItem Tag="all" />
-                            <ComboBoxItem Tag="Information" />
-                            <ComboBoxItem Tag="Success" />
-                            <ComboBoxItem Tag="Warning" />
-                            <ComboBoxItem Tag="Error" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_AllSeverities}" Tag="all" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Information}" Tag="Information" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Success}" Tag="Success" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Warning}" Tag="Warning" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Error}" Tag="Error" />
                         </ComboBox>
                         <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="140" VerticalAlignment="Center">
-                            <ComboBoxItem Tag="all" />
-                            <ComboBoxItem Tag="packages" />
-                            <ComboBoxItem Tag="windows" />
-                            <ComboBoxItem Tag="sources" />
-                            <ComboBoxItem Tag="presets" />
-                            <ComboBoxItem Tag="system" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_AllCategories}" Tag="all" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_Packages}" Tag="packages" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_WindowsUpdate}" Tag="windows" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_Sources}" Tag="sources" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_Presets}" Tag="presets" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_System}" Tag="system" />
                         </ComboBox>
                     </Grid>
                 </Border>
@@ -53,10 +55,10 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="ActivityTimeFilterBox" TextChanged="OnActivityColumnFilterChanged" />
-                    <TextBox x:Name="ActivitySeverityFilterBox" Grid.Column="1" TextChanged="OnActivityColumnFilterChanged" />
-                    <TextBox x:Name="ActivityTitleFilterBox" Grid.Column="2" TextChanged="OnActivityColumnFilterChanged" />
-                    <TextBox x:Name="ActivityMessageFilterBox" Grid.Column="3" TextChanged="OnActivityColumnFilterChanged" />
+                    <TextBox x:Name="ActivityTimeFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Time')}" TextChanged="OnActivityColumnFilterChanged" />
+                    <TextBox x:Name="ActivitySeverityFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Severity')}" Grid.Column="1" TextChanged="OnActivityColumnFilterChanged" />
+                    <TextBox x:Name="ActivityTitleFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Title')}" Grid.Column="2" TextChanged="OnActivityColumnFilterChanged" />
+                    <TextBox x:Name="ActivityMessageFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Message')}" Grid.Column="3" TextChanged="OnActivityColumnFilterChanged" />
                 </Grid>
                 <ListView x:Name="ActivityList" Grid.Row="2" SelectionMode="None">
                     <ListView.ItemContainerStyle>
@@ -66,7 +68,7 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="presentation:ActivityRow">
+                        <DataTemplate x:DataType="appPresentation:ActivityRow">
                             <Expander>
                                 <Expander.Header>
                                     <Grid ColumnSpacing="12">

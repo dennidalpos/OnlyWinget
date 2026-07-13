@@ -31,7 +31,6 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        ApplyText();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
@@ -58,46 +57,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         isRefreshing = false;
     }
 
-    private void ApplyText()
-    {
-        PresetManagementText.Text = TextResources.Get("Section_PresetManagement");
-        PackageManagementText.Text = TextResources.Get("Section_PackageManagement");
-        PackagesSectionText.Text = TextResources.Get("Section_Packages");
-        OperationResultsText.Text = TextResources.Get("Section_OperationResults");
 
-        PresetNameBox.Header = TextResources.Get("Preset_Name");
-        RenamePresetNameBox.Header = TextResources.Get("Preset_Name");
-        PackageIdBox.Header = TextResources.Get("Package_Id");
-        PackageSourceBox.Header = TextResources.Get("Package_Source");
-        EditPackageIdBox.Header = TextResources.Get("Package_Id");
-        EditPackageSourceBox.Header = TextResources.Get("Package_Source");
-
-        PackageList.SelectionLabel = TextResources.Get("Preset_PackageSelectionLabel");
-        PackageList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Version", "Header_Publisher" }.Select(TextResources.Get).ToArray());
-
-        ToolTipService.SetToolTip(AddPresetBtn, TextResources.Get("Command_Preset_Add"));
-        AutomationProperties.SetName(AddPresetBtn, TextResources.Get("Command_Preset_Add"));
-        SavePresetBtn.Content = TextResources.Get("Command_Preset_Add");
-
-        ToolTipService.SetToolTip(RenamePresetBtn, TextResources.Get("Command_Preset_Rename"));
-        AutomationProperties.SetName(RenamePresetBtn, TextResources.Get("Command_Preset_Rename"));
-        SaveRenamePresetBtn.Content = TextResources.Get("Command_Preset_Rename");
-
-        ToolTipService.SetToolTip(RemovePresetBtn, TextResources.Get("Command_Preset_Remove"));
-        AutomationProperties.SetName(RemovePresetBtn, TextResources.Get("Command_Preset_Remove"));
-
-        ToolTipService.SetToolTip(ImportPresetBtn, TextResources.Get("Command_Preset_Import"));
-        AutomationProperties.SetName(ImportPresetBtn, TextResources.Get("Command_Preset_Import"));
-
-        ToolTipService.SetToolTip(ExportPresetBtn, TextResources.Get("Command_Preset_Export"));
-        AutomationProperties.SetName(ExportPresetBtn, TextResources.Get("Command_Preset_Export"));
-
-        AddPackageBtn.Content = TextResources.Get("Command_PresetPackage_Add");
-        SavePackageBtn.Content = TextResources.Get("Command_PresetPackage_Add");
-        EditPackageBtn.Content = TextResources.Get("Command_PresetPackage_Edit");
-        SaveEditPackageBtn.Content = TextResources.Get("Command_PresetPackage_Edit");
-        RemovePackageBtn.Content = TextResources.Get("Command_PresetPackage_Remove");
-    }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {

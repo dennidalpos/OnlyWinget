@@ -4,12 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:packages="using:OnlyWinget.Features.Packages"
-    xmlns:presentation="using:OnlyWinget.Presentation">
-    <design:PageScaffold x:Name="Scaffold" AreaAccentBrush="{ThemeResource AreaPackagesBrush}">
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:services="using:OnlyWinget.Services">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Nav_Packages}" Subtitle="{services:Localize Key=Packages_Subtitle}" AreaAccentBrush="{ThemeResource AreaPackagesBrush}">
         <design:PageScaffold.Commands>
             <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind PresetMode}" SelectionChanged="OnModeSelectionChanged" AutomationProperties.AutomationId="PackagesModes">
-                <SelectorBarItem x:Name="PresetMode" Icon="Library" AutomationProperties.AutomationId="PackagesPresetTab" />
-                <SelectorBarItem x:Name="SearchMode" Icon="Find" AutomationProperties.AutomationId="PackagesSearchTab" />
+                <SelectorBarItem x:Name="PresetMode" Text="{services:Localize Key=Packages_PresetsMode}" Icon="Library" AutomationProperties.AutomationId="PackagesPresetTab" />
+                <SelectorBarItem x:Name="SearchMode" Text="{services:Localize Key=Packages_SearchMode}" Icon="Find" AutomationProperties.AutomationId="PackagesSearchTab" />
             </SelectorBar>
         </design:PageScaffold.Commands>
         <design:PageScaffold.Body>

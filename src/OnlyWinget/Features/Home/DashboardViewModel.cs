@@ -5,12 +5,16 @@ using System.Globalization;
 
 namespace OnlyWinget.Features.Home;
 
-public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed class DashboardViewModel : FeatureViewModel
 {
     private FeatureState pageState = FeatureState.Ready;
     private string activePreset = string.Empty;
     private string operationalStatus = string.Empty;
     private bool hasWarning;
+
+    public DashboardViewModel(Action<Action> dispatch) : base(App.Workflow, dispatch)
+    {
+    }
 
     public ObservableCollection<DashboardMetric> Metrics { get; } = [new(), new(), new(), new(), new(), new()];
     public ObservableCollection<ActivityRow> RecentActivity { get; } = [];
@@ -18,6 +22,8 @@ public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewMod
     public string ActivePreset { get => activePreset; private set => SetProperty(ref activePreset, value); }
     public string OperationalStatus { get => operationalStatus; private set => SetProperty(ref operationalStatus, value); }
     public bool HasWarning { get => hasWarning; private set => SetProperty(ref hasWarning, value); }
+    public bool IsBusy => OperationalStatus == TextResources.Get("Dashboard_Busy");
+    public string ActivePresetDisplay => $"{TextResources.Get("Dashboard_ActivePreset")}: {ActivePreset}";
 
     protected override void Refresh()
     {
@@ -28,6 +34,13 @@ public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewMod
         Metrics[3].AccentKey = "AreaUpdatesBrush";
         Metrics[4].AccentKey = "AreaSourcesBrush";
         Metrics[5].AccentKey = "AreaActivityBrush";
+
+        Metrics[0].Label = TextResources.Get("Dashboard_Winget");
+        Metrics[1].Label = TextResources.Get("Dashboard_Presets");
+        Metrics[2].Label = TextResources.Get("Dashboard_SearchResults");
+        Metrics[3].Label = TextResources.Get("Dashboard_Updates");
+        Metrics[4].Label = TextResources.Get("Dashboard_Sources");
+        Metrics[5].Label = TextResources.Get("Dashboard_WindowsUpdates");
 
         Metrics[0].Value = state.IsWingetAvailable switch
         {
@@ -53,6 +66,9 @@ public sealed class DashboardViewModel(Action<Action> dispatch) : FeatureViewMod
                 : state.RecentActivity.Count == 0
                     ? FeatureState.Empty(TextResources.Get("Empty_Activity"))
                     : FeatureState.Ready;
+
+        OnPropertyChanged(nameof(IsBusy));
+        OnPropertyChanged(nameof(ActivePresetDisplay));
     }
 }
 

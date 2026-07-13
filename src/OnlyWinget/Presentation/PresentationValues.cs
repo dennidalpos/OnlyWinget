@@ -47,4 +47,29 @@ public static class PresentationValues
         }
         return new Microsoft.UI.Xaml.Media.SolidColorBrush(fallbackColor);
     }
+
+    public static string OperationalGlyph(bool hasWarning, bool isBusy)
+    {
+        return hasWarning
+            ? "\uE7BA"
+            : (isBusy ? "\uE895" : "\uE930");
+    }
+
+    public static Microsoft.UI.Xaml.Media.Brush OperationalForeground(bool hasWarning, bool isBusy)
+    {
+        var resourceKey = hasWarning
+            ? "SystemFillColorCautionBrush"
+            : (isBusy ? "SystemFillColorAttentionBrush" : "SystemFillColorSuccessBrush");
+        var fallback = hasWarning ? Microsoft.UI.Colors.Orange : (isBusy ? Microsoft.UI.Colors.Blue : Microsoft.UI.Colors.Green);
+        return GetSeverityBrush(resourceKey, fallback);
+    }
+
+    public static string FormatFilterPlaceholder(string columnHeaderKey)
+    {
+        return string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            TextResources.Get("Filter_Column_Placeholder"),
+            TextResources.Get(columnHeaderKey));
+    }
 }
+

@@ -300,22 +300,33 @@ public sealed partial class MainWindow : Window
             RootNavigation.OpenPaneLength = settings.MenuWidth > 0 ? settings.MenuWidth : 280;
         }
 
-        // Update pin item content & icon
+        if (PinMenuItem is not null && PinMenuIcon is FontIcon fontIcon)
+        {
+            fontIcon.Glyph = settings.IsMenuPinned ? "\uE840" : "\uE718";
+        }
+
+        ApplyPaneFooterContent();
+        UpdateResizer();
+    }
+
+    private void ApplyPaneFooterContent()
+    {
+        var settings = App.UiServices.Settings.Current;
+        bool isPaneOpen = RootNavigation.IsPaneOpen;
+
         if (PinMenuItem is not null)
         {
-            PinMenuItem.Content = TextResources.Get(settings.IsMenuPinned ? "Menu_Unpin" : "Menu_Pin");
-            if (PinMenuIcon is FontIcon fontIcon)
-            {
-                fontIcon.Glyph = settings.IsMenuPinned ? "\uE840" : "\uE718";
-            }
+            var content = TextResources.Get(settings.IsMenuPinned ? "Menu_Unpin" : "Menu_Pin");
+            PinMenuItem.Content = isPaneOpen ? content : string.Empty;
+            ToolTipService.SetToolTip(PinMenuItem, isPaneOpen ? null : content);
         }
 
         if (OpenLogsItem is not null)
         {
-            OpenLogsItem.Content = TextResources.Get("Menu_OpenLogs");
+            var content = TextResources.Get("Menu_OpenLogs");
+            OpenLogsItem.Content = isPaneOpen ? content : string.Empty;
+            ToolTipService.SetToolTip(OpenLogsItem, isPaneOpen ? null : content);
         }
-
-        UpdateResizer();
     }
 
     private void UpdateResizer()
@@ -370,16 +381,19 @@ public sealed partial class MainWindow : Window
     private void OnPaneOpened(NavigationView sender, object args)
     {
         UpdateResizer();
+        ApplyPaneFooterContent();
     }
 
     private void OnPaneClosed(NavigationView sender, object args)
     {
         UpdateResizer();
+        ApplyPaneFooterContent();
     }
 
     private void OnDisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args)
     {
         UpdateResizer();
+        ApplyPaneFooterContent();
     }
 
     private async void OnPinMenuTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)

@@ -21,7 +21,6 @@ public sealed partial class ActivityPage : Page
         PageState.ActionRequested += OnUndoClear;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        ApplyText();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args) => viewModel.Activate();
@@ -37,28 +36,6 @@ public sealed partial class ActivityPage : Page
         if (args.PropertyName == nameof(ActivityViewModel.PageState))
         {
             PageState.Present(viewModel.PageState);
-        }
-    }
-
-    private void ApplyText()
-    {
-        Scaffold.Title = TextResources.Get("Activity_Title");
-        Scaffold.Subtitle = TextResources.Get("Activity_Subtitle");
-        SearchBox.PlaceholderText = TextResources.Get("Activity_Search");
-        ActivityTimeFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Time"));
-        ActivitySeverityFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Severity"));
-        ActivityTitleFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Title"));
-        ActivityMessageFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Message"));
-        ((ComboBoxItem)SeverityFilter.Items[0]).Content = TextResources.Get("Activity_AllSeverities");
-        for (var index = 1; index < SeverityFilter.Items.Count; index++)
-        {
-            var item = (ComboBoxItem)SeverityFilter.Items[index];
-            item.Content = TextResources.Get($"Activity_Severity_{item.Tag}");
-        }
-        var categories = new[] { "AllCategories", "Packages", "WindowsUpdate", "Sources", "Presets", "System" };
-        for (var index = 0; index < CategoryFilter.Items.Count; index++)
-        {
-            ((ComboBoxItem)CategoryFilter.Items[index]).Content = TextResources.Get($"Activity_Category_{categories[index]}");
         }
     }
 

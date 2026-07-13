@@ -13,33 +13,11 @@ public sealed partial class SettingsPage : Page
         isInitializing = true;
         InitializeComponent();
         ViewModel = new(App.UiServices.Settings);
-        ApplyText();
         isInitializing = false;
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
     }
 
     public SettingsViewModel ViewModel { get; }
-
-    private void ApplyText()
-    {
-        Scaffold.Title = TextResources.Get("Settings_Title");
-        Scaffold.Subtitle = TextResources.Get("Settings_Subtitle");
-        AppearanceGroupHeader.Text = TextResources.Get("Settings_Group_Appearance");
-        BehaviorGroupHeader.Text = TextResources.Get("Settings_Group_Behavior");
-        MaintenanceGroupHeader.Text = TextResources.Get("Settings_Group_Maintenance");
-        LanguageTitle.Text = TextResources.Get("Settings_Language");
-        LanguageDescription.Text = TextResources.Get("Settings_LanguageDescription");
-        ThemeTitle.Text = TextResources.Get("Settings_Theme");
-        ThemeDescription.Text = TextResources.Get("Settings_ThemeDescription");
-        ConfirmDestructiveText.Text = TextResources.Get("Settings_ConfirmDestructive");
-        DiagnosticsText.Text = TextResources.Get("Settings_Diagnostics");
-        LogLevelTitle.Text = TextResources.Get("Settings_LogLevel");
-        LogLevelDescription.Text = TextResources.Get("Settings_LogLevelDescription");
-        InstallBehaviorText.Text = TextResources.Get("Settings_InstallBehavior");
-        ResetTitle.Text = TextResources.Get("Settings_Reset");
-        ResetDescription.Text = TextResources.Get("Settings_ResetDescription");
-        ResetButton.Content = TextResources.Get("Settings_ResetAction");
-    }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {

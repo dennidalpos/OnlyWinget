@@ -21,7 +21,6 @@ public sealed partial class WindowsUpdatePage : UserControl
         PageState.CancelRequested += OnOperationCancelRequested;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        ApplyText();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
@@ -43,15 +42,6 @@ public sealed partial class WindowsUpdatePage : UserControl
         SoftwareUpdatesBox.IsEnabled = !ViewModel.IsBusy;
         DriverUpdatesBox.IsEnabled = !ViewModel.IsBusy;
         MicrosoftUpdatesBox.IsEnabled = !ViewModel.IsBusy;
-    }
-
-    private void ApplyText()
-    {
-        SoftwareUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeSoftware");
-        DriverUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeDrivers");
-        MicrosoftUpdatesBox.Content = TextResources.Get("WindowsUpdates_IncludeMicrosoft");
-        WindowsUpdateList.SelectionLabel = TextResources.Get("Command_Select_All");
-        WindowsUpdateList.SetHeaders(new[] { "Header_Title", "Header_KnowledgeBase", "Header_Severity", "Header_Categories", "Header_Size", "Header_Downloaded", "Header_Reboot", "Header_Revision", "Header_Status" }.Select(TextResources.Get).ToArray());
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)

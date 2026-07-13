@@ -21,7 +21,6 @@ public sealed partial class UpdatesPage : UserControl
         PageState.CancelRequested += OnOperationCancelRequested;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        ApplyText();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs args)
@@ -46,12 +45,6 @@ public sealed partial class UpdatesPage : UserControl
     {
         PageState.Present(ViewModel.PageState);
         ApplyOperationProgress();
-    }
-
-    private void ApplyText()
-    {
-        UpdateList.SelectionLabel = TextResources.Get("Command_Select_All");
-        UpdateList.SetHeaders(new[] { "Header_Name", "Header_PackageId", "Header_Source", "Header_Installed", "Header_Available", "Header_Publisher", "Header_Status" }.Select(TextResources.Get).ToArray());
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)

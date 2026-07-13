@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using OnlyWinget.Presentation;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Home;
@@ -18,57 +17,21 @@ public sealed partial class DashboardPage : Page
         viewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        ApplyText();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs args) => viewModel.Activate();
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        viewModel.Activate();
+        PageState.Present(viewModel.PageState);
+    }
+
     private void OnUnloaded(object sender, RoutedEventArgs args) => viewModel.Deactivate();
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
     {
-        RefreshOverview();
         if (args.PropertyName == nameof(DashboardViewModel.PageState))
         {
             PageState.Present(viewModel.PageState);
-        }
-    }
-
-    private void ApplyText()
-    {
-        Scaffold.Title = TextResources.Get("Dashboard_Title");
-        Scaffold.Subtitle = "OnlyWinget";
-        viewModel.Metrics[0].Label = TextResources.Get("Dashboard_Winget");
-        viewModel.Metrics[1].Label = TextResources.Get("Dashboard_Presets");
-        viewModel.Metrics[2].Label = TextResources.Get("Dashboard_SearchResults");
-        viewModel.Metrics[3].Label = TextResources.Get("Dashboard_Updates");
-        viewModel.Metrics[4].Label = TextResources.Get("Dashboard_Sources");
-        viewModel.Metrics[5].Label = TextResources.Get("Dashboard_WindowsUpdates");
-        RecentActivityText.Text = TextResources.Get("Dashboard_RecentActivity");
-        ViewAllActivityButton.Content = TextResources.Get("Dashboard_ViewAllActivity");
-        OpenPackagesButton.Content = TextResources.Get("Dashboard_OpenPackages");
-        OpenUpdatesButton.Content = TextResources.Get("Dashboard_OpenUpdates");
-        RefreshOverview();
-    }
-
-    private void RefreshOverview()
-    {
-        ActivePresetText.Text = $"{TextResources.Get("Dashboard_ActivePreset")}: {viewModel.ActivePreset}";
-        OperationalText.Text = viewModel.OperationalStatus;
-
-        if (viewModel.HasWarning)
-        {
-            OperationalIcon.Glyph = "\uE7BA";
-            OperationalIcon.Foreground = PresentationValues.GetSeverityBrush("SystemFillColorCautionBrush", Microsoft.UI.Colors.Orange);
-        }
-        else if (viewModel.OperationalStatus == TextResources.Get("Dashboard_Busy"))
-        {
-            OperationalIcon.Glyph = "\uE895";
-            OperationalIcon.Foreground = PresentationValues.GetSeverityBrush("SystemFillColorAttentionBrush", Microsoft.UI.Colors.Blue);
-        }
-        else
-        {
-            OperationalIcon.Glyph = "\uE930";
-            OperationalIcon.Foreground = PresentationValues.GetSeverityBrush("SystemFillColorSuccessBrush", Microsoft.UI.Colors.Green);
         }
     }
 
@@ -95,4 +58,3 @@ public sealed partial class DashboardPage : Page
         }
     }
 }
-

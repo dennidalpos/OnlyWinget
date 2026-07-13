@@ -23,7 +23,6 @@ public sealed partial class SourcesPage : Page
         viewModel.Argument.PropertyChanged += OnValidationChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        ApplyText();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args) => viewModel.Activate();
@@ -47,34 +46,6 @@ public sealed partial class SourcesPage : Page
         LoadingRing.Visibility = viewModel.IsRefreshing ? Visibility.Visible : Visibility.Collapsed;
         RefreshCommands();
     }
-
-    private void ApplyText()
-    {
-        Scaffold.Title = TextResources.Get("Sources_Title");
-        AddSourceSectionText.Text = TextResources.Get("Section_AddSource");
-        ManageSourcesSectionText.Text = TextResources.Get("Section_ManageSources");
-        SourceNameBox.Header = TextResources.Get("Source_Name");
-        SourceArgumentBox.Header = TextResources.Get("Source_Argument");
-        SourceNameFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Name"));
-        SourceArgumentFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Argument"));
-        SourceTypeFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Type"));
-        SourceStatusFilterBox.PlaceholderText = string.Format(System.Globalization.CultureInfo.CurrentCulture, TextResources.Get("Filter_Column_Placeholder"), TextResources.Get("Header_Status"));
-
-        AddSourceBtn.Content = TextResources.Get("Command_Sources_Add");
-
-        ToolTipService.SetToolTip(RefreshSourcesBtn, TextResources.Get("Command_Sources_Refresh"));
-        AutomationProperties.SetName(RefreshSourcesBtn, TextResources.Get("Command_Sources_Refresh"));
-
-        ToolTipService.SetToolTip(UpdateSourcesBtn, TextResources.Get("Command_Sources_Update"));
-        AutomationProperties.SetName(UpdateSourcesBtn, TextResources.Get("Command_Sources_Update"));
-
-        ToolTipService.SetToolTip(RemoveSourceBtn, TextResources.Get("Command_Sources_Remove"));
-        AutomationProperties.SetName(RemoveSourceBtn, TextResources.Get("Command_Sources_Remove"));
-
-        ToolTipService.SetToolTip(ResetSourcesBtn, TextResources.Get("Command_Sources_Reset"));
-        AutomationProperties.SetName(ResetSourcesBtn, TextResources.Get("Command_Sources_Reset"));
-    }
-
 
     private void RefreshCommands()
     {

@@ -39,7 +39,7 @@
             PaneClosed="OnPaneClosed"
             DisplayModeChanged="OnDisplayModeChanged">
             <NavigationView.PaneFooter>
-                <StackPanel Orientation="Vertical" Spacing="4" Margin="4,0,4,12">
+                <StackPanel Orientation="Vertical" Spacing="4" Margin="0,0,0,12">
                     <NavigationViewItem x:Name="PinMenuItem" Tapped="OnPinMenuTapped">
                         <NavigationViewItem.Icon>
                             <FontIcon x:Name="PinMenuIcon" Glyph="&#xE718;" />
