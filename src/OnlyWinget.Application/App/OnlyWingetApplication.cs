@@ -47,6 +47,7 @@ public sealed class OnlyWingetApplication(
     private readonly ISourcePreferenceStore sourcePreferences = sourcePreferenceStore ?? new EmptySourcePreferenceStore();
     private readonly HashSet<string> disabledSources = new(StringComparer.OrdinalIgnoreCase);
 
+    private bool defaultSourcesConfigured;
     private WorkspaceState workspace = WorkspaceState.Empty;
     private ApplicationBusyState busyState;
     private SystemCapabilities capabilities = SystemCapabilities.Unknown;
@@ -69,6 +70,7 @@ public sealed class OnlyWingetApplication(
                     var preferences = await sourcePreferences.LoadAsync(cancellationToken).ConfigureAwait(false);
                     disabledSources.Clear();
                     disabledSources.UnionWith(preferences.DisabledSources);
+                    defaultSourcesConfigured = preferences.DefaultSourcesConfigured;
                     RefreshPresetSelection();
                     AddActivity(ActivitySeverity.Success, "Workspace loaded", "Workspace state is ready.");
                 },
@@ -497,6 +499,18 @@ public sealed class OnlyWingetApplication(
                 async () =>
                 {
                     RequireWinget();
+                    if (!defaultSourcesConfigured)
+                    {
+                        var resetOutcome = await sourceService.ResetSourcesAsync(cancellationToken).ConfigureAwait(false);
+                        if (resetOutcome.Succeeded)
+                        {
+                            defaultSourcesConfigured = true;
+                            await sourcePreferences.SaveAsync(
+                                    new SourcePreferences(disabledSources.ToArray(), DefaultSourcesConfigured: true),
+                                    cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                    }
                     var outcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
                     ApplySourceOutcome(outcome, updateRows: true);
                     AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{sources.Count} source(s).");
@@ -568,8 +582,9 @@ public sealed class OnlyWingetApplication(
         if (result.Succeeded)
         {
             disabledSources.Clear();
+            defaultSourcesConfigured = true;
             ApplySourcePreferences();
-            await sourcePreferences.SaveAsync(SourcePreferences.Empty, cancellationToken).ConfigureAwait(false);
+            await sourcePreferences.SaveAsync(new SourcePreferences([], DefaultSourcesConfigured: true), cancellationToken).ConfigureAwait(false);
         }
 
         return result;
@@ -703,11 +718,50 @@ public sealed class OnlyWingetApplication(
 
                     var validatedSelections = new List<PackageSelection>();
                     var validationFailures = new List<OperationExecutionResult>();
+                    var skippedResults = new List<OperationExecutionResult>();
+
                     foreach (var selection in plan.Selections)
                     {
                         try
                         {
                             var validated = await ValidatePackageAsync(selection.Package, cancellationToken).ConfigureAwait(false);
+
+                            // Preventative check
+                            if (selection.Action is PackageAction.Install or PackageAction.Upgrade)
+                            {
+                                var installedStatus = await packageResolver.CheckInstalledStatusAsync(validated.Package, cancellationToken).ConfigureAwait(false);
+                                if (installedStatus.IsInstalled)
+                                {
+                                    bool skip = false;
+                                    string skipMessage = string.Empty;
+
+                                    if (selection.Action == PackageAction.Install)
+                                    {
+                                        skip = true;
+                                        skipMessage = $"Package is already present (Installed: {installedStatus.InstalledVersion}).";
+                                    }
+                                    else if (selection.Action == PackageAction.Upgrade)
+                                    {
+                                        if (IsUpToDate(installedStatus.InstalledVersion, validated.Version))
+                                        {
+                                            skip = true;
+                                            skipMessage = $"Package is already updated (Installed: {installedStatus.InstalledVersion}, Available: {validated.Version}).";
+                                        }
+                                    }
+
+                                    if (skip)
+                                    {
+                                        var resultRow = new WingetCommandResult(0, skipMessage, string.Empty);
+                                        var executionResult = new OperationExecutionResult(
+                                            new PackageSelection(validated.Package, selection.Action),
+                                            resultRow,
+                                            null);
+                                        skippedResults.Add(executionResult);
+                                        continue;
+                                    }
+                                }
+                            }
+
                             validatedSelections.Add(new PackageSelection(validated.Package, selection.Action));
                         }
                         catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
@@ -725,9 +779,16 @@ public sealed class OnlyWingetApplication(
                     var validatedPlan = new OperationPlan(plan.Name, validatedSelections);
                     lastOperationResults.Clear();
                     lastOperationResults.AddRange(validationFailures);
+                    lastOperationResults.AddRange(skippedResults);
+
                     foreach (var result in validationFailures)
                     {
                         AddActivity(ActivitySeverity.Error, result.Selection.Package.Id, result.Error?.Message ?? "Validation failed.");
+                    }
+
+                    foreach (var result in skippedResults)
+                    {
+                        AddActivity(ActivitySeverity.Success, result.Selection.Package.Id, CreateOperationActivityMessage(result));
                     }
 
                     if (validatedSelections.Count > 0)
@@ -760,6 +821,7 @@ public sealed class OnlyWingetApplication(
                         }
 
                         var succeededPackages = summary.Results
+                            .Concat(skippedResults)
                             .Where(result => result.Succeeded)
                             .Select(result => result.Selection.Package)
                             .ToArray();
@@ -776,6 +838,13 @@ public sealed class OnlyWingetApplication(
                     }
                     else
                     {
+                        var succeededPackages = skippedResults
+                            .Where(result => result.Succeeded)
+                            .Select(result => result.Selection.Package)
+                            .ToArray();
+                        updates.RemoveAll(update => succeededPackages.Contains(update.Package));
+                        updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
+
                         if (validationFailures.Count > 0)
                         {
                             throw new InvalidOperationException("One or more winget operations failed.");
@@ -834,7 +903,7 @@ public sealed class OnlyWingetApplication(
                     var refresh = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
                     ApplySourceOutcome(refresh, updateRows: true);
                     await sourcePreferences.SaveAsync(
-                            new SourcePreferences(disabledSources.ToArray()),
+                            new SourcePreferences(disabledSources.ToArray(), defaultSourcesConfigured),
                             cancellationToken)
                         .ConfigureAwait(false);
                 },
@@ -1063,18 +1132,18 @@ public sealed class OnlyWingetApplication(
         catch (OperationCanceledException)
         {
             Logger?.Invoke(AppLogLevel.Information, $"Operation {state} was cancelled.", "RunAsync");
-            return Fail("Operation cancelled.");
+            return Fail("Operation cancelled.", state);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
         {
             Logger?.Invoke(AppLogLevel.Warning, $"Operation {state} failed with user error: {exception.Message}", "RunAsync");
-            return Fail(exception.Message);
+            return Fail(exception.Message, state);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             ExceptionLogger?.Invoke("OnlyWingetApplication.RunAsync", exception);
             Logger?.Invoke(AppLogLevel.Error, $"Operation {state} failed: {exception}", "RunAsync");
-            return Fail(fallbackError);
+            return Fail(fallbackError, state);
         }
         finally
         {
@@ -1094,7 +1163,7 @@ public sealed class OnlyWingetApplication(
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
         {
-            return Fail(exception.Message);
+            return Fail(exception.Message, ApplicationBusyState.Idle);
         }
         finally
         {
@@ -1124,9 +1193,12 @@ public sealed class OnlyWingetApplication(
         }
     }
 
-    private ApplicationActionResult Fail(string error)
+    private ApplicationActionResult Fail(string error, ApplicationBusyState state = ApplicationBusyState.Idle)
     {
-        userVisibleError = error;
+        if (state != ApplicationBusyState.ExecutingOperation)
+        {
+            userVisibleError = error;
+        }
         AddActivity(ActivitySeverity.Error, "Action failed", error);
         return ApplicationActionResult.Failure(error);
     }
@@ -1208,6 +1280,52 @@ public sealed class OnlyWingetApplication(
         return new WorkspaceState(presets, activeName);
     }
 
+    private static bool IsUpToDate(string? installed, string? available)
+    {
+        if (string.IsNullOrWhiteSpace(installed)) return false;
+        if (string.IsNullOrWhiteSpace(available)) return true;
+
+        installed = installed.Trim();
+        available = available.Trim();
+
+        if (string.Equals(installed, available, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (Version.TryParse(installed, out var installedVer) && Version.TryParse(available, out var availableVer))
+        {
+            return installedVer >= availableVer;
+        }
+
+        var installedParts = installed.Split('.', '-', '+', '_');
+        var availableParts = available.Split('.', '-', '+', '_');
+
+        for (int i = 0; i < Math.Min(installedParts.Length, availableParts.Length); i++)
+        {
+            var instPart = installedParts[i];
+            var availPart = availableParts[i];
+
+            if (int.TryParse(instPart, out var instInt) && int.TryParse(availPart, out var availInt))
+            {
+                if (instInt != availInt)
+                {
+                    return instInt > availInt;
+                }
+            }
+            else
+            {
+                var cmp = string.Compare(instPart, availPart, StringComparison.OrdinalIgnoreCase);
+                if (cmp != 0)
+                {
+                    return cmp > 0;
+                }
+            }
+        }
+
+        return installedParts.Length >= availableParts.Length;
+    }
+
     private static string WindowsUpdateFingerprint(WindowsUpdateIdentity update) =>
         $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";
 
@@ -1217,7 +1335,7 @@ public sealed class OnlyWingetApplication(
     private sealed class EmptySourcePreferenceStore : ISourcePreferenceStore
     {
         public Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(SourcePreferences.Empty);
+            Task.FromResult(new SourcePreferences([], DefaultSourcesConfigured: true));
 
         public Task SaveAsync(SourcePreferences preferences, CancellationToken cancellationToken) =>
             Task.CompletedTask;

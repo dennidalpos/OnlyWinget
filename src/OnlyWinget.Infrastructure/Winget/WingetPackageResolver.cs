@@ -5,6 +5,7 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class WingetPackageResolver(
     IWingetCommandRunner commandRunner,
+    WingetTableParser tableParser,
     WingetErrorClassifier errorClassifier) : IPackageResolver
 {
     public async Task<PackageResolution> ResolveAsync(
@@ -49,6 +50,56 @@ public sealed class WingetPackageResolver(
             result.Succeeded,
             errorClassifier.Classify(result),
             GetValues(values, "Architecture", "Architettura"));
+    }
+
+    public async Task<PackageInstalledStatus> CheckInstalledStatusAsync(
+        PackageIdentity package,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+
+        var arguments = new List<string>
+        {
+            "list",
+            "--id",
+            package.Id,
+            "--exact",
+            "--accept-source-agreements",
+            "--disable-interactivity"
+        };
+
+        if (!string.IsNullOrWhiteSpace(package.Source))
+        {
+            arguments.Add("--source");
+            arguments.Add(package.Source);
+        }
+
+        try
+        {
+            var result = await commandRunner.RunAsync("winget", arguments, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Succeeded)
+            {
+                return new PackageInstalledStatus(false, null);
+            }
+
+            var values = tableParser.Parse(result.StandardOutput);
+            var matchingRow = values.FirstOrDefault(row =>
+                WingetOutputHelpers.TryGet(row, "Id", out var id) &&
+                string.Equals(id.Trim(), package.Id, StringComparison.OrdinalIgnoreCase));
+
+            if (matchingRow is not null && WingetOutputHelpers.TryGet(matchingRow, "Version", out var version))
+            {
+                return new PackageInstalledStatus(true, version.Trim());
+            }
+
+            return new PackageInstalledStatus(false, null);
+        }
+        catch (Exception)
+        {
+            return new PackageInstalledStatus(false, null);
+        }
     }
 
     private static string? ExtractName(string output, string packageId)

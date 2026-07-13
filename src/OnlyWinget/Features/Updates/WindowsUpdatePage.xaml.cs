@@ -40,6 +40,9 @@ public sealed partial class WindowsUpdatePage : UserControl
     {
         PageState.Present(ViewModel.PageState);
         ApplyOperationStatus();
+        SoftwareUpdatesBox.IsEnabled = !ViewModel.IsBusy;
+        DriverUpdatesBox.IsEnabled = !ViewModel.IsBusy;
+        MicrosoftUpdatesBox.IsEnabled = !ViewModel.IsBusy;
     }
 
     private void ApplyText()

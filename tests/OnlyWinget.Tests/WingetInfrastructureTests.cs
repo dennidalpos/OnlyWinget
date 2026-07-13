@@ -235,7 +235,7 @@ public sealed class WingetInfrastructureTests
             Architecture: arm64
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
-        var resolver = new WingetPackageResolver(runner, new WingetErrorClassifier());
+        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
 
         var resolution = await resolver.ResolveAsync(new PackageIdentity("Git.Git"), CancellationToken.None);
 
@@ -260,7 +260,7 @@ public sealed class WingetInfrastructureTests
             {publisherLabel}: {publisher}
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
-        var resolver = new WingetPackageResolver(runner, new WingetErrorClassifier());
+        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
 
         var resolution = await resolver.ResolveAsync(new PackageIdentity("VideoLAN.VLC"), CancellationToken.None);
 

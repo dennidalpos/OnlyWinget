@@ -34,7 +34,7 @@ public sealed class JsonSourcePreferenceStore(string filePath, Action<string, Ex
                 var document = await JsonSerializer.DeserializeAsync<SourcePreferencesDocument>(stream, JsonOptions, cancellationToken)
                     .ConfigureAwait(false);
                 return document is { SchemaVersion: 1 }
-                    ? Normalize(new SourcePreferences(document.DisabledSources ?? []))
+                    ? Normalize(new SourcePreferences(document.DisabledSources ?? [], document.DefaultSourcesConfigured))
                     : SourcePreferences.Empty;
             }
             catch (JsonException exception)
@@ -70,7 +70,7 @@ public sealed class JsonSourcePreferenceStore(string filePath, Action<string, Ex
                     var normalized = Normalize(preferences);
                     await JsonSerializer.SerializeAsync(
                             stream,
-                            new SourcePreferencesDocument(1, normalized.DisabledSources),
+                            new SourcePreferencesDocument(1, normalized.DisabledSources, normalized.DefaultSourcesConfigured),
                             JsonOptions,
                             cancellationToken)
                         .ConfigureAwait(false);
@@ -98,7 +98,8 @@ public sealed class JsonSourcePreferenceStore(string filePath, Action<string, Ex
             .Select(name => name.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase)
-            .ToArray());
+            .ToArray(),
+            preferences.DefaultSourcesConfigured);
 
-    private sealed record SourcePreferencesDocument(int SchemaVersion, IReadOnlyList<string>? DisabledSources);
+    private sealed record SourcePreferencesDocument(int SchemaVersion, IReadOnlyList<string>? DisabledSources, bool DefaultSourcesConfigured = false);
 }

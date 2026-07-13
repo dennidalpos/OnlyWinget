@@ -12,7 +12,11 @@
                     <SolidColorBrush x:Key="AreaSourcesBrush" Color="#107C41" />
                     <SolidColorBrush x:Key="AreaActivityBrush" Color="#D83B01" />
                     <SolidColorBrush x:Key="AreaSettingsBrush" Color="#5A5958" />
-                    <x:Double x:Key="TableCellDividerOpacity">0.55</x:Double>
+                    <x:Double x:Key="TableCellDividerOpacity">0.85</x:Double>
+                    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#B0B0B0" />
+                    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="#A8A8A8" />
+                    <SolidColorBrush x:Key="NavigationViewBorderBrush" Color="#A8A8A8" />
+                    <SolidColorBrush x:Key="ControlStrokeColorDefault" Color="#999999" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AreaHomeBrush" Color="#60CDFF" />

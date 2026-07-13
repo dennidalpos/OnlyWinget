@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using OnlyWinget.Presentation;
 
 namespace OnlyWinget.Controls;
 
@@ -581,24 +582,65 @@ public sealed partial class OnlyWingetTable : UserControl
         });
     }
 
+    private static object GetItemKey(object item)
+    {
+        if (item == null) return string.Empty;
+        var type = item.GetType();
+
+        var packageIdProp = type.GetProperty("PackageId");
+        if (packageIdProp != null)
+        {
+            var packageId = packageIdProp.GetValue(item)?.ToString() ?? string.Empty;
+            var sourceProp = type.GetProperty("Source");
+            var source = sourceProp?.GetValue(item)?.ToString() ?? string.Empty;
+            return $"{source}|{packageId}";
+        }
+
+        var updateIdProp = type.GetProperty("UpdateId");
+        if (updateIdProp != null)
+        {
+            var updateId = updateIdProp.GetValue(item)?.ToString() ?? string.Empty;
+            var revisionProp = type.GetProperty("RevisionNumber");
+            var revision = revisionProp?.GetValue(item)?.ToString() ?? string.Empty;
+            return $"{updateId}|{revision}";
+        }
+
+        var nameProp = type.GetProperty("Name");
+        if (nameProp != null)
+        {
+            return nameProp.GetValue(item)?.ToString() ?? string.Empty;
+        }
+
+        return item;
+    }
+
     private void ApplyFilters()
     {
-        filteredItems.Clear();
         if (ItemsSource is null)
         {
-            Rows.ItemsSource = filteredItems;
+            filteredItems.Clear();
+            if (Rows.ItemsSource != filteredItems)
+            {
+                Rows.ItemsSource = filteredItems;
+            }
             return;
         }
 
+        var desiredItems = new List<object>();
         foreach (var item in ItemsSource)
         {
             if (item is not null && MatchesFilters(item))
             {
-                filteredItems.Add(item);
+                desiredItems.Add(item);
             }
         }
 
-        Rows.ItemsSource = filteredItems;
+        filteredItems.SynchronizeWith(desiredItems, GetItemKey);
+
+        if (Rows.ItemsSource != filteredItems)
+        {
+            Rows.ItemsSource = filteredItems;
+        }
     }
 
     private bool MatchesFilters(object item)
@@ -886,6 +928,7 @@ public sealed class OnlyWingetTableRow : Grid
 
             var border = new Border
             {
+                Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
                 BorderBrush = (Brush)global::Microsoft.UI.Xaml.Application.Current.Resources["DividerStrokeColorDefaultBrush"],
                 BorderThickness = new Thickness(0, 0, 1, 1),
                 Padding = new Thickness(0, 8, 0, 8),
@@ -893,6 +936,23 @@ public sealed class OnlyWingetTableRow : Grid
                 VerticalAlignment = VerticalAlignment.Stretch,
                 Child = checkBox
             };
+
+            border.PointerPressed += (sender, args) =>
+            {
+                var parent = FindParentTable();
+                if (parent != null && DataContext != null)
+                {
+                    var bindingPath = parent.SelectionBindingPath;
+                    var property = DataContext.GetType().GetProperty(bindingPath);
+                    if (property != null)
+                    {
+                        var isSelected = property.GetValue(DataContext) is true;
+                        parent.RaiseSelectionToggled(DataContext, !isSelected);
+                    }
+                }
+                args.Handled = true;
+            };
+            border.PointerReleased += (sender, args) => args.Handled = true;
             Grid.SetColumn(border, 0);
             Children.Add(border);
         }

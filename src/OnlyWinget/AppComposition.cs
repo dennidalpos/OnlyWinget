@@ -34,7 +34,7 @@ internal static class AppComposition
             new JsonWorkspaceStore(JsonWorkspaceStore.DefaultFilePath, AppDiagnostics.WriteException),
             capabilityService,
             new WingetPackageSearchService(runner, parser, classifier),
-            new WingetPackageResolver(runner, classifier),
+            new WingetPackageResolver(runner, parser, classifier),
             new WingetUpdateLoader(runner, parser, classifier),
             new PowerShellWindowsUpdateService(processRunner, capabilityService),
             new WingetSourceService(runner, parser, classifier),

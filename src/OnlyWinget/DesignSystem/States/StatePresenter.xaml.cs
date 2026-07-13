@@ -56,6 +56,10 @@ public sealed partial class StatePresenter : UserControl, INotifyPropertyChanged
     public Visibility ActionButtonVisibility => string.IsNullOrWhiteSpace(ActionButton?.Content?.ToString()) ? Visibility.Collapsed : Visibility.Visible;
     public Visibility CancelButtonVisibility => CanCancel ? Visibility.Visible : Visibility.Collapsed;
     public Visibility DetailsVisibility => string.IsNullOrWhiteSpace(Details) ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility FullLayoutVisibility => IsLoading ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility MinimalLayoutVisibility => IsLoading ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility TitleAndMessageVisibility => (!string.IsNullOrWhiteSpace(Title) && !string.IsNullOrWhiteSpace(Message)) ? Visibility.Visible : Visibility.Collapsed;
+    public string CancelButtonText => TextResources.Get("Command_Operation_Cancel");
 
     public string IconGlyph => Severity switch
     {

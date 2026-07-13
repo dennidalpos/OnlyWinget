@@ -729,6 +729,104 @@ public sealed class OnlyWingetApplicationTests
         Assert.Equal(1, store.SaveCount);
     }
 
+    [Fact]
+    public async Task ExecutePlanSkipsAlreadyInstalledOrUpToDatePackages()
+    {
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Pkg.A", "winget"), "Pkg.A", "1.0.0", "Auth", true, null)
+        );
+        resolver.InstalledPackages["Pkg.A"] = "1.0.0";
+
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([]));
+        var app = CreateApplication(resolver: resolver, executor: executor);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        var pkg = new PackageIdentity("Pkg.A", "winget");
+        await app.AddPackageToActivePresetAsync(pkg, CancellationToken.None);
+
+        var result = await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Null(executor.LastPlan);
+        var opResult = Assert.Single(app.State.LastOperationResults);
+        Assert.True(opResult.Succeeded);
+        Assert.Contains("already present", opResult.CommandResult.StandardOutput);
+    }
+
+    [Fact]
+    public async Task ExecutePlanDoesNotSkipIfNeedsUpdate()
+    {
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Pkg.A", "winget"), "Pkg.A", "2.0.0", "Auth", true, null)
+        );
+        resolver.InstalledPackages["Pkg.A"] = "1.0.0";
+
+        var pkgSelection = new PackageSelection(new PackageIdentity("Pkg.A", "winget"), PackageAction.Upgrade);
+        var dummyResult = new WingetCommandResult(0, "Upgrade success", string.Empty);
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([
+            new OperationExecutionResult(pkgSelection, dummyResult, null)
+        ]));
+
+        var app = CreateApplication(resolver: resolver, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        var pkg = new PackageIdentity("Pkg.A", "winget");
+        await app.AddPackageToActivePresetAsync(pkg, CancellationToken.None);
+
+        var result = await app.ApplyActivePresetAsync(PackageAction.Upgrade, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(executor.LastPlan);
+        var selection = Assert.Single(executor.LastPlan.Selections);
+        Assert.Equal("Pkg.A", selection.Package.Id);
+    }
+
+    [Fact]
+    public async Task ExecutePlanSuppressesPageLevelError()
+    {
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Pkg.A", "winget"), "Pkg.A", "1.0.0", "Auth", true, null)
+        );
+
+        var pkgSelection = new PackageSelection(new PackageIdentity("Pkg.A", "winget"), PackageAction.Install);
+        var dummyResult = new WingetCommandResult(-1, string.Empty, "Install error");
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([
+            new OperationExecutionResult(pkgSelection, dummyResult, new ClassifiedWingetError(WingetErrorKind.Unknown, "Install error"))
+        ]));
+
+        var app = CreateApplication(resolver: resolver, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        var pkg = new PackageIdentity("Pkg.A", "winget");
+        await app.AddPackageToActivePresetAsync(pkg, CancellationToken.None);
+
+        var result = await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Null(app.State.UserVisibleError);
+        Assert.Contains(app.State.Activity, entry => entry.Severity == ActivitySeverity.Error && entry.Title == "Pkg.A");
+    }
+
+    [Fact]
+    public async Task StartupResetsDefaultSourcesIfFirstRun()
+    {
+        var sources = new StubSourceService();
+        var preferences = new MemorySourcePreferenceStore();
+        await preferences.SaveAsync(new SourcePreferences([], DefaultSourcesConfigured: false), CancellationToken.None);
+
+        var app = CreateApplication(sources: sources, sourcePreferences: preferences);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+
+        Assert.Contains("reset", sources.Calls);
+        var updatedPrefs = await preferences.LoadAsync(CancellationToken.None);
+        Assert.True(updatedPrefs.DefaultSourcesConfigured);
+    }
+
     private static OnlyWingetApplication CreateApplication(
         SystemCapabilities? capabilities = null,
         StubPackageSearch? search = null,
@@ -770,7 +868,7 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class MemorySourcePreferenceStore : ISourcePreferenceStore
     {
-        public SourcePreferences State { get; private set; } = SourcePreferences.Empty;
+        public SourcePreferences State { get; private set; } = new SourcePreferences([], DefaultSourcesConfigured: true);
 
         public Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(State);
 
@@ -829,6 +927,7 @@ public sealed class OnlyWingetApplicationTests
     private sealed class StubPackageResolver(params PackageResolution[] resolutions) : IPackageResolver
     {
         public List<PackageIdentity> Requests { get; } = [];
+        public Dictionary<string, string> InstalledPackages { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public Task<PackageResolution> ResolveAsync(PackageIdentity package, CancellationToken cancellationToken)
         {
@@ -838,6 +937,15 @@ public sealed class OnlyWingetApplicationTests
                 (package.Source is null || candidate.Package.Source is null ||
                     string.Equals(candidate.Package.Source, package.Source, StringComparison.OrdinalIgnoreCase)));
             return Task.FromResult(resolution ?? new PackageResolution(package, null, null, null, true, null));
+        }
+
+        public Task<PackageInstalledStatus> CheckInstalledStatusAsync(PackageIdentity package, CancellationToken cancellationToken)
+        {
+            if (InstalledPackages.TryGetValue(package.Id, out var version))
+            {
+                return Task.FromResult(new PackageInstalledStatus(true, version));
+            }
+            return Task.FromResult(new PackageInstalledStatus(false, null));
         }
     }
 
@@ -907,8 +1015,11 @@ public sealed class OnlyWingetApplicationTests
             CancellationToken cancellationToken) =>
             Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
 
-        public Task<WingetOperationOutcome<WingetSource>> ResetSourcesAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+        public Task<WingetOperationOutcome<WingetSource>> ResetSourcesAsync(CancellationToken cancellationToken)
+        {
+            Calls.Add("reset");
+            return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(sources, string.Empty));
+        }
     }
 
     private sealed class RecordingOperationExecutor(OperationExecutionSummary summary) : IOperationExecutor

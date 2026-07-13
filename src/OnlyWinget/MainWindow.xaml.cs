@@ -189,6 +189,7 @@ public sealed partial class MainWindow : Window
         }
 
         currentRouteId = tag;
+        UpdatePageHostSize();
     }
 
     private async Task<bool> ConfirmCurrentNavigationAsync() =>
@@ -272,18 +273,31 @@ public sealed partial class MainWindow : Window
     {
         var settings = App.UiServices.Settings.Current;
 
-        // Apply width
-        RootNavigation.OpenPaneLength = settings.MenuWidth > 0 ? settings.MenuWidth : 280;
-
         // Apply pin state
         if (settings.IsMenuPinned)
         {
             RootNavigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Left;
             RootNavigation.IsPaneOpen = true;
+            RootNavigation.CompactModeThresholdWidth = 0;
+            RootNavigation.ExpandedModeThresholdWidth = 0;
+
+            // Ensure width is sufficient to completely display menu text (at least 260)
+            double sufficientWidth = Math.Max(260, settings.MenuWidth > 0 ? settings.MenuWidth : 280);
+            RootNavigation.OpenPaneLength = sufficientWidth;
         }
         else
         {
             RootNavigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Auto;
+            RootNavigation.CompactModeThresholdWidth = 0; // Always keep menu icons visible on small screen sizes
+            RootNavigation.ExpandedModeThresholdWidth = 1100;
+
+            // Determine if the pane should be open based on window width
+            var windowHandle = WindowNative.GetWindowHandle(this);
+            var scale = GetDpiForWindow(windowHandle) / 96d;
+            var windowWidth = AppWindow.Size.Width / scale;
+            RootNavigation.IsPaneOpen = windowWidth >= 1100;
+
+            RootNavigation.OpenPaneLength = settings.MenuWidth > 0 ? settings.MenuWidth : 280;
         }
 
         // Update pin item content & icon
@@ -308,10 +322,12 @@ public sealed partial class MainWindow : Window
     {
         if (RootNavigation == null || PaneResizer == null) return;
 
+        var settings = App.UiServices.Settings.Current;
         bool isPaneOpen = RootNavigation.IsPaneOpen;
         bool isLeftMode = RootNavigation.PaneDisplayMode != NavigationViewPaneDisplayMode.Top;
+        bool isPinned = settings.IsMenuPinned;
 
-        if (isPaneOpen && isLeftMode)
+        if (isPaneOpen && isLeftMode && !isPinned)
         {
             PaneResizer.Visibility = Visibility.Visible;
             PaneResizer.Margin = new Thickness(RootNavigation.OpenPaneLength - 4, 0, 0, 0);
@@ -465,10 +481,32 @@ public sealed partial class MainWindow : Window
 
     private void OnMainPageScrollViewerSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (sender is ScrollViewer sv)
+        UpdatePageHostSize();
+    }
+
+    private void UpdatePageHostSize()
+    {
+        if (MainPageScrollViewer is ScrollViewer sv)
         {
-            PageHost.Width = Math.Max(960, sv.ViewportWidth);
-            PageHost.Height = Math.Max(600, sv.ViewportHeight);
+            double minWidth = 720;
+            double minHeight = 680;
+
+            if (PageHost.Content is FrameworkElement fe)
+            {
+                if (fe.MinWidth > 0) minWidth = fe.MinWidth;
+                if (fe.MinHeight > 0) minHeight = fe.MinHeight;
+
+                var pageTypeName = fe.GetType().Name;
+                if (pageTypeName is "DashboardPage" or "SettingsPage")
+                {
+                    PageHost.Height = double.NaN;
+                    PageHost.Width = Math.Max(minWidth, sv.ViewportWidth);
+                    return;
+                }
+            }
+
+            PageHost.Width = Math.Max(minWidth, sv.ViewportWidth);
+            PageHost.Height = Math.Max(minHeight, sv.ViewportHeight);
         }
     }
 }
