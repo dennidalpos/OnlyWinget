@@ -77,14 +77,14 @@
                                             <ColumnDefinition Width="120" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{x:Bind Timestamp}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind TimestampDisplay}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                         <TextBlock Grid.Column="1" Text="{x:Bind activity:ActivityViewModel.LocalizeSeverity(Severity), Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
                                         <TextBlock Grid.Column="2" Text="{x:Bind Title}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
                                     </Grid>
                                 </Expander.Header>
                                 <StackPanel Spacing="8" Margin="0,8,0,12">
                                     <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                                    <TextBlock Text="{x:Bind Timestamp}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                    <TextBlock Text="{x:Bind TimestampDisplay}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
                                     <Button Content="{x:Bind activity:ActivityViewModel.CopyLabel}" Tag="{x:Bind}" Click="OnCopyDetails" HorizontalAlignment="Left" />
                                 </StackPanel>
                             </Expander>

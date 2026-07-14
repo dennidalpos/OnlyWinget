@@ -83,7 +83,7 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
             (query.Length == 0 || entry.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || entry.Message.Contains(query, StringComparison.CurrentCultureIgnoreCase)) &&
             (severity == "all" || string.Equals(entry.Severity.ToString(), severity, StringComparison.Ordinal)) &&
             (category == "all" || Category(entry) == category) &&
-            Matches(entry.Timestamp.ToString("g", System.Globalization.CultureInfo.CurrentCulture), timeFilter) &&
+            Matches(entry.TimestampDisplay, timeFilter) &&
             Matches(LocalizeSeverity(entry.Severity), severityFilter) &&
             Matches(entry.Title, titleFilter) &&
             Matches(entry.Message, messageFilter)));

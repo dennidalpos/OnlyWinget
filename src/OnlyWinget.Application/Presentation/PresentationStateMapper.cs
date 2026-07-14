@@ -39,7 +39,7 @@ public static class PresentationStateMapper
             state.Activity
                 .TakeLast(5)
                 .Reverse()
-                .Select(entry => new ActivityRow(entry.Timestamp, entry.Severity, entry.Title, entry.Message))
+                .Select(entry => new ActivityRow(entry.Timestamp, entry.Timestamp.ToString("g", global::System.Globalization.CultureInfo.CurrentCulture), entry.Severity, entry.Title, entry.Message))
                 .ToArray());
     }
 
@@ -256,7 +256,7 @@ public static class PresentationStateMapper
     {
         return new ActivityPresentationState(
             state.Activity
-                .Select(entry => new ActivityRow(entry.Timestamp, entry.Severity, entry.Title, entry.Message))
+                .Select(entry => new ActivityRow(entry.Timestamp, entry.Timestamp.ToString("g", global::System.Globalization.CultureInfo.CurrentCulture), entry.Severity, entry.Title, entry.Message))
                 .OrderByDescending(row => row.Timestamp)
                 .ThenBy(row => row.Title, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),

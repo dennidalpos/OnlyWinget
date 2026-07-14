@@ -20,6 +20,7 @@ public sealed partial class OnlyWingetTable : UserControl
     private bool hasAutoFitDone;
     private readonly Dictionary<string, string> columnFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<object> filteredItems = [];
+    private readonly Dictionary<Type, Dictionary<string, System.Reflection.PropertyInfo?>> propertyCache = [];
 
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource), typeof(IEnumerable), typeof(OnlyWingetTable), new PropertyMetadata(null, OnItemsSourceChanged));
@@ -643,11 +644,30 @@ public sealed partial class OnlyWingetTable : UserControl
         }
     }
 
+    private System.Reflection.PropertyInfo? GetCachedProperty(Type type, string propertyName)
+    {
+        if (!propertyCache.TryGetValue(type, out var typeCache))
+        {
+            typeCache = [];
+            propertyCache[type] = typeCache;
+        }
+
+        if (!typeCache.TryGetValue(propertyName, out var propInfo))
+        {
+            propInfo = type.GetProperty(propertyName);
+            typeCache[propertyName] = propInfo;
+        }
+
+        return propInfo;
+    }
+
     private bool MatchesFilters(object item)
     {
+        var type = item.GetType();
         foreach (var filter in columnFilters)
         {
-            var value = item.GetType().GetProperty(filter.Key)?.GetValue(item)?.ToString() ?? string.Empty;
+            var prop = GetCachedProperty(type, filter.Key);
+            var value = prop?.GetValue(item)?.ToString() ?? string.Empty;
             if (!value.Contains(filter.Value, StringComparison.CurrentCultureIgnoreCase))
             {
                 return false;

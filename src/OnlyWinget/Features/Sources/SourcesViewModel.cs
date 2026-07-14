@@ -89,8 +89,8 @@ public sealed class SourcesViewModel : FeatureViewModel
 
     protected override void Refresh()
     {
-        IsRefreshing = true;
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).Sources;
+        IsRefreshing = state.IsLoading;
         Commands = state.Commands.ToDictionary(command => command.Id);
         allSources = state.Sources.Select(source => new SourceRow(
             source.Name,
@@ -112,7 +112,6 @@ public sealed class SourcesViewModel : FeatureViewModel
                 : FeatureState.Ready;
         Name.Validate();
         Argument.Validate();
-        IsRefreshing = false;
         OnPropertyChanged(nameof(Commands));
         OnPropertyChanged(nameof(CanAdd));
     }
