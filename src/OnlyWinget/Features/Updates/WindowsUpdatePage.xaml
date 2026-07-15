@@ -26,7 +26,7 @@
         </Border>
         <states:StatePresenter x:Name="PageState" Grid.Row="1" />
         <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
-            <controls:OnlyWingetTable x:Name="WindowsUpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="WindowsUpdateList" ToggleAllRequested="OnToggleAllWindowsUpdates" SelectionToggled="OnWindowsUpdateSelectionToggled">
+            <controls:OnlyWingetTable x:Name="WindowsUpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="WindowsUpdateList" ToggleAllRequested="OnToggleAllWindowsUpdates" BatchSelectionChanged="OnWindowsUpdateBatchSelectionChanged">
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Title}" BindingPath="Title" Width="320" IsPrimary="True" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_KnowledgeBase}" BindingPath="KnowledgeBaseArticles" Width="120" IsTextSelectable="True" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Severity}" BindingPath="Severity" Width="120" />

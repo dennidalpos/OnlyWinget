@@ -27,6 +27,8 @@ public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureVi
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public void ToggleAll() => Workflow.ToggleAllWindowsUpdates();
     public void Toggle(WindowsUpdateDisplayRow row) => Workflow.ToggleWindowsUpdate(new WindowsUpdateIdentity(row.UpdateId, row.RevisionNumber));
+    public void SetSelected(IEnumerable<WindowsUpdateDisplayRow> rows, bool isSelected) =>
+        Workflow.SetWindowsUpdatesSelection(rows.Select(row => new WindowsUpdateIdentity(row.UpdateId, row.RevisionNumber)), isSelected);
     public void Cancel() => cancellation?.Cancel();
 
     public Task ScanAsync(WindowsUpdateOptions options) => RunAsync(token => Workflow.ScanWindowsUpdatesAsync(options, token));

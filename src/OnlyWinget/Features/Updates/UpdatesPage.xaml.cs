@@ -4,6 +4,8 @@ using OnlyWinget.Application.Presentation;
 using OnlyWinget.DesignSystem.Commands;
 using OnlyWinget.Controls;
 using System.ComponentModel;
+using System.Linq;
+using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Features.Updates;
 
@@ -82,9 +84,10 @@ public sealed partial class UpdatesPage : UserControl
         wasBusy = busy;
     }
 
-    private void OnUpdateSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
+    private void OnUpdateBatchSelectionChanged(object? sender, OnlyWingetTableBatchSelectionEventArgs args)
     {
-        if (args.Item is UpdateRow row) ViewModel.Toggle(row);
+        var rows = args.Items.OfType<UpdateRow>();
+        ViewModel.SetSelected(rows, args.IsSelected);
     }
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();

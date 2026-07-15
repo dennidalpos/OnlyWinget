@@ -33,6 +33,8 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public void ToggleAll() => Workflow.ToggleAllUpdates();
     public void Toggle(UpdateRow row) => Workflow.ToggleUpdate(new PackageIdentity(row.PackageId, row.Source));
+    public void SetSelected(IEnumerable<UpdateRow> rows, bool isSelected) =>
+        Workflow.SetUpdatesSelection(rows.Select(row => new PackageIdentity(row.PackageId, row.Source)), isSelected);
     public void Cancel() => cancellation?.Cancel();
 
     private async Task RunAsync(Func<CancellationToken, Task> action)

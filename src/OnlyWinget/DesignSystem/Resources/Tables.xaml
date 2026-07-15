@@ -46,6 +46,26 @@
                                     </VisualState.Setters>
                                 </VisualState>
                                 <VisualState x:Name="Disabled" />
+                                <VisualState x:Name="Selected">
+                                    <VisualState.Setters>
+                                        <Setter Target="BackgroundGrid.Background" Value="{ThemeResource SystemControlHighlightListAccentLowBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="SelectedUnfocused">
+                                    <VisualState.Setters>
+                                        <Setter Target="BackgroundGrid.Background" Value="{ThemeResource SystemControlHighlightListAccentLowBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="BackgroundGrid.Background" Value="{ThemeResource SystemControlHighlightListAccentMediumBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="BackgroundGrid.Background" Value="{ThemeResource SystemControlHighlightListAccentHighBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
                             </VisualStateGroup>
                         </VisualStateManager.VisualStateGroups>
                         <Grid x:Name="BackgroundGrid" Background="Transparent">

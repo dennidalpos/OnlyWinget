@@ -6,6 +6,8 @@ using OnlyWinget.DesignSystem.Commands;
 using OnlyWinget.Controls;
 using OnlyWinget.Presentation;
 using System.ComponentModel;
+using System.Linq;
+using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Features.Packages;
 
@@ -97,16 +99,61 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         ApplyValidationToCommands();
     }
 
-    private void OnPackageSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
+    private void OnPackageBatchSelectionChanged(object? sender, OnlyWingetTableBatchSelectionEventArgs args)
     {
-        if (args.Item is PresetPackageRow row)
-            ViewModel.Toggle(row);
+        if (isRefreshing) return;
+        var rows = args.Items.OfType<PresetPackageRow>();
+        ViewModel.SetSelected(rows, args.IsSelected);
     }
 
-    private void OnPackageRowInvoked(object? sender, OnlyWingetTableRowEventArgs args)
+    private static IEnumerable<PackageIdentity> ParsePackageIdentities(string text)
     {
-        if (args.Item is PresetPackageRow row)
-            ViewModel.Select(row);
+        if (string.IsNullOrWhiteSpace(text)) yield break;
+
+        var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0) continue;
+
+            var tabs = trimmed.Split('\t');
+            if (tabs.Length >= 3)
+            {
+                var id = tabs[1].Trim();
+                var src = tabs[2].Trim();
+                if (!string.IsNullOrEmpty(id))
+                {
+                    yield return new PackageIdentity(id, string.IsNullOrEmpty(src) ? null : src);
+                    continue;
+                }
+            }
+
+            if (trimmed.Contains('|'))
+            {
+                var parts = trimmed.Split('|');
+                if (parts.Length == 2)
+                {
+                    var part0 = parts[0].Trim();
+                    var part1 = parts[1].Trim();
+                    if (!string.IsNullOrEmpty(part1))
+                    {
+                        yield return new PackageIdentity(part1, string.IsNullOrEmpty(part0) ? null : part0);
+                        continue;
+                    }
+                }
+            }
+
+            yield return new PackageIdentity(trimmed, null);
+        }
+    }
+
+    private async void OnPackageListPasteRequested(object? sender, OnlyWingetTablePasteEventArgs args)
+    {
+        if (isRefreshing) return;
+        var packages = ParsePackageIdentities(args.Text).ToList();
+        if (packages.Count == 0) return;
+
+        await ViewModel.AddPackagesAsync(packages);
     }
 
     private void ApplyValidationToCommands()

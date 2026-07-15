@@ -41,8 +41,23 @@ public sealed class PresetsViewModel : FeatureViewModel
     public void SetActivePreset(string name) => Workflow.SetActivePreset(name);
     public void ToggleAll() => Workflow.ToggleAllPresetPackages();
     public void Toggle(PresetPackageRow row) => Workflow.TogglePresetPackageInclusion(new PackageIdentity(row.PackageId, row.Source));
+    public void SetSelected(IEnumerable<PresetPackageRow> rows, bool isSelected) =>
+        Workflow.SetPresetPackagesInclusion(rows.Select(row => new PackageIdentity(row.PackageId, row.Source)), isSelected);
     public void Select(PresetPackageRow row) => Workflow.SelectPresetPackage(new PackageIdentity(row.PackageId, row.Source));
     public void Cancel() => cancellation?.Cancel();
+
+    public async Task AddPackagesAsync(IEnumerable<PackageIdentity> packages)
+    {
+        var succeeded = false;
+        await RunAsync(async token =>
+        {
+            succeeded = (await Workflow.AddPackagesToActivePresetAsync(packages, token)).Succeeded;
+        });
+        if (succeeded)
+        {
+            await AutoSaveWorkspaceAsync();
+        }
+    }
 
     public async Task ExecuteAsync(UiCommand command, string source)
     {

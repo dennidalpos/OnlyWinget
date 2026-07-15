@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
@@ -38,7 +39,8 @@ public sealed partial class OnlyWingetTable : UserControl
         Columns.CollectionChanged += (_, _) => Rebuild();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        Rows.ItemClick += OnItemClick;
+        Rows.SelectionChanged += OnRowsSelectionChanged;
+        Rows.KeyDown += OnRowsKeyDown;
         SizeChanged += OnSizeChanged;
     }
 
@@ -70,14 +72,9 @@ public sealed partial class OnlyWingetTable : UserControl
     public string SelectionBindingPath { get; set; } = "IsSelected";
     public string SelectionLabel { get; set; } = "Select all";
 
-    public event EventHandler<OnlyWingetTableSelectionEventArgs>? SelectionToggled;
+    public event EventHandler<OnlyWingetTableBatchSelectionEventArgs>? BatchSelectionChanged;
     public event EventHandler? ToggleAllRequested;
-    public event EventHandler<OnlyWingetTableRowEventArgs>? RowInvoked;
-
-    internal void RaiseSelectionToggled(object item, bool isSelected)
-    {
-        SelectionToggled?.Invoke(this, new OnlyWingetTableSelectionEventArgs(item, isSelected));
-    }
+    public event EventHandler<OnlyWingetTablePasteEventArgs>? PasteRequested;
 
     public void SetHeaders(params string[] headers)
     {
@@ -90,7 +87,7 @@ public sealed partial class OnlyWingetTable : UserControl
         var table = (OnlyWingetTable)sender;
         table.UpdateCollectionSubscription(args.NewValue as INotifyCollectionChanged);
         table.ApplyFilters();
-        table.SynchronizeSelection();
+        table.SyncListViewSelectionWithItems();
         table.hasAutoFitDone = false;
         table.AutoFitColumns();
     }
@@ -111,7 +108,7 @@ public sealed partial class OnlyWingetTable : UserControl
     private void OnItemsSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         ApplyFilters();
-        SynchronizeSelection();
+        SyncListViewSelectionWithItems();
         if (e.Action == NotifyCollectionChangedAction.Add || e.Action == NotifyCollectionChangedAction.Reset)
         {
             hasAutoFitDone = false;
@@ -208,11 +205,11 @@ public sealed partial class OnlyWingetTable : UserControl
         RecalculateWidths(ActualWidth);
 
         Rows.Header = BuildHeader();
-        Rows.SelectionMode = ListViewSelectionMode.None;
-        Rows.IsItemClickEnabled = IsSelectionEnabled;
+        Rows.SelectionMode = IsSelectionEnabled ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
+        Rows.IsItemClickEnabled = false;
         ApplyFilters();
         Rows.ItemsSource = filteredItems;
-        SynchronizeSelection();
+        SyncListViewSelectionWithItems();
     }
 
     private FrameworkElement BuildHeader()
@@ -529,28 +526,228 @@ public sealed partial class OnlyWingetTable : UserControl
         }
     }
 
-    private void OnItemClick(object sender, ItemClickEventArgs e)
+    private bool isSyncingSelection = false;
+    private object? lastClickedItem;
+
+    private void SyncListViewSelectionWithItems()
     {
-        var item = e.ClickedItem;
-        if (item is null) return;
-        if (!ToggleOnRowClick)
+        if (!IsSelectionEnabled || isSyncingSelection) return;
+        isSyncingSelection = true;
+        try
         {
-            RowInvoked?.Invoke(this, new OnlyWingetTableRowEventArgs(item));
-            return;
+            Rows.SelectionChanged -= OnRowsSelectionChanged;
+            Rows.SelectedItems.Clear();
+            foreach (var item in filteredItems)
+            {
+                var prop = item.GetType().GetProperty(SelectionBindingPath);
+                if (prop != null && prop.GetValue(item) is true)
+                {
+                    Rows.SelectedItems.Add(item);
+                }
+            }
         }
-        var isSelected = item.GetType().GetProperty(SelectionBindingPath)?.GetValue(item) is true;
-        SelectionToggled?.Invoke(this, new OnlyWingetTableSelectionEventArgs(item, !isSelected));
+        finally
+        {
+            Rows.SelectionChanged += OnRowsSelectionChanged;
+            isSyncingSelection = false;
+        }
+        SynchronizeSelection();
     }
 
-    private ScrollViewer? FindAncestorScrollViewer()
+    private void OnRowsSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        DependencyObject curr = VisualTreeHelper.GetParent(this);
-        while (curr != null)
+        if (isSyncingSelection || !IsSelectionEnabled) return;
+
+        var addedList = new List<object>();
+        foreach (var item in e.AddedItems)
         {
-            if (curr is ScrollViewer sv) return sv;
-            curr = VisualTreeHelper.GetParent(curr);
+            var prop = item.GetType().GetProperty(SelectionBindingPath);
+            if (prop != null && prop.GetValue(item) is not true)
+            {
+                addedList.Add(item);
+            }
         }
-        return null;
+
+        var removedList = new List<object>();
+        foreach (var item in e.RemovedItems)
+        {
+            var prop = item.GetType().GetProperty(SelectionBindingPath);
+            if (prop != null && prop.GetValue(item) is true)
+            {
+                removedList.Add(item);
+            }
+        }
+
+        if (addedList.Count > 0 || removedList.Count > 0)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (addedList.Count > 0)
+                {
+                    BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs(addedList, true));
+                }
+                if (removedList.Count > 0)
+                {
+                    BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs(removedList, false));
+                }
+            });
+        }
+    }
+
+    private void OnRowsKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+        var isCtrlPressed = ctrl.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        if (isCtrlPressed && e.Key == Windows.System.VirtualKey.C)
+        {
+            CopySelectedToClipboard();
+            e.Handled = true;
+        }
+        else if (isCtrlPressed && e.Key == Windows.System.VirtualKey.V)
+        {
+            PasteFromClipboard();
+            e.Handled = true;
+        }
+    }
+
+    private void CopySelectedToClipboard()
+    {
+        var text = GetSelectedRowsClipboardText();
+        if (string.IsNullOrEmpty(text)) return;
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(text);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+    }
+
+    private async void PasteFromClipboard()
+    {
+        var dataPackageView = Windows.ApplicationModel.DataTransfer.Clipboard.GetContent();
+        if (dataPackageView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text))
+        {
+            try
+            {
+                var text = await dataPackageView.GetTextAsync();
+                if (!string.IsNullOrEmpty(text))
+                {
+                    PasteRequested?.Invoke(this, new OnlyWingetTablePasteEventArgs(text));
+                }
+            }
+            catch
+            {
+                // Ignore clipboard errors
+            }
+        }
+    }
+
+    private string GetSelectedRowsClipboardText()
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var item in Rows.SelectedItems)
+        {
+            var rowValues = new List<string>();
+            foreach (var col in Columns)
+            {
+                var prop = item.GetType().GetProperty(col.BindingPath);
+                var val = prop?.GetValue(item)?.ToString() ?? string.Empty;
+                rowValues.Add(val);
+            }
+            sb.AppendLine(string.Join("\t", rowValues));
+        }
+        return sb.ToString();
+    }
+
+    internal void ToggleItemSelection(object item)
+    {
+        var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
+        var isShiftPressed = shift.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+        var isCtrlPressed = ctrl.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        if (isShiftPressed)
+        {
+            var index = filteredItems.IndexOf(item);
+            if (index >= 0)
+            {
+                var anchor = lastClickedItem;
+                if (anchor == null && Rows.SelectedItems.Count > 0) anchor = Rows.SelectedItems[^1];
+                var anchorIndex = anchor != null ? filteredItems.IndexOf(anchor) : 0;
+
+                if (anchorIndex >= 0)
+                {
+                    int start = Math.Min(anchorIndex, index);
+                    int end = Math.Max(anchorIndex, index);
+
+                    var itemsToSelect = new List<object>();
+                    for (int i = start; i <= end; i++)
+                    {
+                        itemsToSelect.Add(filteredItems[i]);
+                    }
+
+                    isSyncingSelection = true;
+                    try
+                    {
+                        if (!isCtrlPressed)
+                        {
+                            Rows.SelectedItems.Clear();
+                        }
+                        foreach (var it in itemsToSelect)
+                        {
+                            if (!Rows.SelectedItems.Contains(it))
+                            {
+                                Rows.SelectedItems.Add(it);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        isSyncingSelection = false;
+                    }
+
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs(itemsToSelect, true));
+                    });
+                    lastClickedItem = item;
+                    return;
+                }
+            }
+        }
+
+        if (Rows.SelectedItems.Contains(item))
+        {
+            isSyncingSelection = true;
+            try
+            {
+                Rows.SelectedItems.Remove(item);
+            }
+            finally
+            {
+                isSyncingSelection = false;
+            }
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs(new[] { item }, false));
+            });
+        }
+        else
+        {
+            isSyncingSelection = true;
+            try
+            {
+                Rows.SelectedItems.Add(item);
+            }
+            finally
+            {
+                isSyncingSelection = false;
+            }
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs(new[] { item }, true));
+            });
+        }
+        lastClickedItem = item;
     }
 
     private void OnColumnFilterChanged(object sender, TextChangedEventArgs args)
@@ -642,6 +839,7 @@ public sealed partial class OnlyWingetTable : UserControl
         {
             Rows.ItemsSource = filteredItems;
         }
+        SyncListViewSelectionWithItems();
     }
 
     private System.Reflection.PropertyInfo? GetCachedProperty(Type type, string propertyName)
@@ -678,11 +876,6 @@ public sealed partial class OnlyWingetTable : UserControl
     }
 }
 
-public sealed class OnlyWingetTableSelectionEventArgs(object item, bool isSelected) : EventArgs
-{
-    public object Item { get; } = item;
-    public bool IsSelected { get; } = isSelected;
-}
 
 public sealed class CursorGrid : Grid
 {
@@ -957,22 +1150,6 @@ public sealed class OnlyWingetTableRow : Grid
                 Child = checkBox
             };
 
-            border.PointerPressed += (sender, args) =>
-            {
-                var parent = FindParentTable();
-                if (parent != null && DataContext != null)
-                {
-                    var bindingPath = parent.SelectionBindingPath;
-                    var property = DataContext.GetType().GetProperty(bindingPath);
-                    if (property != null)
-                    {
-                        var isSelected = property.GetValue(DataContext) is true;
-                        parent.RaiseSelectionToggled(DataContext, !isSelected);
-                    }
-                }
-                args.Handled = true;
-            };
-            border.PointerReleased += (sender, args) => args.Handled = true;
             Grid.SetColumn(border, 0);
             Children.Add(border);
         }
@@ -1017,6 +1194,23 @@ public sealed class OnlyWingetTableRow : Grid
                 VerticalAlignment = VerticalAlignment.Stretch,
                 Child = textBlock
             };
+
+            if (col.IsTextSelectable)
+            {
+                border.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler((sender, args) =>
+                {
+                    var parent = FindParentTable();
+                    if (parent != null && DataContext != null)
+                    {
+                        var pointerPoint = args.GetCurrentPoint(border);
+                        if (pointerPoint.Properties.IsLeftButtonPressed)
+                        {
+                            parent.ToggleItemSelection(DataContext);
+                        }
+                    }
+                }), true);
+            }
+
             Grid.SetColumn(border, colIndex);
             Children.Add(border);
         }
@@ -1064,7 +1258,14 @@ public sealed class OnlyWingetTableRow : Grid
     }
 }
 
-public sealed class OnlyWingetTableRowEventArgs(object item) : EventArgs
+
+public sealed class OnlyWingetTableBatchSelectionEventArgs(IReadOnlyList<object> items, bool isSelected) : EventArgs
 {
-    public object Item { get; } = item;
+    public IReadOnlyList<object> Items { get; } = items;
+    public bool IsSelected { get; } = isSelected;
+}
+
+public sealed class OnlyWingetTablePasteEventArgs(string text) : EventArgs
+{
+    public string Text { get; } = text;
 }

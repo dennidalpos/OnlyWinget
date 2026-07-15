@@ -4,6 +4,8 @@ using OnlyWinget.Application.Presentation;
 using OnlyWinget.DesignSystem.Commands;
 using OnlyWinget.Controls;
 using System.ComponentModel;
+using System.Linq;
+using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Features.Packages;
 
@@ -67,8 +69,9 @@ public sealed partial class SearchPage : UserControl
         else _ = DispatcherQueue.TryEnqueue(() => action());
     }
 
-    private void OnResultSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
+    private void OnResultBatchSelectionChanged(object? sender, OnlyWingetTableBatchSelectionEventArgs args)
     {
-        if (args.Item is SearchResultRow row) ViewModel.Toggle(row);
+        var rows = args.Items.OfType<SearchResultRow>();
+        ViewModel.SetSelected(rows, args.IsSelected);
     }
 }

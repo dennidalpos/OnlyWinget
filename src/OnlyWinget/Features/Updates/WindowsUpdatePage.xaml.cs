@@ -5,6 +5,7 @@ using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.DesignSystem.Commands;
 using OnlyWinget.Controls;
 using System.ComponentModel;
+using System.Linq;
 
 namespace OnlyWinget.Features.Updates;
 
@@ -79,9 +80,10 @@ public sealed partial class WindowsUpdatePage : UserControl
         wasBusy = ViewModel.IsBusy;
     }
 
-    private void OnWindowsUpdateSelectionToggled(object? sender, OnlyWingetTableSelectionEventArgs args)
+    private void OnWindowsUpdateBatchSelectionChanged(object? sender, OnlyWingetTableBatchSelectionEventArgs args)
     {
-        if (args.Item is WindowsUpdateDisplayRow row) ViewModel.Toggle(row);
+        var rows = args.Items.OfType<WindowsUpdateDisplayRow>();
+        ViewModel.SetSelected(rows, args.IsSelected);
     }
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();

@@ -22,6 +22,8 @@ public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public void ToggleAll() => Workflow.ToggleAllSearchResults();
     public void Toggle(SearchResultRow row) => Workflow.ToggleSearchResult(new PackageIdentity(row.PackageId, row.Source));
+    public void SetSelected(IEnumerable<SearchResultRow> rows, bool isSelected) =>
+        Workflow.SetSearchResultsSelection(rows.Select(row => new PackageIdentity(row.PackageId, row.Source)), isSelected);
     public void Cancel() => cancellation?.Cancel();
 
     private async Task RunAsync(Func<CancellationToken, Task> action)

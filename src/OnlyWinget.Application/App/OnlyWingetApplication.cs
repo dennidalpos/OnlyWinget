@@ -205,7 +205,7 @@ public sealed class OnlyWingetApplication(
         Run(() =>
         {
             var active = RequireActivePreset();
-            var selected = presetSelection.Selected.ToArray();
+            var selected = presetInstallSelection.Selected.ToArray();
             if (selected.Length == 0)
             {
                 throw new InvalidOperationException("Select at least one package to remove.");
@@ -218,7 +218,7 @@ public sealed class OnlyWingetApplication(
             AddActivity(ActivitySeverity.Success, "Packages removed", selected.Length.ToString(global::System.Globalization.CultureInfo.InvariantCulture));
         });
 
-    public ApplicationActionResult TogglePresetPackage(PackageIdentity package) => ToggleSelection(presetSelection, package);
+    public ApplicationActionResult TogglePresetPackage(PackageIdentity package) => ToggleSelection(presetInstallSelection, package);
 
     public ApplicationActionResult TogglePresetPackageInclusion(PackageIdentity package) => ToggleSelection(presetInstallSelection, package);
 
@@ -227,8 +227,8 @@ public sealed class OnlyWingetApplication(
     public ApplicationActionResult SelectPresetPackage(PackageIdentity package) =>
         Run(() =>
         {
-            presetSelection.ClearSelection();
-            presetSelection.SetSelected(package, true);
+            presetInstallSelection.ClearSelection();
+            presetInstallSelection.SetSelected(package, true);
         });
 
     public async Task<ApplicationActionResult> SearchAsync(string query, CancellationToken cancellationToken)
@@ -850,7 +850,7 @@ public sealed class OnlyWingetApplication(
         return new OnlyWingetState(
             workspace,
             active,
-            presetSelection.Selected.ToArray(),
+            presetInstallSelection.Selected.ToArray(),
             presetInstallSelection.Selected.ToArray(),
             presetInstallSelection.HeaderState,
             searchResults.ToArray(),
@@ -1246,6 +1246,60 @@ public sealed class OnlyWingetApplication(
     private ApplicationActionResult ToggleSelection<TKey>(SelectionState<TKey> selection, TKey key)
         where TKey : notnull =>
         Run(() => selection.Toggle(key));
+
+    public ApplicationActionResult SetPresetPackagesInclusion(IEnumerable<PackageIdentity> packages, bool isSelected) =>
+        Run(() => { foreach (var p in packages) presetInstallSelection.SetSelected(p, isSelected); });
+
+    public ApplicationActionResult SetSearchResultsSelection(IEnumerable<PackageIdentity> packages, bool isSelected) =>
+        Run(() => { foreach (var p in packages) searchSelection.SetSelected(p, isSelected); });
+
+    public ApplicationActionResult SetUpdatesSelection(IEnumerable<PackageIdentity> packages, bool isSelected) =>
+        Run(() => { foreach (var p in packages) updateSelection.SetSelected(p, isSelected); });
+
+    public ApplicationActionResult SetWindowsUpdatesSelection(IEnumerable<WindowsUpdateIdentity> updates, bool isSelected) =>
+        Run(() => { foreach (var u in updates) windowsUpdateSelection.SetSelected(u, isSelected); });
+
+    public async Task<ApplicationActionResult> AddPackagesToActivePresetAsync(
+        IEnumerable<PackageIdentity> packages,
+        CancellationToken cancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
+        {
+            ArgumentNullException.ThrowIfNull(packages);
+            var active = RequireActivePreset();
+            var updatedPackages = active.Packages.ToList();
+            var addedCount = 0;
+            var errors = new List<string>();
+
+            foreach (var package in packages)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    var validated = await ValidatePackageAsync(package, cancellationToken).ConfigureAwait(false);
+                    if (updatedPackages.Contains(validated.Package))
+                    {
+                        continue;
+                    }
+                    updatedPackages.Add(validated.Package);
+                    addedCount++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{package.Id}: {ex.Message}");
+                }
+            }
+
+            if (addedCount > 0)
+            {
+                ReplacePreset(active.Name, new Preset(active.Name, updatedPackages), active.Name);
+                AddActivity(ActivitySeverity.Success, "Packages pasted", $"{addedCount} package(s) added.");
+            }
+
+            if (errors.Count > 0)
+            {
+                throw new InvalidOperationException($"Failed to add some packages:{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
+            }
+        }, "Unable to validate pasted packages.").ConfigureAwait(false);
 
     private void RequireWinget()
     {

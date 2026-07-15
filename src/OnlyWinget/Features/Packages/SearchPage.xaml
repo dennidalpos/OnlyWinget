@@ -23,7 +23,7 @@
         </Border>
         <states:StatePresenter x:Name="PageState" Grid.Row="1" />
         <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
-            <controls:OnlyWingetTable x:Name="ResultList" ItemsSource="{x:Bind ViewModel.Results}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="SearchResults" ToggleAllRequested="OnToggleAllResults" SelectionToggled="OnResultSelectionToggled">
+            <controls:OnlyWingetTable x:Name="ResultList" ItemsSource="{x:Bind ViewModel.Results}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="SearchResults" ToggleAllRequested="OnToggleAllResults" BatchSelectionChanged="OnResultBatchSelectionChanged">
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Name}" BindingPath="Name" Width="190" IsPrimary="True" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_PackageId}" BindingPath="PackageId" Width="230" IsTextSelectable="True" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Source}" BindingPath="Source" Width="100" />

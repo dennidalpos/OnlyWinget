@@ -23,6 +23,7 @@ public sealed class OnlyWingetApplicationTests
         await app.RefreshSourcesAsync(CancellationToken.None);
         Assert.True((await app.AddPackageToActivePresetAsync(new PackageIdentity("Git.Git", "winget"), CancellationToken.None)).Succeeded);
         Assert.True(app.TogglePresetPackage(new PackageIdentity("Git.Git", "winget")).Succeeded);
+        Assert.True(app.TogglePresetPackage(new PackageIdentity("Git.Git", "winget")).Succeeded);
         Assert.True(app.RemoveSelectedPackagesFromActivePreset().Succeeded);
         await app.SaveWorkspaceAsync(CancellationToken.None);
 

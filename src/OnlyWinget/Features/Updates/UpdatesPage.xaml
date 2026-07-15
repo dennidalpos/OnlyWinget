@@ -20,7 +20,7 @@
         </Border>
         <states:StatePresenter x:Name="PageState" Grid.Row="1" />
         <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
-            <controls:OnlyWingetTable x:Name="UpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="UpdateList" ToggleAllRequested="OnToggleAllUpdates" SelectionToggled="OnUpdateSelectionToggled">
+            <controls:OnlyWingetTable x:Name="UpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="UpdateList" ToggleAllRequested="OnToggleAllUpdates" BatchSelectionChanged="OnUpdateBatchSelectionChanged">
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Name}" BindingPath="Name" Width="210" IsPrimary="True" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_PackageId}" BindingPath="PackageId" Width="250" IsTextSelectable="True" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Source}" BindingPath="Source" Width="100" />

@@ -93,7 +93,7 @@
             </design:OnlyWingetWrapPanel>
             <states:StatePresenter x:Name="PageState" Grid.Row="2"/>
             <Border Grid.Row="3" Style="{StaticResource ListCardStyle}" MinHeight="300">
-                <controls:OnlyWingetTable x:Name="PackageList" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Preset_PackageSelectionLabel}" ToggleOnRowClick="False" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" SelectionToggled="OnPackageSelectionToggled" RowInvoked="OnPackageRowInvoked">
+                <controls:OnlyWingetTable x:Name="PackageList" ItemsSource="{x:Bind ViewModel.Packages}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Preset_PackageSelectionLabel}" AutomationProperties.AutomationId="PresetPackageList" ToggleAllRequested="OnToggleAllPackages" BatchSelectionChanged="OnPackageBatchSelectionChanged" PasteRequested="OnPackageListPasteRequested">
                     <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Name}" BindingPath="Name" Width="180" IsPrimary="True" />
                     <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_PackageId}" BindingPath="PackageId" Width="240" IsTextSelectable="True" />
                     <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Source}" BindingPath="Source" Width="120" />
