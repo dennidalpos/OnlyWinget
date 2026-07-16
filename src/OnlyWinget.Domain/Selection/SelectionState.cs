@@ -45,7 +45,7 @@ public sealed class SelectionState<TKey>
 
     public void SetSelected(TKey key, bool isSelected)
     {
-        EnsureAvailable(key);
+        if (!IsAvailable(key)) return;
 
         if (isSelected)
         {
@@ -58,7 +58,7 @@ public sealed class SelectionState<TKey>
 
     public void Toggle(TKey key)
     {
-        EnsureAvailable(key);
+        if (!IsAvailable(key)) return;
 
         if (!selected.Remove(key))
         {
@@ -83,11 +83,5 @@ public sealed class SelectionState<TKey>
         selected.UnionWith(available);
     }
 
-    private void EnsureAvailable(TKey key)
-    {
-        if (!available.Contains(key))
-        {
-            throw new InvalidOperationException("Selection key is not available.");
-        }
-    }
+    private bool IsAvailable(TKey key) => available.Contains(key);
 }

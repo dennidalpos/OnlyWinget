@@ -42,6 +42,18 @@ public sealed partial class OnlyWingetTable : UserControl
         Rows.SelectionChanged += OnRowsSelectionChanged;
         Rows.KeyDown += OnRowsKeyDown;
         SizeChanged += OnSizeChanged;
+        // Stop BringIntoView events from bubbling past the ListView's own ScrollViewer.
+        // Without this, clicking/selecting a row makes the outer page ScrollViewer
+        // jump back to the top because the focused item requests to be brought into view.
+        Rows.BringIntoViewRequested += OnRowsBringIntoViewRequested;
+    }
+
+    private static void OnRowsBringIntoViewRequested(UIElement sender, BringIntoViewRequestedEventArgs args)
+    {
+        // Mark as handled so the event does not bubble further to the outer page
+        // ScrollViewer (MainPageScrollViewer), which would scroll the whole page to top.
+        // The ListView's own internal ScrollViewer still handles keyboard scrolling correctly.
+        args.Handled = true;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -536,11 +548,33 @@ public sealed partial class OnlyWingetTable : UserControl
         try
         {
             Rows.SelectionChanged -= OnRowsSelectionChanged;
-            Rows.SelectedItems.Clear();
+
+            // Build the desired selected set from the source data model.
+            var desiredSelected = new HashSet<object>(ReferenceEqualityComparer.Instance);
             foreach (var item in filteredItems)
             {
                 var prop = item.GetType().GetProperty(SelectionBindingPath);
                 if (prop != null && prop.GetValue(item) is true)
+                {
+                    desiredSelected.Add(item);
+                }
+            }
+
+            // Remove items that should no longer be selected (iterate backwards to allow safe removal).
+            for (int i = Rows.SelectedItems.Count - 1; i >= 0; i--)
+            {
+                if (!desiredSelected.Contains(Rows.SelectedItems[i]))
+                {
+                    Rows.SelectedItems.RemoveAt(i);
+                }
+            }
+
+            // Add items that should be selected but aren't yet.
+            var currentSelected = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            foreach (var item in Rows.SelectedItems) currentSelected.Add(item);
+            foreach (var item in desiredSelected)
+            {
+                if (!currentSelected.Contains(item))
                 {
                     Rows.SelectedItems.Add(item);
                 }

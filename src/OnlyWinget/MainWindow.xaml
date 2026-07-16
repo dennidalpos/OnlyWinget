@@ -58,7 +58,8 @@
                 VerticalScrollBarVisibility="Auto"
                 HorizontalScrollMode="Enabled"
                 VerticalScrollMode="Enabled"
-                SizeChanged="OnMainPageScrollViewerSizeChanged">
+                SizeChanged="OnMainPageScrollViewerSizeChanged"
+                BringIntoViewRequested="OnMainPageScrollViewerBringIntoViewRequested">
                 <ContentControl
                     x:Name="PageHost"
                     Background="{ThemeResource LayerFillColorDefaultBrush}"

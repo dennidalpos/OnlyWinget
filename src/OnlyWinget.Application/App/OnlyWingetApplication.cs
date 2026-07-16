@@ -10,6 +10,8 @@ using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Presets;
 using OnlyWinget.Domain.Selection;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("OnlyWinget.Tests")]
+
 namespace OnlyWinget.Application.App;
 
 public sealed class OnlyWingetApplication(
@@ -1404,13 +1406,35 @@ public sealed class OnlyWingetApplication(
         return new WorkspaceState(presets, activeName);
     }
 
-    private static bool IsUpToDate(string? installed, string? available)
+    internal static string CleanVersion(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version)) return string.Empty;
+
+        int firstDigitIndex = -1;
+        for (int i = 0; i < version.Length; i++)
+        {
+            if (char.IsDigit(version[i]))
+            {
+                firstDigitIndex = i;
+                break;
+            }
+        }
+
+        if (firstDigitIndex >= 0)
+        {
+            return version[firstDigitIndex..].Trim();
+        }
+
+        return version.Trim();
+    }
+
+    internal static bool IsUpToDate(string? installed, string? available)
     {
         if (string.IsNullOrWhiteSpace(installed)) return false;
         if (string.IsNullOrWhiteSpace(available)) return true;
 
-        installed = installed.Trim();
-        available = available.Trim();
+        installed = CleanVersion(installed);
+        available = CleanVersion(available);
 
         if (string.Equals(installed, available, StringComparison.OrdinalIgnoreCase))
         {

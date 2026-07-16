@@ -493,6 +493,14 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void OnMainPageScrollViewerBringIntoViewRequested(UIElement sender, BringIntoViewRequestedEventArgs args)
+    {
+        // Prevent the outer page ScrollViewer from scrolling when inner elements
+        // (e.g. table rows, checkboxes) request focus/bring-into-view. This stops
+        // the page from jumping back to the top on every row click or selection change.
+        args.Handled = true;
+    }
+
     private void OnMainPageScrollViewerSizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdatePageHostSize();

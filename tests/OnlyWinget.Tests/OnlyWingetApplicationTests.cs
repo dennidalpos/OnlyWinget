@@ -1173,4 +1173,24 @@ public sealed class OnlyWingetApplicationTests
             return Task.FromResult(summary);
         }
     }
+
+    [Theory]
+    [InlineData("ad 9.0.14", "9.7.10", false)]
+    [InlineData("ad 9.7.10", "9.7.10", true)]
+    [InlineData("v1.2.3", "1.2.3", true)]
+    [InlineData("1.2.3", "v1.2.3", true)]
+    [InlineData("9.0", "10.0", false)]
+    [InlineData("10.0", "9.0", true)]
+    [InlineData("9.0.14", "9.0.14", true)]
+    [InlineData("9.0.14", "9.0.15", false)]
+    [InlineData("9.0.14-beta", "9.0.14", true)]
+    [InlineData("", "9.7.10", false)]
+    [InlineData("9.0.14", "", true)]
+    [InlineData(null, "9.7.10", false)]
+    [InlineData("9.0.14", null, true)]
+    public void IsUpToDate_CorrectlyComparesVersions(string? installed, string? available, bool expected)
+    {
+        var result = OnlyWingetApplication.IsUpToDate(installed, available);
+        Assert.Equal(expected, result);
+    }
 }
