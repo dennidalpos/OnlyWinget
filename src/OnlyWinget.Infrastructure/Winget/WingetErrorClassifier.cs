@@ -66,6 +66,22 @@ public sealed class WingetErrorClassifier
         return new ClassifiedWingetError(kind, message);
     }
 
+    public bool IsRetryable(ClassifiedWingetError? error)
+    {
+        if (error is null)
+        {
+            return false;
+        }
+
+        return error.Kind switch
+        {
+            WingetErrorKind.NotFound => false,
+            WingetErrorKind.NoUpdates => false,
+            WingetErrorKind.Cancelled => false,
+            _ => true
+        };
+    }
+
     private static bool ContainsAny(string text, params string[] needles) =>
         needles.Any(needle => text.Contains(needle, StringComparison.OrdinalIgnoreCase));
 }

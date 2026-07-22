@@ -132,14 +132,13 @@ function Invoke-Setup {
     )
 
     Assert-Path -Path $SetupPath -Description 'Setup EXE'
-    $logPath = Join-Path $validationPath $LogName
-    $setupArguments = @($Arguments + @('/norestart', '/log', $logPath))
+    $setupArguments = @($Arguments + @('/S'))
     $process = Start-Process -FilePath $SetupPath -ArgumentList $setupArguments -Wait -PassThru -WindowStyle Hidden
     if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
-        throw "Setup fallito con exit code $($process.ExitCode). Log: $logPath"
+        throw "Setup fallito con exit code $($process.ExitCode)."
     }
 
-    return $logPath
+    return "NSIS silent execution"
 }
 
 function Resolve-LatestSetup {

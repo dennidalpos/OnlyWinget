@@ -13,7 +13,8 @@ public sealed class WingetOperationExecutor(
         OperationPlan plan,
         CancellationToken cancellationToken,
         IProgress<OperationProgress>? progress = null,
-        bool continueAfterFailure = false)
+        bool continueAfterFailure = false,
+        int maxRetries = 0)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
@@ -47,27 +48,68 @@ public sealed class WingetOperationExecutor(
                     plan.Selections.Count));
             });
 
-            WingetCommandResult commandResult;
-            try
+            WingetCommandResult commandResult = default!;
+            ClassifiedWingetError? classifiedError = null;
+            var attemptCount = 0;
+            var maxAttempts = Math.Max(1, 1 + maxRetries);
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                commandResult = await commandRunner.RunAsync(
-                        "winget",
-                        commandBuilder.Build(selection),
-                        cancellationToken,
-                        commandProgress,
-                        global::System.TimeSpan.FromMinutes(30))
-                    .ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                global::System.Diagnostics.Debug.WriteLine($"WingetOperationExecutor.ExecuteAsync: {exception}");
-                commandResult = new WingetCommandResult(-1, string.Empty, exception.Message);
+                cancellationToken.ThrowIfCancellationRequested();
+                attemptCount = attempt;
+
+                if (attempt > 1)
+                {
+                    progress?.Report(new OperationProgress(
+                        selection.Package.Id,
+                        WingetProgressPhase.Starting,
+                        (int)Math.Clamp(Math.Round(((double)index / plan.Selections.Count) * 100d), 0, 100),
+                        index,
+                        plan.Selections.Count));
+                }
+
+                try
+                {
+                    commandResult = await commandRunner.RunAsync(
+                            "winget",
+                            commandBuilder.Build(selection),
+                            cancellationToken,
+                            commandProgress,
+                            global::System.TimeSpan.FromMinutes(30))
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    global::System.Diagnostics.Debug.WriteLine($"WingetOperationExecutor.ExecuteAsync: {exception}");
+                    commandResult = new WingetCommandResult(-1, string.Empty, exception.Message);
+                }
+
+                classifiedError = errorClassifier.Classify(commandResult);
+                var succeeded = commandResult.Succeeded || classifiedError?.Kind == WingetErrorKind.NoUpdates;
+                if (succeeded || !errorClassifier.IsRetryable(classifiedError) || attempt >= maxAttempts)
+                {
+                    break;
+                }
+
+                try
+                {
+                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
             }
 
             results.Add(new OperationExecutionResult(
                 selection,
                 commandResult,
-                errorClassifier.Classify(commandResult)));
+                classifiedError,
+                attemptCount));
             if (!results[^1].Succeeded && !continueAfterFailure)
             {
                 break;

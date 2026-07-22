@@ -2,10 +2,8 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [string]$Version,
-    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [switch]$NoRestore,
     [switch]$StopRunningInstance,
-    [switch]$SkipBundle,
     [switch]$NonInteractive
 )
 
@@ -15,145 +13,9 @@ Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
-$appIconPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget.ico'
-$bundleLogoPath = Join-Path $repoRoot 'src/OnlyWinget/Assets/OnlyWinget-icon.png'
-$licenseRtfPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/License.rtf'
-$installerDialogBmpPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/Assets/WixUIDialog.bmp'
-$installerBannerBmpPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/Assets/WixUIBanner.bmp'
-$wixSourcePath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.Setup.wxs'
-$bundleSourcePath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.Bundle.wxs'
-$bundleThemePath = Join-Path $repoRoot 'src/OnlyWinget.Setup/BurnResponsiveTheme.xml'
-$bundleThemeLocalizationPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/BurnResponsiveTheme.wxl'
 $artifactsPath = Join-Path $repoRoot 'artifacts'
 $stagingRoot = Join-Path $artifactsPath 'installer'
-$msiOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration/msi"
 $setupOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
-$upgradeCode = '{B6E2D6FC-56ED-4A5C-A766-01F3FE71D7E6}'
-$bundleUpgradeCode = '{A34AF980-F5F1-4E4D-8124-8DC5E889C74D}'
-$builtMsiPaths = @{}
-# WiX 3's ICE03 language table predates locales shipped by Windows App SDK 2.x
-# (for example gd-GB, mi-NZ, and ug-CN) and reports their valid MUI files as
-# invalid. Candle still validates and binds those files; only that stale ICE is
-# disabled here.
-$resolvedWindowsAppRuntimeInstallerX64Path = $null
-$attemptedWixInstall = $false
-
-function Add-UniquePath {
-    param(
-        [System.Collections.Generic.List[string]]$Paths,
-        [string]$Path
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        return
-    }
-
-    $normalizedPath = [System.IO.Path]::GetFullPath($Path)
-    if (-not $Paths.Contains($normalizedPath)) {
-        $Paths.Add($normalizedPath)
-    }
-}
-
-function Get-WixToolSearchRoot {
-    $roots = [System.Collections.Generic.List[string]]::new()
-
-    Add-UniquePath -Paths $roots -Path (Join-Path $repoRoot 'tools/wix314-binaries')
-
-    if (-not [string]::IsNullOrWhiteSpace($env:ONLYWINGET_WIX_BIN)) {
-        Add-UniquePath -Paths $roots -Path $env:ONLYWINGET_WIX_BIN
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($env:WIX)) {
-        Add-UniquePath -Paths $roots -Path (Join-Path $env:WIX 'bin')
-    }
-
-    $programRoots = @(
-        ${env:ProgramFiles(x86)}
-        $env:ProgramFiles
-    )
-
-    foreach ($programRoot in $programRoots) {
-        if ([string]::IsNullOrWhiteSpace($programRoot)) {
-            continue
-        }
-
-        $toolsetRootPattern = Join-Path $programRoot 'WiX Toolset v3*'
-        $toolsetRoots = @(Get-ChildItem -Path $toolsetRootPattern -Directory -ErrorAction SilentlyContinue |
-            Sort-Object -Property @{
-                Expression = {
-                    if ($_.Name -match 'v(?<Version>\d+(?:\.\d+)*)$') {
-                        return [Version]$Matches.Version
-                    }
-
-                    return [Version]'0.0'
-                }
-                Descending = $true
-            })
-
-        foreach ($toolsetRoot in $toolsetRoots) {
-            Add-UniquePath -Paths $roots -Path (Join-Path $toolsetRoot.FullName 'bin')
-        }
-    }
-
-    return $roots.ToArray()
-}
-
-function Resolve-WixTool {
-    param(
-        [string]$ToolName,
-        [string[]]$SearchRoots
-    )
-
-    foreach ($root in $SearchRoots) {
-        if ([string]::IsNullOrWhiteSpace($root)) {
-            continue
-        }
-
-        $candidate = Join-Path $root $ToolName
-        if (Test-Path -LiteralPath $candidate) {
-            return $candidate
-        }
-    }
-
-    $command = Get-Command $ToolName -ErrorAction SilentlyContinue
-    if ($null -ne $command) {
-        return $command.Source
-    }
-
-    if (-not $script:attemptedWixInstall) {
-        $script:attemptedWixInstall = $true
-        Install-WixToolset
-        return Resolve-WixTool -ToolName $ToolName -SearchRoots (Get-WixToolSearchRoot)
-    }
-
-    throw "Tool WiX non trovato: $ToolName. Installa WiX Toolset 3.x, imposta ONLYWINGET_WIX_BIN alla cartella bin di WiX, aggiungi WiX al PATH, oppure aggiungi i binari in 'tools/wix314-binaries'."
-}
-
-function Resolve-WixExtension {
-    param(
-        [string]$ExtensionName,
-        [string[]]$SearchRoots
-    )
-
-    foreach ($root in $SearchRoots) {
-        if ([string]::IsNullOrWhiteSpace($root)) {
-            continue
-        }
-
-        $candidate = Join-Path $root $ExtensionName
-        if (Test-Path $candidate) {
-            return $candidate
-        }
-    }
-
-    if (-not $script:attemptedWixInstall) {
-        $script:attemptedWixInstall = $true
-        Install-WixToolset
-        return Resolve-WixExtension -ExtensionName $ExtensionName -SearchRoots (Get-WixToolSearchRoot)
-    }
-
-    throw "Estensione WiX non trovata: $ExtensionName."
-}
 
 function Get-ProjectVersion {
     [xml]$projectXml = Get-Content -Path $projectPath
@@ -166,83 +28,6 @@ function Get-ProjectVersion {
     }
 
     return $rawVersion.Trim()
-}
-
-function Get-WindowsAppSdkVersion {
-    [xml]$projectXml = Get-Content -Path $projectPath
-    $packageReference = $projectXml.SelectSingleNode('//PackageReference[@Include="Microsoft.WindowsAppSDK"]')
-
-    if ($null -eq $packageReference -or [string]::IsNullOrWhiteSpace($packageReference.Version)) {
-        throw "Microsoft.WindowsAppSDK PackageReference non trovato in '$projectPath'."
-    }
-
-    return $packageReference.Version.Trim()
-}
-
-function Resolve-WindowsAppRuntimeInstaller {
-    param(
-        [string]$ExplicitPath,
-        [string]$WindowsAppSdkVersion
-    )
-
-    $architecture = 'x64'
-
-    if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
-        Assert-Path -Path $ExplicitPath -Description 'Windows App Runtime installer'
-        return [System.IO.Path]::GetFullPath($ExplicitPath)
-    }
-
-    $nugetRoots = [System.Collections.Generic.List[string]]::new()
-    if (-not [string]::IsNullOrWhiteSpace($env:NUGET_PACKAGES)) {
-        Add-UniquePath -Paths $nugetRoots -Path $env:NUGET_PACKAGES
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
-        Add-UniquePath -Paths $nugetRoots -Path (Join-Path $env:USERPROFILE '.nuget/packages')
-    }
-    $packageNames = @('microsoft.windowsappsdk.runtime', 'microsoft.windowsappsdk.redist')
-
-    foreach ($nugetRoot in $nugetRoots) {
-        foreach ($packageName in $packageNames) {
-            $versionRoot = Join-Path (Join-Path $nugetRoot $packageName) $WindowsAppSdkVersion
-            if (-not (Test-Path -LiteralPath $versionRoot)) {
-                continue
-            }
-
-            $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter "WindowsAppRuntimeInstall-$architecture.exe" -File -ErrorAction SilentlyContinue |
-                Select-Object -First 1
-            if ($null -eq $candidate) {
-                $candidate = Get-ChildItem -Path $versionRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
-                    Select-Object -First 1
-            }
-            if ($null -ne $candidate) {
-                return $candidate.FullName
-            }
-        }
-    }
-
-    foreach ($nugetRoot in $nugetRoots) {
-        foreach ($packageName in $packageNames) {
-            $packageRoot = Join-Path $nugetRoot $packageName
-            if (-not (Test-Path -LiteralPath $packageRoot)) {
-                continue
-            }
-
-            $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter "WindowsAppRuntimeInstall-$architecture.exe" -File -ErrorAction SilentlyContinue |
-                Sort-Object FullName -Descending |
-                Select-Object -First 1
-            if ($null -eq $candidate) {
-                $candidate = Get-ChildItem -Path $packageRoot -Recurse -Filter 'WindowsAppRuntimeInstall.exe' -File -ErrorAction SilentlyContinue |
-                    Sort-Object FullName -Descending |
-                    Select-Object -First 1
-            }
-            if ($null -ne $candidate) {
-                return $candidate.FullName
-            }
-        }
-    }
-
-    return Install-WindowsAppRuntimeRedist -WindowsAppSdkVersion $WindowsAppSdkVersion
 }
 
 function Convert-ToInstallerVersion {
@@ -318,6 +103,7 @@ function Copy-WinUiPublishResource {
         'MainWindow.xbf',
         'OnlyWinget.pri',
         'Assets',
+        'Controls',
         'DesignSystem',
         'Features'
     )
@@ -335,172 +121,6 @@ function Copy-WinUiPublishResource {
     }
 }
 
-function Invoke-X64Msi {
-    $runtimeIdentifier = 'win-x64'
-    $architectureStagingRoot = Join-Path $stagingRoot $runtimeIdentifier
-    $publishDir = Join-Path $architectureStagingRoot 'publish'
-    $wixObjDir = Join-Path $architectureStagingRoot 'wixobj'
-    $harvestFilePath = Join-Path $architectureStagingRoot 'OnlyWinget.Harvest.wxs'
-    $setupObjectPath = Join-Path $wixObjDir 'OnlyWinget.Setup.wixobj'
-    $harvestObjectPath = Join-Path $wixObjDir 'OnlyWinget.Harvest.wixobj'
-    $msiFilePath = Join-Path $msiOutputDir "OnlyWinget-$installerVersion-x64.msi"
-    $temporaryMsiFilePath = Join-Path $architectureStagingRoot 'OnlyWinget-x64.msi'
-
-    Reset-Directory -Path $architectureStagingRoot
-    New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
-    New-Item -ItemType Directory -Path $wixObjDir -Force | Out-Null
-    New-Item -ItemType Directory -Path $msiOutputDir -Force | Out-Null
-
-    if (-not $NoRestore) {
-        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
-        if ($LASTEXITCODE -ne 0) {
-            throw "dotnet restore per il packaging $runtimeIdentifier fallito."
-        }
-    }
-
-    $publishArgs = @(
-        'publish'
-        $projectPath
-        '-c'
-        $Configuration
-        '-f'
-        'net10.0-windows10.0.17763.0'
-        '-r'
-        $runtimeIdentifier
-        '--self-contained'
-        'true'
-        '--output'
-        $publishDir
-        '/p:UseAppHost=true'
-        '/p:BuildProjectReferences=false'
-        '/p:DebugSymbols=false'
-        '/p:DebugType=None'
-    )
-
-    $publishArgs += '--no-restore'
-
-    dotnet @publishArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet publish x64 fallito.'
-    }
-
-    $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
-    Assert-Path -Path $publishedExePath -Description 'Published executable x64'
-    Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
-
-    & $heatExe dir $publishDir `
-        -nologo `
-        -cg AppFiles `
-        -gg `
-        -scom `
-        -sreg `
-        -sfrag `
-        -srd `
-        -dr INSTALLFOLDER `
-        -var var.PublishDir `
-        -out $harvestFilePath
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Harvest WiX x64 fallito.'
-    }
-
-    [xml]$harvestXml = Get-Content -Path $harvestFilePath
-    $namespaceManager = [System.Xml.XmlNamespaceManager]::new($harvestXml.NameTable)
-    $namespaceManager.AddNamespace('wix', 'http://schemas.microsoft.com/wix/2006/wi')
-
-    foreach ($componentNode in $harvestXml.SelectNodes('//wix:Component', $namespaceManager)) {
-        $null = $componentNode.SetAttribute('Win64', 'yes')
-    }
-
-    $harvestXml.Save($harvestFilePath)
-
-    & $candleExe `
-        -nologo `
-        -arch x64 `
-        -ext $uiExtension `
-        "-dPublishDir=$publishDir" `
-        "-dProductVersion=$installerVersion" `
-        "-dPlatform=x64" `
-        "-dAppIconPath=$appIconPath" `
-        "-dLicenseRtfPath=$licenseRtfPath" `
-        "-dInstallerDialogBmpPath=$installerDialogBmpPath" `
-        "-dInstallerBannerBmpPath=$installerBannerBmpPath" `
-        "-dUpgradeCode=$upgradeCode" `
-        -out $wixObjDir\ `
-        $wixSourcePath `
-        $harvestFilePath
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Compilazione WiX x64 fallita.'
-    }
-
-    & $lightExe `
-        -nologo `
-        -sice:ICE03 `
-        -sice:ICE61 `
-        -ext $uiExtension `
-        -out $temporaryMsiFilePath `
-        $setupObjectPath `
-        $harvestObjectPath
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Link WiX x64 fallito.'
-    }
-
-    Publish-GeneratedFile -StagedPath $temporaryMsiFilePath -DestinationPath $msiFilePath
-
-    $builtMsiPaths['x64'] = $msiFilePath
-    Write-Host "MSI x64 generato: $msiFilePath" -ForegroundColor Green
-}
-
-function Invoke-UnifiedSetup {
-    $bundleObjDir = Join-Path $stagingRoot 'bundle-wixobj'
-    $bundleObjectPath = Join-Path $bundleObjDir 'OnlyWinget.Bundle.wixobj'
-    $setupFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-setup.exe"
-    $temporarySetupFilePath = Join-Path $bundleObjDir 'OnlyWinget-setup.exe'
-
-    if (-not $builtMsiPaths.ContainsKey('x64')) {
-        throw 'Il setup x64 richiede il relativo MSI.'
-    }
-
-    Reset-Directory -Path $bundleObjDir
-    New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
-
-    & $candleExe `
-        -nologo `
-        -ext $balExtension `
-        -ext $utilExtension `
-        "-dProductVersion=$installerVersion" `
-        "-dAppIconPath=$appIconPath" `
-        "-dBundleLogoPath=$bundleLogoPath" `
-        "-dLicenseRtfPath=$licenseRtfPath" `
-        "-dBundleThemePath=$bundleThemePath" `
-        "-dBundleThemeLocalizationPath=$bundleThemeLocalizationPath" `
-        "-dX64MsiPath=$($builtMsiPaths['x64'])" `
-        "-dWindowsAppRuntimeInstallerX64Path=$resolvedWindowsAppRuntimeInstallerX64Path" `
-        "-dBundleUpgradeCode=$bundleUpgradeCode" `
-        -out $bundleObjDir\ `
-        $bundleSourcePath
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Compilazione WiX bundle fallita.'
-    }
-
-    & $lightExe `
-        -nologo `
-        -ext $balExtension `
-        -ext $utilExtension `
-        -out $temporarySetupFilePath `
-        $bundleObjectPath
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Link WiX bundle fallito.'
-    }
-
-    Publish-GeneratedFile -StagedPath $temporarySetupFilePath -DestinationPath $setupFilePath
-
-    Write-Host "Setup unificato generato: $setupFilePath" -ForegroundColor Green
-}
 
 function Invoke-PortablePackage {
     $runtimeIdentifier = 'win-x64'
@@ -557,41 +177,100 @@ function Invoke-PortablePackage {
     Write-Host "Portable x64 generata: $portableFilePath" -ForegroundColor Green
 }
 
+function Resolve-MakensisExe {
+    $candidates = @(
+        'C:\Program Files (x86)\NSIS\makensis.exe',
+        'C:\Program Files\NSIS\makensis.exe'
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+
+    $cmd = Get-Command 'makensis' -ErrorAction SilentlyContinue
+    if ($null -ne $cmd) {
+        return $cmd.Source
+    }
+
+    throw "Tool NSIS non trovato (makensis.exe). Assicurati che NSIS sia installato in 'C:\Program Files (x86)\NSIS' o presente nel PATH."
+}
+
+function Invoke-NsisSetup {
+    $runtimeIdentifier = 'win-x64'
+    $nsisStagingRoot = Join-Path $stagingRoot $runtimeIdentifier
+    $publishDir = Join-Path $nsisStagingRoot 'publish'
+    $nsisScriptPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.nsi'
+    $setupFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-setup.exe"
+
+    Assert-Path -Path $nsisScriptPath -Description 'NSIS setup script'
+    Reset-Directory -Path $nsisStagingRoot
+    New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
+
+    if (-not $NoRestore) {
+        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
+        if ($LASTEXITCODE -ne 0) {
+            throw "dotnet restore per il packaging NSIS $runtimeIdentifier fallito."
+        }
+    }
+
+    $publishArgs = @(
+        'publish'
+        $projectPath
+        '-c'
+        $Configuration
+        '-f'
+        'net10.0-windows10.0.17763.0'
+        '-r'
+        $runtimeIdentifier
+        '--self-contained'
+        'true'
+        '--output'
+        $publishDir
+        '/p:UseAppHost=true'
+        '/p:WindowsAppSDKSelfContained=true'
+        '/p:BuildProjectReferences=false'
+        '/p:DebugSymbols=false'
+        '/p:DebugType=None'
+    )
+
+    if ($NoRestore) {
+        $publishArgs += '--no-restore'
+    }
+
+    dotnet @publishArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw 'dotnet publish NSIS x64 fallito.'
+    }
+
+    $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
+    Assert-Path -Path $publishedExePath -Description 'Published executable x64'
+    Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
+
+    $makensisExe = Resolve-MakensisExe
+
+    $nsisArgs = @(
+        "-DPRODUCT_VERSION=$installerVersion",
+        "-DPUBLISH_DIR=$publishDir",
+        "-DOUT_FILE=$setupFilePath",
+        $nsisScriptPath
+    )
+
+    & $makensisExe @nsisArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Compilazione NSIS setup fallita.'
+    }
+
+    Assert-Path -Path $setupFilePath -Description 'NSIS setup executable'
+    Write-Host "Setup NSIS generato: $setupFilePath" -ForegroundColor Green
+}
+
 Assert-Command -Name 'dotnet'
 Assert-Path -Path $projectPath -Description 'Project file'
-Assert-Path -Path $appIconPath -Description 'Application icon'
-Assert-Path -Path $bundleLogoPath -Description 'Bundle logo'
-Assert-Path -Path $licenseRtfPath -Description 'License file'
-Assert-Path -Path $installerDialogBmpPath -Description 'Installer dialog bitmap'
-Assert-Path -Path $installerBannerBmpPath -Description 'Installer banner bitmap'
-Assert-Path -Path $wixSourcePath -Description 'WiX MSI source'
-Assert-Path -Path $bundleSourcePath -Description 'WiX bundle source'
-Assert-Path -Path $bundleThemePath -Description 'WiX Burn theme'
-Assert-Path -Path $bundleThemeLocalizationPath -Description 'WiX Burn theme localization'
-
-$configuredWixSearchRoots = Get-WixToolSearchRoot
-$heatExe = Resolve-WixTool -ToolName 'heat.exe' -SearchRoots $configuredWixSearchRoots
-$candleExe = Resolve-WixTool -ToolName 'candle.exe' -SearchRoots $configuredWixSearchRoots
-$lightExe = Resolve-WixTool -ToolName 'light.exe' -SearchRoots $configuredWixSearchRoots
-$wixSearchRoots = @(
-    $configuredWixSearchRoots
-    (Split-Path $heatExe -Parent)
-    (Split-Path $candleExe -Parent)
-    (Split-Path $lightExe -Parent)
-)
-$uiExtension = Resolve-WixExtension -ExtensionName 'WixUIExtension.dll' -SearchRoots $wixSearchRoots
-$balExtension = Resolve-WixExtension -ExtensionName 'WixBalExtension.dll' -SearchRoots $wixSearchRoots
-$utilExtension = Resolve-WixExtension -ExtensionName 'WixUtilExtension.dll' -SearchRoots $wixSearchRoots
 
 $rawVersion = if ([string]::IsNullOrWhiteSpace($Version)) { Get-ProjectVersion } else { $Version }
 $installerVersion = Convert-ToInstallerVersion -RawVersion $rawVersion
-
-if (-not $SkipBundle) {
-    $windowsAppSdkVersion = Get-WindowsAppSdkVersion
-    $resolvedWindowsAppRuntimeInstallerX64Path = Resolve-WindowsAppRuntimeInstaller `
-        -ExplicitPath $WindowsAppRuntimeInstallerPath `
-        -WindowsAppSdkVersion $windowsAppSdkVersion
-}
 
 $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
 Assert-Path -Path $buildScriptPath -Description 'Build script'
@@ -612,15 +291,11 @@ catch [System.IO.IOException] {
 try {
     & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive:$NonInteractive
     if ($LASTEXITCODE -ne 0) {
-        throw 'Preparazione build fallita prima del publish MSI.'
+        throw 'Preparazione build fallita prima del packaging.'
     }
 
-    Invoke-X64Msi
+    Invoke-NsisSetup
     Invoke-PortablePackage
-
-    if (-not $SkipBundle) {
-        Invoke-UnifiedSetup
-    }
 }
 finally {
     $packageLock.Dispose()

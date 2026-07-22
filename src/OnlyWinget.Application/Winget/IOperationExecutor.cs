@@ -8,5 +8,6 @@ public interface IOperationExecutor
         OperationPlan plan,
         CancellationToken cancellationToken,
         IProgress<OperationProgress>? progress = null,
-        bool continueAfterFailure = false);
+        bool continueAfterFailure = false,
+        int maxRetries = 0);
 }

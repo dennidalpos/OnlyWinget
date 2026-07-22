@@ -1162,16 +1162,58 @@ public sealed class OnlyWingetApplicationTests
     private sealed class RecordingOperationExecutor(OperationExecutionSummary summary) : IOperationExecutor
     {
         public OperationPlan? LastPlan { get; private set; }
+        public int LastMaxRetries { get; private set; }
 
         public Task<OperationExecutionSummary> ExecuteAsync(
             OperationPlan plan,
             CancellationToken cancellationToken,
             IProgress<OperationProgress>? progress = null,
-            bool continueAfterFailure = false)
+            bool continueAfterFailure = false,
+            int maxRetries = 0)
         {
             LastPlan = plan;
+            LastMaxRetries = maxRetries;
             return Task.FromResult(summary);
         }
+    }
+
+    [Fact]
+    public async Task RetryFailedOperationsAsync_ReExecutesFailedPackagesOnly()
+    {
+        var selection1 = new PackageSelection(new PackageIdentity("Success.App", "winget"), PackageAction.Install);
+        var selection2 = new PackageSelection(new PackageIdentity("Failed.App", "winget"), PackageAction.Install);
+        var failedResult = new OperationExecutionResult(
+            selection2,
+            new WingetCommandResult(-1, string.Empty, "Network error"),
+            new ClassifiedWingetError(WingetErrorKind.Unknown, "Network error"));
+        var successResult = new OperationExecutionResult(
+            selection1,
+            new WingetCommandResult(0, "Installed", string.Empty),
+            null);
+
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([successResult, failedResult]));
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Success.App", "winget"), "Success.App", "1.0", "Pub", true, null),
+            new PackageResolution(new PackageIdentity("Failed.App", "winget"), "Failed.App", "1.0", "Pub", true, null));
+
+        var app = CreateApplication(executor: executor, resolver: resolver);
+        app.ContinueOperationsAfterFailure = true;
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        await app.AddPackageToActivePresetAsync(selection1.Package, CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(selection2.Package, CancellationToken.None);
+
+        await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
+
+        Assert.Equal(2, app.State.LastOperationResults.Count);
+
+        // Now retry failed operations
+        var retryResult = await app.RetryFailedOperationsAsync(CancellationToken.None);
+
+        Assert.NotNull(executor.LastPlan);
+        var retriedSelection = Assert.Single(executor.LastPlan.Selections);
+        Assert.Equal("Failed.App", retriedSelection.Package.Id);
     }
 
     [Theory]

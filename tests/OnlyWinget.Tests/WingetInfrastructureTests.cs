@@ -430,6 +430,50 @@ public sealed class WingetInfrastructureTests
         Assert.Empty(runner.Calls);
     }
 
+    [Fact]
+    public async Task OperationExecutorRetriesTransientFailuresUpToMaxRetries()
+    {
+        var runner = new RecordingWingetCommandRunner(
+            new WingetCommandResult(1, string.Empty, "Transient error opening source"),
+            new WingetCommandResult(0, "Successfully installed", string.Empty));
+        var executor = new WingetOperationExecutor(
+            runner,
+            new WingetCommandBuilder(),
+            new WingetErrorClassifier());
+        var plan = new OperationPlanner().CreatePresetPlan(
+            new Preset("Default", [new PackageIdentity("Retry.App")]),
+            PackageAction.Install);
+
+        var summary = await executor.ExecuteAsync(plan, CancellationToken.None, maxRetries: 2);
+
+        Assert.True(summary.Succeeded);
+        Assert.Single(summary.Results);
+        Assert.Equal(2, summary.Results[0].AttemptCount);
+        Assert.Equal(2, runner.Calls.Count);
+    }
+
+    [Fact]
+    public async Task OperationExecutorDoesNotRetryNonRetryableErrors()
+    {
+        var runner = new RecordingWingetCommandRunner(
+            new WingetCommandResult(1, string.Empty, "No package found matching input criteria."),
+            new WingetCommandResult(0, "installed", string.Empty));
+        var executor = new WingetOperationExecutor(
+            runner,
+            new WingetCommandBuilder(),
+            new WingetErrorClassifier());
+        var plan = new OperationPlanner().CreatePresetPlan(
+            new Preset("Default", [new PackageIdentity("Missing.App")]),
+            PackageAction.Install);
+
+        var summary = await executor.ExecuteAsync(plan, CancellationToken.None, maxRetries: 2);
+
+        Assert.False(summary.Succeeded);
+        Assert.Single(summary.Results);
+        Assert.Equal(1, summary.Results[0].AttemptCount);
+        Assert.Single(runner.Calls);
+    }
+
     private sealed class RecordingWingetCommandRunner(params WingetCommandResult[] results) : IWingetCommandRunner
     {
         private readonly Queue<WingetCommandResult> results = new(results);

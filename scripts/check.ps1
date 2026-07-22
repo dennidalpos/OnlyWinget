@@ -146,19 +146,12 @@ Invoke-Step 'artifact analysis' {
     $setup = Get-ChildItem -Path $distPath -Filter '*-setup.exe' |
         Sort-Object LastWriteTimeUtc -Descending |
         Select-Object -First 1
-    $msis = @(Get-ChildItem -Path (Join-Path $distPath 'msi') -Filter '*-x64.msi' |
-        Sort-Object LastWriteTimeUtc -Descending |
-        Select-Object -First 1)
     $portable = Get-ChildItem -Path $distPath -Filter '*-portable-x64.zip' |
         Sort-Object LastWriteTimeUtc -Descending |
         Select-Object -First 1
 
     if ($null -eq $setup) {
-        throw 'Setup unificato non trovato dopo il packaging.'
-    }
-
-    if ($msis.Count -ne 1) {
-        throw 'MSI interno x64 non trovato dopo il packaging.'
+        throw 'Setup NSIS non trovato dopo il packaging.'
     }
 
     if ($null -eq $portable) {
@@ -171,8 +164,6 @@ Invoke-Step 'artifact analysis' {
         "AppSizeBytes: $($artifact.Length)"
         "UnifiedSetupArtifact: $($setup.FullName)"
         "UnifiedSetupSizeBytes: $($setup.Length)"
-        "InternalMsiArtifacts: $($msis.FullName -join '; ')"
-        "InternalMsiSizeBytes: $(($msis | ForEach-Object { $_.Length }) -join '; ')"
         "PortableArtifact: $($portable.FullName)"
         "PortableSizeBytes: $($portable.Length)"
         "SmokeTests: $smokeTestStatus"
