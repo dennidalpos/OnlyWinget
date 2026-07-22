@@ -2,5 +2,5 @@
     x:Class="OnlyWinget.DesignSystem.Commands.OnlyWingetCommandBar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <CommandBar x:Name="Bar" DefaultLabelPosition="Right" IsDynamicOverflowEnabled="True" Background="Transparent" />
+    <CommandBar x:Name="Bar" DefaultLabelPosition="Right" IsDynamicOverflowEnabled="True" Background="Transparent" AutomationProperties.AutomationId="OnlyWingetCommandBarInternal" AutomationProperties.Name="Page Commands" />
 </UserControl>

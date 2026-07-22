@@ -2,6 +2,7 @@
     x:Class="OnlyWinget.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:OnlyWinget.Controls"
     Title="OnlyWinget">
     <Grid>
         <Grid.RowDefinitions>
@@ -69,7 +70,7 @@
         </NavigationView>
 
         <!-- Resizer Bar Overlay -->
-        <Border
+        <controls:CursorGrid
             x:Name="PaneResizer"
             Grid.Row="1"
             Width="8"
@@ -82,6 +83,6 @@
             PointerEntered="OnResizerPointerEntered"
             PointerExited="OnResizerPointerExited">
             <Border x:Name="ResizerVisualLine" Width="2" HorizontalAlignment="Center" Background="{ThemeResource SystemControlBackgroundListLowBrush}" Opacity="0" />
-        </Border>
+        </controls:CursorGrid>
     </Grid>
 </Window>

@@ -45,8 +45,7 @@ public sealed partial class MainWindow : Window
         ApplyTheme();
         BuildNavigation();
         ApplyMenuSettings();
-        typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
-            .SetValue(PaneResizer, Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast));
+        PaneResizer.Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
         ShowPage("home");
     }
