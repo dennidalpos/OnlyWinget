@@ -193,7 +193,8 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         var progress = ViewModel.Progress;
         if (isExecuting)
         {
-            PageState.Show(TextResources.Get("Operation_Preset_Title"), TextResources.Get(progress is null ? "Progress_Starting" : $"Progress_{progress.Phase}"), progress?.PackageId, progress?.Percentage, true);
+            var message = OperationProgressFormatter.FormatMessage(progress, TextResources.Get);
+            PageState.Show(TextResources.Get("Operation_Preset_Title"), message, progress?.PackageId, progress?.PackagePercentage, true);
         }
         else if (wasExecuting)
         {

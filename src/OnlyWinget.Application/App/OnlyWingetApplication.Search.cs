@@ -133,7 +133,12 @@ public sealed partial class OnlyWingetApplication
                         .ToArray();
                     await RefreshPackageMetadataAsync(packages, cancellationToken).ConfigureAwait(false);
 
-                    AddActivity(ActivitySeverity.Information, "Package metadata refreshed", $"{packageMetadata.Count} package(s).");
+                    int count;
+                    lock (packageMetadata)
+                    {
+                        count = packageMetadata.Count;
+                    }
+                    AddActivity(ActivitySeverity.Information, "Package metadata refreshed", $"{count} package(s).");
                 },
                 "Unable to refresh package metadata.")
             .ConfigureAwait(false);

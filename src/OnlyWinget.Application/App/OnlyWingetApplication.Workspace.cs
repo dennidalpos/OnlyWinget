@@ -289,7 +289,6 @@ public sealed partial class OnlyWingetApplication
     private void RefreshPresetSelection()
     {
         var packages = ActivePreset?.Packages ?? [];
-        presetSelection.ReplaceAvailable(packages);
         presetInstallSelection.ReplaceAvailable(packages, selectAvailable: true);
     }
 

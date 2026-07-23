@@ -69,12 +69,19 @@ Keep only verified, actionable residual work in execution order. Remove complete
    .\scripts\sync-win-dev-skills.ps1
    .\scripts\install-skills.ps1
    ```
-   Then, inspect applicable developer skill instructions using `view_file`, check relevant source files, and run `git status --short` to preserve existing local changes.
+   Always run these scripts when starting development or pulling updates to ensure local skills in `.agents/skills` are synchronized with the official skills in `skills/` (and Microsoft's official `win-dev-skills` repository). Then, inspect applicable developer skill instructions using `view_file`, check relevant source files, and run `git status --short` to preserve existing local changes.
 2. Load and inspect relevant skills before any coding or architectural change:
    - For Clean Architecture layers, concurrency rules, and domain boundaries: [onlywinget](file:///.agents/skills/onlywinget/SKILL.md)
-   - For general controls, layout, and cursors: [winui](file:///.agents/skills/winui/SKILL.md)
-   - For MVVM, bindings, and quality checks: [winui-code-review](file:///.agents/skills/winui-code-review/SKILL.md)
-   - For theme resources, brushes, and designs: [winui-design](file:///.agents/skills/winui-design/SKILL.md)
+   - For WinUI 3 platform controls, layout, windowing, and App SDK: [winui](file:///.agents/skills/winui/SKILL.md)
+   - For MVVM, `x:Bind` compile-time typed bindings, `DispatcherQueue` thread safety, and quality checks: [winui-code-review](file:///.agents/skills/winui-code-review/SKILL.md)
+   - For Fluent Design System 2, light/dark theme resources, brushes, and designs: [winui-design](file:///.agents/skills/winui-design/SKILL.md)
+   - For WinUI build workflow, debugging, and error diagnosis: [winui-dev-workflow](file:///.agents/skills/winui-dev-workflow/SKILL.md)
+   - For WinUI packaging, self-contained deployment, and code signing: [winui-packaging](file:///.agents/skills/winui-packaging/SKILL.md)
+   - For automated UI testing with winapp CLI: [winui-ui-testing](file:///.agents/skills/winui-ui-testing/SKILL.md)
+   - For WPF/UWP to WinUI 3 migration patterns: [winui-wpf-migration](file:///.agents/skills/winui-wpf-migration/SKILL.md)
+   - For WinUI 3 setup and SDK prerequisites: [winui-setup](file:///.agents/skills/winui-setup/SKILL.md)
+   - For winget CLI commands, manifest schema, REST sources, and silent install switches: [winget-cli](file:///.agents/skills/winget-cli/SKILL.md)
+   - For NSIS 3.x setup installer scripting, MUI2, x64 target directives, and uninstall registry keys: [nsis-installer](file:///.agents/skills/nsis-installer/SKILL.md)
 3. Make the smallest coherent change. Add or update tests for behavior changes.
 4. Use `scripts/run.ps1` tasks instead of ad hoc equivalents.
 5. For WinUI changes, build, launch, confirm a responsive top-level window, and leave the verified app running. Terminate running application instances (e.g., `taskkill /f /im OnlyWinget.exe`) if clean tasks fail due to lock issues.

@@ -44,8 +44,6 @@ public sealed partial class MainWindow : Window
         RootNavigation.Loaded += OnLoaded;
         ApplyTheme();
         BuildNavigation();
-        ApplyMenuSettings();
-        PaneResizer.Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
         ShowPage("home");
     }
@@ -67,7 +65,6 @@ public sealed partial class MainWindow : Window
             var themeChanged = lastTheme != currentSettings.Theme;
 
             App.ApplySettings();
-            ApplyMenuSettings();
 
             if (languageChanged || themeChanged)
             {
@@ -90,12 +87,17 @@ public sealed partial class MainWindow : Window
 
     private void ApplyTheme()
     {
-        RootNavigation.RequestedTheme = App.UiServices.Settings.Current.Theme switch
+        var theme = App.UiServices.Settings.Current.Theme switch
         {
             "light" => ElementTheme.Light,
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
+        RootNavigation.RequestedTheme = theme;
+        if (Content is FrameworkElement rootElement)
+        {
+            rootElement.RequestedTheme = theme;
+        }
     }
 
     private void SelectRoute(string routeId)
@@ -188,7 +190,6 @@ public sealed partial class MainWindow : Window
         }
 
         currentRouteId = tag;
-        UpdatePageHostSize();
     }
 
     private async Task<bool> ConfirmCurrentNavigationAsync() =>
@@ -253,6 +254,12 @@ public sealed partial class MainWindow : Window
             AutomationProperties.SetAutomationId(item, $"Nav{char.ToUpperInvariant(route.Id[0])}{route.Id[1..]}");
             RootNavigation.MenuItems.Add(item);
         }
+
+        if (OpenLogsItem is NavigationViewItem openLogsNav)
+        {
+            openLogsNav.Content = TextResources.Get("Menu_OpenLogs");
+            ToolTipService.SetToolTip(openLogsNav, TextResources.Get("Menu_OpenLogs"));
+        }
     }
 
     private void ApplyWindowIcon()
@@ -268,266 +275,8 @@ public sealed partial class MainWindow : Window
         AppWindow.GetFromWindowId(windowId).SetIcon(iconPath);
     }
 
-    private void ApplyMenuSettings()
-    {
-        var settings = App.UiServices.Settings.Current;
-
-        // Apply pin state
-        if (settings.IsMenuPinned)
-        {
-            RootNavigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Left;
-            RootNavigation.IsPaneOpen = true;
-            RootNavigation.CompactModeThresholdWidth = 0;
-            RootNavigation.ExpandedModeThresholdWidth = 0;
-
-            // Ensure width is sufficient to completely display menu text (at least 260)
-            double sufficientWidth = Math.Max(260, settings.MenuWidth > 0 ? settings.MenuWidth : 280);
-            RootNavigation.OpenPaneLength = sufficientWidth;
-        }
-        else
-        {
-            RootNavigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Auto;
-            RootNavigation.CompactModeThresholdWidth = 0; // Always keep menu icons visible on small screen sizes
-            RootNavigation.ExpandedModeThresholdWidth = 1100;
-
-            // Determine if the pane should be open based on window width
-            var windowHandle = WindowNative.GetWindowHandle(this);
-            var scale = GetDpiForWindow(windowHandle) / 96d;
-            var windowWidth = AppWindow.Size.Width / scale;
-            RootNavigation.IsPaneOpen = windowWidth >= 1100;
-
-            RootNavigation.OpenPaneLength = settings.MenuWidth > 0 ? settings.MenuWidth : 280;
-        }
-
-        if (PinMenuItem is not null && PinMenuIcon is FontIcon fontIcon)
-        {
-            fontIcon.Glyph = settings.IsMenuPinned ? "\uE840" : "\uE718";
-        }
-
-        ApplyPaneFooterContent();
-        UpdateResizer();
-    }
-
-    private void ApplyPaneFooterContent()
-    {
-        var settings = App.UiServices.Settings.Current;
-        bool isPaneOpen = RootNavigation.IsPaneOpen;
-
-        if (PinMenuItem is not null)
-        {
-            var content = TextResources.Get(settings.IsMenuPinned ? "Menu_Unpin" : "Menu_Pin");
-            PinMenuItem.Content = isPaneOpen ? content : string.Empty;
-            ToolTipService.SetToolTip(PinMenuItem, isPaneOpen ? null : content);
-        }
-
-        if (OpenLogsItem is not null)
-        {
-            var content = TextResources.Get("Menu_OpenLogs");
-            OpenLogsItem.Content = isPaneOpen ? content : string.Empty;
-            ToolTipService.SetToolTip(OpenLogsItem, isPaneOpen ? null : content);
-        }
-    }
-
-    private void UpdateResizer()
-    {
-        if (RootNavigation == null || PaneResizer == null) return;
-
-        var settings = App.UiServices.Settings.Current;
-        bool isPaneOpen = RootNavigation.IsPaneOpen;
-        bool isLeftMode = RootNavigation.PaneDisplayMode != NavigationViewPaneDisplayMode.Top;
-        bool isPinned = settings.IsMenuPinned;
-
-        if (isPaneOpen && isLeftMode && !isPinned)
-        {
-            PaneResizer.Visibility = Visibility.Visible;
-            PaneResizer.Margin = new Thickness(RootNavigation.OpenPaneLength - 4, 0, 0, 0);
-        }
-        else
-        {
-            PaneResizer.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    private Brush GetActiveSectionBrush()
-    {
-        string? routeId = (RootNavigation.SelectedItem as NavigationViewItem)?.Tag as string;
-        routeId ??= "home";
-        var brushKey = routeId switch
-        {
-            "home" => "AreaHomeBrush",
-            "packages" => "AreaPackagesBrush",
-            "updates" => "AreaUpdatesBrush",
-            "sources" => "AreaSourcesBrush",
-            "activity" => "AreaActivityBrush",
-            "settings" => "AreaSettingsBrush",
-            _ => "SystemControlForegroundAccentBrush"
-        };
-        if (Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(brushKey, out var res) && res is Brush b)
-        {
-            return b;
-        }
-        return new SolidColorBrush(Colors.DodgerBlue);
-    }
-
-    private void OnPaneClosing(NavigationView sender, NavigationViewPaneClosingEventArgs args)
-    {
-        if (App.UiServices.Settings.Current.IsMenuPinned)
-        {
-            args.Cancel = true;
-        }
-    }
-
-    private void OnPaneOpened(NavigationView sender, object args)
-    {
-        UpdateResizer();
-        ApplyPaneFooterContent();
-    }
-
-    private void OnPaneClosed(NavigationView sender, object args)
-    {
-        UpdateResizer();
-        ApplyPaneFooterContent();
-    }
-
-    private void OnDisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args)
-    {
-        UpdateResizer();
-        ApplyPaneFooterContent();
-    }
-
-    private async void OnPinMenuTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
-    {
-        var currentSettings = App.UiServices.Settings.Current;
-        var newPinState = !currentSettings.IsMenuPinned;
-        var updatedSettings = currentSettings with { IsMenuPinned = newPinState };
-        await SaveSettingsAsync(updatedSettings, "MainWindow.OnPinMenuTapped");
-    }
-
     private void OnOpenLogsTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
         AppDiagnostics.OpenLog();
-    }
-
-    private bool isDraggingResizer;
-    private double dragStartPaneLength;
-    private double dragStartPointerX;
-
-    private void OnResizerPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        var border = (Border)sender;
-        var properties = e.GetCurrentPoint(border).Properties;
-        if (properties.IsLeftButtonPressed)
-        {
-            isDraggingResizer = true;
-            border.CapturePointer(e.Pointer);
-            dragStartPaneLength = RootNavigation.OpenPaneLength;
-            var point = e.GetCurrentPoint(RootNavigation);
-            dragStartPointerX = point.Position.X;
-            ResizerVisualLine.Opacity = 1.0;
-            e.Handled = true;
-        }
-    }
-
-    private void OnResizerPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (isDraggingResizer)
-        {
-            var point = e.GetCurrentPoint(RootNavigation);
-            var deltaX = point.Position.X - dragStartPointerX;
-            var newLength = dragStartPaneLength + deltaX;
-            newLength = Math.Max(150, Math.Min(500, newLength));
-            RootNavigation.OpenPaneLength = newLength;
-            UpdateResizer();
-            e.Handled = true;
-        }
-    }
-
-    private async void OnResizerPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (isDraggingResizer)
-        {
-            isDraggingResizer = false;
-            var border = (Border)sender;
-            border.ReleasePointerCapture(e.Pointer);
-            var point = e.GetCurrentPoint(border);
-            var isOver = point.Position.X >= 0 && point.Position.X <= border.ActualWidth &&
-                         point.Position.Y >= 0 && point.Position.Y <= border.ActualHeight;
-            if (!isOver)
-            {
-                ResizerVisualLine.Opacity = 0.0;
-            }
-            var currentSettings = App.UiServices.Settings.Current;
-            var updatedSettings = currentSettings with { MenuWidth = RootNavigation.OpenPaneLength };
-            await SaveSettingsAsync(updatedSettings, "MainWindow.OnResizerPointerReleased");
-            e.Handled = true;
-        }
-    }
-
-    private async Task SaveSettingsAsync(Services.AppSettings settings, string caller)
-    {
-        try
-        {
-            await App.UiServices.Settings.SaveAsync(settings, windowLifetime.Token);
-        }
-        catch (OperationCanceledException) when (windowLifetime.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            AppDiagnostics.WriteException(caller, exception);
-        }
-    }
-
-    private void OnResizerPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        ResizerVisualLine.Background = GetActiveSectionBrush();
-        ResizerVisualLine.Opacity = 1.0;
-    }
-
-    private void OnResizerPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-    {
-        if (!isDraggingResizer)
-        {
-            ResizerVisualLine.Opacity = 0.0;
-        }
-    }
-
-    private void OnMainPageScrollViewerBringIntoViewRequested(UIElement sender, BringIntoViewRequestedEventArgs args)
-    {
-        // Prevent the outer page ScrollViewer from scrolling when inner elements
-        // (e.g. table rows, checkboxes) request focus/bring-into-view. This stops
-        // the page from jumping back to the top on every row click or selection change.
-        args.Handled = true;
-    }
-
-    private void OnMainPageScrollViewerSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdatePageHostSize();
-    }
-
-    private void UpdatePageHostSize()
-    {
-        if (MainPageScrollViewer is ScrollViewer sv)
-        {
-            double minWidth = 720;
-            double minHeight = 680;
-
-            if (PageHost.Content is FrameworkElement fe)
-            {
-                if (fe.MinWidth > 0) minWidth = fe.MinWidth;
-                if (fe.MinHeight > 0) minHeight = fe.MinHeight;
-
-                var pageTypeName = fe.GetType().Name;
-                if (pageTypeName is "DashboardPage" or "SettingsPage")
-                {
-                    PageHost.Height = double.NaN;
-                    PageHost.Width = Math.Max(minWidth, sv.ViewportWidth);
-                    return;
-                }
-            }
-
-            PageHost.Width = Math.Max(minWidth, sv.ViewportWidth);
-            PageHost.Height = Math.Max(minHeight, sv.ViewportHeight);
-        }
     }
 }

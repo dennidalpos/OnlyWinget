@@ -71,5 +71,20 @@ public static class PresentationValues
             TextResources.Get("Filter_Column_Placeholder"),
             TextResources.Get(columnHeaderKey));
     }
+
+    public static Microsoft.UI.Xaml.Media.Brush SeverityBrush(OnlyWinget.Application.Activity.ActivitySeverity severity) =>
+        SeverityBrush(severity.ToString());
+
+    public static Microsoft.UI.Xaml.Media.Brush SeverityBrush(string severity)
+    {
+        return severity switch
+        {
+            "Information" => GetSeverityBrush("SystemFillColorAttentionBrush", Microsoft.UI.Colors.DodgerBlue),
+            "Success" => GetSeverityBrush("SystemFillColorSuccessBrush", Microsoft.UI.Colors.Green),
+            "Warning" => GetSeverityBrush("SystemFillColorCautionBrush", Microsoft.UI.Colors.Orange),
+            "Error" => GetSeverityBrush("SystemFillColorCriticalBrush", Microsoft.UI.Colors.Red),
+            _ => GetSeverityBrush("TextFillColorSecondaryBrush", Microsoft.UI.Colors.Gray)
+        };
+    }
 }
 

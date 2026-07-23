@@ -24,7 +24,7 @@ public sealed class WingetOperationExecutor(
             var selection = plan.Selections[index];
             cancellationToken.ThrowIfCancellationRequested();
 
-            var lastReportedPercentage = -1;
+            var lastReportedPackagePercentage = -1;
             var lastReportedPhase = WingetProgressPhase.Starting;
             var commandProgress = new InlineProgress<WingetProgress>(update =>
             {
@@ -33,17 +33,18 @@ public sealed class WingetOperationExecutor(
                     Math.Round(((index + (packagePercentage / 100d)) / plan.Selections.Count) * 100d),
                     0,
                     100);
-                if (aggregate == lastReportedPercentage && update.Phase == lastReportedPhase)
+                if (packagePercentage == lastReportedPackagePercentage && update.Phase == lastReportedPhase)
                 {
                     return;
                 }
 
-                lastReportedPercentage = aggregate;
+                lastReportedPackagePercentage = packagePercentage;
                 lastReportedPhase = update.Phase;
                 progress?.Report(new OperationProgress(
                     selection.Package.Id,
                     update.Phase,
                     aggregate,
+                    packagePercentage,
                     index,
                     plan.Selections.Count));
             });
@@ -64,6 +65,7 @@ public sealed class WingetOperationExecutor(
                         selection.Package.Id,
                         WingetProgressPhase.Starting,
                         (int)Math.Clamp(Math.Round(((double)index / plan.Selections.Count) * 100d), 0, 100),
+                        0,
                         index,
                         plan.Selections.Count));
                 }

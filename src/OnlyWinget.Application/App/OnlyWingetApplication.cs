@@ -33,7 +33,6 @@ public sealed partial class OnlyWingetApplication(
 
     private readonly PresetDocumentService presetDocuments = new();
     private readonly OperationPlanner operationPlanner = new();
-    private readonly SelectionState<PackageIdentity> presetSelection = new();
     private readonly SelectionState<PackageIdentity> presetInstallSelection = new();
     private readonly SelectionState<PackageIdentity> searchSelection = new();
     private readonly SelectionState<PackageIdentity> updateSelection = new();
@@ -191,14 +190,4 @@ public sealed partial class OnlyWingetApplication(
         $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";
 
     private static bool PresetNameEquals(string left, string right) =>
-        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
-
-    private sealed class EmptySourcePreferenceStore : ISourcePreferenceStore
-    {
-        public Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(new SourcePreferences([], DefaultSourcesConfigured: true));
-
-        public Task SaveAsync(SourcePreferences preferences, CancellationToken cancellationToken) =>
-            Task.CompletedTask;
-    }
-}
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);}

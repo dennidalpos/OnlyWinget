@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.DesignSystem.Commands;
 using OnlyWinget.Controls;
+using OnlyWinget.Presentation;
 using System.ComponentModel;
 using System.Linq;
 using OnlyWinget.Domain.Packages;
@@ -74,7 +75,11 @@ public sealed partial class UpdatesPage : UserControl
         var busy = ViewModel.IsBusy;
         if (busy)
         {
-            PageState.Show(TextResources.Get("Operation_Updates_Title"), ViewModel.IsLoading ? TextResources.Get("Progress_LoadingUpdates") : TextResources.Get(ViewModel.Progress is null ? "Progress_Starting" : $"Progress_{ViewModel.Progress.Phase}"), ViewModel.Progress?.PackageId, ViewModel.Progress?.Percentage, ViewModel.IsExecuting);
+            var message = ViewModel.IsLoading
+                ? TextResources.Get("Progress_LoadingUpdates")
+                : OperationProgressFormatter.FormatMessage(ViewModel.Progress, TextResources.Get);
+
+            PageState.Show(TextResources.Get("Operation_Updates_Title"), message, ViewModel.Progress?.PackageId, ViewModel.Progress?.PackagePercentage, ViewModel.IsExecuting);
         }
         else if (wasBusy)
         {

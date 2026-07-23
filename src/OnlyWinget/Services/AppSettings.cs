@@ -6,6 +6,4 @@ internal sealed record AppSettings(
     bool ConfirmDestructiveActions = true,
     bool DiagnosticLogging = true,
     string LogLevel = "Information",
-    bool ContinueOperationsAfterFailure = true,
-    bool IsMenuPinned = false,
-    double MenuWidth = 280);
+    bool ContinueOperationsAfterFailure = true);

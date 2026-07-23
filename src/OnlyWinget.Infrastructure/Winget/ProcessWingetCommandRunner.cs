@@ -19,6 +19,7 @@ public sealed class ProcessWingetCommandRunner(
         IProgress<WingetProgress>? progress = null,
         TimeSpan? timeout = null)
     {
+        progressParser.Reset();
         progress?.Report(new WingetProgress(WingetProgressPhase.Starting, 0, null));
         var lineProgress = progress is null
             ? null

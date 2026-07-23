@@ -236,7 +236,7 @@ public sealed partial class OnlyWingetTable : UserControl
 
             var checkBoxBorder = new Border
             {
-                Padding = new Thickness(0, 8, 0, 8),
+                Padding = new Thickness(0, 6, 0, 6),
                 BorderThickness = new Thickness(0, 0, 1, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
@@ -262,31 +262,10 @@ public sealed partial class OnlyWingetTable : UserControl
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
-                RowSpacing = 6,
-                Padding = new Thickness(0, 8, 0, 8),
-                // Prevent content (filter TextBox) from overflowing the column boundary
+                Padding = new Thickness(0, 6, 0, 6),
                 MaxWidth = layoutHelper.GetWidth(index)
             };
-            cellGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            cellGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             cellGrid.Children.Add(header);
-
-            var filterBox = new TextBox
-            {
-                PlaceholderText = string.Format(
-                    global::System.Globalization.CultureInfo.CurrentCulture,
-                    global::OnlyWinget.TextResources.Get("Filter_Column_Placeholder"),
-                    Columns[index].Header),
-                Margin = new Thickness(12, 0, 12, 0),
-                MinWidth = 0,
-                MaxWidth = Math.Max(0, layoutHelper.GetWidth(index) - 24),
-                Tag = Columns[index].BindingPath,
-                Text = columnFilters.GetValueOrDefault(Columns[index].BindingPath) ?? string.Empty
-            };
-            AutomationProperties.SetName(filterBox, filterBox.PlaceholderText);
-            filterBox.TextChanged += OnColumnFilterChanged;
-            Grid.SetRow(filterBox, 1);
-            cellGrid.Children.Add(filterBox);
 
             var resizeHandle = new CursorGrid
             {
@@ -296,7 +275,6 @@ public sealed partial class OnlyWingetTable : UserControl
                 VerticalAlignment = VerticalAlignment.Stretch,
                 Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast)
             };
-            Grid.SetRowSpan(resizeHandle, 2);
 
             int colIndex = index;
             bool isDragging = false;
@@ -317,7 +295,7 @@ public sealed partial class OnlyWingetTable : UserControl
                 if (!isDragging) return;
                 var pointerPoint = args.GetCurrentPoint(this);
                 double deltaX = pointerPoint.Position.X - startPointerX;
-                double newWidth = Math.Max(originalWidth + deltaX, 90); // min width matches filter TextBox minimum
+                double newWidth = Math.Max(originalWidth + deltaX, 60);
                 Columns[colIndex].Width = new GridLength(newWidth);
                 Columns[colIndex].IsManuallyResized = true;
                 RecalculateWidths(ActualWidth);
@@ -500,20 +478,11 @@ public sealed partial class OnlyWingetTable : UserControl
                 headerGrid.ColumnDefinitions[colIndex].Width = new GridLength(w);
                 total += w;
 
-                // Update the MaxWidth on the inner cellGrid so the filter TextBox
-                // does not overflow the column boundary
                 foreach (var child in headerGrid.Children)
                 {
                     if (child is Border border && Grid.GetColumn(border) == colIndex && border.Child is Grid cellGrid)
                     {
                         cellGrid.MaxWidth = w;
-                        foreach (var innerChild in cellGrid.Children)
-                        {
-                            if (innerChild is TextBox textBox)
-                            {
-                                textBox.MaxWidth = Math.Max(0, w - 24);
-                            }
-                        }
                     }
                 }
             }
@@ -628,10 +597,15 @@ public sealed partial class OnlyWingetTable : UserControl
         }
     }
 
+    private static bool IsKeyDown(Windows.System.VirtualKey key)
+    {
+        var state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key);
+        return state.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+    }
+
     private void OnRowsKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
-        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
-        var isCtrlPressed = ctrl.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var isCtrlPressed = IsKeyDown(Windows.System.VirtualKey.Control);
 
         if (isCtrlPressed && e.Key == Windows.System.VirtualKey.C)
         {
@@ -693,11 +667,8 @@ public sealed partial class OnlyWingetTable : UserControl
 
     internal void ToggleItemSelection(object item)
     {
-        var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
-        var isShiftPressed = shift.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-
-        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
-        var isCtrlPressed = ctrl.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var isShiftPressed = IsKeyDown(Windows.System.VirtualKey.Shift);
+        var isCtrlPressed = IsKeyDown(Windows.System.VirtualKey.Control);
 
         if (isShiftPressed)
         {

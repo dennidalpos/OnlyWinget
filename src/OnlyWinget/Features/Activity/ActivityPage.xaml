@@ -30,15 +30,15 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="140" VerticalAlignment="Center">
+                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" AutomationProperties.AutomationId="ActivitySearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivitySeverityFilter" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Content="{services:Localize Key=Activity_AllSeverities}" Tag="all" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Information}" Tag="Information" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Success}" Tag="Success" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Warning}" Tag="Warning" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Error}" Tag="Error" />
                         </ComboBox>
-                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" MinWidth="140" VerticalAlignment="Center">
+                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivityCategoryFilter" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_AllCategories}" Tag="all" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_Packages}" Tag="packages" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_WindowsUpdate}" Tag="windows" />
@@ -60,34 +60,40 @@
                     <TextBox x:Name="ActivityTitleFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Title')}" Grid.Column="2" TextChanged="OnActivityColumnFilterChanged" />
                     <TextBox x:Name="ActivityMessageFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Message')}" Grid.Column="3" TextChanged="OnActivityColumnFilterChanged" />
                 </Grid>
-                <ListView x:Name="ActivityList" Grid.Row="2" SelectionMode="None">
+                <ListView x:Name="ActivityList" Grid.Row="2" SelectionMode="None" AutomationProperties.AutomationId="ActivityList">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
-                            <Setter Property="Padding" Value="0,4" />
+                            <Setter Property="Padding" Value="0,2" />
                             <Setter Property="Margin" Value="0,0,0,4" />
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="appPresentation:ActivityRow">
-                            <Expander>
-                                <Expander.Header>
-                                    <Grid ColumnSpacing="12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="110" />
-                                            <ColumnDefinition Width="120" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{x:Bind TimestampDisplay}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Grid.Column="1" Text="{x:Bind activity:ActivityViewModel.LocalizeSeverity(Severity), Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        <TextBlock Grid.Column="2" Text="{x:Bind Title}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                    </Grid>
-                                </Expander.Header>
-                                <StackPanel Spacing="8" Margin="0,8,0,12">
-                                    <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                                    <TextBlock Text="{x:Bind TimestampDisplay}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                    <Button Content="{x:Bind activity:ActivityViewModel.CopyLabel}" Tag="{x:Bind}" Click="OnCopyDetails" HorizontalAlignment="Left" />
-                                </StackPanel>
-                            </Expander>
+                            <Border Style="{StaticResource CardStyle}" Padding="12,10" Margin="0,0,0,4" HorizontalAlignment="Stretch">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="4" CornerRadius="2" VerticalAlignment="Stretch" Background="{x:Bind presentation:PresentationValues.SeverityBrush(Severity), Mode=OneTime}" />
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind TimestampDisplay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock Text="{x:Bind activity:ActivityViewModel.LocalizeSeverity(Severity), Mode=OneTime}" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{x:Bind presentation:PresentationValues.SeverityBrush(Severity), Mode=OneTime}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Title}" Style="{StaticResource BodyStrongTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="3" Tag="{x:Bind}" Click="OnCopyDetails" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Padding="8,6" MinWidth="0">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <SymbolIcon Symbol="Copy" />
+                                            <TextBlock Text="{x:Bind activity:ActivityViewModel.CopyLabel}" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>

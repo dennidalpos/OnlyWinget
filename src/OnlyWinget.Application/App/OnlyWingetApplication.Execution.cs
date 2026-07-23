@@ -153,7 +153,7 @@ public sealed partial class OnlyWingetApplication
                     if (validatedSelections.Count > 0)
                     {
                         AddActivity(ActivitySeverity.Information, "Operation started", plan.Name);
-                        operationProgress = new OperationProgress(string.Empty, WingetProgressPhase.Starting, 0, 0, plan.Selections.Count);
+                        operationProgress = new OperationProgress(string.Empty, WingetProgressPhase.Starting, 0, 0, 0, plan.Selections.Count);
                         var forwardingProgress = new InlineProgress<OperationProgress>(update =>
                         {
                             operationProgress = update;
@@ -195,7 +195,7 @@ public sealed partial class OnlyWingetApplication
                             throw new InvalidOperationException("One or more winget operations failed.");
                         }
 
-                        operationProgress = operationProgress with { Phase = WingetProgressPhase.Completed, Percentage = 100, CompletedPackages = plan.Selections.Count };
+                        operationProgress = operationProgress with { Phase = WingetProgressPhase.Completed, Percentage = 100, PackagePercentage = 100, CompletedPackages = plan.Selections.Count };
                         progress?.Report(operationProgress);
                     }
                     else

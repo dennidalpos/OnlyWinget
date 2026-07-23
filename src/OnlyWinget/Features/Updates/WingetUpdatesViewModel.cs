@@ -27,7 +27,7 @@ public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureVie
     public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
     public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public OperationProgress? Progress { get => progress; private set => SetProperty(ref progress, value); }
-    public string ProgressText => Progress is null ? TextResources.Get("Progress_Starting") : $"{TextResources.Get($"Progress_{Progress.Phase}")} · {Progress.Percentage}% · {Progress.PackageId}";
+    public string ProgressText => OperationProgressFormatter.FormatProgressText(Progress, TextResources.Get);
     public bool ShouldInitialRefresh => Workflow.State.Updates.Count == 0 && Workflow.State.BusyState == ApplicationBusyState.Idle;
     public string? Error => Workflow.State.UserVisibleError;
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;

@@ -11,12 +11,12 @@
                     <ColumnDefinition Width="*" MaxWidth="1000" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Spacing="8" Padding="0,0,0,24" HorizontalAlignment="Stretch">
+                <StackPanel Grid.Column="0" Spacing="4" Padding="0,0,0,24" HorizontalAlignment="Stretch">
                     <!-- Appearance & Language Section -->
-                    <TextBlock x:Name="AppearanceGroupHeader" Text="{services:Localize Key=Settings_Group_Appearance}" Style="{StaticResource SectionTitleTextBlockStyle}" Margin="0,12,0,8" />
+                    <TextBlock x:Name="AppearanceGroupHeader" Text="{services:Localize Key=Settings_Group_Appearance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
                     
                     <!-- Language Setting Card -->
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -37,7 +37,7 @@
                     </Border>
 
                     <!-- Theme Setting Card -->
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -58,10 +58,10 @@
                     </Border>
 
                     <!-- Safety & Behavior Section -->
-                    <TextBlock x:Name="BehaviorGroupHeader" Text="{services:Localize Key=Settings_Group_Behavior}" Style="{StaticResource SectionTitleTextBlockStyle}" Margin="0,20,0,8" />
+                    <TextBlock x:Name="BehaviorGroupHeader" Text="{services:Localize Key=Settings_Group_Behavior}" Style="{StaticResource SettingsGroupHeaderStyle}" />
 
                     <!-- Confirm Destructive Setting Card -->
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -71,13 +71,14 @@
                             <SymbolIcon Symbol="Important" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="ConfirmDestructiveText" Text="{services:Localize Key=Settings_ConfirmDestructive}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="ConfirmDestructiveDescriptionText" Text="{services:Localize Key=Settings_ConfirmDestructiveDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                             <ToggleSwitch x:Name="ConfirmDestructiveToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ConfirmDestructiveActions, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" Header="" Margin="0" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
 
                     <!-- Diagnostics Setting Card -->
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -87,13 +88,14 @@
                             <SymbolIcon Symbol="Document" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="DiagnosticsText" Text="{services:Localize Key=Settings_Diagnostics}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="DiagnosticsDescriptionText" Text="{services:Localize Key=Settings_DiagnosticsDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                             <ToggleSwitch x:Name="DiagnosticsToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.DiagnosticLogging, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" Header="" Margin="0" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
 
                     <!-- Log Level Setting Card -->
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -115,7 +117,7 @@
                     </Border>
 
                     <!-- Install Behavior Setting Card -->
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -125,16 +127,17 @@
                             <SymbolIcon Symbol="Play" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock x:Name="InstallBehaviorText" Text="{services:Localize Key=Settings_InstallBehavior}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="InstallBehaviorDescriptionText" Text="{services:Localize Key=Settings_InstallBehaviorDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
                             <ToggleSwitch x:Name="InstallBehaviorToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ContinueOperationsAfterFailure, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" Header="" Margin="0" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
 
                     <!-- Maintenance Section -->
-                    <TextBlock x:Name="MaintenanceGroupHeader" Text="{services:Localize Key=Settings_Group_Maintenance}" Style="{StaticResource SectionTitleTextBlockStyle}" Margin="0,20,0,8" />
+                    <TextBlock x:Name="MaintenanceGroupHeader" Text="{services:Localize Key=Settings_Group_Maintenance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
 
                     <!-- Reset Setting Card -->
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />

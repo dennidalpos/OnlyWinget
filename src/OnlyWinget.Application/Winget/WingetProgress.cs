@@ -15,5 +15,18 @@ public sealed record OperationProgress(
     string PackageId,
     WingetProgressPhase Phase,
     int Percentage,
+    int PackagePercentage,
     int CompletedPackages,
-    int TotalPackages);
+    int TotalPackages)
+{
+    public OperationProgress(
+        string packageId,
+        WingetProgressPhase phase,
+        int percentage,
+        int completedPackages,
+        int totalPackages)
+        : this(packageId, phase, percentage, percentage, completedPackages, totalPackages)
+    {
+    }
+}
+

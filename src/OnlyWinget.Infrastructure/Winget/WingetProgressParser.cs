@@ -5,6 +5,13 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed partial class WingetProgressParser
 {
+    private WingetProgressPhase currentPhase = WingetProgressPhase.Starting;
+
+    public void Reset()
+    {
+        currentPhase = WingetProgressPhase.Starting;
+    }
+
     public WingetProgress? Parse(string rawLine)
     {
         if (string.IsNullOrWhiteSpace(rawLine))
@@ -22,12 +29,17 @@ public sealed partial class WingetProgressParser
         int? percentage = percentageMatch.Success && int.TryParse(percentageMatch.Groups[1].Value, out var value)
             ? value
             : null;
-        var phase = DownloadExpression().IsMatch(line)
-            ? WingetProgressPhase.Downloading
-            : InstallExpression().IsMatch(line)
-                ? WingetProgressPhase.Installing
-                : WingetProgressPhase.Starting;
-        return new WingetProgress(phase, percentage, line);
+
+        if (DownloadExpression().IsMatch(line))
+        {
+            currentPhase = WingetProgressPhase.Downloading;
+        }
+        else if (InstallExpression().IsMatch(line))
+        {
+            currentPhase = WingetProgressPhase.Installing;
+        }
+
+        return new WingetProgress(currentPhase, percentage, line);
     }
 
     [GeneratedRegex("\\x1B(?:[@-Z\\\\-_]|\\[[0-?]*[ -/]*[@-~])")]

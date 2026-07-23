@@ -403,6 +403,27 @@ public sealed class WingetInfrastructureTests
     }
 
     [Fact]
+    public void ProgressParserPreservesActivePhaseAcrossPercentageOnlyLines()
+    {
+        var parser = new WingetProgressParser();
+
+        var p1 = parser.Parse("Downloading https://example.com/app.exe");
+        Assert.Equal(WingetProgressPhase.Downloading, p1?.Phase);
+        Assert.Null(p1?.Percentage);
+
+        var p2 = parser.Parse("  50%");
+        Assert.Equal(WingetProgressPhase.Downloading, p2?.Phase);
+        Assert.Equal(50, p2?.Percentage);
+
+        var p3 = parser.Parse("Starting package install...");
+        Assert.Equal(WingetProgressPhase.Installing, p3?.Phase);
+
+        var p4 = parser.Parse("  80%");
+        Assert.Equal(WingetProgressPhase.Installing, p4?.Phase);
+        Assert.Equal(80, p4?.Percentage);
+    }
+
+    [Fact]
     public async Task OperationExecutorAggregatesAndThrottlesMultiPackageProgress()
     {
         var runner = new RecordingWingetCommandRunner(
@@ -423,6 +444,7 @@ public sealed class WingetInfrastructureTests
             .ExecuteAsync(plan, CancellationToken.None, progress);
 
         Assert.Equal([25, 50, 75, 100], progress.Values.Select(value => value.Percentage));
+        Assert.Equal([50, 100, 50, 100], progress.Values.Select(value => value.PackagePercentage));
     }
 
     [Fact]

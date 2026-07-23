@@ -30,8 +30,18 @@
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <Button x:Name="OpenPackagesButton" Content="{services:Localize Key=Dashboard_OpenPackages}" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages" />
-                            <Button x:Name="OpenUpdatesButton" Content="{services:Localize Key=Dashboard_OpenUpdates}" Click="OnOpenUpdates" AutomationProperties.AutomationId="DashboardOpenUpdates" />
+                            <Button x:Name="OpenPackagesButton" Style="{StaticResource PrimaryButtonStyle}" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <SymbolIcon Symbol="Library" />
+                                    <TextBlock Text="{services:Localize Key=Dashboard_OpenPackages}" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="OpenUpdatesButton" Style="{StaticResource SecondaryButtonStyle}" Click="OnOpenUpdates" AutomationProperties.AutomationId="DashboardOpenUpdates">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <SymbolIcon Symbol="Sync" />
+                                    <TextBlock Text="{services:Localize Key=Dashboard_OpenUpdates}" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -59,7 +69,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="RecentActivityText" Text="{services:Localize Key=Dashboard_RecentActivity}" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                            <HyperlinkButton x:Name="ViewAllActivityButton" Content="{services:Localize Key=Dashboard_ViewAllActivity}" Grid.Column="1" Click="OnViewAllActivity" VerticalAlignment="Center" />
+                            <HyperlinkButton x:Name="ViewAllActivityButton" Content="{services:Localize Key=Dashboard_ViewAllActivity}" AutomationProperties.AutomationId="DashboardViewAllActivity" AutomationProperties.Name="{services:Localize Key=Dashboard_ViewAllActivity}" Grid.Column="1" Click="OnViewAllActivity" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl x:Name="ActivityList" Grid.Row="1" AutomationProperties.AutomationId="DashboardActivityList">
                             <ItemsControl.ItemTemplate>
