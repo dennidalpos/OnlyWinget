@@ -1,7 +1,6 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [switch]$RunWingetSmoke,
     [switch]$NonInteractive
 )
@@ -126,17 +125,7 @@ Invoke-Step 'build' {
 }
 
 Invoke-Step 'setup package' {
-    $packageParameters = @{
-        Configuration = $Configuration
-        NoRestore = $true
-        NonInteractive = $NonInteractive
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($WindowsAppRuntimeInstallerPath)) {
-        $packageParameters.WindowsAppRuntimeInstallerPath = $WindowsAppRuntimeInstallerPath
-    }
-
-    & $packageScriptPath @packageParameters
+    & $packageScriptPath -Configuration $Configuration -NoRestore -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'artifact analysis' {

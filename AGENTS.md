@@ -4,8 +4,8 @@
 
 - Work from the repository root with PowerShell.
 - Target WinUI 3, .NET 10 LTS, the stable Windows App SDK, and Windows 10 build 17763+.
-- Ship x64 only: a WiX Burn/MSI installer and a self-contained portable ZIP.
-- Keep the installer Windows App Runtime x64 chain and portable `WindowsAppSDKSelfContained` publish.
+- Ship x64 only: an NSIS setup installer and a self-contained portable ZIP.
+- Keep `WindowsAppSDKSelfContained` publish for both installer and portable outputs.
 - Preserve visible English and Italian strings.
 
 ## Greenfield policy
@@ -45,7 +45,7 @@ Infrastructure -----> Application -> Domain
 ## Packaging and restore
 
 - Setup sources: `src/OnlyWinget.Setup`; packaging entrypoint: `scripts/package.ps1`.
-- Do not add the WiX project to the solution unless it builds in the current SDK workflow.
+- NSIS setup script: `src/OnlyWinget.Setup/OnlyWinget.nsi`.
 - Do not introduce x86 or `AnyCPU` artifacts.
 - Keep solution restore RID-neutral; the WinUI project and packaging scripts select `win-x64`.
 - Keep the root NuGet cache ignore anchored as `/packages/`; `packages/` would also hide `src/OnlyWinget.Domain/Packages` on Windows.

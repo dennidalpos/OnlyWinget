@@ -8,7 +8,7 @@ OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows and 
 - `src/OnlyWinget.Application`: use-case orchestration, preset import/export, workspace/source-preference storage contracts, capability contracts, and `winget`/Windows Update ports.
 - `src/OnlyWinget.Infrastructure`: JSON workspace/source-preference persistence, process execution, capability probing, `winget` command adapters, and Windows Update PowerShell integration.
 - `src/OnlyWinget`: WinUI 3 presentation shell targeting `.NET 10` and Windows 10 build `17763`.
-- `src/OnlyWinget.Setup`: WiX setup sources, packaged by `scripts/package.ps1` rather than included as an SDK project in the solution.
+- `src/OnlyWinget.Setup`: NSIS setup script and assets, packaged by `scripts/package.ps1`.
 - `tests/OnlyWinget.Tests`: xUnit tests for non-UI behavior.
 - `scripts`: PowerShell entrypoints.
 
@@ -47,7 +47,7 @@ Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns 
 
 ## Installer
 
-The release artifact is an x64 WiX Burn setup EXE with one x64 MSI payload. The bundle chains the x64 Windows App Runtime redistributable before installing the WinUI app MSI. Packaging also produces a self-contained x64 portable ZIP.
+The release artifact is an x64 NSIS setup EXE created from a self-contained `win-x64` publish. Packaging also produces a matching self-contained x64 portable ZIP.
 
 ## Notes
 

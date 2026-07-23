@@ -75,8 +75,6 @@ UI automation against a running app PID:
 - Windows 10 or Windows 11.
 - `winget --version` succeeds for app use and live smoke tests.
 - PowerShell 7+.
-- The scripts install missing build prerequisites where practical: .NET SDK from `global.json`, PSScriptAnalyzer, WiX Toolset 3.x, and the Windows App Runtime redist for packaging.
+- The scripts install missing build prerequisites where practical: .NET SDK from `global.json`, PSScriptAnalyzer, and NSIS 3.x for setup creation.
 - Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to disable automatic installation.
-- `WindowsAppRuntimeInstall.exe` can still be supplied explicitly with `-WindowsAppRuntimeInstallerPath` or `ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER`.
-- Downloaded Windows App Runtime redistributables are cached under `dependencies/windowsappsdk/`, outside `artifacts`, so clean scripts do not remove reusable installer prerequisites.
 - Run only one packaging task per worktree. A concurrent invocation fails immediately with the path of `artifacts/.package.lock`; an interrupted process releases the operating-system lock automatically.

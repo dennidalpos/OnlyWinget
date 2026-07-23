@@ -4,7 +4,6 @@ param(
     [string]$CurrentSetupPath,
     [string]$PreviousSetupPath,
     [string]$PreviousVersion,
-    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [switch]$NoRestore,
     [switch]$SkipPackage,
     [switch]$NonInteractive
@@ -22,11 +21,11 @@ if (-not [string]::IsNullOrWhiteSpace($PreviousVersion)) {
         $parsedPrevious = [Version]$sanitizedPrevious
     }
     catch {
-        throw "Versione precedente non valida: '$PreviousVersion'. Usa una versione numerica, ad esempio 1.2.3."
+        throw "Versione precedente non valida: '$PreviousVersion'. Usa una versione numerica, ad esempio 1.0.0."
     }
 
     if ($parsedPrevious.Major -ne 1 -or $parsedPrevious.Minor -ne 0) {
-        throw "La versione precedente ($PreviousVersion) deve appartenere alla versione 1.0 (es. 1.0.x) come da policy. / The previous version ($PreviousVersion) must belong to version 1.0 (e.g., 1.0.x) as per policy."
+        throw "La versione precedente ($PreviousVersion) deve appartenere alla versione 1.0 (es. 1.0.x) come da policy."
     }
 }
 
@@ -109,7 +108,7 @@ function Get-ProjectVersion {
     }
 
     if ($parsedVersion.Major -ne 1 -or $parsedVersion.Minor -ne 0) {
-        throw "La versione del progetto deve rimanere alla versione 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$trimmed'. / The project version must be locked to version 1.0 (e.g., 1.0.x) as per policy. Detected version: '$trimmed'."
+        throw "La versione del progetto deve rimanere alla versione 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$trimmed'."
     }
 
     return $trimmed
@@ -124,21 +123,29 @@ function Get-DefaultPreviousVersion {
     return "$($current.Major).$($current.Minor).$($current.Build - 1)"
 }
 
-function Invoke-Setup {
+function Invoke-NsisInstall {
     param(
-        [string]$SetupPath,
-        [string[]]$Arguments,
-        [string]$LogName
+        [string]$SetupPath
     )
 
-    Assert-Path -Path $SetupPath -Description 'Setup EXE'
-    $setupArguments = @($Arguments + @('/S'))
-    $process = Start-Process -FilePath $SetupPath -ArgumentList $setupArguments -Wait -PassThru -WindowStyle Hidden
-    if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
-        throw "Setup fallito con exit code $($process.ExitCode)."
+    Assert-Path -Path $SetupPath -Description 'NSIS Setup EXE'
+    $process = Start-Process -FilePath $SetupPath -ArgumentList '/S' -Wait -PassThru -WindowStyle Hidden
+    if ($process.ExitCode -ne 0) {
+        throw "NSIS Setup fallito con exit code $($process.ExitCode)."
     }
 
-    return "NSIS silent execution"
+    return "NSIS silent execution OK"
+}
+
+function Invoke-NsisUninstall {
+    $uninstallerPath = Join-Path $installFolder 'Uninstall.exe'
+    Assert-Path -Path $uninstallerPath -Description 'NSIS Uninstall EXE'
+    $process = Start-Process -FilePath $uninstallerPath -ArgumentList '/S' -Wait -PassThru -WindowStyle Hidden
+    if ($process.ExitCode -ne 0) {
+        throw "NSIS Uninstall fallito con exit code $($process.ExitCode)."
+    }
+
+    return "NSIS silent uninstall OK"
 }
 
 function Resolve-LatestSetup {
@@ -165,10 +172,6 @@ function New-SetupArtifact {
 
     if (-not [string]::IsNullOrWhiteSpace($Version)) {
         $packageParameters.Version = $Version
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($WindowsAppRuntimeInstallerPath)) {
-        $packageParameters.WindowsAppRuntimeInstallerPath = $WindowsAppRuntimeInstallerPath
     }
 
     $packageOutput = & $packageScriptPath @packageParameters
@@ -216,14 +219,14 @@ function Assert-StartMenuShortcut {
     }
 }
 
-function Assert-DesktopShortcutDefault {
+function Assert-DesktopShortcut {
     $shortcutPaths = @(
         (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'OnlyWinget.lnk'),
         (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'OnlyWinget.lnk')
     )
 
-    if ($shortcutPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1) {
-        throw 'Il collegamento Desktop non deve essere installato dal setup quiet predefinito.'
+    if (-not ($shortcutPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1)) {
+        throw "Shortcut Desktop non trovato. Percorsi controllati: $($shortcutPaths -join '; ')"
     }
 }
 
@@ -277,30 +280,27 @@ $createdLocalDataDirectory = -not (Test-Path -LiteralPath $localAppDataPath)
 New-Item -ItemType Directory -Path $localAppDataPath -Force | Out-Null
 Set-Content -LiteralPath $sentinelPath -Value 'installer validation sentinel' -Encoding UTF8
 
+$wasInstalled = $false
 try {
-    $installedSetupPath = $null
     if (-not [string]::IsNullOrWhiteSpace($PreviousSetupPath)) {
-        $reportLines.Add("PreviousInstallLog: $(Invoke-Setup -SetupPath $PreviousSetupPath -Arguments @('/quiet') -LogName 'previous-install.log')")
-        $installedSetupPath = $PreviousSetupPath
+        $reportLines.Add("PreviousInstallLog: $(Invoke-NsisInstall -SetupPath $PreviousSetupPath)")
+        $wasInstalled = $true
         Assert-SingleInstalledProduct -ExpectedVersion ''
         $reportLines.Add('PreviousInstall: OK')
     }
 
-    $reportLines.Add("CurrentInstallOrUpgradeLog: $(Invoke-Setup -SetupPath $CurrentSetupPath -Arguments @('/quiet') -LogName 'current-install-or-upgrade.log')")
-    $installedSetupPath = $CurrentSetupPath
+    $reportLines.Add("CurrentInstallOrUpgradeLog: $(Invoke-NsisInstall -SetupPath $CurrentSetupPath)")
+    $wasInstalled = $true
     Assert-SingleInstalledProduct -ExpectedVersion $currentVersion
     Assert-StartMenuShortcut
-    Assert-DesktopShortcutDefault
+    Assert-DesktopShortcut
     Assert-AppLaunch
     $reportLines.Add('CurrentInstallOrUpgrade: OK')
     $reportLines.Add('LaunchAfterInstallOrUpgrade: OK')
-    $reportLines.Add("RepairLog: $(Invoke-Setup -SetupPath $CurrentSetupPath -Arguments @('/repair', '/quiet') -LogName 'repair.log')")
-    Assert-SingleInstalledProduct -ExpectedVersion $currentVersion
-    $reportLines.Add('Repair: OK')
 }
 finally {
-    if ($null -ne $installedSetupPath) {
-        $reportLines.Add("UninstallLog: $(Invoke-Setup -SetupPath $installedSetupPath -Arguments @('/uninstall', '/quiet') -LogName 'uninstall.log')")
+    if ($wasInstalled -and (Test-Path -LiteralPath (Join-Path $installFolder 'Uninstall.exe'))) {
+        $reportLines.Add("UninstallLog: $(Invoke-NsisUninstall)")
     }
 }
 
@@ -324,4 +324,4 @@ $reportLines.Add('LocalAppDataPreserved: OK')
 $reportLines.Add("ValidationCompletedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 $reportLines | Set-Content -LiteralPath $reportPath -Encoding UTF8
 
-Write-Host "Validazione installer completata: $reportPath" -ForegroundColor Green
+Write-Host "Validazione installer NSIS completata: $reportPath" -ForegroundColor Green

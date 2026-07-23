@@ -41,7 +41,7 @@ function Convert-ToInstallerVersion {
         $parsedVersion = [Version]$sanitized
     }
     catch {
-        throw "Versione MSI non valida: '$RawVersion'. Usa una versione numerica compatibile con Windows Installer, ad esempio 1.2.3."
+        throw "Versione non valida: '$RawVersion'. Usa una versione numerica compatibile, ad esempio 1.0.0."
     }
 
     $major = $parsedVersion.Major
@@ -49,11 +49,11 @@ function Convert-ToInstallerVersion {
     $build = if ($parsedVersion.Build -ge 0) { $parsedVersion.Build } else { 0 }
 
     if ($major -ne 1 -or $minor -ne 0) {
-        throw "La versione dell'applicazione deve essere bloccata a 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$RawVersion'. / The application version must be locked to version 1.0 (e.g., 1.0.x) as per policy. Detected version: '$RawVersion'."
+        throw "La versione dell'applicazione deve essere bloccata a 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$RawVersion'."
     }
 
     if ($major -gt 255 -or $minor -gt 255 -or $build -gt 65535) {
-        throw "Versione MSI fuori range: '$RawVersion'. Windows Installer accetta major/minor <= 255 e build <= 65535."
+        throw "Versione fuori range: '$RawVersion'."
     }
 
     return "$major.$minor.$build"
@@ -75,18 +75,6 @@ function Reset-Directory {
     }
 
     New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
-}
-function Publish-GeneratedFile {
-    param(
-        [string]$StagedPath,
-        [string]$DestinationPath
-    )
-
-    Assert-Path -Path $StagedPath -Description 'Staged package artifact'
-    if (Test-Path -LiteralPath $DestinationPath) {
-        Remove-Item -LiteralPath $DestinationPath -Force -ErrorAction Stop
-    }
-    [System.IO.File]::Move($StagedPath, $DestinationPath)
 }
 
 function Copy-WinUiPublishResource {
@@ -121,62 +109,6 @@ function Copy-WinUiPublishResource {
     }
 }
 
-
-function Invoke-PortablePackage {
-    $runtimeIdentifier = 'win-x64'
-    $portableStagingRoot = Join-Path $stagingRoot 'portable-win-x64'
-    $publishDir = Join-Path $portableStagingRoot 'OnlyWinget'
-    $portableFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-portable-x64.zip"
-
-    Reset-Directory -Path $portableStagingRoot
-    New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
-    New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
-
-    if (-not $NoRestore) {
-        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
-        if ($LASTEXITCODE -ne 0) {
-            throw "dotnet restore per il packaging portable $runtimeIdentifier fallito."
-        }
-    }
-
-    $publishArgs = @(
-        'publish'
-        $projectPath
-        '-c'
-        $Configuration
-        '-f'
-        'net10.0-windows10.0.17763.0'
-        '-r'
-        $runtimeIdentifier
-        '--self-contained'
-        'true'
-        '--output'
-        $publishDir
-        '--no-restore'
-        '/p:UseAppHost=true'
-        '/p:BuildProjectReferences=false'
-        '/p:WindowsAppSDKSelfContained=true'
-        '/p:DebugSymbols=false'
-        '/p:DebugType=None'
-    )
-
-    dotnet @publishArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet publish portable x64 fallito.'
-    }
-
-    Assert-Path -Path (Join-Path $publishDir 'OnlyWinget.exe') -Description 'Portable x64 executable'
-    Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
-
-    if (Test-Path -LiteralPath $portableFilePath) {
-        Remove-Item -LiteralPath $portableFilePath -Force -ErrorAction Stop
-    }
-
-    Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $portableFilePath -CompressionLevel Optimal
-    Assert-Path -Path $portableFilePath -Description 'Portable x64 archive'
-    Write-Host "Portable x64 generata: $portableFilePath" -ForegroundColor Green
-}
-
 function Resolve-MakensisExe {
     $candidates = @(
         'C:\Program Files (x86)\NSIS\makensis.exe',
@@ -196,12 +128,13 @@ function Resolve-MakensisExe {
     throw "Tool NSIS non trovato (makensis.exe). Assicurati che NSIS sia installato in 'C:\Program Files (x86)\NSIS' o presente nel PATH."
 }
 
-function Invoke-NsisSetup {
+function Invoke-PublishAndPackage {
     $runtimeIdentifier = 'win-x64'
     $nsisStagingRoot = Join-Path $stagingRoot $runtimeIdentifier
     $publishDir = Join-Path $nsisStagingRoot 'publish'
     $nsisScriptPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.nsi'
     $setupFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-setup.exe"
+    $portableFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-portable-x64.zip"
 
     Assert-Path -Path $nsisScriptPath -Description 'NSIS setup script'
     Reset-Directory -Path $nsisStagingRoot
@@ -211,7 +144,7 @@ function Invoke-NsisSetup {
     if (-not $NoRestore) {
         dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
         if ($LASTEXITCODE -ne 0) {
-            throw "dotnet restore per il packaging NSIS $runtimeIdentifier fallito."
+            throw "dotnet restore per il packaging $runtimeIdentifier fallito."
         }
     }
 
@@ -241,15 +174,15 @@ function Invoke-NsisSetup {
 
     dotnet @publishArgs
     if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet publish NSIS x64 fallito.'
+        throw 'dotnet publish x64 fallito.'
     }
 
     $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
     Assert-Path -Path $publishedExePath -Description 'Published executable x64'
     Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
 
+    # 1. NSIS Installer Setup EXE
     $makensisExe = Resolve-MakensisExe
-
     $nsisArgs = @(
         "-DPRODUCT_VERSION=$installerVersion",
         "-DPUBLISH_DIR=$publishDir",
@@ -261,9 +194,16 @@ function Invoke-NsisSetup {
     if ($LASTEXITCODE -ne 0) {
         throw 'Compilazione NSIS setup fallita.'
     }
-
     Assert-Path -Path $setupFilePath -Description 'NSIS setup executable'
     Write-Host "Setup NSIS generato: $setupFilePath" -ForegroundColor Green
+
+    # 2. Portable ZIP
+    if (Test-Path -LiteralPath $portableFilePath) {
+        Remove-Item -LiteralPath $portableFilePath -Force -ErrorAction Stop
+    }
+    Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $portableFilePath -CompressionLevel Optimal
+    Assert-Path -Path $portableFilePath -Description 'Portable x64 archive'
+    Write-Host "Portable x64 generata: $portableFilePath" -ForegroundColor Green
 }
 
 Assert-Command -Name 'dotnet'
@@ -294,8 +234,7 @@ try {
         throw 'Preparazione build fallita prima del packaging.'
     }
 
-    Invoke-NsisSetup
-    Invoke-PortablePackage
+    Invoke-PublishAndPackage
 }
 finally {
     $packageLock.Dispose()

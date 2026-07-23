@@ -4,7 +4,7 @@
 !define UNINSTALL_REGKEY "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget"
 
 !ifndef PRODUCT_VERSION
-  !define PRODUCT_VERSION "1.0.2"
+  !define PRODUCT_VERSION "1.0.0"
 !endif
 
 !ifndef PUBLISH_DIR
@@ -27,8 +27,6 @@ Unicode true
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 
-
-
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "${OUT_FILE}"
 InstallDir "$PROGRAMFILES64\OnlyWinget"
@@ -39,10 +37,10 @@ InstallDirRegKey HKLM "${REGKEY}" "InstallDir"
 !define MUI_ICON "${APP_ICON}"
 !define MUI_UNICON "${APP_ICON}"
 !define MUI_HEADERIMAGE
-!define MUI_HEADERIMAGE_BITMAP "Assets\WixUIBanner.bmp"
-!define MUI_HEADERIMAGE_UNBITMAP "Assets\WixUIBanner.bmp"
-!define MUI_WELCOMEFINISHPAGE_BITMAP "Assets\WixUIDialog.bmp"
-!define MUI_UNWELCOMEFINISHPAGE_BITMAP "Assets\WixUIDialog.bmp"
+!define MUI_HEADERIMAGE_BITMAP "Assets\HeaderBanner.bmp"
+!define MUI_HEADERIMAGE_UNBITMAP "Assets\HeaderBanner.bmp"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "Assets\WelcomeDialog.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "Assets\WelcomeDialog.bmp"
 !define MUI_ABORTWARNING
 
 !insertmacro MUI_PAGE_WELCOME

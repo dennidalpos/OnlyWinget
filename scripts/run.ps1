@@ -17,7 +17,6 @@ param(
     [string]$Task,
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [string]$InstalledExePath = 'C:\Program Files\OnlyWinget\OnlyWinget.exe',
     [switch]$Fix,
     [switch]$ForceEvaluate,
@@ -25,7 +24,6 @@ param(
     [switch]$NoBuild,
     [switch]$RunWingetSmoke,
     [switch]$StopRunningInstance,
-    [switch]$SkipBundle,
     [switch]$All,
     [switch]$NuGetCache,
     [switch]$NonInteractive
@@ -34,16 +32,6 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
-
-function Add-CommonPackageParameter {
-    param(
-        [hashtable]$Parameters
-    )
-
-    if (-not [string]::IsNullOrWhiteSpace($WindowsAppRuntimeInstallerPath)) {
-        $Parameters.WindowsAppRuntimeInstallerPath = $WindowsAppRuntimeInstallerPath
-    }
-}
 
 function Invoke-OnlyWingetTask {
     param(
@@ -70,22 +58,10 @@ function Invoke-OnlyWingetTask {
             & (Join-Path $PSScriptRoot 'build.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive
         }
         'Package' {
-            $parameters = @{
-                Configuration = $Configuration
-                NoRestore = $NoRestore
-                StopRunningInstance = $StopRunningInstance
-                SkipBundle = $SkipBundle
-            }
-            Add-CommonPackageParameter -Parameters $parameters
-            & (Join-Path $PSScriptRoot 'package.ps1') @parameters -NonInteractive
+            & (Join-Path $PSScriptRoot 'package.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive
         }
         'Check' {
-            $parameters = @{
-                Configuration = $Configuration
-                RunWingetSmoke = $RunWingetSmoke
-            }
-            Add-CommonPackageParameter -Parameters $parameters
-            & (Join-Path $PSScriptRoot 'check.ps1') @parameters -NonInteractive
+            & (Join-Path $PSScriptRoot 'check.ps1') -Configuration $Configuration -RunWingetSmoke:$RunWingetSmoke -NonInteractive
         }
         'Clean' {
             & (Join-Path $PSScriptRoot 'clean.ps1') -Configuration $Configuration -StopRunningInstance:$StopRunningInstance -All:$All -NuGetCache:$NuGetCache -NonInteractive
@@ -94,12 +70,7 @@ function Invoke-OnlyWingetTask {
             & (Join-Path $PSScriptRoot 'dev.ps1') -Configuration $Configuration -Build:(-not $NoBuild) -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive
         }
         'ValidateInstallerLifecycle' {
-            $parameters = @{
-                Configuration = $Configuration
-                NoRestore = $NoRestore
-            }
-            Add-CommonPackageParameter -Parameters $parameters
-            & (Join-Path $PSScriptRoot 'validate-installer-lifecycle.ps1') @parameters -NonInteractive
+            & (Join-Path $PSScriptRoot 'validate-installer-lifecycle.ps1') -Configuration $Configuration -NoRestore:$NoRestore -NonInteractive
         }
         'ValidateInstalledStartup' {
             $scriptPath = Join-Path $PSScriptRoot 'validate-installed-startup.ps1'
@@ -107,12 +78,7 @@ function Invoke-OnlyWingetTask {
             & $scriptPath -ExePath $InstalledExePath -NonInteractive
         }
         'GenerateLandingSetup' {
-            $parameters = @{
-                Configuration = $Configuration
-                NoRestore = $NoRestore
-            }
-            Add-CommonPackageParameter -Parameters $parameters
-            & (Join-Path $PSScriptRoot 'generate-landing-setup.ps1') @parameters -NonInteractive
+            & (Join-Path $PSScriptRoot 'generate-landing-setup.ps1') -Configuration $Configuration -NoRestore:$NoRestore -NonInteractive
         }
     }
 }

@@ -1,7 +1,6 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$WindowsAppRuntimeInstallerPath = $env:ONLYWINGET_WINDOWS_APP_RUNTIME_INSTALLER,
     [switch]$NoRestore,
     [switch]$NonInteractive
 )
@@ -20,9 +19,6 @@ $packageParams = @{
     Configuration = $Configuration
     NoRestore = $NoRestore
     NonInteractive = $NonInteractive
-}
-if (-not [string]::IsNullOrWhiteSpace($WindowsAppRuntimeInstallerPath)) {
-    $packageParams.WindowsAppRuntimeInstallerPath = $WindowsAppRuntimeInstallerPath
 }
 
 & $packageScript @packageParams
@@ -66,17 +62,16 @@ $htmlPath = Join-Path $repoRoot 'landing/index.html'
 if (Test-Path -LiteralPath $htmlPath) {
     Write-Host "Aggiornamento dei link di download in $htmlPath..." -ForegroundColor Cyan
     $htmlContent = Get-Content -Path $htmlPath -Raw
-    
+
     # Regex replacement for setup link
     $htmlContent = $htmlContent -replace 'href="build/OnlyWinget-[\d\.]+-setup\.exe"', "href=`"build/$setupName`""
     $htmlContent = $htmlContent -replace 'href="build/setup\.exe"', "href=`"build/$setupName`""
-    
+
     # Regex replacement for portable link
     $htmlContent = $htmlContent -replace 'href="build/OnlyWinget-[\d\.]+-portable-x64\.zip"', "href=`"build/$portableName`""
     $htmlContent = $htmlContent -replace 'href="build/portable\.zip"', "href=`"build/$portableName`""
-    
+
     Set-Content -Path $htmlPath -Value $htmlContent -NoNewline
 }
 
 Write-Host "Setup e file portable per la landing page generati con successo!" -ForegroundColor Green
-

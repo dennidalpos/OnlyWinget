@@ -23,7 +23,7 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | Updates | Review available `winget` upgrades and Windows Update results, select all or specific rows, and apply selected updates. |
 | Sources | Inspect `winget` sources, update/reset source metadata, add/remove sources, and persist disabled-source preferences locally. |
 | Safety | Clean architecture boundaries, cancellable operation design, current-format-only preset import, and local-only JSON storage. |
-| Installer | Unified Windows setup EXE with an x64 self-contained MSI payload. |
+| Installer | Unified x64 NSIS setup EXE and self-contained portable ZIP. |
 
 ## Metrics
 
@@ -32,15 +32,14 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | App framework | `net10.0-windows10.0.17763.0` WinUI 3 |
 | Test suite | xUnit tests under `tests/OnlyWinget.Tests` |
 | UI languages | English, Italian |
-| Release artifacts | 1 x64 setup EXE, 1 internal x64 MSI, and 1 x64 portable ZIP |
+| Release artifacts | 1 x64 NSIS setup EXE and 1 x64 self-contained portable ZIP |
 | Local data root | `%LOCALAPPDATA%\OnlyWinget` (`workspace-v1.json`, `source-preferences-v1.json`, `settings.json`) |
 
 ## Requirements
 
 - Windows 10 or Windows 11.
 - Microsoft App Installer with `winget` 1.x on `PATH`.
-- Windows App Runtime matching the Windows App SDK package used by the app. The setup bundle installs this prerequisite.
-- For development: PowerShell 7+. The repository scripts install missing local prerequisites where practical: .NET SDK from [`global.json`](global.json), PSScriptAnalyzer, WiX Toolset 3.x, and the Windows App Runtime redistributable used for bundling.
+- For development: PowerShell 7+. The repository scripts install missing local prerequisites where practical: .NET SDK from [`global.json`](global.json), PSScriptAnalyzer, and NSIS 3.x for setup creation.
 
 Quick verification:
 
