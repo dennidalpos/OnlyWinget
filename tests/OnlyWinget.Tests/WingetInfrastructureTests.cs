@@ -115,15 +115,21 @@ public sealed class WingetInfrastructureTests
         var classifier = new WingetErrorClassifier();
 
         var notFound = classifier.Classify(new WingetCommandResult(1, string.Empty, "No package found matching input criteria."));
+        var notFoundIt = classifier.Classify(new WingetCommandResult(1, "Nessun pacchetto trovato con criteri di input corrispondenti.", string.Empty));
         var noUpdates = classifier.Classify(new WingetCommandResult(1, string.Empty, "No applicable update found."));
         var noUpdatesIt = classifier.Classify(new WingetCommandResult(1, string.Empty, "Non è stato trovato alcun aggiornamento applicabile. Una versione più recente del pacchetto è disponibile in un'origine configurata, ma non si applica al sistema o ai requisiti."));
         var noUpdatesEngMsg = classifier.Classify(new WingetCommandResult(1, string.Empty, "A newer version of the package is available in a configured source, but does not apply to the system or requirements."));
+        var noInstalledIt = classifier.Classify(new WingetCommandResult(1, "Non è stato trovato alcun pacchetto installato corrispondente ai criteri di input.", string.Empty));
+        var explicitTargetIt = classifier.Classify(new WingetCommandResult(1, "Per i pacchetti seguenti è disponibile un aggiornamento, ma è necessario un targeting esplicito per l'aggiornamento:", string.Empty));
         var source = classifier.Classify(new WingetCommandResult(1, string.Empty, "Failed when searching source: winget"));
 
         Assert.Equal(WingetErrorKind.NotFound, notFound?.Kind);
+        Assert.Equal(WingetErrorKind.NotFound, notFoundIt?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdates?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesIt?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesEngMsg?.Kind);
+        Assert.Equal(WingetErrorKind.NoUpdates, noInstalledIt?.Kind);
+        Assert.Equal(WingetErrorKind.NoUpdates, explicitTargetIt?.Kind);
         Assert.Equal(WingetErrorKind.SourceUnavailable, source?.Kind);
     }
 

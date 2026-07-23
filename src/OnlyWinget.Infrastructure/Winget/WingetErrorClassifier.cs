@@ -27,9 +27,12 @@ public sealed class WingetErrorClassifier
             "Nessun aggiornamento disponibile",
             "Nessun aggiornamento applicabile",
             "Non è stato trovato alcun aggiornamento applicabile",
+            "Non è stato trovato alcun pacchetto installato corrispondente ai criteri di input",
+            "Nessun pacchetto installato corrispondente",
             "non si applica al sistema o ai requisiti",
             "does not apply to the system or requirements",
-            "No applicable update was found"))
+            "No applicable update was found",
+            "è necessario un targeting esplicito"))
         {
             kind = WingetErrorKind.NoUpdates;
         }
@@ -38,6 +41,7 @@ public sealed class WingetErrorClassifier
             "No package found",
             "No installed package found",
             "No package found matching input criteria",
+            "Nessun pacchetto trovato con criteri di input corrispondenti",
             "Nessun pacchetto trovato",
             "Nessun pacchetto installato trovato"))
         {
