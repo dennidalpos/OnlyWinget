@@ -65,6 +65,19 @@ public sealed class WingetErrorClassifier
         {
             kind = WingetErrorKind.Cancelled;
         }
+        else if (ContainsAny(
+            text,
+            "0x8a150114",
+            "0x8a150115",
+            "0x8a150116",
+            "Non è possibile aggiornare il pacchetto con WinGet",
+            "Package cannot be upgraded with WinGet",
+            "Utilizzare il metodo fornito dall'autore",
+            "Use provider's method to upgrade",
+            "Utilizzare il metodo fornito dal provider"))
+        {
+            kind = WingetErrorKind.CannotUpgrade;
+        }
 
         var message = string.IsNullOrWhiteSpace(text) ? "winget failed." : text.Trim();
         return new ClassifiedWingetError(kind, message);
@@ -82,6 +95,7 @@ public sealed class WingetErrorClassifier
             WingetErrorKind.NotFound => false,
             WingetErrorKind.NoUpdates => false,
             WingetErrorKind.Cancelled => false,
+            WingetErrorKind.CannotUpgrade => false,
             _ => true
         };
     }

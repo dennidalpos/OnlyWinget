@@ -7,5 +7,6 @@ public enum WingetErrorKind
     NoUpdates,
     SourceUnavailable,
     Cancelled,
+    CannotUpgrade,
     Unknown
 }

@@ -121,6 +121,8 @@ public sealed class WingetInfrastructureTests
         var noUpdatesEngMsg = classifier.Classify(new WingetCommandResult(1, string.Empty, "A newer version of the package is available in a configured source, but does not apply to the system or requirements."));
         var noInstalledIt = classifier.Classify(new WingetCommandResult(1, "Non è stato trovato alcun pacchetto installato corrispondente ai criteri di input.", string.Empty));
         var explicitTargetIt = classifier.Classify(new WingetCommandResult(1, "Per i pacchetti seguenti è disponibile un aggiornamento, ma è necessario un targeting esplicito per l'aggiornamento:", string.Empty));
+        var cannotUpgradeIt = classifier.Classify(new WingetCommandResult(-1978334956, "Non è possibile aggiornare il pacchetto con WinGet. Utilizzare il metodo fornito dall'autore per aggiornare il pacchetto.", string.Empty));
+        var cannotUpgradeEn = classifier.Classify(new WingetCommandResult(1, string.Empty, "Package cannot be upgraded with WinGet. Use provider's method to upgrade package."));
         var source = classifier.Classify(new WingetCommandResult(1, string.Empty, "Failed when searching source: winget"));
 
         Assert.Equal(WingetErrorKind.NotFound, notFound?.Kind);
@@ -130,6 +132,9 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesEngMsg?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noInstalledIt?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, explicitTargetIt?.Kind);
+        Assert.Equal(WingetErrorKind.CannotUpgrade, cannotUpgradeIt?.Kind);
+        Assert.Equal(WingetErrorKind.CannotUpgrade, cannotUpgradeEn?.Kind);
+        Assert.False(classifier.IsRetryable(cannotUpgradeIt));
         Assert.Equal(WingetErrorKind.SourceUnavailable, source?.Kind);
     }
 
