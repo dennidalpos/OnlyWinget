@@ -19,10 +19,8 @@ public sealed partial class OnlyWingetTable : UserControl
     internal readonly TableLayoutHelper layoutHelper = new();
     private Grid? headerGrid;
     private bool hasAutoFitDone;
-    private readonly Dictionary<string, string> columnFilters = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ObservableCollection<object> filteredItems = [];
-    private readonly Dictionary<Type, Dictionary<string, System.Reflection.PropertyInfo?>> propertyCache = [];
-    private readonly Dictionary<Type, Dictionary<string, Func<object, object?>?>> getterCache = [];
+    private readonly OnlyWingetTableFilterEngine filterEngine = new();
+    private ObservableCollection<object> filteredItems => filterEngine.FilteredItems;
 
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource), typeof(IEnumerable), typeof(OnlyWingetTable), new PropertyMetadata(null, OnItemsSourceChanged));
@@ -848,69 +846,11 @@ public sealed partial class OnlyWingetTable : UserControl
         SyncListViewSelectionWithItems();
     }
 
-    private System.Reflection.PropertyInfo? GetCachedProperty(Type type, string propertyName)
-    {
-        if (!propertyCache.TryGetValue(type, out var typeCache))
-        {
-            typeCache = [];
-            propertyCache[type] = typeCache;
-        }
+    private Func<object, object?>? GetCachedGetter(Type type, string propertyName) =>
+        filterEngine.GetCachedGetter(type, propertyName);
 
-        if (!typeCache.TryGetValue(propertyName, out var propInfo))
-        {
-            propInfo = type.GetProperty(propertyName);
-            typeCache[propertyName] = propInfo;
-        }
-
-        return propInfo;
-    }
-
-    private Func<object, object?>? GetCachedGetter(Type type, string propertyName)
-    {
-        if (string.IsNullOrEmpty(propertyName)) return null;
-
-        if (!getterCache.TryGetValue(type, out var typeCache))
-        {
-            typeCache = new Dictionary<string, Func<object, object?>?>(StringComparer.Ordinal);
-            getterCache[type] = typeCache;
-        }
-
-        if (!typeCache.TryGetValue(propertyName, out var getter))
-        {
-            var propInfo = GetCachedProperty(type, propertyName);
-            if (propInfo != null && propInfo.CanRead)
-            {
-                var param = System.Linq.Expressions.Expression.Parameter(typeof(object), "item");
-                var castParam = System.Linq.Expressions.Expression.Convert(param, type);
-                var propertyAccess = System.Linq.Expressions.Expression.Property(castParam, propInfo);
-                var castResult = System.Linq.Expressions.Expression.Convert(propertyAccess, typeof(object));
-                getter = System.Linq.Expressions.Expression.Lambda<Func<object, object?>>(castResult, param).Compile();
-            }
-            else
-            {
-                getter = null;
-            }
-            typeCache[propertyName] = getter;
-        }
-
-        return getter;
-    }
-
-    private bool MatchesFilters(object item)
-    {
-        var type = item.GetType();
-        foreach (var filter in columnFilters)
-        {
-            var getter = GetCachedGetter(type, filter.Key);
-            var value = getter?.Invoke(item)?.ToString() ?? string.Empty;
-            if (!value.Contains(filter.Value, StringComparison.CurrentCultureIgnoreCase))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    private bool MatchesFilters(object item) =>
+        filterEngine.MatchesFilters(item);
 
     internal string? GetItemPropertyValue(object item, string propertyName)
     {

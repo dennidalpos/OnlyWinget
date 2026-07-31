@@ -1,3 +1,4 @@
+using Xunit;
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.Activity;
 using OnlyWinget.Application.Presentation;
@@ -30,6 +31,22 @@ public sealed class OnlyWingetApplicationTests
         Assert.Empty(app.State.ActivePreset?.Packages ?? []);
         Assert.Equal("Default", app.State.ActivePreset?.Name);
         Assert.Contains(app.State.Activity, entry => entry.Title == "Workspace saved");
+    }
+
+    [Fact]
+    public void StatePropertyCachesStateUntilStateChanged()
+    {
+        var app = CreateApplication();
+        var state1 = app.State;
+        var state2 = app.State;
+
+        Assert.Same(state1, state2);
+
+        app.AddPreset("TestPreset");
+        var state3 = app.State;
+
+        Assert.NotSame(state1, state3);
+        Assert.Equal("TestPreset", state3.ActivePreset?.Name);
     }
 
     [Fact]

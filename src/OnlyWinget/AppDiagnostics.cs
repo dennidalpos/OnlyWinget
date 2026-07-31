@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using OnlyWinget.Application.System;
 
@@ -6,10 +7,14 @@ namespace OnlyWinget;
 internal static class AppDiagnostics
 {
     private static readonly object Sync = new();
+    private static readonly ConcurrentQueue<AppLogEntry> InMemoryBuffer = new();
+    private const int MaxInMemoryEntries = 1000;
     private static string? logFilePath;
 
     public static bool IsEnabled { get; set; } = true;
     public static AppLogLevel MinLogLevel { get; set; } = AppLogLevel.Information;
+
+    public static event Action<AppLogEntry>? LogEmitted;
 
     public static void Initialize()
     {
@@ -62,10 +67,14 @@ internal static class AppDiagnostics
             return;
         }
 
+        var entry = new AppLogEntry(DateTimeOffset.Now, level, caller, message);
+        InMemoryBuffer.Enqueue(entry);
+        while (InMemoryBuffer.Count > MaxInMemoryEntries && InMemoryBuffer.TryDequeue(out _)) { }
+
         try
         {
             Initialize();
-            var line = $"{DateTimeOffset.Now.ToString(System.Globalization.CultureInfo.CurrentCulture)} [{level}] [{caller}] {message}{Environment.NewLine}";
+            var line = $"{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{entry.Level}] [{entry.Caller}] {entry.Message}{Environment.NewLine}";
             lock (Sync)
             {
                 File.AppendAllText(logFilePath!, line);
@@ -74,10 +83,38 @@ internal static class AppDiagnostics
         catch
         {
         }
+
+        try
+        {
+            LogEmitted?.Invoke(entry);
+        }
+        catch
+        {
+        }
     }
 
     public static void WriteException(string area, Exception exception) =>
         Write(AppLogLevel.Error, $"{area}: {exception}");
+
+    public static IReadOnlyList<AppLogEntry> GetRecentLogs(AppLogLevel? minLevel = null, string? filterText = null)
+    {
+        var entries = InMemoryBuffer.ToArray().AsEnumerable();
+        if (minLevel.HasValue)
+        {
+            entries = entries.Where(e => e.Level >= minLevel.Value);
+        }
+        if (!string.IsNullOrWhiteSpace(filterText))
+        {
+            entries = entries.Where(e => e.Message.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
+                                         e.Caller.Contains(filterText, StringComparison.OrdinalIgnoreCase));
+        }
+        return entries.ToList();
+    }
+
+    public static void ClearLogs()
+    {
+        while (InMemoryBuffer.TryDequeue(out _)) { }
+    }
 
     public static void OpenLog()
     {
@@ -102,3 +139,4 @@ internal static class AppDiagnostics
         }
     }
 }
+

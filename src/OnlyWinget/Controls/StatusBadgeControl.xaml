@@ -1,0 +1,29 @@
+<UserControl
+    x:Class="OnlyWinget.Controls.StatusBadgeControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Border
+        x:Name="BadgeBorder"
+        CornerRadius="12"
+        Padding="8,3,10,3"
+        BorderThickness="1"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <FontIcon
+                x:Name="BadgeIcon"
+                FontSize="11"
+                VerticalAlignment="Center"
+                Visibility="Collapsed" />
+            <TextBlock
+                x:Name="BadgeText"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                FontWeight="Medium"
+                VerticalAlignment="Center" />
+        </StackPanel>
+    </Border>
+</UserControl>

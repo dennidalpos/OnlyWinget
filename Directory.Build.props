@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <Deterministic>true</Deterministic>
+    <PreferredUILang>en-US</PreferredUILang>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

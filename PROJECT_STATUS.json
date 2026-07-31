@@ -4,7 +4,13 @@
       "id": "ui-automation-winapp",
       "description": "Run WinApp CLI UI automation test suite (.\\scripts\\ui-test.ps1 -AppPid <PID> -NonInteractive) on a running application instance.",
       "status": "pending",
-      "environment": "Windows host with WinApp CLI installed"
+      "environment": "Windows host with WinApp CLI and interactive desktop session"
+    },
+    {
+      "id": "validate-installer-lifecycle",
+      "description": "Validate NSIS installer setup and uninstaller lifecycle (.\\scripts\\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive).",
+      "status": "pending",
+      "environment": "Clean elevated x64 Windows host"
     }
   ]
 }

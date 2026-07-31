@@ -31,7 +31,7 @@ if (-not $NoRestore) {
     }
 }
 
-$buildArgs = @($projectPath, '-c', $Configuration)
+$buildArgs = @($solutionPath, '-c', $Configuration)
 if ($NoRestore) {
     $buildArgs += '--no-restore'
 }

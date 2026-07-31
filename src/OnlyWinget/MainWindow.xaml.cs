@@ -42,6 +42,7 @@ public sealed partial class MainWindow : Window
         RootNavigation.OpenPaneLength = Math.Clamp(currentSettings.SidebarWidth, 200, 420);
         UpdatePaneSplitterPosition();
         App.UiServices.Settings.Changed += OnSettingsChanged;
+        App.Workflow.StateChanged += OnWorkflowStateChanged;
         Closed += OnClosed;
         RootNavigation.Loaded += OnLoaded;
         ApplyTheme();
@@ -53,6 +54,7 @@ public sealed partial class MainWindow : Window
     private void OnClosed(object sender, WindowEventArgs args)
     {
         App.UiServices.Settings.Changed -= OnSettingsChanged;
+        App.Workflow.StateChanged -= OnWorkflowStateChanged;
         Closed -= OnClosed;
         windowLifetime.Cancel();
         windowLifetime.Dispose();
@@ -134,6 +136,7 @@ public sealed partial class MainWindow : Window
         try
         {
             await new ApplicationStartupOrchestrator(App.Workflow).InitializeAsync(windowLifetime.Token);
+            UpdateStatusBadges();
         }
         catch (OperationCanceledException) when (windowLifetime.IsCancellationRequested)
         {
@@ -141,6 +144,38 @@ public sealed partial class MainWindow : Window
         catch (Exception exception)
         {
             AppDiagnostics.WriteException("MainWindow.OnLoaded", exception);
+        }
+    }
+
+    private void OnWorkflowStateChanged(object? sender, EventArgs args)
+    {
+        _ = DispatcherQueue.TryEnqueue(UpdateStatusBadges);
+    }
+
+    private void UpdateStatusBadges()
+    {
+        var caps = App.Workflow.State.Capabilities;
+        if (caps.IsElevated.HasValue)
+        {
+            ElevationBadge.Text = caps.IsElevated == true ? "Admin" : "Standard User";
+            ElevationBadge.Glyph = caps.IsElevated == true ? "\uE72A" : "\uE77B";
+            ElevationBadge.Severity = caps.IsElevated == true ? Controls.BadgeSeverity.Warning : Controls.BadgeSeverity.Neutral;
+            ElevationBadge.Visibility = Visibility.Visible;
+        }
+
+        if (caps.IsWingetAvailable == true)
+        {
+            WingetStatusBadge.Text = string.IsNullOrWhiteSpace(caps.WingetVersion) ? "Winget Available" : $"Winget v{caps.WingetVersion}";
+            WingetStatusBadge.Glyph = "\uE802";
+            WingetStatusBadge.Severity = Controls.BadgeSeverity.Success;
+            WingetStatusBadge.Visibility = Visibility.Visible;
+        }
+        else if (caps.IsWingetAvailable == false)
+        {
+            WingetStatusBadge.Text = "Winget Missing";
+            WingetStatusBadge.Glyph = "\uE711";
+            WingetStatusBadge.Severity = Controls.BadgeSeverity.Error;
+            WingetStatusBadge.Visibility = Visibility.Visible;
         }
     }
 
@@ -277,9 +312,18 @@ public sealed partial class MainWindow : Window
         AppWindow.GetFromWindowId(windowId).SetIcon(iconPath);
     }
 
-    private void OnOpenLogsTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    private async void OnOpenLogsTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
-        AppDiagnostics.OpenLog();
+        try
+        {
+            var dialog = new Controls.LogViewerDialog();
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            AppDiagnostics.WriteException("MainWindow.OnOpenLogsTapped", ex);
+            AppDiagnostics.OpenLog();
+        }
     }
 
     private bool isResizingSidebar;

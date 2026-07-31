@@ -16,6 +16,8 @@ public sealed class WingetCommandBuilder
             _ => throw new ArgumentOutOfRangeException(nameof(selection))
         };
 
+        ValidateInput(selection.Package.Id, nameof(selection.Package.Id));
+
         var arguments = new List<string>
         {
             verb,
@@ -33,10 +35,21 @@ public sealed class WingetCommandBuilder
 
         if (!string.IsNullOrWhiteSpace(selection.Package.Source))
         {
+            ValidateInput(selection.Package.Source, nameof(selection.Package.Source));
             arguments.Add("--source");
             arguments.Add(selection.Package.Source);
         }
 
         return arguments;
     }
+
+    public static void ValidateInput(string input, string paramName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(input, paramName);
+        if (input.Any(c => char.IsControl(c) || c is '"' or '\'' or '`' or ';' or '|' or '&' or '<' or '>'))
+        {
+            throw new ArgumentException($"Invalid characters in argument: {paramName}", paramName);
+        }
+    }
 }
+

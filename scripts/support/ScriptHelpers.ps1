@@ -1,6 +1,17 @@
 $script:OnlyWingetScriptsRoot = Split-Path $PSScriptRoot -Parent
 $script:OnlyWingetRepositoryRoot = Split-Path $script:OnlyWingetScriptsRoot -Parent
 
+$env:DOTNET_CLI_UI_LANGUAGE = 'en-US'
+$env:VSLANG = '1033'
+$env:PreferredUILang = 'en-US'
+$env:PREFERRED_UI_LANGUAGES = 'en-US'
+try {
+    [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::GetCultureInfo('en-US')
+    [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo('en-US')
+} catch {
+    $null = $_
+}
+
 function Test-OnlyWingetAutoInstallAllowed {
     param(
         [string]$Description

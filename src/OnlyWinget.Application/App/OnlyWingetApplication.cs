@@ -57,6 +57,8 @@ public sealed partial class OnlyWingetApplication(
     private string? userVisibleError;
     private OperationProgress? operationProgress;
     private int operationInProgress;
+    private OnlyWingetState? cachedState;
+    private bool isStateDirty = true;
 
     private readonly Lock stateLock = new();
 
@@ -69,7 +71,12 @@ public sealed partial class OnlyWingetApplication(
         var active = ActivePreset;
         lock (stateLock)
         {
-            return new OnlyWingetState(
+            if (!isStateDirty && cachedState != null)
+            {
+                return cachedState;
+            }
+
+            cachedState = new OnlyWingetState(
                 workspace,
                 active,
                 presetInstallSelection.Selected.ToArray(),
@@ -93,6 +100,9 @@ public sealed partial class OnlyWingetApplication(
                 operationProgress,
                 busyState,
                 userVisibleError);
+
+            isStateDirty = false;
+            return cachedState;
         }
     }
 
@@ -158,7 +168,14 @@ public sealed partial class OnlyWingetApplication(
         }
     }
 
-    private void NotifyStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+    private void NotifyStateChanged()
+    {
+        lock (stateLock)
+        {
+            isStateDirty = true;
+        }
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     private ApplicationActionResult ToggleSelection<TKey>(SelectionState<TKey> selection, TKey key)
         where TKey : notnull =>

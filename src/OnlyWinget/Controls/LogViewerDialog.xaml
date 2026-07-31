@@ -1,0 +1,152 @@
+<ContentDialog
+    x:Class="OnlyWinget.Controls.LogViewerDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:appSystem="using:OnlyWinget.Application.System"
+    xmlns:local="using:OnlyWinget.Controls"
+    Title="Diagnostic Logs"
+    CloseButtonText="Close"
+    DefaultButton="Close"
+    FullSizeDesired="False"
+    MinWidth="720"
+    MinHeight="480">
+
+    <Grid RowSpacing="12" Margin="0,8,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Filters & Action Bar -->
+        <Grid ColumnSpacing="8" Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ComboBox x:Name="LevelFilterCombo" SelectionChanged="OnFilterChanged" SelectedIndex="0" MinWidth="130" AutomationProperties.AutomationId="LogViewerLevelFilterCombo" AutomationProperties.Name="Filter by Log Level">
+                <ComboBoxItem Content="All Levels" />
+                <ComboBoxItem Content="Information" />
+                <ComboBoxItem Content="Warning" />
+                <ComboBoxItem Content="Error" />
+            </ComboBox>
+
+            <TextBox
+                x:Name="SearchBox"
+                Grid.Column="1"
+                PlaceholderText="Filter logs by keyword..."
+                AutomationProperties.AutomationId="LogViewerSearchBox"
+                AutomationProperties.Name="Search Logs"
+                TextChanged="OnFilterChanged" />
+
+            <Button
+                Grid.Column="2"
+                Click="OnExportClicked"
+                AutomationProperties.AutomationId="LogViewerExportButton"
+                AutomationProperties.Name="Export Logs"
+                Style="{StaticResource SecondaryButtonStyle}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE74E;" FontSize="14" />
+                    <TextBlock Text="Export" />
+                </StackPanel>
+            </Button>
+
+            <Button
+                Grid.Column="3"
+                Click="OnCopyClicked"
+                AutomationProperties.AutomationId="LogViewerCopyButton"
+                AutomationProperties.Name="Copy Logs"
+                Style="{StaticResource SecondaryButtonStyle}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE8C8;" FontSize="14" />
+                    <TextBlock Text="Copy" />
+                </StackPanel>
+            </Button>
+
+            <Button
+                Grid.Column="4"
+                Click="OnClearClicked"
+                AutomationProperties.AutomationId="LogViewerClearButton"
+                AutomationProperties.Name="Clear Logs"
+                Style="{StaticResource SecondaryButtonStyle}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE74D;" FontSize="14" />
+                    <TextBlock Text="Clear" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Log Entry List -->
+        <ListView
+            x:Name="LogListView"
+            Grid.Row="1"
+            SelectionMode="Single"
+            MinHeight="300"
+            MaxHeight="500"
+            AutomationProperties.AutomationId="LogViewerListView"
+            Background="{ThemeResource LayerOnCanvasFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="appSystem:AppLogEntry">
+                    <Grid ColumnSpacing="12" Padding="8,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            Text="{x:Bind FormattedTimestamp, Mode=OneTime}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            VerticalAlignment="Center" />
+
+                        <Border
+                            Grid.Column="1"
+                            Background="{x:Bind local:LogViewerDialog.GetBadgeBackground(Level), Mode=OneTime}"
+                            CornerRadius="10"
+                            Padding="8,2"
+                            VerticalAlignment="Center">
+                            <TextBlock
+                                Text="{x:Bind Level, Mode=OneTime}"
+                                Foreground="{x:Bind local:LogViewerDialog.GetBadgeForeground(Level), Mode=OneTime}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                FontWeight="SemiBold" />
+                        </Border>
+
+                        <TextBlock
+                            Grid.Column="2"
+                            Text="{x:Bind Caller, Mode=OneTime}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            VerticalAlignment="Center" />
+
+                        <TextBlock
+                            Grid.Column="3"
+                            Text="{x:Bind Message, Mode=OneTime}"
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            TextWrapping="Wrap"
+                            IsTextSelectionEnabled="True"
+                            VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <!-- Status Summary Footer -->
+        <TextBlock
+            x:Name="StatusFooter"
+            Grid.Row="2"
+            Style="{StaticResource CaptionTextBlockStyle}"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            HorizontalAlignment="Left" />
+    </Grid>
+</ContentDialog>
