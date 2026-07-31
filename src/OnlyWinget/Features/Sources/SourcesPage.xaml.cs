@@ -49,7 +49,7 @@ public sealed partial class SourcesPage : Page
 
     private void RefreshCommands()
     {
-        var topLevelCommandIds = new[] { UiCommandId.CancelOperation };
+        UiCommandId[] topLevelCommandIds = [UiCommandId.CancelOperation];
 
         CommandBar.SetCommands(viewModel.Commands.Values
             .Where(c => topLevelCommandIds.Contains(c.Id)));

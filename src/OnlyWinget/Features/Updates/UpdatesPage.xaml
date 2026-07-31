@@ -13,7 +13,6 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
             <commands:OnlyWingetCommandBar ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />
@@ -29,28 +28,6 @@
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Publisher}" BindingPath="Publisher" Width="160" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Status}" BindingPath="Status" Width="*" />
             </controls:OnlyWingetTable>
-        </Border>
-        <Border Grid.Row="3" Style="{StaticResource ListCardStyle}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.HasOperationResults), Mode=OneWay}">
-            <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <ItemsControl x:Name="OperationResultList" ItemsSource="{x:Bind ViewModel.OperationResults}" AutomationProperties.AutomationId="UpdatesOperationResults" Padding="12,4">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="appPresentation:OperationResultRow">
-                            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="0,6">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="180" />
-                                        <ColumnDefinition Width="Auto" MinWidth="100" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{x:Bind PackageId, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" Foreground="{x:Bind presentation:PresentationValues.StatusBrush(Succeeded, IsWarning), Mode=OneTime}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="2" Text="{x:Bind ErrorDetails, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource RowSecondaryTextBlockStyle}" VerticalAlignment="Center" Visibility="{x:Bind presentation:PresentationValues.HasErrorDetails(ErrorDetails), Mode=OneTime}" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>

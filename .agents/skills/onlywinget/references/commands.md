@@ -56,18 +56,18 @@ Runs format verification, script linting, compilation checks, unit tests, and pa
 
 ## 2. Packaging and Release
 
-OnlyWinget targets the `win-x64` platform. Release packages include both a self-contained portable ZIP and a WiX-based MSI installer (bundled with the Windows App Runtime).
+OnlyWinget targets the `win-x64` platform. Release packages include a self-contained NSIS setup EXE and a self-contained portable ZIP. Both are `WindowsAppSDKSelfContained` — no separate runtime redistribution required.
 ```powershell
 .\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive
 ```
-*Note: Staged installer assets, compiler outputs, and WiX builds are outputted inside [artifacts/](file:///d:/GITHUB/OnlyWinget/artifacts).*
+*Note: Staged installer assets and outputs are written inside [artifacts/](file:///d:/GITHUB/OnlyWinget/artifacts). The NSIS script lives at `src/OnlyWinget.Setup/OnlyWinget.nsi`.*
 
 ---
 
 ## 3. Advanced and Environment-Dependent Verification
 
 ### Installer Lifecycle Validation
-Validates the MSI install, upgrade path from previous versions, and clean uninstall on the current system (requires an elevated clean x64 Windows environment):
+Validates the NSIS setup EXE install, upgrade path from previous versions, and clean uninstall on the current system (requires an elevated clean x64 Windows environment):
 ```powershell
 .\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
 ```

@@ -38,7 +38,8 @@ public sealed class SettingsViewModel : ObservableObject
             ConfirmDestructiveActions,
             DiagnosticLogging,
             LogLevel,
-            ContinueOperationsAfterFailure),
+            ContinueOperationsAfterFailure,
+            settingsService.Current.SidebarWidth),
         cancellationToken);
 
     public async Task ResetAsync(CancellationToken cancellationToken)

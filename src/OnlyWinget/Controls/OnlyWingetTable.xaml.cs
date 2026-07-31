@@ -22,6 +22,7 @@ public sealed partial class OnlyWingetTable : UserControl
     private readonly Dictionary<string, string> columnFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<object> filteredItems = [];
     private readonly Dictionary<Type, Dictionary<string, System.Reflection.PropertyInfo?>> propertyCache = [];
+    private readonly Dictionary<Type, Dictionary<string, Func<object, object?>?>> getterCache = [];
 
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource), typeof(IEnumerable), typeof(OnlyWingetTable), new PropertyMetadata(null, OnItemsSourceChanged));
@@ -178,10 +179,10 @@ public sealed partial class OnlyWingetTable : UserControl
                 var item = items[j];
                 if (item == null) continue;
 
-                var prop = GetCachedProperty(item.GetType(), col.BindingPath);
-                if (prop != null)
+                var getter = GetCachedGetter(item.GetType(), col.BindingPath);
+                if (getter != null)
                 {
-                    var val = prop.GetValue(item)?.ToString();
+                    var val = getter(item)?.ToString();
                     if (!string.IsNullOrEmpty(val))
                     {
                         double estimatedWidth = val.Length * 7.5 + 26;
@@ -522,8 +523,8 @@ public sealed partial class OnlyWingetTable : UserControl
             var desiredSelected = new HashSet<object>(ReferenceEqualityComparer.Instance);
             foreach (var item in filteredItems)
             {
-                var prop = GetCachedProperty(item.GetType(), SelectionBindingPath);
-                if (prop != null && prop.GetValue(item) is true)
+                var getter = GetCachedGetter(item.GetType(), SelectionBindingPath);
+                if (getter != null && getter(item) is true)
                 {
                     desiredSelected.Add(item);
                 }
@@ -564,8 +565,8 @@ public sealed partial class OnlyWingetTable : UserControl
         var addedList = new List<object>();
         foreach (var item in e.AddedItems)
         {
-            var prop = GetCachedProperty(item.GetType(), SelectionBindingPath);
-            if (prop != null && prop.GetValue(item) is not true)
+            var getter = GetCachedGetter(item.GetType(), SelectionBindingPath);
+            if (getter != null && getter(item) is not true)
             {
                 addedList.Add(item);
             }
@@ -574,8 +575,8 @@ public sealed partial class OnlyWingetTable : UserControl
         var removedList = new List<object>();
         foreach (var item in e.RemovedItems)
         {
-            var prop = GetCachedProperty(item.GetType(), SelectionBindingPath);
-            if (prop != null && prop.GetValue(item) is true)
+            var getter = GetCachedGetter(item.GetType(), SelectionBindingPath);
+            if (getter != null && getter(item) is true)
             {
                 removedList.Add(item);
             }
@@ -656,8 +657,8 @@ public sealed partial class OnlyWingetTable : UserControl
             var rowValues = new List<string>();
             foreach (var col in Columns)
             {
-                var prop = GetCachedProperty(item.GetType(), col.BindingPath);
-                var val = prop?.GetValue(item)?.ToString() ?? string.Empty;
+                var getter = GetCachedGetter(item.GetType(), col.BindingPath);
+                var val = getter?.Invoke(item)?.ToString() ?? string.Empty;
                 rowValues.Add(val);
             }
             sb.AppendLine(string.Join("\t", rowValues));
@@ -733,7 +734,7 @@ public sealed partial class OnlyWingetTable : UserControl
             }
             DispatcherQueue.TryEnqueue(() =>
             {
-                BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs(new[] { item }, false));
+                BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs([item], false));
             });
         }
         else
@@ -749,7 +750,7 @@ public sealed partial class OnlyWingetTable : UserControl
             }
             DispatcherQueue.TryEnqueue(() =>
             {
-                BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs(new[] { item }, true));
+                BatchSelectionChanged?.Invoke(this, new OnlyWingetTableBatchSelectionEventArgs([item], true));
             });
         }
         lastClickedItem = item;
@@ -790,28 +791,28 @@ public sealed partial class OnlyWingetTable : UserControl
         if (item == null) return string.Empty;
         var type = item.GetType();
 
-        var packageIdProp = GetCachedProperty(type, "PackageId");
-        if (packageIdProp != null)
+        var packageIdGetter = GetCachedGetter(type, "PackageId");
+        if (packageIdGetter != null)
         {
-            var packageId = packageIdProp.GetValue(item)?.ToString() ?? string.Empty;
-            var sourceProp = GetCachedProperty(type, "Source");
-            var source = sourceProp?.GetValue(item)?.ToString() ?? string.Empty;
+            var packageId = packageIdGetter(item)?.ToString() ?? string.Empty;
+            var sourceGetter = GetCachedGetter(type, "Source");
+            var source = sourceGetter?.Invoke(item)?.ToString() ?? string.Empty;
             return $"{source}|{packageId}";
         }
 
-        var updateIdProp = GetCachedProperty(type, "UpdateId");
-        if (updateIdProp != null)
+        var updateIdGetter = GetCachedGetter(type, "UpdateId");
+        if (updateIdGetter != null)
         {
-            var updateId = updateIdProp.GetValue(item)?.ToString() ?? string.Empty;
-            var revisionProp = GetCachedProperty(type, "RevisionNumber");
-            var revision = revisionProp?.GetValue(item)?.ToString() ?? string.Empty;
+            var updateId = updateIdGetter(item)?.ToString() ?? string.Empty;
+            var revisionGetter = GetCachedGetter(type, "RevisionNumber");
+            var revision = revisionGetter?.Invoke(item)?.ToString() ?? string.Empty;
             return $"{updateId}|{revision}";
         }
 
-        var nameProp = GetCachedProperty(type, "Name");
-        if (nameProp != null)
+        var nameGetter = GetCachedGetter(type, "Name");
+        if (nameGetter != null)
         {
-            return nameProp.GetValue(item)?.ToString() ?? string.Empty;
+            return nameGetter(item)?.ToString() ?? string.Empty;
         }
 
         return item;
@@ -864,13 +865,44 @@ public sealed partial class OnlyWingetTable : UserControl
         return propInfo;
     }
 
+    private Func<object, object?>? GetCachedGetter(Type type, string propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName)) return null;
+
+        if (!getterCache.TryGetValue(type, out var typeCache))
+        {
+            typeCache = new Dictionary<string, Func<object, object?>?>(StringComparer.Ordinal);
+            getterCache[type] = typeCache;
+        }
+
+        if (!typeCache.TryGetValue(propertyName, out var getter))
+        {
+            var propInfo = GetCachedProperty(type, propertyName);
+            if (propInfo != null && propInfo.CanRead)
+            {
+                var param = System.Linq.Expressions.Expression.Parameter(typeof(object), "item");
+                var castParam = System.Linq.Expressions.Expression.Convert(param, type);
+                var propertyAccess = System.Linq.Expressions.Expression.Property(castParam, propInfo);
+                var castResult = System.Linq.Expressions.Expression.Convert(propertyAccess, typeof(object));
+                getter = System.Linq.Expressions.Expression.Lambda<Func<object, object?>>(castResult, param).Compile();
+            }
+            else
+            {
+                getter = null;
+            }
+            typeCache[propertyName] = getter;
+        }
+
+        return getter;
+    }
+
     private bool MatchesFilters(object item)
     {
         var type = item.GetType();
         foreach (var filter in columnFilters)
         {
-            var prop = GetCachedProperty(type, filter.Key);
-            var value = prop?.GetValue(item)?.ToString() ?? string.Empty;
+            var getter = GetCachedGetter(type, filter.Key);
+            var value = getter?.Invoke(item)?.ToString() ?? string.Empty;
             if (!value.Contains(filter.Value, StringComparison.CurrentCultureIgnoreCase))
             {
                 return false;
@@ -883,8 +915,8 @@ public sealed partial class OnlyWingetTable : UserControl
     internal string? GetItemPropertyValue(object item, string propertyName)
     {
         if (item == null || string.IsNullOrEmpty(propertyName)) return null;
-        var prop = GetCachedProperty(item.GetType(), propertyName);
-        return prop?.GetValue(item)?.ToString();
+        var getter = GetCachedGetter(item.GetType(), propertyName);
+        return getter?.Invoke(item)?.ToString();
     }
 }
 

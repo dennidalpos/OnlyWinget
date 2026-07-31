@@ -83,7 +83,12 @@ function Install-PowerShellModuleIfMissing {
         throw "Modulo PowerShell richiesto non installato: $Name"
     }
 
-    Install-Module -Name $Name -Scope CurrentUser -Repository PSGallery -Force -AllowClobber
+    if (-not (Get-PackageProvider -Name 'NuGet' -ErrorAction SilentlyContinue)) {
+        try { Install-PackageProvider -Name 'NuGet' -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser -ErrorAction SilentlyContinue } catch { Write-Verbose "PackageProvider installation warning: $_" }
+    }
+    try { Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted -ErrorAction SilentlyContinue } catch { Write-Verbose "PSRepository update warning: $_" }
+
+    Install-Module -Name $Name -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -SkipPublisherCheck -ErrorAction Stop
 
     $module = Get-Module -ListAvailable -Name $Name |
         Sort-Object Version -Descending |

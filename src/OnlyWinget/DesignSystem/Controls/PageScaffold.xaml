@@ -2,7 +2,7 @@
     x:Class="OnlyWinget.DesignSystem.Controls.PageScaffold"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid x:Name="Root" Padding="28,24,28,28" RowSpacing="16">
+    <Grid x:Name="Root" Padding="{StaticResource PageWidePadding}" RowSpacing="12">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
                     <VisualState x:Name="Compact">
@@ -10,7 +10,7 @@
                             <AdaptiveTrigger MinWindowWidth="0" />
                         </VisualState.StateTriggers>
                         <VisualState.Setters>
-                            <Setter Target="Root.Padding" Value="16,16,16,20" />
+                            <Setter Target="Root.Padding" Value="{StaticResource PageCompactPadding}" />
                             <Setter Target="HeaderCol1.Width" Value="0" />
                             <Setter Target="HeaderRow1.Height" Value="Auto" />
                             <Setter Target="CommandsPresenter.(Grid.Row)" Value="1" />
@@ -22,7 +22,7 @@
                             <AdaptiveTrigger MinWindowWidth="{StaticResource PageMediumBreakpoint}" />
                         </VisualState.StateTriggers>
                         <VisualState.Setters>
-                            <Setter Target="Root.Padding" Value="24,20,24,24" />
+                            <Setter Target="Root.Padding" Value="{StaticResource PageMediumPadding}" />
                         </VisualState.Setters>
                     </VisualState>
                     <VisualState x:Name="Wide">

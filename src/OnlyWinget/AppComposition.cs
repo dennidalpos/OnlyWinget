@@ -1,9 +1,8 @@
-using System;
 using OnlyWinget.Application.App;
 using OnlyWinget.Infrastructure.Storage;
 using OnlyWinget.Infrastructure.System;
-using OnlyWinget.Infrastructure.Winget;
 using OnlyWinget.Infrastructure.WindowsUpdate;
+using OnlyWinget.Infrastructure.Winget;
 using OnlyWinget.Services;
 using OnlyWinget.Shell;
 

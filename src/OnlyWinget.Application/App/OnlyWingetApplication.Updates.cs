@@ -133,7 +133,8 @@ public sealed partial class OnlyWingetApplication
 
     public async Task<ApplicationActionResult> InstallSelectedWindowsUpdatesAsync(
         WindowsUpdateOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress = null)
     {
         var selected = windowsUpdateSelection.Selected.ToArray();
         return await RunAsync(
@@ -148,7 +149,14 @@ public sealed partial class OnlyWingetApplication
 
                     lastWindowsUpdateResults.Clear();
                     AddActivity(ActivitySeverity.Information, "Windows Update install started", $"{selected.Length} update(s).");
-                    var outcome = await windowsUpdateService.InstallAsync(selected, options, cancellationToken).ConfigureAwait(false);
+                    operationProgress = new OperationProgress("WindowsUpdate", WingetProgressPhase.Starting, 0, 0, selected.Length);
+                    var forwardingProgress = new InlineProgress<OperationProgress>(update =>
+                    {
+                        operationProgress = update;
+                        progress?.Report(update);
+                        NotifyStateChanged();
+                    });
+                    var outcome = await windowsUpdateService.InstallAsync(selected, options, cancellationToken, forwardingProgress).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
                         throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update install failed.");

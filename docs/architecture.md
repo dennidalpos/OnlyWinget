@@ -43,7 +43,12 @@ Application startup loads the workspace, checks OS support, checks `winget`, lis
 
 The WinUI shell is route-driven through `Shell/NavigationRegistry.cs`. User-facing routes are Home, Packages, Updates, Sources, Activity, and Settings; Packages and Updates own their provider-specific modes instead of exposing technical modules in primary navigation.
 
-Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and state controls provide consistent inline status and operation progress. `OnlyWingetTable` owns shared header/row columns, horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding. Packages and Updates declare provider modes inside route-owned visual trees. Feature ViewModels own operations, cancellation, validation, confirmation, clipboard, settings, and picker orchestration through the UI service collection created in `AppComposition`.
+Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and `OnlyWingetResponsivePanel`/`OnlyWingetWrapPanel` provide adaptive layout. State controls (`StatePresenter`) provide consistent inline status and error transitions. `OnlyWingetTable` owns shared header/row columns, horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding.
+
+`Controls/OperationTrackerControl` is a persistent top-of-shell banner that shows operation progress and links to the Activity log. It is always visible in `MainWindow` above the page host, inside the `NavigationView`.
+
+Feature ViewModels own operations, cancellation, validation, confirmation, clipboard, settings, and picker orchestration through the UI service collection created in `AppComposition`.
+
 
 ## Installer
 

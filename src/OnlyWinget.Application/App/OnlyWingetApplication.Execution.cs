@@ -248,7 +248,10 @@ public sealed partial class OnlyWingetApplication
 
     private void AddActivity(ActivitySeverity severity, string title, string message)
     {
-        activity.Add(new ActivityEntry(clock.GetUtcNow(), severity, title, message));
+        lock (stateLock)
+        {
+            activity.Add(new ActivityEntry(clock.GetUtcNow(), severity, title, message));
+        }
         var logLevel = severity switch
         {
             ActivitySeverity.Error => AppLogLevel.Error,

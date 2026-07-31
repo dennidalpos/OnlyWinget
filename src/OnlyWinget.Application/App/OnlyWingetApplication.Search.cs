@@ -191,17 +191,30 @@ public sealed partial class OnlyWingetApplication
         }
 
         var matches = new List<PackageResolution>();
-        foreach (var source in enabledSources)
+        using var semaphore = new SemaphoreSlim(4);
+        var resolveTasks = enabledSources.Select(async source =>
         {
-            var resolution = await packageResolver.ResolveAsync(
-                    new PackageIdentity(package.Id, source),
-                    cancellationToken)
-                .ConfigureAwait(false);
-            if (resolution.IsResolved)
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                matches.Add(resolution);
+                var resolution = await packageResolver.ResolveAsync(
+                        new PackageIdentity(package.Id, source),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (resolution.IsResolved)
+                {
+                    lock (matches)
+                    {
+                        matches.Add(resolution);
+                    }
+                }
             }
-        }
+            finally
+            {
+                semaphore.Release();
+            }
+        }).ToArray();
+        await Task.WhenAll(resolveTasks).ConfigureAwait(false);
 
         if (matches.Count == 0)
         {

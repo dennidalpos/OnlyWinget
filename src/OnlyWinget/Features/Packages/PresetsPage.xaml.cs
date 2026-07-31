@@ -110,7 +110,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
     {
         if (string.IsNullOrWhiteSpace(text)) yield break;
 
-        var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        var lines = text.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries);
         foreach (var line in lines)
         {
             var trimmed = line.Trim();
@@ -249,33 +249,33 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         {
             var text = PresetNameBox.Text.Trim();
             return !string.IsNullOrWhiteSpace(text) &&
-                   !ViewModel.PresetNames.Any(name => string.Equals(name, text, System.StringComparison.OrdinalIgnoreCase));
+                   !ViewModel.PresetNames.Any(name => string.Equals(name, text, StringComparison.OrdinalIgnoreCase));
         }
 
         if (pendingFlyout == RenamePresetFlyout)
         {
             var text = RenamePresetNameBox.Text.Trim();
             return !string.IsNullOrWhiteSpace(text) &&
-                   !ViewModel.PresetNames.Any(name => string.Equals(name, text, System.StringComparison.OrdinalIgnoreCase));
+                   !ViewModel.PresetNames.Any(name => string.Equals(name, text, StringComparison.OrdinalIgnoreCase));
         }
 
         if (pendingFlyout == AddPackageFlyout)
         {
             var id = PackageIdBox.Text.Trim();
             return !string.IsNullOrWhiteSpace(id) &&
-                   !ViewModel.Packages.Any(p => string.Equals(p.PackageId, id, System.StringComparison.OrdinalIgnoreCase));
+                   !ViewModel.Packages.Any(p => string.Equals(p.PackageId, id, StringComparison.OrdinalIgnoreCase));
         }
 
         if (pendingFlyout == EditPackageFlyout)
         {
             var id = EditPackageIdBox.Text.Trim();
             var selected = ViewModel.Workflow.State.SelectedPresetPackages.SingleOrDefault();
-            if (selected != null && string.Equals(selected.Id, id, System.StringComparison.OrdinalIgnoreCase))
+            if (selected != null && string.Equals(selected.Id, id, StringComparison.OrdinalIgnoreCase))
             {
                 return !string.IsNullOrWhiteSpace(id);
             }
             return !string.IsNullOrWhiteSpace(id) &&
-                   !ViewModel.Packages.Any(p => string.Equals(p.PackageId, id, System.StringComparison.OrdinalIgnoreCase));
+                   !ViewModel.Packages.Any(p => string.Equals(p.PackageId, id, StringComparison.OrdinalIgnoreCase));
         }
 
         return false;
@@ -305,14 +305,14 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 
         if (pendingFlyout == AddPackageFlyout)
         {
-            await ExecutePresetCommandAsync(UiCommandId.AddPresetPackage, PackageSourceBox.Text);
+            await ExecuteCommandAsync(UiCommandId.AddPresetPackage, PackageSourceBox.Text);
             AddPackageFlyout.Hide();
             return true;
         }
 
         if (pendingFlyout == EditPackageFlyout)
         {
-            await ExecutePresetCommandAsync(UiCommandId.EditPresetPackage, EditPackageSourceBox.Text);
+            await ExecuteCommandAsync(UiCommandId.EditPresetPackage, EditPackageSourceBox.Text);
             EditPackageFlyout.Hide();
             return true;
         }
@@ -365,13 +365,13 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 
     private async void OnAddPackageClick(object sender, RoutedEventArgs e)
     {
-        await ExecutePresetCommandAsync(UiCommandId.AddPresetPackage, PackageSourceBox.Text);
+        await ExecuteCommandAsync(UiCommandId.AddPresetPackage, PackageSourceBox.Text);
         AddPackageFlyout.Hide();
     }
 
     private async void OnEditPackageClick(object sender, RoutedEventArgs e)
     {
-        await ExecutePresetCommandAsync(UiCommandId.EditPresetPackage, EditPackageSourceBox.Text);
+        await ExecuteCommandAsync(UiCommandId.EditPresetPackage, EditPackageSourceBox.Text);
         EditPackageFlyout.Hide();
     }
 
@@ -384,14 +384,6 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
     }
 
     private async System.Threading.Tasks.Task ExecuteCommandAsync(UiCommandId id, string source)
-    {
-        if (ViewModel.Commands.TryGetValue(id, out var command))
-        {
-            await ViewModel.ExecuteAsync(command, source);
-        }
-    }
-
-    private async System.Threading.Tasks.Task ExecutePresetCommandAsync(UiCommandId id, string source)
     {
         if (ViewModel.Commands.TryGetValue(id, out var command))
         {

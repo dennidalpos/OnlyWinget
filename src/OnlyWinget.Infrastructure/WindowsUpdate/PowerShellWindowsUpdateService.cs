@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.WindowsUpdate;
+using OnlyWinget.Application.Winget;
 
 namespace OnlyWinget.Infrastructure.WindowsUpdate;
 
@@ -42,7 +43,8 @@ public sealed class PowerShellWindowsUpdateService(
     public async Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
         IReadOnlyList<WindowsUpdateIdentity> updates,
         WindowsUpdateOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(updates);
         var unavailable = await GetUnavailableReasonAsync(cancellationToken).ConfigureAwait(false);
@@ -53,13 +55,48 @@ public sealed class PowerShellWindowsUpdateService(
                 string.Empty);
         }
 
+        progress?.Report(new OperationProgress(
+            "WindowsUpdate",
+            WingetProgressPhase.Downloading,
+            10,
+            0,
+            updates.Count));
+
         var selectedJson = JsonSerializer.Serialize(
             updates.Select(update => new WindowsUpdateIdentityDto(update.UpdateId, update.RevisionNumber)),
             JsonOptions);
         var script = ApplyOptions(InstallScript, options)
             .Replace("__SELECTED_JSON__", EscapePowerShellHereString(selectedJson), StringComparison.Ordinal);
+
+        progress?.Report(new OperationProgress(
+            "WindowsUpdate",
+            WingetProgressPhase.Installing,
+            50,
+            0,
+            updates.Count));
+
         var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30)).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateInstallResultDto>(result);
+
+        if (envelope.Succeeded)
+        {
+            progress?.Report(new OperationProgress(
+                "WindowsUpdate",
+                WingetProgressPhase.Completed,
+                100,
+                updates.Count,
+                updates.Count));
+        }
+        else
+        {
+            progress?.Report(new OperationProgress(
+                "WindowsUpdate",
+                WingetProgressPhase.Failed,
+                100,
+                0,
+                updates.Count));
+        }
+
         return envelope.Succeeded
             ? WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(
                 envelope.Rows.Select(row => row.ToModel()).ToArray(),

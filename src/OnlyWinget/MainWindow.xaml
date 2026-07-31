@@ -22,8 +22,8 @@
             </StackPanel>
         </Grid>
 
+    <Grid Grid.Row="1">
         <NavigationView
-            Grid.Row="1"
             x:Name="RootNavigation"
             CompactModeThresholdWidth="720"
             ExpandedModeThresholdWidth="1100"
@@ -31,10 +31,13 @@
             IsSettingsVisible="True"
             PaneTitle=""
             PaneDisplayMode="Auto"
+            OpenPaneLength="260"
             AutomationProperties.AutomationId="RootNavigation"
             SelectionFollowsFocus="Enabled"
             ItemInvoked="OnItemInvoked"
-            SelectionChanged="OnSelectionChanged">
+            SelectionChanged="OnSelectionChanged"
+            PaneOpened="OnPaneOpenedOrClosed"
+            PaneClosed="OnPaneOpenedOrClosed">
             <NavigationView.PaneFooter>
                 <NavigationViewItem x:Name="OpenLogsItem" Tapped="OnOpenLogsTapped" AutomationProperties.AutomationId="NavOpenLogs">
                     <NavigationViewItem.Icon>
@@ -42,11 +45,37 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.PaneFooter>
-            <ContentControl
-                x:Name="PageHost"
-                Background="{ThemeResource LayerFillColorDefaultBrush}"
-                HorizontalContentAlignment="Stretch"
-                VerticalContentAlignment="Stretch" />
+            <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <controls:OperationTrackerControl x:Name="OperationTracker" Grid.Row="0" Margin="16,12,16,0" />
+                <ContentControl
+                    x:Name="PageHost"
+                    Grid.Row="1"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch" />
+            </Grid>
         </NavigationView>
+
+        <Border
+            x:Name="PaneSplitter"
+            Width="8"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Stretch"
+            Background="Transparent"
+            PointerPressed="OnPaneSplitterPointerPressed"
+            PointerMoved="OnPaneSplitterPointerMoved"
+            PointerReleased="OnPaneSplitterPointerReleased"
+            PointerCanceled="OnPaneSplitterPointerReleased">
+            <Border
+                Width="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                Opacity="0.6" />
+        </Border>
+    </Grid>
     </Grid>
 </Window>

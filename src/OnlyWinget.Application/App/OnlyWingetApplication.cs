@@ -58,6 +58,8 @@ public sealed partial class OnlyWingetApplication(
     private OperationProgress? operationProgress;
     private int operationInProgress;
 
+    private readonly Lock stateLock = new();
+
     public OnlyWingetState State => CreateState();
 
     public event EventHandler? StateChanged;
@@ -65,31 +67,33 @@ public sealed partial class OnlyWingetApplication(
     private OnlyWingetState CreateState()
     {
         var active = ActivePreset;
-        return new OnlyWingetState(
-            workspace,
-            active,
-            presetInstallSelection.Selected.ToArray(),
-            presetInstallSelection.Selected.ToArray(),
-            presetInstallSelection.HeaderState,
-            searchResults.ToArray(),
-            searchSelection.Selected.ToArray(),
-            searchSelection.HeaderState,
-            updates.ToArray(),
-            updateSelection.Selected.ToArray(),
-            updateSelection.HeaderState,
-            windowsUpdates.ToArray(),
-            windowsUpdateSelection.Selected.ToArray(),
-            windowsUpdateSelection.HeaderState,
-            lastWindowsUpdateResults.ToArray(),
-            SnapshotPackageMetadata(),
-            capabilities,
-            sources.OrderBy(source => source.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
-            sourceError,
-            activity.ToArray(),
-            lastOperationResults.ToArray(),
-            operationProgress,
-            busyState,
-            userVisibleError);
+        lock (stateLock)
+        {
+            return new OnlyWingetState(
+                workspace,
+                active,
+                presetInstallSelection.Selected.ToArray(),
+                presetInstallSelection.HeaderState,
+                searchResults.ToArray(),
+                searchSelection.Selected.ToArray(),
+                searchSelection.HeaderState,
+                updates.ToArray(),
+                updateSelection.Selected.ToArray(),
+                updateSelection.HeaderState,
+                windowsUpdates.ToArray(),
+                windowsUpdateSelection.Selected.ToArray(),
+                windowsUpdateSelection.HeaderState,
+                lastWindowsUpdateResults.ToArray(),
+                SnapshotPackageMetadata(),
+                capabilities,
+                sources.OrderBy(source => source.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
+                sourceError,
+                activity.ToArray(),
+                lastOperationResults.ToArray(),
+                operationProgress,
+                busyState,
+                userVisibleError);
+        }
     }
 
     private async Task<ApplicationActionResult> RunAsync(
@@ -190,4 +194,5 @@ public sealed partial class OnlyWingetApplication(
         $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";
 
     private static bool PresetNameEquals(string left, string right) =>
-        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);}
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+}

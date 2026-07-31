@@ -69,11 +69,13 @@ function Get-ScrollElement {
     return $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
 }
 
-$window = winapp ui list-windows -a $AppPid --json 2>$null | ConvertFrom-Json |
-    Where-Object { $_.processId -eq $AppPid -and $_.className -ne '#32770' } |
+$windowsRaw = winapp ui list-windows -a $AppPid --json 2>$null
+$windowsList = if (-not [string]::IsNullOrWhiteSpace($windowsRaw)) { $windowsRaw | ConvertFrom-Json } else { @() }
+$window = @($windowsList) |
+    Where-Object { $_ -and $_.PSObject.Properties['processId'] -and $_.processId -eq $AppPid -and $_.className -ne '#32770' } |
     Select-Object -First 1
 if ($null -eq $window) {
-    throw 'Finestra principale OnlyWinget non trovata.'
+    throw "Finestra principale OnlyWinget non trovata per PID $AppPid."
 }
 
 $hwnd = [IntPtr]::new([int64]$window.hwnd)

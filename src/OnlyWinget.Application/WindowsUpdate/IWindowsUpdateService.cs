@@ -1,3 +1,5 @@
+using OnlyWinget.Application.Winget;
+
 namespace OnlyWinget.Application.WindowsUpdate;
 
 public interface IWindowsUpdateService
@@ -9,5 +11,6 @@ public interface IWindowsUpdateService
     Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
         IReadOnlyList<WindowsUpdateIdentity> updates,
         WindowsUpdateOptions options,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress = null);
 }

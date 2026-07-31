@@ -13,7 +13,6 @@ public sealed record OnlyWingetState(
     WorkspaceState Workspace,
     Preset? ActivePreset,
     IReadOnlyList<PackageIdentity> SelectedPresetPackages,
-    IReadOnlyList<PackageIdentity> IncludedPresetPackages,
     SelectionHeaderState PresetInstallHeader,
     IReadOnlyList<PackageSearchResult> SearchResults,
     IReadOnlyList<PackageIdentity> SelectedSearchPackages,

@@ -6,4 +6,5 @@ internal sealed record AppSettings(
     bool ConfirmDestructiveActions = true,
     bool DiagnosticLogging = true,
     string LogLevel = "Information",
-    bool ContinueOperationsAfterFailure = true);
+    bool ContinueOperationsAfterFailure = true,
+    double SidebarWidth = 260.0);

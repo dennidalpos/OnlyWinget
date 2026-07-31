@@ -66,7 +66,7 @@ public static class PresentationStateMapper
                         package.Source,
                         metadata?.Version,
                         FormatPublisher(metadata),
-                        state.IncludedPresetPackages.Contains(package));
+                        state.SelectedPresetPackages.Contains(package));
                 })
                 .OrderBy(row => EmptyToNull(row.Name) ?? row.PackageId, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(row => row.PackageId, StringComparer.OrdinalIgnoreCase)

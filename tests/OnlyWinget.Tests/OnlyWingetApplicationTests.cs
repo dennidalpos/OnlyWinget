@@ -692,13 +692,13 @@ public sealed class OnlyWingetApplicationTests
         await app.AddPackageToActivePresetAsync(pkg2, CancellationToken.None);
 
         // All included by default
-        Assert.Contains(pkg1, app.State.IncludedPresetPackages);
-        Assert.Contains(pkg2, app.State.IncludedPresetPackages);
+        Assert.Contains(pkg1, app.State.SelectedPresetPackages);
+        Assert.Contains(pkg2, app.State.SelectedPresetPackages);
 
         // Toggle pkg2 to skip it
         app.TogglePresetPackageInclusion(pkg2);
-        Assert.Contains(pkg1, app.State.IncludedPresetPackages);
-        Assert.DoesNotContain(pkg2, app.State.IncludedPresetPackages);
+        Assert.Contains(pkg1, app.State.SelectedPresetPackages);
+        Assert.DoesNotContain(pkg2, app.State.SelectedPresetPackages);
 
         // Apply active preset (Install)
         await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
@@ -945,6 +945,96 @@ public sealed class OnlyWingetApplicationTests
         Assert.Contains(app.State.Sources, s => s.Name == "winget" && s.IsEnabled);
     }
 
+    [Fact]
+    public async Task EnsureOfficialSourcesConfigured_LogsWarning_WhenRemoveFails()
+    {
+        var capabilities = new SystemCapabilities(
+            IsSupportedOs: true,
+            IsWingetAvailable: true,
+            IsPowerShellAvailable: true,
+            IsWindowsUpdateComAvailable: true,
+            WindowsUpdateUnavailableReason: null,
+            WingetVersion: "1.8.1791",
+            WindowsBuildNumber: 19041
+        );
+
+        // winget source has an outdated URL; remove will fail
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://winget.azureedge.net/cache", false, WingetSourceStatus.Available)
+        );
+        sources.FailingRemoveSources.Add("winget");
+
+        var app = CreateApplication(capabilities: capabilities, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        var result = await app.RefreshSourcesAsync(CancellationToken.None);
+
+        // Operation should still succeed overall — failure is tolerated with a warning activity
+        Assert.True(result.Succeeded);
+        Assert.Contains(app.State.Activity, entry =>
+            entry.Severity == ActivitySeverity.Warning &&
+            entry.Title == "Source URL mismatch could not be corrected");
+        // The outdated source should NOT have been re-added
+        Assert.DoesNotContain(sources.Calls, c => c.StartsWith("add:winget:https://cdn.winget.microsoft.com/cache"));
+    }
+
+    [Fact]
+    public async Task EnsureOfficialSourcesConfigured_LogsInformation_WhenSourceAdded()
+    {
+        var capabilities = new SystemCapabilities(
+            IsSupportedOs: true,
+            IsWingetAvailable: true,
+            IsPowerShellAvailable: true,
+            IsWindowsUpdateComAvailable: true,
+            WindowsUpdateUnavailableReason: null,
+            WingetVersion: "1.8.1791",
+            WindowsBuildNumber: 19041
+        );
+
+        var sources = new StubSourceService(); // empty — no pre-existing sources
+        var app = CreateApplication(capabilities: capabilities, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        var result = await app.RefreshSourcesAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Contains(app.State.Activity, entry =>
+            entry.Severity == ActivitySeverity.Information &&
+            entry.Title == "Source added" &&
+            entry.Message.Contains("winget"));
+        Assert.Contains(app.State.Activity, entry =>
+            entry.Severity == ActivitySeverity.Information &&
+            entry.Title == "Source added" &&
+            entry.Message.Contains("msstore"));
+    }
+
+    [Fact]
+    public async Task ValidatePackage_QueriesAllEnabledSourcesInParallel_WhenNoSourceSpecified()
+    {
+        var sources = new StubSourceService(
+            new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available),
+            new WingetSource("msstore", "https://storeedgefd.dsx.mp.microsoft.com/v9.0", false, WingetSourceStatus.Available)
+        );
+        // Provide explicit resolutions for both sources: winget resolves, msstore does not.
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Only.App", "winget"), "Only App", "2.0", "Pub", IsResolved: true, null),
+            new PackageResolution(new PackageIdentity("Only.App", "msstore"), null, null, null, IsResolved: false, null)
+        );
+
+        var app = CreateApplication(sources: sources, resolver: resolver);
+        app.AddPreset("Default");
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+
+        var result = await app.AddPackageToActivePresetAsync(new PackageIdentity("Only.App"), CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        // Resolver should have been queried for both sources (parallel resolution)
+        Assert.Contains(resolver.Requests, r => r.Source == "winget");
+        Assert.Contains(resolver.Requests, r => r.Source == "msstore");
+        Assert.Single(app.State.ActivePreset!.Packages);
+    }
+
     private static OnlyWingetApplication CreateApplication(
         SystemCapabilities? capabilities = null,
         StubPackageSearch? search = null,
@@ -1093,7 +1183,8 @@ public sealed class OnlyWingetApplicationTests
         public Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
             IReadOnlyList<WindowsUpdateIdentity> selectedUpdates,
             WindowsUpdateOptions options,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IProgress<OperationProgress>? progress = null)
         {
             LastInstallSelection = selectedUpdates.ToArray();
             return Task.FromResult(WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(results, string.Empty));
@@ -1105,6 +1196,8 @@ public sealed class OnlyWingetApplicationTests
         public bool FailUpdate { get; init; }
 
         public List<string> Calls { get; } = [];
+
+        public HashSet<string> FailingRemoveSources { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         private readonly List<WingetSource> list;
 
@@ -1145,6 +1238,13 @@ public sealed class OnlyWingetApplicationTests
             CancellationToken cancellationToken)
         {
             Calls.Add($"remove:{name}");
+            if (FailingRemoveSources.Contains(name))
+            {
+                return Task.FromResult(WingetOperationOutcome<WingetSource>.Failure(
+                    new ClassifiedWingetError(WingetErrorKind.SourceUnavailable, $"Remove of '{name}' failed."),
+                    string.Empty));
+            }
+
             list.RemoveAll(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
             return Task.FromResult(WingetOperationOutcome<WingetSource>.Success(list.ToArray(), string.Empty));
         }

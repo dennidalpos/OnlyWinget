@@ -39,6 +39,8 @@ public sealed partial class MainWindow : Window
         var currentSettings = App.UiServices.Settings.Current;
         lastLanguage = currentSettings.Language;
         lastTheme = currentSettings.Theme;
+        RootNavigation.OpenPaneLength = Math.Clamp(currentSettings.SidebarWidth, 200, 420);
+        UpdatePaneSplitterPosition();
         App.UiServices.Settings.Changed += OnSettingsChanged;
         Closed += OnClosed;
         RootNavigation.Loaded += OnLoaded;
@@ -278,5 +280,55 @@ public sealed partial class MainWindow : Window
     private void OnOpenLogsTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
         AppDiagnostics.OpenLog();
+    }
+
+    private bool isResizingSidebar;
+
+    private void OnPaneOpenedOrClosed(NavigationView sender, object args)
+    {
+        UpdatePaneSplitterPosition();
+    }
+
+    private void UpdatePaneSplitterPosition()
+    {
+        if (RootNavigation == null || PaneSplitter == null) return;
+        var isExpanded = RootNavigation.IsPaneOpen && RootNavigation.PaneDisplayMode != NavigationViewPaneDisplayMode.Top;
+        PaneSplitter.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
+        if (isExpanded)
+        {
+            PaneSplitter.Margin = new Thickness(RootNavigation.OpenPaneLength - 4, 0, 0, 0);
+        }
+    }
+
+    private void OnPaneSplitterPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        isResizingSidebar = true;
+        PaneSplitter.CapturePointer(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void OnPaneSplitterPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (!isResizingSidebar) return;
+        var point = e.GetCurrentPoint(RootNavigation);
+        var newWidth = Math.Clamp(point.Position.X, 200, 420);
+        RootNavigation.OpenPaneLength = newWidth;
+        UpdatePaneSplitterPosition();
+        e.Handled = true;
+    }
+
+    private async void OnPaneSplitterPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (!isResizingSidebar) return;
+        isResizingSidebar = false;
+        PaneSplitter.ReleasePointerCapture(e.Pointer);
+        e.Handled = true;
+        var settingsService = App.UiServices.Settings;
+        var current = settingsService.Current;
+        if (Math.Abs(current.SidebarWidth - RootNavigation.OpenPaneLength) > 0.5)
+        {
+            var updated = current with { SidebarWidth = RootNavigation.OpenPaneLength };
+            await settingsService.SaveAsync(updated, CancellationToken.None);
+        }
     }
 }
