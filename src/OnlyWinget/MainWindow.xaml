@@ -17,12 +17,12 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <Image Source="Assets/OnlyWinget-icon.png" Width="16" Height="16" Margin="0,0,8,0" />
                 <TextBlock Text="OnlyWinget" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
             </StackPanel>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <controls:StatusBadgeControl x:Name="ElevationBadge" Visibility="Collapsed" />
                 <controls:StatusBadgeControl x:Name="WingetStatusBadge" Visibility="Collapsed" />
             </StackPanel>

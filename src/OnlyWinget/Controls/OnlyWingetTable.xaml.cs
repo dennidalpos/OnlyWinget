@@ -761,15 +761,7 @@ public sealed partial class OnlyWingetTable : UserControl
             return;
         }
 
-        var value = box.Text.Trim();
-        if (value.Length == 0)
-        {
-            columnFilters.Remove(bindingPath);
-        }
-        else
-        {
-            columnFilters[bindingPath] = value;
-        }
+        filterEngine.SetColumnFilter(bindingPath, box.Text);
 
         var caretIndex = box.SelectionStart;
         var selectionLength = box.SelectionLength;

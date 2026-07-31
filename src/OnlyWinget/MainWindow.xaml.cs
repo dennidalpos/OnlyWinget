@@ -44,7 +44,10 @@ public sealed partial class MainWindow : Window
         App.UiServices.Settings.Changed += OnSettingsChanged;
         App.Workflow.StateChanged += OnWorkflowStateChanged;
         Closed += OnClosed;
+        SizeChanged += OnWindowSizeChanged;
+        AppWindow.Changed += OnAppWindowChanged;
         RootNavigation.Loaded += OnLoaded;
+        UpdateTitleBarPadding();
         ApplyTheme();
         BuildNavigation();
         RootNavigation.SelectedItem = RootNavigation.MenuItems[0];
@@ -53,6 +56,8 @@ public sealed partial class MainWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        SizeChanged -= OnWindowSizeChanged;
+        AppWindow.Changed -= OnAppWindowChanged;
         App.UiServices.Settings.Changed -= OnSettingsChanged;
         App.Workflow.StateChanged -= OnWorkflowStateChanged;
         Closed -= OnClosed;
@@ -130,9 +135,39 @@ public sealed partial class MainWindow : Window
             (int)Math.Ceiling(InitialHeight * scale)));
     }
 
+    private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs args)
+    {
+        UpdateTitleBarPadding();
+    }
+
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        if (args.DidSizeChange || args.DidPositionChange)
+        {
+            UpdateTitleBarPadding();
+        }
+    }
+
+    private void UpdateTitleBarPadding()
+    {
+        var windowHandle = WindowNative.GetWindowHandle(this);
+        var dpi = GetDpiForWindow(windowHandle);
+        var scale = dpi > 0 ? dpi / 96d : 1.0;
+
+        var leftInsetDip = AppWindow.TitleBar.LeftInset / scale;
+        var rightInsetDip = AppWindow.TitleBar.RightInset / scale;
+
+        AppTitleBar.Padding = new Thickness(
+            Math.Max(16, leftInsetDip),
+            0,
+            Math.Max(16, rightInsetDip),
+            0);
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
         RootNavigation.Loaded -= OnLoaded;
+        UpdateTitleBarPadding();
         try
         {
             await new ApplicationStartupOrchestrator(App.Workflow).InitializeAsync(windowLifetime.Token);
