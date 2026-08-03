@@ -11,6 +11,12 @@
       "description": "Validate NSIS installer setup and uninstaller lifecycle (.\\scripts\\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive).",
       "status": "pending",
       "environment": "Clean elevated x64 Windows host"
+    },
+    {
+      "id": "ui-ux-high-contrast-theme-audit",
+      "description": "Validate high-contrast Windows system theme rendering across custom visual elements and status badges.",
+      "status": "pending",
+      "environment": "Windows host with high-contrast theme enabled"
     }
   ]
 }

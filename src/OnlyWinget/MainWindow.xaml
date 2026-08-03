@@ -41,9 +41,7 @@
             AutomationProperties.AutomationId="RootNavigation"
             SelectionFollowsFocus="Enabled"
             ItemInvoked="OnItemInvoked"
-            SelectionChanged="OnSelectionChanged"
-            PaneOpened="OnPaneOpenedOrClosed"
-            PaneClosed="OnPaneOpenedOrClosed">
+            SelectionChanged="OnSelectionChanged">
             <NavigationView.PaneFooter>
                 <NavigationViewItem x:Name="OpenLogsItem" Tapped="OnOpenLogsTapped" AutomationProperties.AutomationId="NavOpenLogs">
                     <NavigationViewItem.Icon>
@@ -64,24 +62,6 @@
                     VerticalContentAlignment="Stretch" />
             </Grid>
         </NavigationView>
-
-        <Border
-            x:Name="PaneSplitter"
-            Width="8"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Stretch"
-            Background="Transparent"
-            PointerPressed="OnPaneSplitterPointerPressed"
-            PointerMoved="OnPaneSplitterPointerMoved"
-            PointerReleased="OnPaneSplitterPointerReleased"
-            PointerCanceled="OnPaneSplitterPointerReleased">
-            <Border
-                Width="2"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-                Opacity="0.6" />
-        </Border>
     </Grid>
     </Grid>
 </Window>

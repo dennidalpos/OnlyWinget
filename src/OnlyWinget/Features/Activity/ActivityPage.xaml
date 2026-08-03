@@ -20,7 +20,6 @@
             <Grid RowSpacing="12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource CardStyle}">
@@ -48,19 +47,7 @@
                         </ComboBox>
                     </Grid>
                 </Border>
-                <Grid Grid.Row="1" ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="130" />
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="ActivityTimeFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Time')}" TextChanged="OnActivityColumnFilterChanged" />
-                    <TextBox x:Name="ActivitySeverityFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Severity')}" Grid.Column="1" TextChanged="OnActivityColumnFilterChanged" />
-                    <TextBox x:Name="ActivityTitleFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Title')}" Grid.Column="2" TextChanged="OnActivityColumnFilterChanged" />
-                    <TextBox x:Name="ActivityMessageFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Message')}" Grid.Column="3" TextChanged="OnActivityColumnFilterChanged" />
-                </Grid>
-                <ListView x:Name="ActivityList" Grid.Row="2" SelectionMode="None" AutomationProperties.AutomationId="ActivityList">
+                <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None" AutomationProperties.AutomationId="ActivityList">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
                             <Setter Property="Padding" Value="0,2" />

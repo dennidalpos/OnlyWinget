@@ -66,26 +66,9 @@ public sealed partial class SourcesPage : Page
         await viewModel.ExecuteAsync(args.Command.Id);
     }
 
-    private void OnSourceFilterChanged(object sender, TextChangedEventArgs args)
+    private void OnSourceSearchBoxChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (sender is TextBox box)
-        {
-            var caretIndex = box.SelectionStart;
-            var selectionLength = box.SelectionLength;
-
-            viewModel.SetListFilters(
-                SourceNameFilterBox.Text,
-                SourceArgumentFilterBox.Text,
-                SourceTypeFilterBox.Text,
-                SourceStatusFilterBox.Text);
-
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                box.Focus(FocusState.Programmatic);
-                box.SelectionStart = caretIndex;
-                box.SelectionLength = selectionLength;
-            });
-        }
+        viewModel.SetSearchFilter(sender.Text);
     }
 
     private void OnSourceEnabledToggled(object sender, RoutedEventArgs args)

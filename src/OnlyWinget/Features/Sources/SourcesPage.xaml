@@ -52,11 +52,11 @@
                             <Grid RowSpacing="12">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <design:OnlyWingetWrapPanel Grid.Row="0" HorizontalSpacing="12" VerticalSpacing="8" VerticalAlignment="Center">
                                     <TextBlock x:Name="ManageSourcesSectionText" Text="{services:Localize Key=Section_ManageSources}" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <AutoSuggestBox x:Name="SourceSearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSourceSearchBoxChanged" Width="220" VerticalAlignment="Center" AutomationProperties.AutomationId="SourceSearchBox" />
                                     <Button x:Name="RefreshSourcesBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Refresh}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Refresh}" Click="OnRefreshSourcesClick" Padding="8,6" VerticalAlignment="Center">
                                         <SymbolIcon Symbol="Refresh" />
                                     </Button>
@@ -71,19 +71,7 @@
                                     </Button>
                                     <ProgressRing x:Name="LoadingRing" Width="20" Height="20" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" VerticalAlignment="Center" Margin="8,0,0,0" />
                                 </design:OnlyWingetWrapPanel>
-                                <Grid Grid.Row="1" ColumnSpacing="8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="140" />
-                                        <ColumnDefinition Width="140" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="SourceNameFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Name')}" TextChanged="OnSourceFilterChanged" />
-                                    <TextBox x:Name="SourceArgumentFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Argument')}" Grid.Column="1" TextChanged="OnSourceFilterChanged" />
-                                    <TextBox x:Name="SourceTypeFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Type')}" Grid.Column="2" TextChanged="OnSourceFilterChanged" />
-                                    <TextBox x:Name="SourceStatusFilterBox" PlaceholderText="{x:Bind presentation:PresentationValues.FormatFilterPlaceholder('Header_Status')}" Grid.Column="3" TextChanged="OnSourceFilterChanged" />
-                                </Grid>
-                                <ListView x:Name="SourceList" Grid.Row="2" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
+                                <ListView x:Name="SourceList" Grid.Row="1" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
                                     <ListView.ItemContainerStyle>
                                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
                                             <Setter Property="Padding" Value="0,8" />

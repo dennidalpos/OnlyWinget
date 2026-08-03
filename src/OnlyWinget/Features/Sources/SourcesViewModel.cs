@@ -74,6 +74,15 @@ public sealed class SourcesViewModel : FeatureViewModel
     public Task SetEnabledAsync(SourceRow source, bool enabled) =>
         RunAsync(token => Workflow.SetSourceEnabledAsync(source.Name, enabled, token));
 
+    public void SetSearchFilter(string search)
+    {
+        nameFilter = search.Trim();
+        argumentFilter = string.Empty;
+        typeFilter = string.Empty;
+        statusFilter = string.Empty;
+        ApplyFilters();
+    }
+
     public void SetListFilters(string name, string argument, string type, string status)
     {
         nameFilter = name.Trim();
@@ -119,7 +128,11 @@ public sealed class SourcesViewModel : FeatureViewModel
     private void ApplyFilters()
     {
         Sources.SynchronizeWith(allSources.Where(source =>
-            Matches(source.Name, nameFilter) &&
+            (nameFilter.Length == 0 ||
+             source.Name.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase) ||
+             source.Argument.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase) ||
+             source.Type.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase) ||
+             source.Status.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase)) &&
             Matches(source.Argument, argumentFilter) &&
             Matches(source.Type, typeFilter) &&
             Matches(source.Status, statusFilter)),
