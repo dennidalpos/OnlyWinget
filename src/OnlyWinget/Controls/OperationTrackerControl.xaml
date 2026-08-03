@@ -7,16 +7,16 @@
         <ResourceDictionary>
             <Style x:Key="TrackerCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource SystemAccentColor}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="Padding" Value="16,12" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Padding" Value="12,8" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Border x:Name="TrackerRoot" Style="{StaticResource TrackerCardStyle}" Margin="0,0,0,12" Visibility="Collapsed">
-        <Grid ColumnSpacing="16" RowSpacing="8">
+    <Border x:Name="TrackerRoot" Style="{StaticResource TrackerCardStyle}" Margin="0,0,0,8" Visibility="Collapsed">
+        <Grid ColumnSpacing="12" RowSpacing="6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -28,20 +28,23 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Status Icon -->
-            <ProgressRing x:Name="StatusRing" Width="20" Height="20" IsActive="True" VerticalAlignment="Center" />
+            <!-- Status Ring / Icon -->
+            <Grid Grid.Column="0" VerticalAlignment="Center">
+                <ProgressRing x:Name="StatusRing" Width="16" Height="16" IsActive="True" VerticalAlignment="Center" />
+                <FontIcon x:Name="StatusIcon" FontSize="16" VerticalAlignment="Center" Visibility="Collapsed" />
+            </Grid>
 
-            <!-- Status Header and Text -->
+            <!-- Status Header and Detail -->
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <TextBlock x:Name="StatusTitle" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{services:Localize Key=Tracker_OperationInProgress}" />
                 <TextBlock x:Name="StatusDetail" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
 
             <!-- Percentage Counter -->
-            <TextBlock x:Name="PercentageText" Grid.Column="2" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource SystemControlHighlightAccentBrush}" />
+            <TextBlock x:Name="PercentageText" Grid.Column="2" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="8,0" />
 
             <!-- View Activity Button -->
-            <Button x:Name="ViewActivityButton" Grid.Column="3" Click="OnViewActivityClick" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Padding="10,6">
+            <Button x:Name="ViewActivityButton" Grid.Column="3" Click="OnViewActivityClick" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Padding="8,4">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <SymbolIcon Symbol="List" />
                     <TextBlock Text="{services:Localize Key=Tracker_ViewActivity}" />
@@ -49,7 +52,7 @@
             </Button>
 
             <!-- Progress Bar -->
-            <ProgressBar x:Name="OperationProgressBar" Grid.Row="1" Grid.ColumnSpan="4" Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+            <ProgressBar x:Name="OperationProgressBar" Grid.Row="1" Grid.ColumnSpan="4" Height="3" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
         </Grid>
     </Border>
 </UserControl>

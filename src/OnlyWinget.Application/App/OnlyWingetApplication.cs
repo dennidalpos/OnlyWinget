@@ -118,6 +118,7 @@ public sealed partial class OnlyWingetApplication(
 
         busyState = state;
         userVisibleError = null;
+        operationProgress = null;
         NotifyStateChanged();
         Logger?.Invoke(AppLogLevel.Verbose, $"Starting operation {state}...", "RunAsync");
         try

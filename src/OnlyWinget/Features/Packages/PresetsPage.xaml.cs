@@ -13,7 +13,6 @@ namespace OnlyWinget.Features.Packages;
 
 public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 {
-    private bool wasExecuting;
     private bool isRefreshing;
     private Flyout? pendingFlyout;
     public PresetsViewModel ViewModel { get; }
@@ -53,7 +52,6 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         PresetSelector.SelectedItem = ViewModel.ActivePresetName;
         ViewModel.PresetName.Value = ViewModel.ActivePresetName ?? string.Empty;
         PageState.Present(ViewModel.PageState);
-        ApplyOperationProgress(ViewModel.IsExecuting);
 
         ApplyValidationToCommands();
         isRefreshing = false;
@@ -186,22 +184,6 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         SaveEditPackageBtn.IsEnabled = ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
 
         RemovePackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RemovePresetPackages);
-    }
-
-    private void ApplyOperationProgress(bool isExecuting)
-    {
-        var progress = ViewModel.Progress;
-        if (isExecuting)
-        {
-            var message = OperationProgressFormatter.FormatMessage(progress, TextResources.Get);
-            PageState.Show(TextResources.Get("Operation_Preset_Title"), message, progress?.PackageId, progress?.PackagePercentage, true);
-        }
-        else if (wasExecuting)
-        {
-            var error = ViewModel.Error;
-            PageState.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
-        }
-        wasExecuting = isExecuting;
     }
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();

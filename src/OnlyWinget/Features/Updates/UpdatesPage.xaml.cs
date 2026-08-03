@@ -13,7 +13,6 @@ namespace OnlyWinget.Features.Updates;
 public sealed partial class UpdatesPage : UserControl
 {
     private bool initialRefreshStarted;
-    private bool wasBusy;
     public WingetUpdatesViewModel ViewModel { get; }
 
     public UpdatesPage()
@@ -47,7 +46,6 @@ public sealed partial class UpdatesPage : UserControl
     private void Refresh()
     {
         PageState.Present(ViewModel.PageState);
-        ApplyOperationProgress();
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
@@ -68,25 +66,6 @@ public sealed partial class UpdatesPage : UserControl
     private void OnToggleAllUpdates(object? sender, EventArgs args)
     {
         ViewModel.ToggleAll();
-    }
-
-    private void ApplyOperationProgress()
-    {
-        var busy = ViewModel.IsBusy;
-        if (busy)
-        {
-            var message = ViewModel.IsLoading
-                ? TextResources.Get("Progress_LoadingUpdates")
-                : OperationProgressFormatter.FormatMessage(ViewModel.Progress, TextResources.Get);
-
-            PageState.Show(TextResources.Get("Operation_Updates_Title"), message, ViewModel.Progress?.PackageId, ViewModel.Progress?.PackagePercentage, ViewModel.IsExecuting);
-        }
-        else if (wasBusy)
-        {
-            var error = ViewModel.Error;
-            PageState.Complete(error ?? TextResources.Get("Progress_Completed"), error is not null);
-        }
-        wasBusy = busy;
     }
 
     private void OnUpdateBatchSelectionChanged(object? sender, OnlyWingetTableBatchSelectionEventArgs args)

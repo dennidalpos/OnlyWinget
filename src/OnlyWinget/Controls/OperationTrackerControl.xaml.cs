@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.Winget;
@@ -8,6 +9,8 @@ namespace OnlyWinget.Controls;
 
 public sealed partial class OperationTrackerControl : UserControl
 {
+    private DispatcherTimer? autoDismissTimer;
+
     public OperationTrackerControl()
     {
         InitializeComponent();
@@ -24,6 +27,7 @@ public sealed partial class OperationTrackerControl : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         App.Workflow.StateChanged -= OnStateChanged;
+        StopAutoDismissTimer();
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
@@ -38,10 +42,15 @@ public sealed partial class OperationTrackerControl : UserControl
 
         if (!isBusy && progress == null)
         {
-            TrackerRoot.Visibility = Visibility.Collapsed;
+            if (autoDismissTimer is null || !autoDismissTimer.IsEnabled)
+            {
+                TrackerRoot.Visibility = Visibility.Collapsed;
+            }
             return;
         }
 
+        // Active operation or busy state -> ensure visible and cancel pending hide timers
+        StopAutoDismissTimer();
         TrackerRoot.Visibility = Visibility.Visible;
 
         if (progress != null)
@@ -51,29 +60,77 @@ public sealed partial class OperationTrackerControl : UserControl
                 ? FormatBusyStateText(state.BusyState)
                 : formattedDetail;
 
+            if (progress.Phase == WingetProgressPhase.Completed)
+            {
+                StatusRing.IsActive = false;
+                StatusRing.Visibility = Visibility.Collapsed;
+                StatusIcon.Glyph = "\uE73E"; // Checkmark
+                StatusIcon.Foreground = GetThemeBrush("SystemFillColorSuccessBrush");
+                StatusIcon.Visibility = Visibility.Visible;
+
+                StatusTitle.Text = TextResources.Get("Progress_Completed");
+                OperationProgressBar.IsIndeterminate = false;
+                OperationProgressBar.Value = 100;
+                PercentageText.Text = "100%";
+
+                StartAutoDismissTimer(2500);
+                return;
+            }
+
+            if (progress.Phase == WingetProgressPhase.Failed)
+            {
+                StatusRing.IsActive = false;
+                StatusRing.Visibility = Visibility.Collapsed;
+                StatusIcon.Glyph = "\uE783"; // Error badge
+                StatusIcon.Foreground = GetThemeBrush("SystemFillColorCriticalBrush");
+                StatusIcon.Visibility = Visibility.Visible;
+
+                StatusTitle.Text = TextResources.Get("Progress_Failed");
+                OperationProgressBar.IsIndeterminate = false;
+                PercentageText.Text = string.Empty;
+
+                StartAutoDismissTimer(4000);
+                return;
+            }
+
+            // Normal active operation
+            StatusIcon.Visibility = Visibility.Collapsed;
+            StatusRing.Visibility = Visibility.Visible;
+            StatusRing.IsActive = true;
+
+            var total = progress.TotalPackages;
+            if (total > 1)
+            {
+                var current = (progress.CompletedPackages >= total)
+                    ? total
+                    : Math.Clamp(progress.CompletedPackages + 1, 1, total);
+                StatusTitle.Text = $"{TextResources.Get("Tracker_OperationInProgress")} ({current}/{total})";
+            }
+            else
+            {
+                StatusTitle.Text = TextResources.Get("Tracker_OperationInProgress");
+            }
+
             if (progress.Percentage > 0)
             {
                 OperationProgressBar.IsIndeterminate = false;
-                OperationProgressBar.Value = Math.Clamp(progress.Percentage, 0, 100);
-                PercentageText.Text = $"{progress.Percentage}%";
+                var clampedPct = Math.Clamp(progress.Percentage, 0, 100);
+                OperationProgressBar.Value = clampedPct;
+                PercentageText.Text = $"{clampedPct}%";
             }
             else
             {
                 OperationProgressBar.IsIndeterminate = true;
                 PercentageText.Text = string.Empty;
             }
-
-            if (progress.TotalPackages > 1)
-            {
-                StatusTitle.Text = $"{TextResources.Get("Tracker_OperationInProgress")} ({progress.CompletedPackages}/{progress.TotalPackages})";
-            }
-            else
-            {
-                StatusTitle.Text = TextResources.Get("Tracker_OperationInProgress");
-            }
         }
         else
         {
+            // Busy state without detailed progress (e.g., searching, loading updates, managing sources)
+            StatusIcon.Visibility = Visibility.Collapsed;
+            StatusRing.Visibility = Visibility.Visible;
+            StatusRing.IsActive = true;
+
             StatusTitle.Text = TextResources.Get("Tracker_OperationInProgress");
             StatusDetail.Text = FormatBusyStateText(state.BusyState);
             OperationProgressBar.IsIndeterminate = true;
@@ -92,6 +149,35 @@ public sealed partial class OperationTrackerControl : UserControl
         ApplicationBusyState.ValidatingPackages => TextResources.Get("State_ValidatingPackages"),
         _ => TextResources.Get("Tracker_Working")
     };
+
+    private static Brush GetThemeBrush(string key) =>
+        Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(key, out var res) && res is Brush brush
+            ? brush
+            : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+
+    private void StartAutoDismissTimer(int milliseconds)
+    {
+        StopAutoDismissTimer();
+        autoDismissTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(milliseconds)
+        };
+        autoDismissTimer.Tick += (s, e) =>
+        {
+            StopAutoDismissTimer();
+            TrackerRoot.Visibility = Visibility.Collapsed;
+        };
+        autoDismissTimer.Start();
+    }
+
+    private void StopAutoDismissTimer()
+    {
+        if (autoDismissTimer != null)
+        {
+            autoDismissTimer.Stop();
+            autoDismissTimer = null;
+        }
+    }
 
     private void OnViewActivityClick(object sender, RoutedEventArgs e)
     {

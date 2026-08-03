@@ -21,8 +21,8 @@ public static class OperationProgressFormatter
             return phaseText;
         }
 
-        var current = Math.Max(1, progress.CompletedPackages + 1);
         var total = progress.TotalPackages;
+        var current = CalculateCurrentPackageIndex(progress);
 
         return total > 0
             ? $"{phaseText} ({current}/{total}): {progress.PackageId}"
@@ -46,10 +46,22 @@ public static class OperationProgressFormatter
             return phaseText;
         }
 
-        var current = Math.Max(1, progress.CompletedPackages + 1);
         var total = progress.TotalPackages;
+        var current = CalculateCurrentPackageIndex(progress);
         var countSuffix = total > 0 ? $" ({current}/{total})" : string.Empty;
+        var percentage = Math.Clamp(progress.Percentage, 0, 100);
 
-        return $"{phaseText}{countSuffix} · {progress.Percentage}% · {progress.PackageId}";
+        return $"{phaseText}{countSuffix} · {percentage}% · {progress.PackageId}";
+    }
+
+    private static int CalculateCurrentPackageIndex(OperationProgress progress)
+    {
+        var total = progress.TotalPackages;
+        if (total <= 0) return 0;
+        if (progress.Phase == WingetProgressPhase.Completed || progress.CompletedPackages >= total)
+        {
+            return total;
+        }
+        return Math.Clamp(progress.CompletedPackages + 1, 1, total);
     }
 }

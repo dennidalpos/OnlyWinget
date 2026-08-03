@@ -78,4 +78,24 @@ public sealed class OperationProgressFormatterTests
 
         Assert.Equal("Installing (2/4) · 75% · Git.Git", result);
     }
+
+    [Fact]
+    public void FormatMessage_NeverExceedsTotalPackages_OnCompletion()
+    {
+        var completedProgress = new OperationProgress("Mozilla.Firefox", WingetProgressPhase.Completed, 100, 4, 4);
+        var englishResult = OperationProgressFormatter.FormatMessage(completedProgress, key => EnglishResources.GetValueOrDefault(key, key));
+        var italianResult = OperationProgressFormatter.FormatMessage(completedProgress, key => ItalianResources.GetValueOrDefault(key, key));
+
+        Assert.Equal("Completed (4/4): Mozilla.Firefox", englishResult);
+        Assert.Equal("Completato (4/4): Mozilla.Firefox", italianResult);
+    }
+
+    [Fact]
+    public void FormatProgressText_NeverExceedsTotalPackages_OnCompletion()
+    {
+        var completedProgress = new OperationProgress("Mozilla.Firefox", WingetProgressPhase.Completed, 100, 4, 4);
+        var englishResult = OperationProgressFormatter.FormatProgressText(completedProgress, key => EnglishResources.GetValueOrDefault(key, key));
+
+        Assert.Equal("Completed (4/4) · 100% · Mozilla.Firefox", englishResult);
+    }
 }
