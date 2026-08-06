@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Hosting;
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.System;
 using OnlyWinget.Services;
@@ -19,12 +20,15 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (window is MainWindow mainWindow) mainWindow.Navigate(routeId);
     }
 
-    internal static UiServiceCollection UiServices { get; } = AppComposition.CreateUiServices();
+    internal static Microsoft.Extensions.Hosting.IHost Host { get; } = AppComposition.Host;
 
-    public static OnlyWingetApplication Workflow { get; } = AppComposition.CreateWorkflow();
+    internal static UiServiceCollection UiServices => AppComposition.CreateUiServices();
+
+    public static OnlyWingetApplication Workflow => AppComposition.CreateWorkflow();
 
     public App()
     {
+        Host.Start();
         ApplySettings();
         AppDiagnostics.Initialize();
         AppDiagnostics.Register(this);

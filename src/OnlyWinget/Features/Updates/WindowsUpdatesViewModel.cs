@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Selection;
@@ -6,21 +7,25 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Updates;
 
-public sealed class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
     private CancellationTokenSource? cancellation;
+
+    [ObservableProperty]
     private bool isScanning;
+
+    [ObservableProperty]
     private bool isInstalling;
+
+    [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
+
+    [ObservableProperty]
     private SelectionHeaderState headerState;
 
     public ObservableCollection<WindowsUpdateDisplayRow> Updates { get; } = [];
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
-    public bool IsScanning { get => isScanning; private set => SetProperty(ref isScanning, value); }
-    public bool IsInstalling { get => isInstalling; private set => SetProperty(ref isInstalling, value); }
     public bool IsBusy => IsScanning || IsInstalling;
-    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
-    public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public string? Error => Workflow.State.UserVisibleError;
     public bool RebootRequired => Workflow.State.LastWindowsUpdateResults.Any(result => result.RebootRequired);
 

@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Selection;
@@ -6,18 +7,21 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Packages;
 
-public sealed class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
     private CancellationTokenSource? cancellation;
+
+    [ObservableProperty]
     private bool isLoading;
+
+    [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
+
+    [ObservableProperty]
     private SelectionHeaderState headerState;
 
     public ObservableCollection<SearchResultRow> Results { get; } = [];
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
-    public bool IsLoading { get => isLoading; private set => SetProperty(ref isLoading, value); }
-    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
-    public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public void ToggleAll() => Workflow.ToggleAllSearchResults();

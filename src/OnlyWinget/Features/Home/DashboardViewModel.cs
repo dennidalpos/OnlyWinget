@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Presentation;
 using System.Collections.ObjectModel;
@@ -5,11 +6,18 @@ using System.Globalization;
 
 namespace OnlyWinget.Features.Home;
 
-public sealed class DashboardViewModel : FeatureViewModel
+public sealed partial class DashboardViewModel : FeatureViewModel
 {
+    [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
+
+    [ObservableProperty]
     private string activePreset = string.Empty;
+
+    [ObservableProperty]
     private string operationalStatus = string.Empty;
+
+    [ObservableProperty]
     private bool hasWarning;
 
     public DashboardViewModel(Action<Action> dispatch) : base(App.Workflow, dispatch)
@@ -18,10 +26,6 @@ public sealed class DashboardViewModel : FeatureViewModel
 
     public ObservableCollection<DashboardMetric> Metrics { get; } = [new(), new(), new(), new(), new(), new()];
     public ObservableCollection<ActivityRow> RecentActivity { get; } = [];
-    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
-    public string ActivePreset { get => activePreset; private set => SetProperty(ref activePreset, value); }
-    public string OperationalStatus { get => operationalStatus; private set => SetProperty(ref operationalStatus, value); }
-    public bool HasWarning { get => hasWarning; private set => SetProperty(ref hasWarning, value); }
     public bool IsBusy => OperationalStatus == TextResources.Get("Dashboard_Busy");
     public string ActivePresetDisplay => $"{TextResources.Get("Dashboard_ActivePreset")}: {ActivePreset}";
 
@@ -72,13 +76,14 @@ public sealed class DashboardViewModel : FeatureViewModel
     }
 }
 
-public sealed class DashboardMetric : ObservableObject
+public sealed partial class DashboardMetric : ObservableObject
 {
+    [ObservableProperty]
     private string value = string.Empty;
-    private string label = string.Empty;
-    private string accentKey = "AreaHomeBrush";
 
-    public string Value { get => value; set => SetProperty(ref this.value, value); }
-    public string Label { get => label; set => SetProperty(ref label, value); }
-    public string AccentKey { get => accentKey; set => SetProperty(ref accentKey, value); }
+    [ObservableProperty]
+    private string label = string.Empty;
+
+    [ObservableProperty]
+    private string accentKey = "AreaHomeBrush";
 }

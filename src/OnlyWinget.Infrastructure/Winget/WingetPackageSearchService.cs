@@ -53,7 +53,7 @@ public sealed class WingetPackageSearchService(
         IReadOnlyDictionary<string, string> row,
         string? requestedSource)
     {
-        if (!WingetOutputHelpers.TryGet(row, "Id", out var id))
+        if (!WingetTableParser.IsValidRow(row) || !WingetOutputHelpers.TryGet(row, "Id", out var id))
         {
             return null;
         }

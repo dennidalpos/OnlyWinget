@@ -35,7 +35,8 @@ public sealed class WingetUpdateLoader(
 
     private static PackageUpdate? ToUpdate(IReadOnlyDictionary<string, string> row, string requestedSource)
     {
-        if (!WingetOutputHelpers.TryGet(row, "Id", out var id) ||
+        if (!WingetTableParser.IsValidRow(row) ||
+            !WingetOutputHelpers.TryGet(row, "Id", out var id) ||
             !WingetOutputHelpers.TryGet(row, "Version", out var version) ||
             !WingetOutputHelpers.TryGet(row, "Available", out var available) ||
             id.Any(char.IsWhiteSpace))

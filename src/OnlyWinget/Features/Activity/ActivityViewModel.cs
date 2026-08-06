@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.Activity;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Presentation;
@@ -5,7 +6,7 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Activity;
 
-public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class ActivityViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
     private IReadOnlyList<ActivityRow> allEntries = [];
     private string query = string.Empty;
@@ -15,11 +16,12 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
     private string severityFilter = string.Empty;
     private string titleFilter = string.Empty;
     private string messageFilter = string.Empty;
+
+    [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
 
     public ObservableCollection<ActivityRow> Entries { get; } = [];
     public IReadOnlyList<UiCommand> Commands { get; private set; } = [];
-    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
 
     public void SetFilter(string search, string selectedSeverity, string selectedCategory)
     {
@@ -49,14 +51,17 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
             value.Contains("riavvio", StringComparison.OrdinalIgnoreCase)) return "windows";
         if (value.Contains("preset", StringComparison.OrdinalIgnoreCase) ||
             value.Contains("workspace", StringComparison.OrdinalIgnoreCase)) return "presets";
+        if (value.Contains("source", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("origine", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("origini", StringComparison.OrdinalIgnoreCase)) return "sources";
         if (value.Contains("package", StringComparison.OrdinalIgnoreCase) ||
             value.Contains("winget", StringComparison.OrdinalIgnoreCase) ||
             value.Contains("update", StringComparison.OrdinalIgnoreCase) ||
             value.Contains("pacchetto", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("aggiornamento", StringComparison.OrdinalIgnoreCase)) return "packages";
-        if (value.Contains("source", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("origine", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("origini", StringComparison.OrdinalIgnoreCase)) return "sources";
+            value.Contains("aggiornamento", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("action failed", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
+            value.Contains("trovato", StringComparison.OrdinalIgnoreCase)) return "packages";
         return "system";
     }
 
@@ -81,8 +86,8 @@ public sealed class ActivityViewModel(Action<Action> dispatch) : FeatureViewMode
     {
         Entries.ReplaceWith(allEntries.Where(entry =>
             (query.Length == 0 || entry.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || entry.Message.Contains(query, StringComparison.CurrentCultureIgnoreCase)) &&
-            (severity == "all" || string.Equals(entry.Severity.ToString(), severity, StringComparison.Ordinal)) &&
-            (category == "all" || Category(entry) == category) &&
+            (string.Equals(severity, "all", StringComparison.OrdinalIgnoreCase) || string.Equals(entry.Severity.ToString(), severity, StringComparison.OrdinalIgnoreCase)) &&
+            (string.Equals(category, "all", StringComparison.OrdinalIgnoreCase) || string.Equals(Category(entry), category, StringComparison.OrdinalIgnoreCase)) &&
             Matches(entry.TimestampDisplay, timeFilter) &&
             Matches(LocalizeSeverity(entry.Severity), severityFilter) &&
             Matches(entry.Title, titleFilter) &&

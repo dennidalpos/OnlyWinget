@@ -1,22 +1,67 @@
 {
   "todos": [
     {
-      "id": "ui-automation-winapp",
-      "description": "Run WinApp CLI UI automation test suite (.\\scripts\\ui-test.ps1 -AppPid <PID> -NonInteractive) on a running application instance.",
-      "status": "pending",
-      "environment": "Windows host with WinApp CLI and interactive desktop session"
+      "id": "tech-elevation-phase2-mvvm",
+      "priority": "P2 - Medium",
+      "description": "Piano Elevazione Fase 2: Refactoring del layer MVVM adottando i Source Generator di CommunityToolkit.Mvvm ([ObservableProperty], [RelayCommand]) e WeakReferenceMessenger per il disaccoppiamento degli eventi.",
+      "status": "completed",
+      "environment": "Applicazione desktop WinUI 3"
+    },
+    {
+      "id": "tech-elevation-phase3-sqlite",
+      "priority": "P2 - Medium",
+      "description": "Piano Elevazione Fase 3: Persistenza avanzata SQLite ed EF Core 10 con SqliteWorkspaceStore, supporto WAL mode e migrazione trasparente dai legacy file JSON.",
+      "status": "completed",
+      "environment": "Ambiente runtime C#/.NET 10"
+    },
+    {
+      "id": "tech-elevation-phase4-com-interop",
+      "priority": "P2 - Medium",
+      "description": "Piano Elevazione Fase 4: Integrazione Nativa COM Interop C# per Microsoft.Update.Session (Windows Update) e WinGet Native COM API con fallback automatico.",
+      "status": "completed",
+      "environment": "Host Windows x64 con API COM Native"
     },
     {
       "id": "validate-installer-lifecycle",
-      "description": "Validate NSIS installer setup and uninstaller lifecycle (.\\scripts\\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive).",
-      "status": "pending",
-      "environment": "Clean elevated x64 Windows host"
+      "priority": "P2 - Medium",
+      "description": "Validare il ciclo di vita dell'installer NSIS setup e disinstallazione (.\\scripts\\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive).",
+      "status": "completed",
+      "environment": "Host Windows x64 pulito con privilegi elevati"
+    },
+    {
+      "id": "validate-installed-startup",
+      "priority": "P2 - Medium",
+      "description": "Validare l'avvio smoke test dell'eseguibile installato in C:\\Program Files\\OnlyWinget\\OnlyWinget.exe (.\\scripts\\run.ps1 -Task ValidateInstalledStartup -NonInteractive).",
+      "status": "completed",
+      "environment": "Host Windows con OnlyWinget installato nel sistema"
+    },
+    {
+      "id": "ui-automation-winapp",
+      "priority": "P2 - Medium",
+      "description": "Eseguire la suite di test di automazione UI WinApp CLI (.\\scripts\\ui-test.ps1 -AppPid <PID> -NonInteractive) su un'istanza dell'applicazione in esecuzione.",
+      "status": "completed",
+      "environment": "Host Windows con WinApp CLI e sessione desktop interattiva"
+    },
+    {
+      "id": "winget-smoke-test",
+      "priority": "P2 - Medium",
+      "description": "Eseguire i test di integrazione e smoke test live di winget CLI (.\\scripts\\run.ps1 -Task Test -Configuration Release -RunWingetSmoke -NonInteractive).",
+      "status": "completed",
+      "environment": "Host Windows con winget CLI installato ed operativo"
     },
     {
       "id": "ui-ux-high-contrast-theme-audit",
-      "description": "Validate high-contrast Windows system theme rendering across custom visual elements and status badges.",
-      "status": "pending",
-      "environment": "Windows host with high-contrast theme enabled"
+      "priority": "P3 - Low",
+      "description": "Validare il rendering dei temi di sistema Windows ad alto contrasto per tutti gli elementi visivi personalizzati, controlli e badge di stato.",
+      "status": "completed",
+      "environment": "Host Windows con tema ad alto contrasto abilitato"
+    },
+    {
+      "id": "landing-downloads-generator",
+      "priority": "P3 - Low",
+      "description": "Generare e validare gli artifact di setup e download per la landing page (.\\scripts\\run.ps1 -Task GenerateLandingSetup -Configuration Release -NoRestore -NonInteractive).",
+      "status": "completed",
+      "environment": "Host Windows con NSIS 3.x installato"
     }
   ]
 }

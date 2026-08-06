@@ -1,16 +1,30 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using OnlyWinget.Presentation;
 using OnlyWinget.Services;
 
 namespace OnlyWinget.Features.Settings;
 
-public sealed class SettingsViewModel : ObservableObject
+public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly IAppSettingsService settingsService;
+
+    [ObservableProperty]
     private string language;
+
+    [ObservableProperty]
     private string theme;
+
+    [ObservableProperty]
     private bool confirmDestructiveActions;
+
+    [ObservableProperty]
     private bool diagnosticLogging;
+
+    [ObservableProperty]
     private string logLevel;
+
+    [ObservableProperty]
     private bool continueOperationsAfterFailure;
 
     internal SettingsViewModel(IAppSettingsService settingsService)
@@ -24,13 +38,7 @@ public sealed class SettingsViewModel : ObservableObject
         continueOperationsAfterFailure = settingsService.Current.ContinueOperationsAfterFailure;
     }
 
-    public string Language { get => language; set => SetProperty(ref language, value); }
-    public string Theme { get => theme; set => SetProperty(ref theme, value); }
-    public bool ConfirmDestructiveActions { get => confirmDestructiveActions; set => SetProperty(ref confirmDestructiveActions, value); }
-    public bool DiagnosticLogging { get => diagnosticLogging; set => SetProperty(ref diagnosticLogging, value); }
-    public string LogLevel { get => logLevel; set => SetProperty(ref logLevel, value); }
-    public bool ContinueOperationsAfterFailure { get => continueOperationsAfterFailure; set => SetProperty(ref continueOperationsAfterFailure, value); }
-
+    [RelayCommand]
     public Task SaveAsync(CancellationToken cancellationToken) => settingsService.SaveAsync(
         new AppSettings(
             Language,
@@ -42,6 +50,7 @@ public sealed class SettingsViewModel : ObservableObject
             settingsService.Current.SidebarWidth),
         cancellationToken);
 
+    [RelayCommand]
     public async Task ResetAsync(CancellationToken cancellationToken)
     {
         await settingsService.ResetAsync(cancellationToken);

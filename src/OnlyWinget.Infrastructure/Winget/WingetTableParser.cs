@@ -80,8 +80,9 @@ public sealed class WingetTableParser
 
         return lines
             .Skip(separatorIndex + 1)
+            .Where(line => !IsSeparatorLine(line))
             .Select(line => ParseRow(line, starts, headers))
-            .Where(row => row.Count > 0)
+            .Where(row => row.Count > 0 && IsValidRow(row))
             .ToArray();
     }
 
@@ -212,5 +213,58 @@ public sealed class WingetTableParser
 
         var end = index + 1 < starts.Length ? Math.Min(starts[index + 1], line.Length) : line.Length;
         return line[start..end];
+    }
+
+    private static bool IsSeparatorLine(string line) =>
+        line.All(character => character == '-' || char.IsWhiteSpace(character));
+
+    public static bool IsValidRow(IReadOnlyDictionary<string, string> row)
+    {
+        if (row.TryGetValue("Id", out var id) && IsInvalidIdentifier(id))
+        {
+            return false;
+        }
+
+        if (row.TryGetValue("Name", out var name) && IsInvalidIdentifier(name))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsInvalidIdentifier(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        var trimmed = value.Trim();
+        if (trimmed.All(c => c == '-' || c == '.' || char.IsWhiteSpace(c)))
+        {
+            return true;
+        }
+
+        if (HeaderTranslations.ContainsKey(trimmed))
+        {
+            return true;
+        }
+
+        if (trimmed.Equals("Nome", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Ver", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Name", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Version", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Versione", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Available", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Disponibile", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Origine", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
     }
 }

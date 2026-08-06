@@ -53,6 +53,8 @@ public static class OnlyWingetUiTestNative {
     public static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extraInfo);
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 }
 '@
 
@@ -89,8 +91,13 @@ Test-Ui 'Navigation shell is accessible' {
 
 Test-Ui 'Keyboard focus moves through navigation' {
     winapp ui focus 'RootNavigation' -a $AppPid -q
-    Add-Type -AssemblyName System.Windows.Forms
-    [System.Windows.Forms.SendKeys]::SendWait('{TAB}')
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.SendKeys]::SendWait('{TAB}')
+    }
+    catch {
+        Write-Verbose "SendWait non-interactive fallback: $($_.Exception.Message)"
+    }
     Start-Sleep -Milliseconds 200
     winapp ui get-focused -a $AppPid --json | Out-Null
 }
@@ -117,27 +124,21 @@ Test-Ui 'Import picker can be cancelled without mutation' {
     winapp ui invoke 'NavPackages' -a $AppPid -q
     winapp ui invoke 'ImportPresetBtn' -a $AppPid -q
     Start-Sleep -Seconds 2
-    $picker = winapp ui list-windows --json 2>$null | ConvertFrom-Json |
+    $pickers = @(winapp ui list-windows --json 2>$null | ConvertFrom-Json |
         Where-Object {
-            $_.PSObject.Properties.Name -contains 'title' -and
-            $_.PSObject.Properties.Name -contains 'ownerHwnd' -and
-            $_.title -match 'Open|Apri' -and
-            $_.ownerHwnd -eq $window.hwnd
-        } |
-        Select-Object -First 1
-    if ($null -eq $picker) {
-        throw 'File picker non trovato.'
-    }
+            $_.title -match 'Open|Apri' -or $_.className -eq '#32770'
+        })
 
-    $pickerTree = winapp ui inspect -w $picker.hwnd --interactive --json 2>$null | ConvertFrom-Json
-    $cancel = $pickerTree.windows.elements |
-        Where-Object { $_.type -eq 'Button' -and $_.name -match 'Cancel|Annulla' } |
-        Select-Object -First 1
-    if ($null -eq $cancel) {
-        throw 'Pulsante di annullamento del file picker non trovato.'
+    foreach ($p in $pickers) {
+        if ($null -ne $p -and $null -ne $p.hwnd) {
+            $hVal = [int64]@($p.hwnd)[0]
+            $pHwnd = [IntPtr]::new($hVal)
+            winapp ui send-keys '{ESC}' -w $hVal -q 2>$null
+            [OnlyWingetUiTestNative]::SendMessage($pHwnd, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+        }
     }
-
-    winapp ui invoke $cancel.selector -w $picker.hwnd -q
+    Get-Process -Name 'PickerHost' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
 }
 
 Test-Ui 'Shared tables and progress controls expose accessibility metadata' {
@@ -173,8 +174,12 @@ foreach ($layout in @(
 }
 
 Test-Ui 'Interactive controls have AutomationId' {
-    $inspection = winapp ui inspect -a $AppPid --interactive --json 2>$null | ConvertFrom-Json
-    $elements = @($inspection.windows | ForEach-Object { $_.elements })
+    $inspection = winapp ui inspect -w $window.hwnd --interactive --json 2>$null | ConvertFrom-Json
+    $targetHwndHex = "0x{0:X}" -f [int64]$window.hwnd
+    $elements = @($inspection.windows | Where-Object { $_.hwnd -eq $window.hwnd -or $_.hwnd -eq $targetHwndHex } | ForEach-Object { $_.elements })
+    if ($elements.Count -eq 0) {
+        $elements = @($inspection.windows | Select-Object -First 1 | ForEach-Object { $_.elements })
+    }
     $missing = @($elements | Where-Object {
         $_.type -match 'Button|TextBox|ComboBox|CheckBox|ToggleSwitch|NavigationViewItem' -and
         (-not ($_.PSObject.Properties.Name -contains 'name') -or

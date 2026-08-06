@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.App;
 using OnlyWinget.Domain.Packages;
@@ -9,12 +10,20 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Packages;
 
-public sealed class PresetsViewModel : FeatureViewModel
+public sealed partial class PresetsViewModel : FeatureViewModel
 {
+    [ObservableProperty]
     private bool isExecuting;
+
+    [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
+
+    [ObservableProperty]
     private string? activePresetName;
+
+    [ObservableProperty]
     private SelectionHeaderState headerState;
+
     private CancellationTokenSource? cancellation;
 
     public PresetsViewModel(Action<Action> dispatch) : base(App.Workflow, dispatch)
@@ -29,11 +38,7 @@ public sealed class PresetsViewModel : FeatureViewModel
     public ValidatedField PresetName { get; }
     public ValidatedField PackageId { get; }
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
-    public string? ActivePresetName { get => activePresetName; private set => SetProperty(ref activePresetName, value); }
-    public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
     public bool HasOperationResults => OperationResults.Count > 0;
-    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
-    public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
     public OperationProgress? Progress => Workflow.State.OperationProgress;
     public string? Error => Workflow.State.UserVisibleError;

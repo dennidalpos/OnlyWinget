@@ -62,19 +62,24 @@ function Get-InstalledOnlyWingetProduct {
 
         Get-ChildItem -LiteralPath $root | ForEach-Object {
             $item = Get-ItemProperty -LiteralPath $_.PSPath -ErrorAction SilentlyContinue
-            $displayName = $item.PSObject.Properties['DisplayName']?.Value
-            if ($displayName -eq $productName) {
-                $systemComponent = $item.PSObject.Properties['SystemComponent']?.Value
+            $propDisplayName = $item.PSObject.Properties['DisplayName']
+            if ($null -ne $propDisplayName -and $propDisplayName.Value -eq $productName) {
+                $propSystemComponent = $item.PSObject.Properties['SystemComponent']
+                $systemComponent = if ($null -ne $propSystemComponent) { $propSystemComponent.Value } else { $null }
                 if ($VisibleOnly -and $systemComponent -eq 1) {
                     return
                 }
 
+                $propDisplayVersion = $item.PSObject.Properties['DisplayVersion']
+                $propInstallLocation = $item.PSObject.Properties['InstallLocation']
+                $propUninstallString = $item.PSObject.Properties['UninstallString']
+
                 [pscustomobject]@{
                     Key = $_.PSChildName
-                    DisplayVersion = $item.PSObject.Properties['DisplayVersion']?.Value
-                    InstallLocation = $item.PSObject.Properties['InstallLocation']?.Value
+                    DisplayVersion = if ($null -ne $propDisplayVersion) { $propDisplayVersion.Value } else { $null }
+                    InstallLocation = if ($null -ne $propInstallLocation) { $propInstallLocation.Value } else { $null }
                     SystemComponent = $systemComponent
-                    UninstallString = $item.PSObject.Properties['UninstallString']?.Value
+                    UninstallString = if ($null -ne $propUninstallString) { $propUninstallString.Value } else { $null }
                 }
             }
         }

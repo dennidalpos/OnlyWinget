@@ -114,6 +114,31 @@ internal static class AppDiagnostics
     public static void ClearLogs()
     {
         while (InMemoryBuffer.TryDequeue(out _)) { }
+
+        try
+        {
+            lock (Sync)
+            {
+                var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var logDirectory = Path.Combine(root, "OnlyWinget", "logs");
+                if (Directory.Exists(logDirectory))
+                {
+                    foreach (var file in Directory.GetFiles(logDirectory, "*.log"))
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+        }
     }
 
     public static void OpenLog()

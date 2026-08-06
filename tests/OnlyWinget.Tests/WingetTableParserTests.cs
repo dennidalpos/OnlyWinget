@@ -72,4 +72,23 @@ public sealed class WingetTableParserTests
         Assert.Equal("Company.Two", rows[1]["Id"]);
         Assert.Equal("2.0.0", rows[1]["Version"]);
     }
+
+    [Fact]
+    public void ParseFiltersOutExtraSeparatorLinesAndHeaderTitles()
+    {
+        const string output = """
+            Nome                Id                         Versione    Disponibile
+            ----------------------------------------------------------------------
+            -----------------   -----------------          ---------   -------
+            AnyDesk             AnyDesk.AnyDesk            ad 7.0.16   9.7.13
+            Nome        Id      Ver                        sione Disp  onibile
+            WinDirStat 2.7.0    WinDirStat.WinDirStat      2.7.0       2.8.0
+            """;
+
+        var rows = new WingetTableParser().Parse(output);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("AnyDesk.AnyDesk", rows[0]["Id"]);
+        Assert.Equal("WinDirStat.WinDirStat", rows[1]["Id"]);
+    }
 }

@@ -34,7 +34,8 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         SystemBackdrop = new MicaBackdrop();
-        ResizeWindow();
+        Activated += OnWindowActivated;
+        ResizeAndCenterWindow();
         ApplyWindowIcon();
         var currentSettings = App.UiServices.Settings.Current;
         lastLanguage = currentSettings.Language;
@@ -55,6 +56,7 @@ public sealed partial class MainWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        Activated -= OnWindowActivated;
         SizeChanged -= OnWindowSizeChanged;
         AppWindow.Changed -= OnAppWindowChanged;
         App.UiServices.Settings.Changed -= OnSettingsChanged;
@@ -125,13 +127,29 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(nint windowHandle);
 
-    private void ResizeWindow()
+    private void ResizeAndCenterWindow()
     {
         var windowHandle = WindowNative.GetWindowHandle(this);
+        var windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
+        var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Nearest);
+        var workArea = displayArea.WorkArea;
         var scale = GetDpiForWindow(windowHandle) / 96d;
-        AppWindow.Resize(new SizeInt32(
-            (int)Math.Ceiling(InitialWidth * scale),
-            (int)Math.Ceiling(InitialHeight * scale)));
+
+        var desiredWidth = (int)Math.Ceiling(InitialWidth * scale);
+        var desiredHeight = (int)Math.Ceiling(InitialHeight * scale);
+
+        var width = Math.Min(desiredWidth, workArea.Width);
+        var height = Math.Min(desiredHeight, workArea.Height);
+
+        var x = Math.Max(workArea.X, workArea.X + (workArea.Width - width) / 2);
+        var y = Math.Max(workArea.Y, workArea.Y + (workArea.Height - height) / 2);
+
+        AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+    }
+
+    private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
+    {
+        UpdateTitleBarPadding();
     }
 
     private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs args)
@@ -199,7 +217,8 @@ public sealed partial class MainWindow : Window
 
         if (caps.IsWingetAvailable == true)
         {
-            WingetStatusBadge.Text = string.IsNullOrWhiteSpace(caps.WingetVersion) ? "Winget Available" : $"Winget v{caps.WingetVersion}";
+            var rawVersion = caps.WingetVersion?.TrimStart('v', 'V');
+            WingetStatusBadge.Text = string.IsNullOrWhiteSpace(rawVersion) ? "Winget Available" : $"Winget v{rawVersion}";
             WingetStatusBadge.Glyph = "\uE802";
             WingetStatusBadge.Severity = Controls.BadgeSeverity.Success;
             WingetStatusBadge.Visibility = Visibility.Visible;

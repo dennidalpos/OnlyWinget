@@ -23,7 +23,12 @@ public sealed partial class ActivityPage : Page
         Unloaded += OnUnloaded;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs args) => viewModel.Activate();
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        viewModel.Activate();
+        ApplyFilter();
+    }
+
     private void OnUnloaded(object sender, RoutedEventArgs args) => viewModel.Deactivate();
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
@@ -51,6 +56,7 @@ public sealed partial class ActivityPage : Page
         {
             clearedEntries = App.Workflow.State.Activity.ToArray();
             App.Workflow.ClearActivity();
+            AppDiagnostics.ClearLogs();
             PageState.ShowUndo(TextResources.Get("Activity_Cleared"), TextResources.Get("Command_Undo"));
         }
     }

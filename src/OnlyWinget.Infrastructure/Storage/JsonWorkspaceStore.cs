@@ -1,10 +1,13 @@
 using System.Text.Json;
-using System.Threading;
+using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget.Infrastructure.Storage;
 
-public sealed class JsonWorkspaceStore(string filePath, Action<string, Exception>? logger = null) : IWorkspaceStore
+public sealed class JsonWorkspaceStore(
+    string filePath,
+    Action<string, Exception>? logger = null,
+    ILogger<JsonWorkspaceStore>? storeLogger = null) : IWorkspaceStore
 {
     private readonly SemaphoreSlim saveGate = new(1, 1);
 
@@ -42,6 +45,7 @@ public sealed class JsonWorkspaceStore(string filePath, Action<string, Exception
             catch (JsonException exception)
             {
                 logger?.Invoke("JsonWorkspaceStore.LoadAsync", exception);
+                storeLogger?.LogError(exception, "Failed to deserialize workspace file at '{FilePath}'", filePath);
                 return WorkspaceState.Empty;
             }
 

@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.Winget;
@@ -8,25 +9,30 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Updates;
 
-public sealed class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
 {
     private CancellationTokenSource? cancellation;
+
+    [ObservableProperty]
     private bool isLoading;
+
+    [ObservableProperty]
     private bool isExecuting;
+
+    [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
+
+    [ObservableProperty]
     private SelectionHeaderState headerState;
+
+    [ObservableProperty]
     private OperationProgress? progress;
 
     public ObservableCollection<UpdateRow> Updates { get; } = [];
     public ObservableCollection<OperationResultRow> OperationResults { get; } = [];
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
-    public bool IsLoading { get => isLoading; private set => SetProperty(ref isLoading, value); }
-    public bool IsExecuting { get => isExecuting; private set => SetProperty(ref isExecuting, value); }
     public bool IsBusy => IsLoading || IsExecuting;
     public bool HasOperationResults => OperationResults.Count > 0;
-    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
-    public SelectionHeaderState HeaderState { get => headerState; private set => SetProperty(ref headerState, value); }
-    public OperationProgress? Progress { get => progress; private set => SetProperty(ref progress, value); }
     public string ProgressText => OperationProgressFormatter.FormatProgressText(Progress, TextResources.Get);
     public bool ShouldInitialRefresh => Workflow.State.Updates.Count == 0 && Workflow.State.BusyState == ApplicationBusyState.Idle;
     public string? Error => Workflow.State.UserVisibleError;

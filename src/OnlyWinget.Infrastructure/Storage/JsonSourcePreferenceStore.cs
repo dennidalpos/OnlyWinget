@@ -1,10 +1,13 @@
 using System.Text.Json;
-using System.Threading;
+using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget.Infrastructure.Storage;
 
-public sealed class JsonSourcePreferenceStore(string filePath, Action<string, Exception>? logger = null) : ISourcePreferenceStore
+public sealed class JsonSourcePreferenceStore(
+    string filePath,
+    Action<string, Exception>? logger = null,
+    ILogger<JsonSourcePreferenceStore>? storeLogger = null) : ISourcePreferenceStore
 {
     private readonly SemaphoreSlim saveGate = new(1, 1);
 
@@ -40,6 +43,7 @@ public sealed class JsonSourcePreferenceStore(string filePath, Action<string, Ex
             catch (JsonException exception)
             {
                 logger?.Invoke("JsonSourcePreferenceStore.LoadAsync", exception);
+                storeLogger?.LogError(exception, "Failed to deserialize source preferences file at '{FilePath}'", filePath);
                 return SourcePreferences.Empty;
             }
         }

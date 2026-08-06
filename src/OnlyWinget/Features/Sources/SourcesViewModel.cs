@@ -1,10 +1,11 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Presentation;
 using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Sources;
 
-public sealed class SourcesViewModel : FeatureViewModel
+public sealed partial class SourcesViewModel : FeatureViewModel
 {
     private CancellationTokenSource? cancellation;
     private IReadOnlyList<SourceRow> allSources = [];
@@ -12,9 +13,17 @@ public sealed class SourcesViewModel : FeatureViewModel
     private string argumentFilter = string.Empty;
     private string typeFilter = string.Empty;
     private string statusFilter = string.Empty;
+
+    [ObservableProperty]
     private bool isRefreshing;
+
+    [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
+
+    [ObservableProperty]
     private SourceRow? selectedSource;
+
+    partial void OnSelectedSourceChanged(SourceRow? value) => OnPropertyChanged(nameof(Commands));
 
     public SourcesViewModel(Action<Action> dispatch) : base(App.Workflow, dispatch)
     {
@@ -25,9 +34,6 @@ public sealed class SourcesViewModel : FeatureViewModel
     public ValidatedField Name { get; }
     public ValidatedField Argument { get; } = new(ValidateArgument);
     public IReadOnlyDictionary<UiCommandId, UiCommand> Commands { get; private set; } = new Dictionary<UiCommandId, UiCommand>();
-    public bool IsRefreshing { get => isRefreshing; private set => SetProperty(ref isRefreshing, value); }
-    public FeatureState PageState { get => pageState; private set => SetProperty(ref pageState, value); }
-    public SourceRow? SelectedSource { get => selectedSource; set { if (SetProperty(ref selectedSource, value)) OnPropertyChanged(nameof(Commands)); } }
     public bool CanAdd => Name.IsValid && Argument.IsValid && Name.Value.Trim().Length > 0 && Argument.Value.Trim().Length > 0 && IsEnabled(UiCommandId.AddSource);
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;

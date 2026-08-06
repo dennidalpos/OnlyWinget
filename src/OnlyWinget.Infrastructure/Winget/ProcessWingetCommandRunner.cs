@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
 
@@ -5,10 +6,11 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class ProcessWingetCommandRunner(
     IExternalProcessRunner processRunner,
-    WingetProgressParser progressParser) : IWingetCommandRunner
+    WingetProgressParser progressParser,
+    ILogger<ProcessWingetCommandRunner>? logger = null) : IWingetCommandRunner
 {
     public ProcessWingetCommandRunner()
-        : this(new global::OnlyWinget.Infrastructure.System.ProcessExternalProcessRunner(), new WingetProgressParser())
+        : this(new global::OnlyWinget.Infrastructure.System.ProcessExternalProcessRunner(), new WingetProgressParser(), null)
     {
     }
 
@@ -30,8 +32,10 @@ public sealed class ProcessWingetCommandRunner(
                     progress.Report(parsed);
                 }
             });
+        logger?.LogInformation("Running winget command '{Command}' with args: {Arguments}", command, string.Join(" ", arguments));
         var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
             .ConfigureAwait(false);
+        logger?.LogDebug("Command '{Command}' finished with exit code {ExitCode}", command, result.ExitCode);
 
         if (!result.Succeeded &&
             !(command == "winget" && arguments.Count > 1 && arguments[0] == "source" && arguments[1] == "reset") &&
