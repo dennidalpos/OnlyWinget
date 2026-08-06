@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Media;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics.CodeAnalysis;
 using OnlyWinget.Presentation;
 
 namespace OnlyWinget.Controls;
@@ -838,12 +839,14 @@ public sealed partial class OnlyWingetTable : UserControl
         SyncListViewSelectionWithItems();
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Reflection on UI model item types for table property binding.")]
     private Func<object, object?>? GetCachedGetter(Type type, string propertyName) =>
         filterEngine.GetCachedGetter(type, propertyName);
 
     private bool MatchesFilters(object item) =>
         filterEngine.MatchesFilters(item);
 
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Reflection on UI model item types for table property value retrieval.")]
     internal string? GetItemPropertyValue(object item, string propertyName)
     {
         if (item == null || string.IsNullOrEmpty(propertyName)) return null;

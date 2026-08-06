@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -30,7 +31,9 @@ internal sealed class OnlyWingetTableFilterEngine
         columnFilters.Clear();
     }
 
-    public Func<object, object?>? GetCachedGetter(Type type, string propertyName)
+    public Func<object, object?>? GetCachedGetter(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type type,
+        string propertyName)
     {
         if (string.IsNullOrEmpty(propertyName))
         {
@@ -65,7 +68,9 @@ internal sealed class OnlyWingetTableFilterEngine
         return getter;
     }
 
-    private PropertyInfo? GetCachedProperty(Type type, string propertyName)
+    private PropertyInfo? GetCachedProperty(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type type,
+        string propertyName)
     {
         if (!propertyCache.TryGetValue(type, out var typeProperties))
         {
@@ -104,6 +109,7 @@ internal sealed class OnlyWingetTableFilterEngine
         }
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Reflection on UI model item types for column filtering.")]
     public bool MatchesFilters(object item)
     {
         if (columnFilters.Count == 0)

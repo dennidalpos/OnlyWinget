@@ -21,6 +21,8 @@ public sealed class JsonSourcePreferenceStore(
         StorageConstants.ApplicationFolderName,
         "source-preferences-v1.json");
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "SourcePreferencesDocument DTO is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "SourcePreferencesDocument DTO is defined statically.")]
     public async Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken)
     {
         await saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -53,6 +55,8 @@ public sealed class JsonSourcePreferenceStore(
         }
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "SourcePreferencesDocument DTO is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "SourcePreferencesDocument DTO is defined statically.")]
     public async Task SaveAsync(SourcePreferences preferences, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(preferences);

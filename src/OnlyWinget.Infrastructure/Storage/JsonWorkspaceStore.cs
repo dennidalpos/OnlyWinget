@@ -25,6 +25,8 @@ public sealed class JsonWorkspaceStore(
         }
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WorkspaceDocument DTO is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WorkspaceDocument DTO is defined statically.")]
     public async Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken)
     {
         await saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -62,6 +64,8 @@ public sealed class JsonWorkspaceStore(
         }
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WorkspaceDocument DTO is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WorkspaceDocument DTO is defined statically.")]
     public async Task SaveAsync(WorkspaceState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);

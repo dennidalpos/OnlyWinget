@@ -14,11 +14,15 @@ public sealed class WorkspaceDbContext : DbContext
 
     public DbSet<OperationLogEntity> OperationLogs => Set<OperationLogEntity>();
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "EF Core model is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "EF Core model is defined statically.")]
     public WorkspaceDbContext(string dbPath)
     {
         this.dbPath = dbPath;
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "EF Core model is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "EF Core model is defined statically.")]
     public WorkspaceDbContext(DbContextOptions<WorkspaceDbContext> options)
         : base(options)
     {
@@ -70,5 +74,8 @@ public sealed class WorkspaceDbContext : DbContext
     {
         await Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken).ConfigureAwait(false);
         await Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;", cancellationToken).ConfigureAwait(false);
+        await Database.ExecuteSqlRawAsync("PRAGMA temp_store=MEMORY;", cancellationToken).ConfigureAwait(false);
+        await Database.ExecuteSqlRawAsync("PRAGMA mmap_size=268435456;", cancellationToken).ConfigureAwait(false);
+        await Database.ExecuteSqlRawAsync("PRAGMA cache_size=-64000;", cancellationToken).ConfigureAwait(false);
     }
 }

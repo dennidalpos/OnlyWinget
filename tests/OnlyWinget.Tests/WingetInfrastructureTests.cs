@@ -526,7 +526,8 @@ public sealed class WingetInfrastructureTests
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
             IProgress<WingetProgress>? progress = null,
-            TimeSpan? timeout = null)
+            TimeSpan? timeout = null,
+            bool requireElevation = false)
         {
             LastCommand = command;
             LastArguments = arguments.ToArray();
@@ -558,7 +559,8 @@ public sealed class WingetInfrastructureTests
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
             IProgress<string>? standardOutputLines = null,
-            TimeSpan? timeout = null)
+            TimeSpan? timeout = null,
+            bool requireElevation = false)
         {
             LastArguments = arguments.ToArray();
             Calls.Add(LastArguments);

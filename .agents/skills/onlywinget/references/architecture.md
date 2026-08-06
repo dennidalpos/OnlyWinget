@@ -38,22 +38,24 @@ Infrastructure      ──> Application ──> Domain
 - **Role**: Implements the ports defined in the Application layer using concrete libraries and OS APIs.
 - **Dependencies**: Depends on the Application and Domain layers.
 - **Key Implementations**:
-  - `ProcessExternalProcessRunner`: Spawns CLI processes with timeout constraints (120s), handles cancellation by killing process trees, and redirects standard output stream line-by-line.
-  - `ProcessWingetCommandRunner`: A winget CLI runner wrapping the external process runner.
-  - `WingetTableParser`: Parses winget's tabular CLI stdout. Uses multi-language column header localization (EN, IT, FR, ES, DE) to support running on different system locales.
+  - `SqliteWorkspaceStore` & `WorkspaceDbContext`: Primary relateral persistence via **SQLite embedded** and **Entity Framework Core 10** (`%LOCALAPPDATA%\OnlyWinget\onlywinget.db`) with automatic legacy JSON data migration.
+  - `ComWingetPackageService`: Primary WinGet package search/resolve engine using native COM API (`Microsoft.Management.Deployment`) with `IMemoryCache` TTL caching.
+  - `ComWindowsUpdateService`: Primary Windows Update engine using direct C# COM Interop (`WUApiLib` / `IUpdateSession`) with real-time progress callbacks.
+  - `ProcessWingetCommandRunner` & `PowerShellWindowsUpdateService`: Fallback execution runners for CLI execution when COM APIs are unavailable.
+  - `WingetTableParser`: Parses winget's tabular CLI stdout with multi-language column header localization (EN, IT, FR, ES, DE).
   - `WingetErrorClassifier`: Classifies CLI string outputs to map failures into structured `WingetErrorKind` enums.
-  - `PowerShellWindowsUpdateService`: Connects to Windows Update Agent API via COM (`Microsoft.Update.Session`) inside base64 encoded PowerShell scripts, parsing returned JSON models.
-  - `JsonWorkspaceStore` / `JsonSourcePreferenceStore`: Implements file-based JSON persistence in `%LOCALAPPDATA%\OnlyWinget\` with instance-scoped serialization.
+  - `JsonSourcePreferenceStore` & `DpapiSecretStore`: Implements DPAPI-encrypted secret storage and source preference persistence in `%LOCALAPPDATA%\OnlyWinget\`.
 
 ### WinUI Presentation Layer (`OnlyWinget`)
 - **Location**: `src/OnlyWinget`
 - **Role**: Entry point of the application and the Graphical User Interface built on WinUI 3.
 - **Dependencies**: Depends on Application, Domain, and Infrastructure layers.
 - **Key Implementations**:
-  - `AppComposition`: The static composition root that builds UI services and real infrastructure services, then constructs the `OnlyWingetApplication` instance.
+  - `AppComposition`: Composition root leveraging `Microsoft.Extensions.Hosting` (`Host.CreateDefaultBuilder()`), registering DI services and configuring Serilog structured logging.
+  - ViewModels: Built with **`CommunityToolkit.Mvvm`** (v8.4+) utilizing `[ObservableProperty]`, `[RelayCommand]` source generators, and `WeakReferenceMessenger`.
   - `MainWindow`: Customs the title bar, configures Mica system backdrop, and hosts the navigation shell (`NavigationView`) with a page factory and page instance cache.
   - `TextResources`: Internal localization dictionary (no RESW/RESX). Supports English and Italian.
-  - **Custom Controls**: Reusable layouts such as `OnlyWingetTable` (custom list-view grid table with tri-state selection header) and `StatePresenter` (loading/empty/error state visual transitions).
+  - **Custom Controls**: Reusable layouts such as `OnlyWingetTable` (custom list-view grid table with `ItemsRepeater` virtualization and tri-state selection header) and `StatePresenter` (loading/empty/error state visual transitions).
 
 ---
 

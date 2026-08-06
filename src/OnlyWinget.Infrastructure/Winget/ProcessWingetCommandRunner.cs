@@ -19,7 +19,8 @@ public sealed class ProcessWingetCommandRunner(
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         IProgress<WingetProgress>? progress = null,
-        TimeSpan? timeout = null)
+        TimeSpan? timeout = null,
+        bool requireElevation = false)
     {
         progressParser.Reset();
         progress?.Report(new WingetProgress(WingetProgressPhase.Starting, 0, null));
@@ -32,8 +33,11 @@ public sealed class ProcessWingetCommandRunner(
                     progress.Report(parsed);
                 }
             });
-        logger?.LogInformation("Running winget command '{Command}' with args: {Arguments}", command, string.Join(" ", arguments));
-        var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
+
+        var mustElevate = requireElevation || IsWriteOperation(command, arguments);
+
+        logger?.LogInformation("Running winget command '{Command}' (Elevated: {Elevated}) with args: {Arguments}", command, mustElevate, string.Join(" ", arguments));
+        var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout, requireElevation: mustElevate)
             .ConfigureAwait(false);
         logger?.LogDebug("Command '{Command}' finished with exit code {ExitCode}", command, result.ExitCode);
 
@@ -44,11 +48,11 @@ public sealed class ProcessWingetCommandRunner(
              result.StandardOutput.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase) ||
              result.StandardError.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase)))
         {
-            var resetResult = await processRunner.RunAsync("winget", ["source", "reset", "--force"], cancellationToken, timeout: timeout)
+            var resetResult = await processRunner.RunAsync("winget", ["source", "reset", "--force"], cancellationToken, timeout: timeout, requireElevation: true)
                 .ConfigureAwait(false);
             if (resetResult.Succeeded)
             {
-                result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
+                result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout, requireElevation: mustElevate)
                     .ConfigureAwait(false);
             }
         }
@@ -58,5 +62,16 @@ public sealed class ProcessWingetCommandRunner(
             result.Succeeded ? 100 : null,
             null));
         return new WingetCommandResult(result.ExitCode, result.StandardOutput, result.StandardError);
+    }
+
+    private static bool IsWriteOperation(string command, IReadOnlyList<string> arguments)
+    {
+        if (string.Equals(command, "winget", StringComparison.OrdinalIgnoreCase) && arguments.Count > 0)
+        {
+            var action = arguments[0].ToLowerInvariant();
+            return action is "install" or "uninstall" or "upgrade" or "pin" ||
+                   (action == "source" && arguments.Count > 1 && arguments[1].ToLowerInvariant() is "add" or "remove" or "reset");
+        }
+        return false;
     }
 }

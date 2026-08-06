@@ -2,10 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.App;
+using OnlyWinget.Application.Security;
 using OnlyWinget.Application.Storage;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Application.Winget;
+using OnlyWinget.Infrastructure.Security;
 using OnlyWinget.Infrastructure.Storage;
 using OnlyWinget.Infrastructure.Storage.Sqlite;
 using OnlyWinget.Infrastructure.System;
@@ -80,12 +82,32 @@ internal static class AppComposition
                     AppDiagnostics.WriteException,
                     sp.GetService<ILogger<JsonSourcePreferenceStore>>()));
 
-                services.AddSingleton<WingetPackageSearchService>();
+                services.AddSingleton<ISecureDataProtectionService, DpapiDataProtectionService>();
+                services.AddSingleton<ISecureSecretStore>(sp => new DpapiSecretStore(
+                    DpapiSecretStore.DefaultFilePath,
+                    sp.GetRequiredService<ISecureDataProtectionService>(),
+                    AppDiagnostics.WriteException,
+                    sp.GetService<ILogger<DpapiSecretStore>>()));
+
+                services.AddMemoryCache();
+
+                services.AddSingleton(sp => new WingetPackageSearchService(
+                    sp.GetRequiredService<IWingetCommandRunner>(),
+                    sp.GetRequiredService<WingetTableParser>(),
+                    sp.GetRequiredService<WingetErrorClassifier>(),
+                    sp.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()));
+
                 services.AddSingleton<WingetPackageResolver>();
                 services.AddSingleton<PowerShellWindowsUpdateService>();
 
-                services.AddSingleton<IPackageSearchService, ComWingetPackageService>();
-                services.AddSingleton<IPackageResolver, ComWingetPackageService>();
+                services.AddSingleton<ComWingetPackageService>(sp => new ComWingetPackageService(
+                    sp.GetRequiredService<WingetPackageSearchService>(),
+                    sp.GetRequiredService<WingetPackageResolver>(),
+                    sp.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
+                    sp.GetService<ILogger<ComWingetPackageService>>()));
+
+                services.AddSingleton<IPackageSearchService>(sp => sp.GetRequiredService<ComWingetPackageService>());
+                services.AddSingleton<IPackageResolver>(sp => sp.GetRequiredService<ComWingetPackageService>());
                 services.AddSingleton<IUpdateLoader, WingetUpdateLoader>();
                 services.AddSingleton<IWindowsUpdateService, ComWindowsUpdateService>();
                 services.AddSingleton<IWingetSourceService, WingetSourceService>();

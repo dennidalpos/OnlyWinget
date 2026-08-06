@@ -17,6 +17,7 @@
     <FileVersion>1.0.2.0</FileVersion>
     <InformationalVersion>1.0.2</InformationalVersion>
     <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>

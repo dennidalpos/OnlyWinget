@@ -7,6 +7,7 @@ param(
         'Test',
         'Build',
         'Package',
+        'PackageMsix',
         'Check',
         'Clean',
         'Dev',
@@ -59,6 +60,9 @@ function Invoke-OnlyWingetTask {
         }
         'Package' {
             & (Join-Path $PSScriptRoot 'package.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive
+        }
+        'PackageMsix' {
+            & (Join-Path $PSScriptRoot 'package-msix.ps1') -Configuration $Configuration -NonInteractive
         }
         'Check' {
             & (Join-Path $PSScriptRoot 'check.ps1') -Configuration $Configuration -RunWingetSmoke:$RunWingetSmoke -NonInteractive

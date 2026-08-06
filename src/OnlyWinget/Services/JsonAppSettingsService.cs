@@ -1,11 +1,17 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget.Services;
 
+[JsonSerializable(typeof(AppSettings))]
+[JsonSourceGenerationOptions(WriteIndented = true)]
+internal partial class AppSettingsJsonContext : JsonSerializerContext
+{
+}
+
 internal sealed class JsonAppSettingsService : IAppSettingsService
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
     private readonly string filePath;
     private readonly SemaphoreSlim saveGate = new(1, 1);
 
@@ -35,7 +41,7 @@ internal sealed class JsonAppSettingsService : IAppSettingsService
             var temporaryPath = filePath + ".tmp";
             await File.WriteAllTextAsync(
                 temporaryPath,
-                JsonSerializer.Serialize(settings, SerializerOptions),
+                JsonSerializer.Serialize(settings, AppSettingsJsonContext.Default.AppSettings),
                 cancellationToken);
             File.Move(temporaryPath, filePath, true);
             Current = settings;
@@ -55,7 +61,7 @@ internal sealed class JsonAppSettingsService : IAppSettingsService
         try
         {
             return File.Exists(path)
-                ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path)) ?? new AppSettings()
+                ? JsonSerializer.Deserialize(File.ReadAllText(path), AppSettingsJsonContext.Default.AppSettings) ?? new AppSettings()
                 : new AppSettings();
         }
         catch (JsonException)

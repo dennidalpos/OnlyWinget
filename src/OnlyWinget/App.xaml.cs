@@ -1,8 +1,10 @@
+using System.Globalization;
 using Microsoft.Extensions.Hosting;
 using OnlyWinget.Application.App;
+using OnlyWinget.Application.Navigation;
 using OnlyWinget.Application.System;
+using OnlyWinget.Infrastructure.System;
 using OnlyWinget.Services;
-using System.Globalization;
 
 namespace OnlyWinget;
 
@@ -32,6 +34,16 @@ public partial class App : Microsoft.UI.Xaml.Application
         ApplySettings();
         AppDiagnostics.Initialize();
         AppDiagnostics.Register(this);
+
+        if (OperatingSystem.IsWindows())
+        {
+            var exePath = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+            if (!string.IsNullOrWhiteSpace(exePath))
+            {
+                UrlProtocolRegistrationService.Register(exePath);
+            }
+        }
+
         InitializeComponent();
     }
 
@@ -55,6 +67,17 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             window = new MainWindow();
             window.Activate();
+
+            var commandLineArgs = Environment.GetCommandLineArgs();
+            var protocolUrl = commandLineArgs.FirstOrDefault(arg => arg.StartsWith("onlywinget://", StringComparison.OrdinalIgnoreCase));
+            if (protocolUrl is not null)
+            {
+                var request = UrlProtocolParser.Parse(protocolUrl);
+                if (request.IsValid)
+                {
+                    AppDiagnostics.Write("ProtocolActivation", $"Activated with action={request.Action}, packageId={request.PackageId}, query={request.Query}");
+                }
+            }
         }
         catch (Exception exception)
         {
@@ -62,5 +85,4 @@ public partial class App : Microsoft.UI.Xaml.Application
             throw;
         }
     }
-
 }

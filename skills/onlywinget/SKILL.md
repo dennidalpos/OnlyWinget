@@ -22,23 +22,25 @@ This skill is the project-specific developer guide for agents working on [OnlyWi
 
 2. **Concurrency & Thread Safety**:
    - Guard shared in-memory updates (like `packageMetadata` additions) with `lock` sync primitives.
-   - Guard file/persistence writes (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`, app settings storage) using instance-scoped `SemaphoreSlim(1,1)`.
+   - Persistence operations (`SqliteWorkspaceStore`, `JsonSourcePreferenceStore`, app settings storage) use embedded SQLite transaction blocks and instance-scoped `SemaphoreSlim(1,1)` guards.
    - Always pass a real `CancellationToken` to every cancellable operation. Never use `CancellationToken.None` for work designed to support cancellation.
 
 3. **WinUI Presentation & MVVM**:
-   - ViewModels bound via `x:Bind` must be declared `public` (constructors can remain `internal`) for successful compilation.
+   - Use `CommunityToolkit.Mvvm` source generators (`[ObservableProperty]`, `[RelayCommand]`) and `WeakReferenceMessenger`. ViewModels bound via `x:Bind` must be declared `public` (constructors can remain `internal`) for successful compilation.
    - Do NOT use `XamlReader.Load` to parse inline XAML strings at runtime. Generate grid-row cell layouts programmatically in C# (e.g., using `OnlyWingetTableRow`).
    - Use page item source collections stably and update them; avoid replacing whole collections unless necessary.
-   - Publish state changes using the instance-scoped `OnlyWingetApplication.StateChanged` event. Avoid static events or manual page broadcasts.
+   - Publish state changes using the instance-scoped `OnlyWingetApplication.StateChanged` event or `WeakReferenceMessenger`.
 
 4. **Localization**:
    - Only English and Italian strings are supported.
    - Do NOT create `.resw` or `.resx` files. All string values are stored in [TextResources.cs](file:///d:/GITHUB/OnlyWinget/src/OnlyWinget/TextResources.cs) code dictionaries.
 
 5. **External Processes & COM**:
+   - Primary WinGet search/resolve uses native COM API (`ComWingetPackageService` / `Microsoft.Management.Deployment`) with `IMemoryCache` TTL caching, falling back to CLI process parsing (`ProcessWingetCommandRunner`).
+   - Windows Update uses direct C# COM Interop (`ComWindowsUpdateService` / `WUApiLib`) with real-time progress callbacks, falling back to PowerShell Base64 scripts.
    - Centralize OS/winget/PowerShell capability checks in `ISystemCapabilityService`.
    - Scan Windows Update only on explicit user action; read-only discovery must not require administrative elevation.
-   - Guard all process execution (`ProcessExternalProcessRunner`) and COM interop with structured failure handling. Return actionable results (`WingetOperationOutcome`, `WindowsUpdateOperationOutcome`).
+   - Guard all process execution and COM interop with structured failure handling. Return actionable results (`WingetOperationOutcome`, `WindowsUpdateOperationOutcome`).
 
 ## Workflow Verification
 

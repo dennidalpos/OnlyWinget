@@ -7,5 +7,6 @@ public interface IWingetCommandRunner
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         IProgress<WingetProgress>? progress = null,
-        TimeSpan? timeout = null);
+        TimeSpan? timeout = null,
+        bool requireElevation = false);
 }

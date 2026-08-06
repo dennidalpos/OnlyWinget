@@ -21,6 +21,10 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
         WriteIndented = true
     };
 
+    private static readonly Func<WorkspaceDbContext, string, Task<WorkspaceMetadataEntity?>> CompiledGetMetadataByKeyQuery =
+        EF.CompileAsyncQuery((WorkspaceDbContext ctx, string key) =>
+            ctx.WorkspaceMetadata.AsNoTracking().FirstOrDefault(m => m.Key == key));
+
     public SqliteWorkspaceStore(
         string dbPath,
         string? legacyJsonPath = null,
@@ -58,10 +62,7 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var activePresetMeta = await context.WorkspaceMetadata
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Key == "ActivePresetName", cancellationToken)
-                .ConfigureAwait(false);
+            var activePresetMeta = await CompiledGetMetadataByKeyQuery(context, "ActivePresetName").ConfigureAwait(false);
 
             var presets = presetEntities.Select(p => new Preset(
                 p.Name,
@@ -154,6 +155,8 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
         }
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "EF Core model is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "EF Core model is defined statically.")]
     private async Task EnsureInitializedAsync(CancellationToken cancellationToken)
     {
         if (isInitialized)
@@ -184,6 +187,8 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
         isInitialized = true;
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Legacy WorkspaceDocument DTO is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Legacy WorkspaceDocument DTO is defined statically.")]
     private async Task PerformTransparentMigrationAsync(WorkspaceDbContext context, CancellationToken cancellationToken)
     {
         try

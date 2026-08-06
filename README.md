@@ -19,10 +19,11 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | Area | What it does |
 | --- | --- |
 | Presets | Create package lists, import/export the current `onlywinget.preset.v1` format, and run selected install/uninstall actions. |
-| Search | Search local `winget` sources, resolve package identity, and add selected results in batches. |
-| Updates | Review available `winget` upgrades and Windows Update results, select all or specific rows, and apply selected updates. |
-| Sources | Inspect `winget` sources, update/reset source metadata, add/remove sources, and persist disabled-source preferences locally. |
-| Safety | Clean architecture boundaries, cancellable operation design, current-format-only preset import, and local-only JSON storage. |
+| Search | Search local `winget` sources via native COM APIs (`Microsoft.Management.Deployment`) with in-memory caching (`IMemoryCache`), resolve package identity, and add selected results in batches. |
+| Updates | Review available `winget` upgrades and Windows Update results via direct C# COM Interop (`WUApiLib` / `CsWin32`), select all or specific rows, and apply selected updates with real-time progress. |
+| Sources | Inspect `winget` sources, update/reset source metadata, add/remove sources, and query remote REST source manifests (`WingetRestSourceClient`). |
+| Architecture | Clean Architecture Onion boundaries, `Microsoft.Extensions.Hosting` DI, Serilog structured logging, `CommunityToolkit.Mvvm` source generators, and embedded SQLite relateral storage (`EF Core 10`). |
+| Safety & Storage | Embedded transactional SQLite database (`onlywinget.db`) with automatic JSON migration, cancellable operation design, and DPAPI encrypted secret storage. |
 | Installer | Unified x64 NSIS setup EXE and self-contained portable ZIP. |
 
 ## Metrics
@@ -30,10 +31,14 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | Metric | Current value |
 | --- | --- |
 | App framework | `net10.0-windows10.0.17763.0` WinUI 3 |
+| Host & DI | `Microsoft.Extensions.Hosting` (`Host.CreateDefaultBuilder()`) |
+| Storage engine | Embedded **SQLite** via **Entity Framework Core 10** (`onlywinget.db`) |
+| Interop | Native COM APIs (`Microsoft.Management.Deployment` & `WUApiLib`) + CLI fallback |
+| Logging | Structured logging via **Serilog** (file rolling & UI debug sink) |
 | Test suite | xUnit tests under `tests/OnlyWinget.Tests` |
 | UI languages | English, Italian |
 | Release artifacts | 1 x64 NSIS setup EXE and 1 x64 self-contained portable ZIP |
-| Local data root | `%LOCALAPPDATA%\OnlyWinget` (`workspace-v1.json`, `source-preferences-v1.json`, `settings.json`) |
+| Local data root | `%LOCALAPPDATA%\OnlyWinget` (`onlywinget.db`, `source-preferences-v1.json`, `settings.json`, `logs/`) |
 
 ## Requirements
 

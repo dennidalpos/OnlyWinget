@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Domain.Packages;
 
@@ -6,13 +7,22 @@ namespace OnlyWinget.Infrastructure.Winget;
 public sealed class WingetPackageSearchService(
     IWingetCommandRunner commandRunner,
     WingetTableParser tableParser,
-    WingetErrorClassifier errorClassifier) : IPackageSearchService
+    WingetErrorClassifier errorClassifier,
+    IMemoryCache? cache = null) : IPackageSearchService
 {
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+
     public async Task<WingetOperationOutcome<PackageSearchResult>> SearchAsync(
         PackageSearchRequest request,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        var cacheKey = $"winget_search_{request.Query}_{request.Source}";
+        if (cache is not null && cache.TryGetValue(cacheKey, out WingetOperationOutcome<PackageSearchResult>? cachedOutcome) && cachedOutcome is not null)
+        {
+            return cachedOutcome;
+        }
 
         var arguments = new List<string>
         {
@@ -46,7 +56,14 @@ public sealed class WingetPackageSearchService(
             .Where(searchResult => searchResult is not null)
             .Cast<PackageSearchResult>()
             .ToArray();
-        return WingetOperationOutcome<PackageSearchResult>.Success(rows, rawOutput);
+        var outcome = WingetOperationOutcome<PackageSearchResult>.Success(rows, rawOutput);
+
+        if (cache is not null)
+        {
+            cache.Set(cacheKey, outcome, CacheDuration);
+        }
+
+        return outcome;
     }
 
     private static PackageSearchResult? ToSearchResult(

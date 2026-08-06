@@ -10,6 +10,8 @@ public sealed class PresetDocumentService
         WriteIndented = true
     };
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "OnlyWingetPresetDocument is a known DTO type.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "OnlyWingetPresetDocument is a known DTO type.")]
     public string Export(Preset preset)
     {
         ArgumentNullException.ThrowIfNull(preset);
@@ -17,6 +19,8 @@ public sealed class PresetDocumentService
         return JsonSerializer.Serialize(OnlyWingetPresetDocument.Create(preset), JsonOptions);
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "OnlyWingetPresetDocument is a known DTO type.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "OnlyWingetPresetDocument is a known DTO type.")]
     public Preset Import(string json)
     {
         if (string.IsNullOrWhiteSpace(json))

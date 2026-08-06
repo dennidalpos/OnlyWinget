@@ -12,6 +12,9 @@
     <ArtifactsRoot>$(MSBuildThisFileDirectory)artifacts\</ArtifactsRoot>
     <BaseOutputPath>$(ArtifactsRoot)bin\$(MSBuildProjectName)\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(ArtifactsRoot)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <PublishDir Condition="'$(TargetFramework)' != ''">$(ArtifactsRoot)publish\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</PublishDir>
   </PropertyGroup>
 </Project>

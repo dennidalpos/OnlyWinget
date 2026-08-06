@@ -40,6 +40,8 @@ public sealed class PowerShellWindowsUpdateService(
                 result.StandardOutput);
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WindowsUpdate DTO types are known statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WindowsUpdate DTO types are known statically.")]
     public async Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
         IReadOnlyList<WindowsUpdateIdentity> updates,
         WindowsUpdateOptions options,
@@ -75,7 +77,7 @@ public sealed class PowerShellWindowsUpdateService(
             0,
             updates.Count));
 
-        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30)).ConfigureAwait(false);
+        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30), requireElevation: true).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateInstallResultDto>(result);
 
         if (envelope.Succeeded)
@@ -106,14 +108,19 @@ public sealed class PowerShellWindowsUpdateService(
                 result.StandardOutput);
     }
 
-    private async Task<ExternalProcessResult> RunPowerShellAsync(string script, CancellationToken cancellationToken, global::System.TimeSpan? timeout = null)
+    private async Task<ExternalProcessResult> RunPowerShellAsync(
+        string script,
+        CancellationToken cancellationToken,
+        global::System.TimeSpan? timeout = null,
+        bool requireElevation = false)
     {
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         return await commandRunner.RunAsync(
                 "powershell.exe",
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
                 cancellationToken,
-                timeout: timeout)
+                timeout: timeout,
+                requireElevation: requireElevation)
             .ConfigureAwait(false);
     }
 
@@ -123,6 +130,8 @@ public sealed class PowerShellWindowsUpdateService(
         return capabilities.CanUseWindowsUpdate ? null : capabilities.WindowsUpdateUnavailableMessage;
     }
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WindowsUpdate DTO types are known statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WindowsUpdate DTO types are known statically.")]
     private static WindowsUpdateEnvelope<T> ReadEnvelope<T>(ExternalProcessResult result)
     {
         if (string.IsNullOrWhiteSpace(result.StandardOutput))
@@ -147,6 +156,8 @@ public sealed class PowerShellWindowsUpdateService(
     private static string EscapePowerShellHereString(string value) =>
         value.Replace("'@", "' + \"@\" + '", StringComparison.Ordinal);
 
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WindowsUpdate DTO types are known statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WindowsUpdate DTO types are known statically.")]
     private static string ApplyOptions(string script, WindowsUpdateOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

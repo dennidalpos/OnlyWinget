@@ -13,6 +13,11 @@
         ScrollViewer.HorizontalScrollMode="Enabled"
         ScrollViewer.VerticalScrollBarVisibility="Auto"
         ScrollViewer.VerticalScrollMode="Enabled">
+        <ListView.ItemsPanel>
+            <ItemsPanelTemplate>
+                <ItemsStackPanel CacheLength="2.0" />
+            </ItemsPanelTemplate>
+        </ListView.ItemsPanel>
         <ListView.ItemTemplate>
             <DataTemplate>
                 <local:OnlyWingetTableRow />

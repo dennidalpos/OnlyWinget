@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "f5VCIE7AJpd5YvzNTeMGVzQIgyE9tX+AreTYwQF+REbu+DZo/2Ae+jNSwhPEYrVz6RRkd7y8ubXjk6Nn6Ka+Cg=="
+      },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
         "requested": "[18.8.1, )",
@@ -220,6 +226,11 @@
           "SQLitePCLRaw.core": "2.1.11"
         }
       },
+      "System.Security.Cryptography.ProtectedData": {
+        "type": "Transitive",
+        "resolved": "9.0.2",
+        "contentHash": "+z9JWtU9di45tW/w6zpuJms4SnAAqKY2Usmmxs7MpOhxWoIeR2pKl1vEkaFbEx52ZfrMFcZXsFe+8WERMozzGg=="
+      },
       "xunit.abstractions": {
         "type": "Transitive",
         "resolved": "2.0.3",
@@ -274,11 +285,13 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.EntityFrameworkCore.Sqlite": "[9.0.2, )",
+          "Microsoft.Extensions.Caching.Memory": "[9.0.2, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[9.0.2, )",
           "Microsoft.Extensions.Logging.Abstractions": "[9.0.2, )",
           "OnlyWinget.Application": "[1.0.0, )",
           "OnlyWinget.Domain": "[1.0.0, )",
-          "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.11, )"
+          "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.11, )",
+          "System.Security.Cryptography.ProtectedData": "[9.0.2, )"
         }
       }
     }
