@@ -3,12 +3,16 @@ param(
     [int]$AppPid,
     [string]$OutputDirectory,
     [switch]$CaptureAllRoutes,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [switch]$Fast,
+    [switch]$Full
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+
+$isFastMode = -not $Full
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
@@ -248,7 +252,20 @@ if ($CaptureAllRoutes) {
 }
 
 $results | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $OutputDirectory 'results.json') -Encoding utf8
-Write-Host "UI test: $pass passati, $fail falliti."
+if ($isFastMode) {
+    if ($fail -eq 0) {
+        Write-Host "PASS: $pass UI tests passed." -ForegroundColor Green
+    }
+    else {
+        Write-Host "FAIL: $fail UI tests failed ($pass passed)." -ForegroundColor Red
+        foreach ($r in ($results | Where-Object { $_.status -eq 'FAIL' })) {
+            Write-Host "FAIL: $($r.name) - $($r.detail)" -ForegroundColor Red
+        }
+    }
+}
+else {
+    Write-Host "UI test: $pass passati, $fail falliti."
+}
 if ($fail -gt 0) {
     exit 1
 }

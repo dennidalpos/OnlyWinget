@@ -4,12 +4,16 @@ param(
     [string]$Version,
     [switch]$NoRestore,
     [switch]$StopRunningInstance,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [switch]$Fast,
+    [switch]$Full
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+
+$isFastMode = -not $Full
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
@@ -41,7 +45,7 @@ function Convert-ToInstallerVersion {
         $parsedVersion = [Version]$sanitized
     }
     catch {
-        throw "Versione non valida: '$RawVersion'. Usa una versione numerica compatibile, ad esempio 1.0.0."
+        throw "Versione non valida: '$RawVersion'. Usa una versione numerica compatibile, ed esempio 1.0.0."
     }
 
     $major = $parsedVersion.Major
@@ -83,7 +87,8 @@ function Copy-WinUiPublishResource {
         [string]$PublishDir
     )
 
-    $buildOutputDir = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/net10.0-windows10.0.17763.0/$RuntimeIdentifier"
+    $targetFramework = 'net10.0-windows10.0.17763.0'
+    $buildOutputDir = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/$RuntimeIdentifier"
     Assert-Path -Path $buildOutputDir -Description "WinUI build output $RuntimeIdentifier"
 
     $resourcePaths = @(
@@ -142,7 +147,11 @@ function Invoke-PublishAndPackage {
     New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
 
     if (-not $NoRestore) {
-        dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
+        if ($isFastMode) {
+            dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies > $null
+        } else {
+            dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
+        }
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet restore per il packaging $runtimeIdentifier fallito."
         }
@@ -172,7 +181,11 @@ function Invoke-PublishAndPackage {
         $publishArgs += '--no-restore'
     }
 
-    dotnet @publishArgs
+    if ($isFastMode) {
+        dotnet @publishArgs > $null
+    } else {
+        dotnet @publishArgs
+    }
     if ($LASTEXITCODE -ne 0) {
         throw 'dotnet publish x64 fallito.'
     }
@@ -190,12 +203,15 @@ function Invoke-PublishAndPackage {
         $nsisScriptPath
     )
 
-    & $makensisExe @nsisArgs
+    if ($isFastMode) {
+        & $makensisExe @nsisArgs > $null
+    } else {
+        & $makensisExe @nsisArgs
+    }
     if ($LASTEXITCODE -ne 0) {
         throw 'Compilazione NSIS setup fallita.'
     }
     Assert-Path -Path $setupFilePath -Description 'NSIS setup executable'
-    Write-Host "Setup NSIS generato: $setupFilePath" -ForegroundColor Green
 
     # 2. Portable ZIP
     if (Test-Path -LiteralPath $portableFilePath) {
@@ -203,7 +219,13 @@ function Invoke-PublishAndPackage {
     }
     Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $portableFilePath -CompressionLevel Optimal
     Assert-Path -Path $portableFilePath -Description 'Portable x64 archive'
-    Write-Host "Portable x64 generata: $portableFilePath" -ForegroundColor Green
+
+    if ($isFastMode) {
+        Write-Host "PASS: Setup NSIS and Portable ZIP generated ($Configuration)." -ForegroundColor Green
+    } else {
+        Write-Host "Setup NSIS generato: $setupFilePath" -ForegroundColor Green
+        Write-Host "Portable x64 generata: $portableFilePath" -ForegroundColor Green
+    }
 }
 
 Assert-Command -Name 'dotnet'
@@ -229,7 +251,7 @@ catch [System.IO.IOException] {
 }
 
 try {
-    & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive:$NonInteractive
+    & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -Fast:$Fast -Full:$Full -NonInteractive:$NonInteractive
     if ($LASTEXITCODE -ne 0) {
         throw 'Preparazione build fallita prima del packaging.'
     }

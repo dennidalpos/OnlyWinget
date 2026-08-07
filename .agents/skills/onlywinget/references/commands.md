@@ -37,17 +37,20 @@ Build without executing or packaging, or execute type checking:
 ```
 
 ### Automated Testing
-Execute C# unit tests and integration tests:
+Execute C# unit tests and integration tests in synthetic Fast mode (default for AI agents):
 ```powershell
-# Run standard offline unit tests
+# Run standard offline unit tests (concise PASS/FAIL output)
 .\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
+
+# Run with verbose developer logging for debugging
+.\scripts\run.ps1 -Task Test -Configuration Release -Full -NonInteractive
 
 # Run unit tests including live Winget commands (requires winget installation)
 .\scripts\run.ps1 -Task Test -Configuration Release -RunWingetSmoke -NonInteractive
 ```
 
 ### Complete Integration Checks
-Runs format verification, script linting, compilation checks, unit tests, and packages release installers in a single run. Use this before staging files:
+Runs format verification, script linting, compilation checks, unit tests, and packages release installers in a single run. Uses quiet Fast mode by default for minimal log output:
 ```powershell
 .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```

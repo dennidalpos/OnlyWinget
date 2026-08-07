@@ -35,6 +35,9 @@ jobs:
 
       - name: Package MSIX Asset
         shell: pwsh
+        env:
+          MSIX_SIGNING_PFX_BASE64: ${{ secrets.MSIX_SIGNING_PFX_BASE64 }}
+          MSIX_SIGNING_PASSWORD: ${{ secrets.MSIX_SIGNING_PASSWORD }}
         run: |
           ./scripts/run.ps1 -Task PackageMsix -Configuration Release -NonInteractive
 

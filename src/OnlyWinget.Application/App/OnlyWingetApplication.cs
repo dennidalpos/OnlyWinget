@@ -108,14 +108,42 @@ public sealed partial class OnlyWingetApplication(
         }
     }
 
-    private async Task<ApplicationActionResult> RunAsync(
+    private CancellationTokenSource? currentOperationCts;
+
+    public void CancelCurrentOperation()
+    {
+        lock (stateLock)
+        {
+            try
+            {
+                currentOperationCts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
+    private Task<ApplicationActionResult> RunAsync(
         ApplicationBusyState state,
         Func<Task> action,
+        string fallbackError) =>
+        RunAsync(state, _ => action(), fallbackError);
+
+    private async Task<ApplicationActionResult> RunAsync(
+        ApplicationBusyState state,
+        Func<CancellationToken, Task> action,
         string fallbackError)
     {
         if (Interlocked.CompareExchange(ref operationInProgress, 1, 0) != 0)
         {
             return ApplicationActionResult.Failure("Another operation is already in progress.");
+        }
+
+        lock (stateLock)
+        {
+            currentOperationCts?.Dispose();
+            currentOperationCts = new CancellationTokenSource();
         }
 
         busyState = state;
@@ -126,7 +154,7 @@ public sealed partial class OnlyWingetApplication(
         appLogger?.LogDebug("Starting operation {State}...", state);
         try
         {
-            await action().ConfigureAwait(false);
+            await action(currentOperationCts.Token).ConfigureAwait(false);
             Logger?.Invoke(AppLogLevel.Verbose, $"Operation {state} completed successfully.", "RunAsync");
             appLogger?.LogDebug("Operation {State} completed successfully.", state);
             return ApplicationActionResult.Success;
@@ -153,6 +181,11 @@ public sealed partial class OnlyWingetApplication(
         finally
         {
             busyState = ApplicationBusyState.Idle;
+            lock (stateLock)
+            {
+                currentOperationCts?.Dispose();
+                currentOperationCts = null;
+            }
             Interlocked.Exchange(ref operationInProgress, 0);
             NotifyStateChanged();
         }

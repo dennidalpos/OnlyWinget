@@ -9,8 +9,8 @@ This skill is the project-specific developer guide for agents working on [OnlyWi
 
 ## Documentation Map
 
-- **Architecture Details**: Deep-dive on architecture, layers, threading, and interop rules in [architecture.md](file:///d:/GITHUB/OnlyWinget/skills/onlywinget/references/architecture.md).
-- **Workflow & Testing Commands**: Detailed parameters and execution flags in [commands.md](file:///d:/GITHUB/OnlyWinget/skills/onlywinget/references/commands.md).
+- **Architecture Details**: Deep-dive on architecture, layers, threading, and interop rules in [architecture.md](file:///d:/GITHUB/OnlyWinget/.agents/skills/onlywinget/references/architecture.md).
+- **Workflow & Testing Commands**: Detailed parameters and execution flags in [commands.md](file:///d:/GITHUB/OnlyWinget/.agents/skills/onlywinget/references/commands.md).
 
 ## Critical Developer Rules
 

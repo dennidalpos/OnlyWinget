@@ -70,6 +70,7 @@ internal static class AppComposition
                     sp.GetService<ILogger<ProcessWingetCommandRunner>>()));
 
                 services.AddSingleton<ISystemCapabilityService, SystemCapabilityService>();
+                services.AddSingleton<IPcMetricsService, PcMetricsService>();
 
                 services.AddSingleton<IWorkspaceStore>(sp => new SqliteWorkspaceStore(
                     SqliteWorkspaceStore.DefaultFilePath,

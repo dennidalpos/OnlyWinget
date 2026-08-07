@@ -62,6 +62,7 @@ public sealed partial class OperationTrackerControl : UserControl
 
             if (progress.Phase == WingetProgressPhase.Completed)
             {
+                CancelOperationButton.Visibility = Visibility.Collapsed;
                 StatusRing.IsActive = false;
                 StatusRing.Visibility = Visibility.Collapsed;
                 StatusIcon.Glyph = "\uE73E"; // Checkmark
@@ -79,6 +80,7 @@ public sealed partial class OperationTrackerControl : UserControl
 
             if (progress.Phase == WingetProgressPhase.Failed)
             {
+                CancelOperationButton.Visibility = Visibility.Collapsed;
                 StatusRing.IsActive = false;
                 StatusRing.Visibility = Visibility.Collapsed;
                 StatusIcon.Glyph = "\uE783"; // Error badge
@@ -94,6 +96,7 @@ public sealed partial class OperationTrackerControl : UserControl
             }
 
             // Normal active operation
+            CancelOperationButton.Visibility = Visibility.Visible;
             StatusIcon.Visibility = Visibility.Collapsed;
             StatusRing.Visibility = Visibility.Visible;
             StatusRing.IsActive = true;
@@ -127,6 +130,7 @@ public sealed partial class OperationTrackerControl : UserControl
         else
         {
             // Busy state without detailed progress (e.g., searching, loading updates, managing sources)
+            CancelOperationButton.Visibility = Visibility.Visible;
             StatusIcon.Visibility = Visibility.Collapsed;
             StatusRing.Visibility = Visibility.Visible;
             StatusRing.IsActive = true;
@@ -177,6 +181,11 @@ public sealed partial class OperationTrackerControl : UserControl
             autoDismissTimer.Stop();
             autoDismissTimer = null;
         }
+    }
+
+    private void OnCancelOperationClick(object sender, RoutedEventArgs e)
+    {
+        App.Workflow.CancelCurrentOperation();
     }
 
     private void OnViewActivityClick(object sender, RoutedEventArgs e)

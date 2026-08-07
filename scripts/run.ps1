@@ -27,7 +27,9 @@ param(
     [switch]$StopRunningInstance,
     [switch]$All,
     [switch]$NuGetCache,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [switch]$Fast,
+    [switch]$Full
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,28 +46,28 @@ function Invoke-OnlyWingetTask {
             & (Join-Path $PSScriptRoot 'setup.ps1') -ForceEvaluate:$ForceEvaluate -NonInteractive
         }
         'Format' {
-            & (Join-Path $PSScriptRoot 'format.ps1') -Fix:$Fix -NoRestore:$NoRestore -NonInteractive
+            & (Join-Path $PSScriptRoot 'format.ps1') -Fix:$Fix -NoRestore:$NoRestore -Fast:$Fast -Full:$Full -NonInteractive
         }
         'Lint' {
-            & (Join-Path $PSScriptRoot 'lint.ps1') -Required -NonInteractive
+            & (Join-Path $PSScriptRoot 'lint.ps1') -Required -Fast:$Fast -Full:$Full -NonInteractive
         }
         'Typecheck' {
-            & (Join-Path $PSScriptRoot 'typecheck.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive
+            & (Join-Path $PSScriptRoot 'typecheck.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -Fast:$Fast -Full:$Full -NonInteractive
         }
         'Test' {
-            & (Join-Path $PSScriptRoot 'test.ps1') -Configuration $Configuration -NoRestore:$NoRestore -NoBuild:$NoBuild -RunWingetSmoke:$RunWingetSmoke -NonInteractive
+            & (Join-Path $PSScriptRoot 'test.ps1') -Configuration $Configuration -NoRestore:$NoRestore -NoBuild:$NoBuild -RunWingetSmoke:$RunWingetSmoke -Fast:$Fast -Full:$Full -NonInteractive
         }
         'Build' {
-            & (Join-Path $PSScriptRoot 'build.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive
+            & (Join-Path $PSScriptRoot 'build.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -Fast:$Fast -Full:$Full -NonInteractive
         }
         'Package' {
-            & (Join-Path $PSScriptRoot 'package.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -NonInteractive
+            & (Join-Path $PSScriptRoot 'package.ps1') -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -Fast:$Fast -Full:$Full -NonInteractive
         }
         'PackageMsix' {
             & (Join-Path $PSScriptRoot 'package-msix.ps1') -Configuration $Configuration -NonInteractive
         }
         'Check' {
-            & (Join-Path $PSScriptRoot 'check.ps1') -Configuration $Configuration -RunWingetSmoke:$RunWingetSmoke -NonInteractive
+            & (Join-Path $PSScriptRoot 'check.ps1') -Configuration $Configuration -RunWingetSmoke:$RunWingetSmoke -Fast:$Fast -Full:$Full -NonInteractive
         }
         'Clean' {
             & (Join-Path $PSScriptRoot 'clean.ps1') -Configuration $Configuration -StopRunningInstance:$StopRunningInstance -All:$All -NuGetCache:$NuGetCache -NonInteractive

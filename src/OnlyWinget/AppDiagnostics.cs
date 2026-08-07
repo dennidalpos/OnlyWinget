@@ -123,7 +123,7 @@ internal static class AppDiagnostics
                 var logDirectory = Path.Combine(root, "OnlyWinget", "logs");
                 if (Directory.Exists(logDirectory))
                 {
-                    foreach (var file in Directory.GetFiles(logDirectory, "*.log"))
+                    foreach (var file in Directory.GetFiles(logDirectory))
                     {
                         try
                         {
@@ -149,18 +149,15 @@ internal static class AppDiagnostics
             var logDirectory = Path.Combine(root, "OnlyWinget", "logs");
             Directory.CreateDirectory(logDirectory);
 
-            var todayFile = Path.Combine(logDirectory, $"onlywinget-{DateTimeOffset.UtcNow:yyyyMMdd}.log");
-            var fileToOpen = File.Exists(todayFile) ? todayFile : logDirectory;
-
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName = fileToOpen,
+                FileName = logDirectory,
                 UseShellExecute = true
             });
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to open log: {ex}");
+            System.Diagnostics.Debug.WriteLine($"Failed to open log folder: {ex}");
         }
     }
 }

@@ -5,7 +5,6 @@
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:home="using:OnlyWinget.Features.Home"
     xmlns:presentation="using:OnlyWinget.Presentation"
-    xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
     xmlns:services="using:OnlyWinget.Services"
     xmlns:states="using:OnlyWinget.DesignSystem.States">
     <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Dashboard_Title}" Subtitle="OnlyWinget" AreaAccentBrush="{ThemeResource AreaHomeBrush}">
@@ -16,12 +15,14 @@
             <Grid RowSpacing="{StaticResource PageSectionSpacing}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource CardStyle}">
                     <Grid ColumnSpacing="16">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <StackPanel Spacing="4">
                             <TextBlock x:Name="ActivePresetText" Text="{x:Bind viewModel.ActivePresetDisplay, Mode=OneWay}" Style="{StaticResource SectionTitleTextBlockStyle}" AutomationProperties.AutomationId="DashboardActivePreset" />
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
@@ -47,47 +48,19 @@
                 </Border>
                 <ItemsRepeater x:Name="MetricRepeater" Grid.Row="1">
                     <ItemsRepeater.Layout>
-                        <UniformGridLayout MaximumRowsOrColumns="6" MinItemWidth="180" MinItemHeight="90" MinColumnSpacing="12" MinRowSpacing="12" ItemsStretch="Fill" Orientation="Horizontal" />
+                        <UniformGridLayout MaximumRowsOrColumns="3" MinItemWidth="240" MinItemHeight="110" MinColumnSpacing="16" MinRowSpacing="16" ItemsStretch="Fill" Orientation="Horizontal" />
                     </ItemsRepeater.Layout>
                     <ItemsRepeater.ItemTemplate>
                         <DataTemplate x:DataType="home:DashboardMetric">
-                            <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1">
-                                <StackPanel>
-                                    <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" />
+                            <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1" Padding="16">
+                                <StackPanel Spacing="6" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" TextWrapping="Wrap" />
                                     <TextBlock Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
-                <Border Grid.Row="2" Style="{StaticResource CardStyle}">
-                    <Grid RowSpacing="10">
-                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                        <Grid Grid.Row="0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="RecentActivityText" Text="{services:Localize Key=Dashboard_RecentActivity}" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" />
-                            <HyperlinkButton x:Name="ViewAllActivityButton" Content="{services:Localize Key=Dashboard_ViewAllActivity}" AutomationProperties.AutomationId="DashboardViewAllActivity" AutomationProperties.Name="{services:Localize Key=Dashboard_ViewAllActivity}" Grid.Column="1" Click="OnViewAllActivity" VerticalAlignment="Center" />
-                        </Grid>
-                        <ItemsControl x:Name="ActivityList" Grid.Row="1" AutomationProperties.AutomationId="DashboardActivityList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="appPresentation:ActivityRow">
-                                    <Border Style="{StaticResource TableRowDividerStyle}" Padding="0,8">
-                                        <StackPanel Spacing="3">
-                                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                                <TextBlock Text="{x:Bind Severity, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                                <TextBlock Text="{x:Bind Title, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                            </StackPanel>
-                                            <TextBlock Text="{x:Bind Message, Mode=OneTime}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Grid>
-                </Border>
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>

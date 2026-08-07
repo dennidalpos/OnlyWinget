@@ -66,10 +66,24 @@ public sealed partial class LogViewerDialog : ContentDialog
         RefreshLogs();
     }
 
-    private void OnClearClicked(object sender, RoutedEventArgs e)
+    private async void OnClearClicked(object sender, RoutedEventArgs e)
     {
-        AppDiagnostics.ClearLogs();
-        RefreshLogs();
+        var confirmDialog = new ContentDialog
+        {
+            Title = TextResources.Get("Logs_ClearConfirm_Title") ?? "Clear Logs",
+            Content = TextResources.Get("Logs_ClearConfirm_Message") ?? "Are you sure you want to permanently delete all local log files?",
+            PrimaryButtonText = TextResources.Get("Command_Clear") ?? "Clear",
+            CloseButtonText = TextResources.Get("Command_Cancel") ?? "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot
+        };
+
+        var result = await confirmDialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            AppDiagnostics.ClearLogs();
+            RefreshLogs();
+        }
     }
 
     private void OnCopyClicked(object sender, RoutedEventArgs e)

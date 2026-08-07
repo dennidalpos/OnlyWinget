@@ -1352,4 +1352,13 @@ public sealed class OnlyWingetApplicationTests
         var result = OnlyWingetApplication.IsUpToDate(installed, available);
         Assert.Equal(expected, result);
     }
+
+    [Fact]
+    public void CancelCurrentOperation_DoesNotThrow_WhenIdleOrActive()
+    {
+        var app = CreateApplication();
+        app.CancelCurrentOperation();
+        Assert.NotNull(app.State);
+    }
 }
+

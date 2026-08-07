@@ -27,15 +27,26 @@ if (-not (Test-Path $binDir)) {
 Write-Host "Staging MSIX packaging assets in $outputDir..." -ForegroundColor Green
 $appxManifestSrc = Join-Path $repoRoot 'src/OnlyWinget/Package.appxmanifest'
 $appxManifestDst = Join-Path $outputDir 'Package.appxmanifest'
-
 Copy-Item $appxManifestSrc $appxManifestDst -Force
 
 $winappCli = Get-Command 'winapp' -ErrorAction SilentlyContinue
 if ($null -ne $winappCli) {
     Write-Host "Invoking winapp CLI for MSIX packaging..." -ForegroundColor Cyan
     & winapp package $binDir --manifest $appxManifestSrc --quiet
-} else {
-    Write-Host "MSIX manifest and build assets staged successfully at $outputDir" -ForegroundColor Yellow
+}
+
+# Sign MSIX package if SignTool / Certificate is available
+if ($env:MSIX_SIGNING_PFX_BASE64) {
+    Write-Host "Importing signing certificate from secret..." -ForegroundColor Cyan
+    $certPath = Join-Path $outputDir 'signing_cert.pfx'
+    [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String($env:MSIX_SIGNING_PFX_BASE64))
+    $msixFiles = Get-ChildItem -Path $outputDir -Filter "*.msix" -Recurse
+    foreach ($msix in $msixFiles) {
+        Write-Host "Signing $($msix.Name)..." -ForegroundColor Green
+        if ($null -ne $winappCli) {
+            & winapp sign $msix.FullName --certificate $certPath --password $env:MSIX_SIGNING_PASSWORD
+        }
+    }
 }
 
 Write-Host "MSIX packaging setup complete." -ForegroundColor Green

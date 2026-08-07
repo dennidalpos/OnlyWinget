@@ -13,7 +13,6 @@ public sealed partial class DashboardPage : Page
         InitializeComponent();
         viewModel = new(Dispatch);
         MetricRepeater.ItemsSource = viewModel.Metrics;
-        ActivityList.ItemsSource = viewModel.RecentActivity;
         viewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -37,7 +36,6 @@ public sealed partial class DashboardPage : Page
 
     private void OnOpenPackages(object sender, RoutedEventArgs args) => App.Navigate("packages");
     private void OnOpenUpdates(object sender, RoutedEventArgs args) => App.Navigate("updates");
-    private void OnViewAllActivity(object sender, RoutedEventArgs args) => App.Navigate("activity");
 
     public static Microsoft.UI.Xaml.Media.Brush GetThemeBrush(string key)
     {

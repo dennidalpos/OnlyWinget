@@ -4,12 +4,16 @@ param(
     [switch]$NoRestore,
     [switch]$StopRunningInstance,
     [switch]$WarnAsError,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [switch]$Fast,
+    [switch]$Full
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+
+$isFastMode = -not $Full
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
@@ -25,7 +29,11 @@ Assert-Path -Path $projectPath -Description 'Project file'
 Assert-ExecutableNotLocked -KillProcess:$StopRunningInstance -ActionName 'Build'
 
 if (-not $NoRestore) {
-    dotnet restore $solutionPath --locked-mode
+    if ($isFastMode) {
+        dotnet restore $solutionPath --locked-mode > $null
+    } else {
+        dotnet restore $solutionPath --locked-mode
+    }
     if ($LASTEXITCODE -ne 0) {
         throw 'dotnet restore fallito.'
     }
@@ -38,14 +46,24 @@ if ($NoRestore) {
 if ($WarnAsError) {
     $buildArgs += '-warnaserror'
 }
+if ($isFastMode) {
+    $buildArgs += '--verbosity'
+    $buildArgs += 'quiet'
+    $buildArgs += '-clp:ErrorsOnly'
+}
 
 dotnet build @buildArgs
-    if ($LASTEXITCODE -ne 0) {
-        if (Test-Path $outputExePath) {
-            Assert-ExecutableNotLocked -KillProcess:$StopRunningInstance -ActionName 'Build'
-        }
-
-        throw 'dotnet build fallito.'
+if ($LASTEXITCODE -ne 0) {
+    if (Test-Path $outputExePath) {
+        Assert-ExecutableNotLocked -KillProcess:$StopRunningInstance -ActionName 'Build'
     }
 
-Write-Host "Build completata ($Configuration)." -ForegroundColor Green
+    throw 'dotnet build fallito.'
+}
+
+if ($isFastMode) {
+    Write-Host "PASS: Build succeeded ($Configuration)." -ForegroundColor Green
+} else {
+    Write-Host "Build completata ($Configuration)." -ForegroundColor Green
+}
+

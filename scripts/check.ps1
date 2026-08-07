@@ -2,12 +2,16 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [switch]$RunWingetSmoke,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [switch]$Fast,
+    [switch]$Full
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+
+$isFastMode = -not $Full
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
@@ -22,6 +26,7 @@ $formatScriptPath = Join-Path $scriptsRoot 'format.ps1'
 $packageScriptPath = Join-Path $scriptsRoot 'package.ps1'
 $scriptLintPath = Join-Path $scriptsRoot 'lint.ps1'
 $typecheckScriptPath = Join-Path $scriptsRoot 'typecheck.ps1'
+$testScriptPath = Join-Path $scriptsRoot 'test.ps1'
 $targetFramework = 'net10.0-windows10.0.17763.0'
 $steps = [System.Collections.Generic.List[string]]::new()
 $smokeTestStatus = 'not_run'
@@ -32,7 +37,9 @@ function Invoke-Step {
         [scriptblock]$Action
     )
 
-    Write-Host "==> $Name" -ForegroundColor Cyan
+    if (-not $isFastMode) {
+        Write-Host "==> $Name" -ForegroundColor Cyan
+    }
     & $Action
     $steps.Add("${Name}: OK")
 }
@@ -77,43 +84,54 @@ Assert-Path -Path $typecheckScriptPath -Description 'Typecheck script'
 Invoke-Step 'clean generated outputs' {
     Remove-CheckGeneratedPath -Path $artifactsPath
     Remove-CheckGeneratedPath -Path $tmpPath
+    if ($isFastMode) { Write-Host 'PASS: Cleaned outputs.' -ForegroundColor Green }
 }
 
 Invoke-Step 'restore' {
-    dotnet restore $solutionPath --locked-mode
+    if ($isFastMode) {
+        dotnet restore $solutionPath --locked-mode > $null
+    } else {
+        dotnet restore $solutionPath --locked-mode
+    }
     Assert-LastExitCode 'dotnet restore fallito.'
+    if ($isFastMode) { Write-Host 'PASS: Restore completed.' -ForegroundColor Green }
 }
 
 Invoke-Step 'format' {
-    & $formatScriptPath -NoRestore -NonInteractive:$NonInteractive
+    & $formatScriptPath -NoRestore -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'script lint' {
-    & $scriptLintPath -NonInteractive:$NonInteractive
+    & $scriptLintPath -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'typecheck' {
-    & $typecheckScriptPath -Configuration $Configuration -NoRestore -NonInteractive:$NonInteractive
+    & $typecheckScriptPath -Configuration $Configuration -NoRestore -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'unit test' {
-    New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
-    dotnet test $testProjectPath -c $Configuration --no-restore --results-directory $testResultsPath --logger "trx;LogFileName=unit-tests.trx"
-    Assert-LastExitCode 'dotnet test fallito.'
+    & $testScriptPath -Configuration $Configuration -NoRestore -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'integration/e2e test' {
     if (-not $RunWingetSmoke) {
         $script:smokeTestStatus = 'not_run'
-        Write-Host 'Smoke test winget reali: not_run. Usa -RunWingetSmoke per abilitarli.' -ForegroundColor DarkGray
+        if (-not $isFastMode) {
+            Write-Host 'Smoke test winget reali: not_run. Usa -RunWingetSmoke per abilitarli.' -ForegroundColor DarkGray
+        }
         return
     }
 
     $env:ONLYWINGET_RUN_WINGET_SMOKE = '1'
     try {
-        dotnet test $testProjectPath -c $Configuration --no-build --no-restore --filter "Category=Smoke" --results-directory $testResultsPath --logger "trx;LogFileName=winget-smoke-tests.trx"
+        if ($isFastMode) {
+            dotnet test $testProjectPath -c $Configuration --no-build --no-restore --filter "Category=Smoke" --results-directory $testResultsPath --logger "trx;LogFileName=winget-smoke-tests.trx" --logger "console;verbosity=quiet" --verbosity quiet > $null
+        } else {
+            dotnet test $testProjectPath -c $Configuration --no-build --no-restore --filter "Category=Smoke" --results-directory $testResultsPath --logger "trx;LogFileName=winget-smoke-tests.trx"
+        }
         Assert-LastExitCode 'dotnet test smoke fallito.'
         $script:smokeTestStatus = 'passed'
+        if ($isFastMode) { Write-Host 'PASS: Winget smoke tests passed.' -ForegroundColor Green }
     }
     finally {
         Remove-Item Env:\ONLYWINGET_RUN_WINGET_SMOKE -ErrorAction SilentlyContinue
@@ -121,11 +139,11 @@ Invoke-Step 'integration/e2e test' {
 }
 
 Invoke-Step 'build' {
-    & $buildScriptPath -Configuration $Configuration -NoRestore -NonInteractive:$NonInteractive
+    & $buildScriptPath -Configuration $Configuration -NoRestore -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'setup package' {
-    & $packageScriptPath -Configuration $Configuration -NoRestore -NonInteractive:$NonInteractive
+    & $packageScriptPath -Configuration $Configuration -NoRestore -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'artifact analysis' {
@@ -158,11 +176,17 @@ Invoke-Step 'artifact analysis' {
         "SmokeTests: $smokeTestStatus"
         "GeneratedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     ) | Set-Content -Path $reportPath -Encoding UTF8
+    if ($isFastMode) { Write-Host 'PASS: Artifact analysis completed.' -ForegroundColor Green }
 }
 
 Write-Host ''
-Write-Host 'Riepilogo finale:' -ForegroundColor Green
-foreach ($step in $steps) {
-    Write-Host " - $step"
+if ($isFastMode) {
+    Write-Host "PASS: Full check gate passed ($($steps.Count) steps OK)." -ForegroundColor Green
+} else {
+    Write-Host 'Riepilogo finale:' -ForegroundColor Green
+    foreach ($step in $steps) {
+        Write-Host " - $step"
+    }
+    Write-Host "Report artefatti: $reportPath"
 }
-Write-Host "Report artefatti: $reportPath"
+
