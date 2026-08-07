@@ -4,156 +4,151 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:design="using:OnlyWinget.DesignSystem.Controls"
     xmlns:services="using:OnlyWinget.Services">
-    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Settings_Title}" Subtitle="{services:Localize Key=Settings_Subtitle}" AreaAccentBrush="{ThemeResource AreaSettingsBrush}">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Settings_Title}" AreaAccentBrush="{ThemeResource AreaSettingsBrush}">
         <design:PageScaffold.Body>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MaxWidth="1000" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Spacing="4" Padding="0,0,0,24" HorizontalAlignment="Stretch">
-                    <!-- Appearance & Language Section -->
-                    <TextBlock x:Name="AppearanceGroupHeader" Text="{services:Localize Key=Settings_Group_Appearance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
-                    
-                    <!-- Language Setting Card -->
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Globe" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="LanguageTitle" Text="{services:Localize Key=Settings_Language}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="LanguageDescription" Text="{services:Localize Key=Settings_LanguageDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox x:Name="LanguagePicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsLanguagePicker" Width="200" VerticalAlignment="Center">
-                                <ComboBoxItem Content="System default" Tag="system" />
-                                <ComboBoxItem Content="English" Tag="en" />
-                                <ComboBoxItem Content="Italiano" Tag="it" />
-                            </ComboBox>
-                        </Grid>
-                    </Border>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="1000" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="4" Padding="0,0,0,24" HorizontalAlignment="Stretch">
+                        <!-- Appearance & Language Section -->
+                        <TextBlock x:Name="AppearanceGroupHeader" Text="{services:Localize Key=Settings_Group_Appearance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
 
-                    <!-- Theme Setting Card -->
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Highlight" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="ThemeTitle" Text="{services:Localize Key=Settings_Theme}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="ThemeDescription" Text="{services:Localize Key=Settings_ThemeDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox x:Name="ThemePicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Theme, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsThemePicker" Width="200" VerticalAlignment="Center">
-                                <ComboBoxItem Content="System default" Tag="default" />
-                                <ComboBoxItem Content="Light" Tag="light" />
-                                <ComboBoxItem Content="Dark" Tag="dark" />
-                            </ComboBox>
-                        </Grid>
-                    </Border>
+                        <!-- Language Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_LanguageDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Globe" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="LanguageTitle" Grid.Column="1" Text="{services:Localize Key=Settings_Language}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <ComboBox x:Name="LanguagePicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Language, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsLanguagePicker" AutomationProperties.Name="{services:Localize Key=Settings_Language}" Width="200" VerticalAlignment="Center">
+                                    <ComboBoxItem Content="System default" Tag="system" />
+                                    <ComboBoxItem Content="English" Tag="en" />
+                                    <ComboBoxItem Content="Italiano" Tag="it" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
 
-                    <!-- Safety & Behavior Section -->
-                    <TextBlock x:Name="BehaviorGroupHeader" Text="{services:Localize Key=Settings_Group_Behavior}" Style="{StaticResource SettingsGroupHeaderStyle}" />
+                        <!-- Theme Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_ThemeDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Highlight" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="ThemeTitle" Grid.Column="1" Text="{services:Localize Key=Settings_Theme}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <ComboBox x:Name="ThemePicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Theme, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsThemePicker" AutomationProperties.Name="{services:Localize Key=Settings_Theme}" Width="200" VerticalAlignment="Center">
+                                    <ComboBoxItem Content="System default" Tag="default" />
+                                    <ComboBoxItem Content="Light" Tag="light" />
+                                    <ComboBoxItem Content="Dark" Tag="dark" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
 
-                    <!-- Confirm Destructive Setting Card -->
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Important" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="ConfirmDestructiveText" Text="{services:Localize Key=Settings_ConfirmDestructive}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="ConfirmDestructiveDescriptionText" Text="{services:Localize Key=Settings_ConfirmDestructiveDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ToggleSwitch x:Name="ConfirmDestructiveToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ConfirmDestructiveActions, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" Header="" Margin="0" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
+                        <!-- Safety & Behavior Section -->
+                        <TextBlock x:Name="BehaviorGroupHeader" Text="{services:Localize Key=Settings_Group_Behavior}" Style="{StaticResource SettingsGroupHeaderStyle}" />
 
-                    <!-- Diagnostics Setting Card -->
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Document" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="DiagnosticsText" Text="{services:Localize Key=Settings_Diagnostics}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="DiagnosticsDescriptionText" Text="{services:Localize Key=Settings_DiagnosticsDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ToggleSwitch x:Name="DiagnosticsToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.DiagnosticLogging, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" Header="" Margin="0" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
+                        <!-- Confirm Destructive Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_ConfirmDestructiveDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Important" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="ConfirmDestructiveText" Grid.Column="1" Text="{services:Localize Key=Settings_ConfirmDestructive}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="ConfirmDestructiveToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ConfirmDestructiveActions, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsConfirmDestructiveToggle" AutomationProperties.Name="{services:Localize Key=Settings_ConfirmDestructive}" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
 
-                    <!-- Log Level Setting Card -->
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="List" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="LogLevelTitle" Text="{services:Localize Key=Settings_LogLevel}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="LogLevelDescription" Text="{services:Localize Key=Settings_LogLevelDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ComboBox x:Name="LogLevelPicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.LogLevel, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsLogLevelPicker" Width="200" VerticalAlignment="Center">
-                                <ComboBoxItem Content="Verbose (Vrb)" Tag="Verbose" />
-                                <ComboBoxItem Content="Information (Info)" Tag="Information" />
-                                <ComboBoxItem Content="Warning (Warn)" Tag="Warning" />
-                                <ComboBoxItem Content="Error (Err)" Tag="Error" />
-                            </ComboBox>
-                        </Grid>
-                    </Border>
+                        <!-- Diagnostics Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_DiagnosticsDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Document" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="DiagnosticsText" Grid.Column="1" Text="{services:Localize Key=Settings_Diagnostics}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="DiagnosticsToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.DiagnosticLogging, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsDiagnosticsToggle" AutomationProperties.Name="{services:Localize Key=Settings_Diagnostics}" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
 
-                    <!-- Install Behavior Setting Card -->
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Play" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="InstallBehaviorText" Text="{services:Localize Key=Settings_InstallBehavior}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="InstallBehaviorDescriptionText" Text="{services:Localize Key=Settings_InstallBehaviorDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <ToggleSwitch x:Name="InstallBehaviorToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ContinueOperationsAfterFailure, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" Header="" Margin="0" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
+                        <!-- Log Level Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_LogLevelDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="List" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="LogLevelTitle" Grid.Column="1" Text="{services:Localize Key=Settings_LogLevel}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <ComboBox x:Name="LogLevelPicker" Grid.Column="2" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.LogLevel, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsLogLevelPicker" AutomationProperties.Name="{services:Localize Key=Settings_LogLevel}" Width="200" VerticalAlignment="Center">
+                                    <ComboBoxItem Content="Verbose (Vrb)" Tag="Verbose" />
+                                    <ComboBoxItem Content="Information (Info)" Tag="Information" />
+                                    <ComboBoxItem Content="Warning (Warn)" Tag="Warning" />
+                                    <ComboBoxItem Content="Error (Err)" Tag="Error" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
 
-                    <!-- Maintenance Section -->
-                    <TextBlock x:Name="MaintenanceGroupHeader" Text="{services:Localize Key=Settings_Group_Maintenance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
+                        <!-- Install Behavior Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_InstallBehaviorDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Play" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="InstallBehaviorText" Grid.Column="1" Text="{services:Localize Key=Settings_InstallBehavior}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <ToggleSwitch x:Name="InstallBehaviorToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.ContinueOperationsAfterFailure, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsInstallBehaviorToggle" AutomationProperties.Name="{services:Localize Key=Settings_InstallBehavior}" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
 
-                    <!-- Reset Setting Card -->
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <SymbolIcon Symbol="Refresh" VerticalAlignment="Center" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock x:Name="ResetTitle" Text="{services:Localize Key=Settings_Reset}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                <TextBlock x:Name="ResetDescription" Text="{services:Localize Key=Settings_ResetDescription}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <Button x:Name="ResetButton" Content="{services:Localize Key=Settings_ResetAction}" Grid.Column="2" Style="{StaticResource DestructiveButtonStyle}" Click="OnReset" AutomationProperties.AutomationId="SettingsResetButton" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
-                </StackPanel>
-            </Grid>
+                        <!-- Bypass Hash Validation Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_BypassHashValidationDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Permissions" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="BypassHashValidationText" Grid.Column="1" Text="{services:Localize Key=Settings_BypassHashValidation}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <ToggleSwitch x:Name="BypassHashValidationToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.BypassHashValidation, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsBypassHashValidationToggle" AutomationProperties.Name="{services:Localize Key=Settings_BypassHashValidation}" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Maintenance Section -->
+                        <TextBlock x:Name="MaintenanceGroupHeader" Text="{services:Localize Key=Settings_Group_Maintenance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
+
+                        <!-- Reset Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_ResetDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Refresh" VerticalAlignment="Center" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                <TextBlock x:Name="ResetTitle" Grid.Column="1" Text="{services:Localize Key=Settings_Reset}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <Button x:Name="ResetButton" Content="{services:Localize Key=Settings_ResetAction}" Grid.Column="2" Style="{StaticResource DestructiveButtonStyle}" Click="OnReset" AutomationProperties.AutomationId="SettingsResetButton" AutomationProperties.Name="{services:Localize Key=Settings_ResetAction}" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
         </design:PageScaffold.Body>
     </design:PageScaffold>
 </Page>

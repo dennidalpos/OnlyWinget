@@ -23,15 +23,25 @@ public sealed partial class PackagesPage : Page, IPendingNavigationGuard
             return;
         }
 
-        if (lastSelectedItem == PresetMode && sender.SelectedItem == SearchMode &&
-            !await PresetWorkflow.ConfirmNavigationAsync())
+        try
         {
-            isRestoringSelection = true;
-            sender.SelectedItem = lastSelectedItem;
-            isRestoringSelection = false;
-            return;
-        }
+            if (lastSelectedItem == PresetMode && sender.SelectedItem == SearchMode &&
+                !await PresetWorkflow.ConfirmNavigationAsync())
+            {
+                isRestoringSelection = true;
+                sender.SelectedItem = lastSelectedItem;
+                return;
+            }
 
-        lastSelectedItem = sender.SelectedItem;
+            lastSelectedItem = sender.SelectedItem;
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("PackagesPage.OnModeSelectionChanged", exception);
+        }
+        finally
+        {
+            isRestoringSelection = false;
+        }
     }
 }

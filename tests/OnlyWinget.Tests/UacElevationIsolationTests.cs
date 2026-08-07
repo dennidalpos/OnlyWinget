@@ -29,25 +29,40 @@ public sealed class UacElevationIsolationTests
     }
 
     [Fact]
-    public async Task ProcessWingetCommandRunner_WriteOperations_AutomaticallyRequireElevation()
+    public async Task ProcessWingetCommandRunner_PackageWriteOperations_DoNotAutomaticallyRequireElevation()
     {
         var mockRunner = new MockExternalProcessRunner();
         var runner = new ProcessWingetCommandRunner(mockRunner, new WingetProgressParser());
 
         // Install operation
         await runner.RunAsync("winget", ["install", "--id", "Git.Git"], CancellationToken.None);
-        Assert.True(mockRunner.LastRequireElevation);
+        Assert.False(mockRunner.LastRequireElevation);
 
         // Uninstall operation
         await runner.RunAsync("winget", ["uninstall", "--id", "Git.Git"], CancellationToken.None);
-        Assert.True(mockRunner.LastRequireElevation);
+        Assert.False(mockRunner.LastRequireElevation);
 
         // Upgrade operation
         await runner.RunAsync("winget", ["upgrade", "--id", "Git.Git"], CancellationToken.None);
-        Assert.True(mockRunner.LastRequireElevation);
+        Assert.False(mockRunner.LastRequireElevation);
+    }
+
+    [Fact]
+    public async Task ProcessWingetCommandRunner_SourceWriteOperations_AutomaticallyRequireElevation()
+    {
+        var mockRunner = new MockExternalProcessRunner();
+        var runner = new ProcessWingetCommandRunner(mockRunner, new WingetProgressParser());
 
         // Source add operation
         await runner.RunAsync("winget", ["source", "add", "-n", "test", "-a", "https://example.com"], CancellationToken.None);
+        Assert.True(mockRunner.LastRequireElevation);
+
+        // Source remove operation
+        await runner.RunAsync("winget", ["source", "remove", "-n", "test"], CancellationToken.None);
+        Assert.True(mockRunner.LastRequireElevation);
+
+        // Source reset operation
+        await runner.RunAsync("winget", ["source", "reset"], CancellationToken.None);
         Assert.True(mockRunner.LastRequireElevation);
     }
 

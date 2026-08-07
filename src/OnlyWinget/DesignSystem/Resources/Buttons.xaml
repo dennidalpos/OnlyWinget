@@ -15,8 +15,8 @@
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}"><Setter Property="MinWidth" Value="112" /><Setter Property="HorizontalAlignment" Value="Left" /></Style>
-    <Style x:Key="SecondaryButtonStyle" TargetType="Button"><Setter Property="MinWidth" Value="104" /><Setter Property="HorizontalAlignment" Value="Left" /></Style>
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}"><Setter Property="MinWidth" Value="80" /><Setter Property="HorizontalAlignment" Value="Left" /></Style>
+    <Style x:Key="SecondaryButtonStyle" TargetType="Button"><Setter Property="MinWidth" Value="72" /><Setter Property="HorizontalAlignment" Value="Left" /></Style>
     <Style x:Key="DestructiveButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}"><Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" /></Style>
     <Style x:Key="AddPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}"><Setter Property="ContentTemplate" Value="{StaticResource AddButtonContentTemplate}" /></Style>
     <Style x:Key="EditButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}"><Setter Property="ContentTemplate" Value="{StaticResource EditButtonContentTemplate}" /></Style>

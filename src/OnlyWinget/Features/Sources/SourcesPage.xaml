@@ -17,86 +17,87 @@
                 <states:StatePresenter x:Name="PageState" />
             </design:PageScaffold.State>
             <design:PageScaffold.Body>
-                <Grid RowSpacing="{StaticResource PageSectionSpacing}" VerticalAlignment="Stretch">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                        <Border Style="{StaticResource CardStyle}">
-                            <Grid RowSpacing="12">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock x:Name="AddSourceSectionText" Text="{services:Localize Key=Section_AddSource}" Style="{StaticResource SectionTitleTextBlockStyle}" />
-                                <design:OnlyWingetResponsivePanel Grid.Row="1" ItemMinWidth="300" HorizontalSpacing="16" VerticalSpacing="12">
-                                    <Grid HorizontalAlignment="Stretch">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" MaxWidth="480" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="SourceNameBox" Header="{services:Localize Key=Source_Name}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                                    </Grid>
-                                    <Grid HorizontalAlignment="Stretch">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" MaxWidth="480" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="SourceArgumentBox" Header="{services:Localize Key=Source_Argument}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
-                                    </Grid>
-                                </design:OnlyWingetResponsivePanel>
-                                <StackPanel x:Name="AddSourceBtnRow" Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                                    <Button x:Name="AddSourceBtn" Content="{services:Localize Key=Command_Sources_Add}" Click="OnAddSourceClick" Style="{StaticResource AddPrimaryButtonStyle}" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                        <Border Grid.Row="1" Style="{StaticResource CardStyle}">
-                            <Grid RowSpacing="12">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-                                <design:OnlyWingetWrapPanel Grid.Row="0" HorizontalSpacing="12" VerticalSpacing="8" VerticalAlignment="Center">
-                                    <TextBlock x:Name="ManageSourcesSectionText" Text="{services:Localize Key=Section_ManageSources}" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                    <AutoSuggestBox x:Name="SourceSearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSourceSearchBoxChanged" Width="220" VerticalAlignment="Center" AutomationProperties.AutomationId="SourceSearchBox" />
-                                    <Button x:Name="RefreshSourcesBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Refresh}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Refresh}" Click="OnRefreshSourcesClick" Padding="8,6" VerticalAlignment="Center">
-                                        <SymbolIcon Symbol="Refresh" />
-                                    </Button>
-                                    <Button x:Name="UpdateSourcesBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Update}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Update}" Click="OnUpdateSourcesClick" Padding="8,6" VerticalAlignment="Center">
-                                        <SymbolIcon Symbol="Sync" />
-                                    </Button>
-                                    <Button x:Name="RemoveSourceBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Remove}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Remove}" Click="OnRemoveSourceClick" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Padding="8,6" VerticalAlignment="Center">
-                                        <SymbolIcon Symbol="Delete" />
-                                    </Button>
-                                    <Button x:Name="ResetSourcesBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Reset}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Reset}" Click="OnResetSourcesClick" Padding="8,6" VerticalAlignment="Center">
-                                        <SymbolIcon Symbol="Undo" />
-                                    </Button>
-                                    <ProgressRing x:Name="LoadingRing" Width="20" Height="20" AutomationProperties.AutomationId="SourcesLoadingRing" AutomationProperties.Name="Loading sources" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                </design:OnlyWingetWrapPanel>
-                                <ListView x:Name="SourceList" Grid.Row="1" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
-                                    <ListView.ItemContainerStyle>
-                                        <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
-                                            <Setter Property="Padding" Value="0,8" />
-                                        </Style>
-                                    </ListView.ItemContainerStyle>
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="appPresentation:SourceRow">
-                                            <Grid ColumnSpacing="12">
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                                <StackPanel Spacing="3" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}">
-                                                    <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
-                                                    <TextBlock Text="{x:Bind Argument, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
-                                                    <TextBlock Text="{x:Bind Type, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                                                    <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" IsOn="{x:Bind IsEnabled, Mode=OneWay}" Toggled="OnSourceEnabledToggled" />
-                                                    <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-                            </Grid>
-                        </Border>
-                    </Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled">
+                    <Grid RowSpacing="{StaticResource PageSectionSpacing}" VerticalAlignment="Stretch">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                            <Border Style="{StaticResource CardStyle}">
+                                <Grid RowSpacing="12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock x:Name="AddSourceSectionText" Text="{services:Localize Key=Section_AddSource}" Style="{StaticResource SectionTitleTextBlockStyle}" />
+                                    <design:OnlyWingetResponsivePanel Grid.Row="1" ItemMinWidth="300" HorizontalSpacing="16" VerticalSpacing="12">
+                                        <Grid HorizontalAlignment="Stretch">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" MaxWidth="480" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="SourceNameBox" Header="{services:Localize Key=Source_Name}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceNameTextBox" Text="{x:Bind ViewModel.Name.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                        </Grid>
+                                        <Grid HorizontalAlignment="Stretch">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" MaxWidth="480" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="SourceArgumentBox" Header="{services:Localize Key=Source_Argument}" Style="{StaticResource FormTextBoxStyle}" AutomationProperties.AutomationId="SourceArgumentTextBox" Text="{x:Bind ViewModel.Argument.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Stretch"/>
+                                        </Grid>
+                                    </design:OnlyWingetResponsivePanel>
+                                    <StackPanel x:Name="AddSourceBtnRow" Grid.Row="2" Orientation="Horizontal" Spacing="8">
+                                        <Button x:Name="AddSourceBtn" Content="{services:Localize Key=Command_Sources_Add}" Click="OnAddSourceClick" Style="{StaticResource AddPrimaryButtonStyle}" AutomationProperties.AutomationId="AddSourceBtn" AutomationProperties.Name="{services:Localize Key=Command_Sources_Add}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Border Grid.Row="1" Style="{StaticResource CardStyle}">
+                                <Grid RowSpacing="12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <design:OnlyWingetWrapPanel Grid.Row="0" HorizontalSpacing="12" VerticalSpacing="8" VerticalAlignment="Center">
+                                        <TextBlock x:Name="ManageSourcesSectionText" Text="{services:Localize Key=Section_ManageSources}" Style="{StaticResource SectionTitleTextBlockStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <AutoSuggestBox x:Name="SourceSearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSourceSearchBoxChanged" Width="220" VerticalAlignment="Center" AutomationProperties.AutomationId="SourceSearchBox" AutomationProperties.Name="{services:Localize Key=Activity_Search}" />
+                                        <Button x:Name="RefreshSourcesBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Refresh}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Refresh}" AutomationProperties.AutomationId="RefreshSourcesBtn" Click="OnRefreshSourcesClick" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Refresh" />
+                                        </Button>
+                                        <Button x:Name="UpdateSourcesBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Update}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Update}" AutomationProperties.AutomationId="UpdateSourcesBtn" Click="OnUpdateSourcesClick" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Sync" />
+                                        </Button>
+                                        <Button x:Name="RemoveSourceBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Remove}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Remove}" AutomationProperties.AutomationId="RemoveSourceBtn" Click="OnRemoveSourceClick" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Delete" />
+                                        </Button>
+                                        <Button x:Name="ResetSourcesBtn" ToolTipService.ToolTip="{services:Localize Key=Command_Sources_Reset}" AutomationProperties.Name="{services:Localize Key=Command_Sources_Reset}" AutomationProperties.AutomationId="ResetSourcesBtn" Click="OnResetSourcesClick" Padding="8,6" VerticalAlignment="Center">
+                                            <SymbolIcon Symbol="Undo" />
+                                        </Button>
+                                    </design:OnlyWingetWrapPanel>
+                                    <ListView x:Name="SourceList" Grid.Row="1" MinHeight="240" SelectionMode="Single" SelectionChanged="OnSourceSelectionChanged" AutomationProperties.AutomationId="SourceList">
+                                        <ListView.ItemContainerStyle>
+                                            <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
+                                                <Setter Property="Padding" Value="0,8" />
+                                            </Style>
+                                        </ListView.ItemContainerStyle>
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="appPresentation:SourceRow">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                    <StackPanel Spacing="3" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}">
+                                                        <TextBlock Text="{x:Bind Name, Mode=OneTime}" Style="{StaticResource RowPrimaryTextBlockStyle}" />
+                                                        <TextBlock Text="{x:Bind Argument, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                                        <TextBlock Text="{x:Bind Type, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                        <ToggleSwitch AutomationProperties.AutomationId="SourceEnabledToggle" AutomationProperties.Name="{x:Bind Name, Mode=OneTime}" IsOn="{x:Bind IsEnabled, Mode=OneWay}" Toggled="OnSourceEnabledToggled" />
+                                                        <TextBlock Text="{x:Bind Status, Mode=OneTime}" Style="{StaticResource RowSecondaryTextBlockStyle}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                </ScrollViewer>
             </design:PageScaffold.Body>
         </design:PageScaffold>
     </Grid>

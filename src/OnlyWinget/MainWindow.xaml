@@ -32,15 +32,14 @@
         <NavigationView
             x:Name="RootNavigation"
             CompactModeThresholdWidth="720"
-            ExpandedModeThresholdWidth="1100"
+            ExpandedModeThresholdWidth="1050"
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="True"
             PaneTitle=""
             PaneDisplayMode="Auto"
-            OpenPaneLength="260"
+            OpenPaneLength="240"
             AutomationProperties.AutomationId="RootNavigation"
-            SelectionFollowsFocus="Enabled"
-            ItemInvoked="OnItemInvoked"
+            SelectionFollowsFocus="Disabled"
             SelectionChanged="OnSelectionChanged">
             <NavigationView.PaneFooter>
                 <NavigationViewItem x:Name="OpenLogsItem" Tapped="OnOpenLogsTapped" AutomationProperties.AutomationId="NavOpenLogs">

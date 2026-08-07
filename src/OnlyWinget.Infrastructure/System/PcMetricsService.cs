@@ -117,12 +117,20 @@ public sealed class PcMetricsService : IPcMetricsService
         return RuntimeInformation.OSDescription;
     }
 
+    private static (string status, DateTime timestamp) cachedNetworkStatus = ("Unknown", DateTime.MinValue);
+
     private static string GetNetworkStatusText()
     {
         try
         {
+            if ((DateTime.UtcNow - cachedNetworkStatus.timestamp).TotalSeconds < 5)
+            {
+                return cachedNetworkStatus.status;
+            }
+
             if (!NetworkInterface.GetIsNetworkAvailable())
             {
+                cachedNetworkStatus = ("Disconnected", DateTime.UtcNow);
                 return "Disconnected";
             }
 
@@ -132,15 +140,22 @@ public sealed class PcMetricsService : IPcMetricsService
                               nic.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
                 .ToList();
 
+            string result;
             if (activeInterfaces.Any(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
             {
-                return "Connected (Wi-Fi)";
+                result = "Connected (Wi-Fi)";
             }
-            if (activeInterfaces.Any(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet))
+            else if (activeInterfaces.Any(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet))
             {
-                return "Connected (Ethernet)";
+                result = "Connected (Ethernet)";
             }
-            return activeInterfaces.Count > 0 ? "Connected" : "Disconnected";
+            else
+            {
+                result = activeInterfaces.Count > 0 ? "Connected" : "Disconnected";
+            }
+
+            cachedNetworkStatus = (result, DateTime.UtcNow);
+            return result;
         }
         catch
         {

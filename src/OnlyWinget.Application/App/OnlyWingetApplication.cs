@@ -29,6 +29,7 @@ public sealed partial class OnlyWingetApplication(
     Microsoft.Extensions.Logging.ILogger<OnlyWingetApplication>? appLogger = null)
 {
     public bool ContinueOperationsAfterFailure { get; set; }
+    public bool BypassHashValidation { get; set; }
     public int MaxPackageOperationRetries { get; set; } = 1;
     public Action<string, Exception>? ExceptionLogger { get; set; }
     public Action<AppLogLevel, string, string>? Logger { get; set; }
@@ -161,18 +162,30 @@ public sealed partial class OnlyWingetApplication(
         }
         catch (OperationCanceledException)
         {
+            if (operationProgress != null)
+            {
+                operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
+            }
             Logger?.Invoke(AppLogLevel.Information, $"Operation {state} was cancelled.", "RunAsync");
             appLogger?.LogInformation("Operation {State} was cancelled.", state);
             return Fail("Operation cancelled.", state);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
         {
+            if (operationProgress != null)
+            {
+                operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
+            }
             Logger?.Invoke(AppLogLevel.Warning, $"Operation {state} failed with user error: {exception.Message}", "RunAsync");
             appLogger?.LogWarning(exception, "Operation {State} failed with user error: {Message}", state, exception.Message);
             return Fail(exception.Message, state);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
+            if (operationProgress != null)
+            {
+                operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
+            }
             ExceptionLogger?.Invoke("OnlyWingetApplication.RunAsync", exception);
             Logger?.Invoke(AppLogLevel.Error, $"Operation {state} failed: {exception}", "RunAsync");
             appLogger?.LogError(exception, "Operation {State} failed.", state);

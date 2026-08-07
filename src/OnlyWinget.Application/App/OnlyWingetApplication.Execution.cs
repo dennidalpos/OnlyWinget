@@ -165,7 +165,8 @@ public sealed partial class OnlyWingetApplication
                             cancellationToken,
                             forwardingProgress,
                             ContinueOperationsAfterFailure,
-                            MaxPackageOperationRetries).ConfigureAwait(false);
+                            MaxPackageOperationRetries,
+                            BypassHashValidation).ConfigureAwait(false);
 
                         lastOperationResults.AddRange(summary.Results);
 
@@ -177,7 +178,7 @@ public sealed partial class OnlyWingetApplication
                             var message = CreateOperationActivityMessage(result);
                             AddActivity(severity, result.Selection.Package.Id, string.IsNullOrWhiteSpace(message) ? "Completed." : message);
                             Logger?.Invoke(
-                                AppLogLevel.Verbose,
+                                result.Succeeded ? AppLogLevel.Verbose : AppLogLevel.Error,
                                 $"[Package Result] ID: {result.Selection.Package.Id}, Action: {result.Selection.Action}, Succeeded: {result.Succeeded}, ExitCode: {result.CommandResult.ExitCode}, StdOut: {result.CommandResult.StandardOutput.Trim()}, StdErr: {result.CommandResult.StandardError.Trim()}, AttemptCount: {result.AttemptCount}",
                                 nameof(ApplySelectedUpdatesAsync));
                         }

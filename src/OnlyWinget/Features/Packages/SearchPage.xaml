@@ -14,11 +14,9 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MaxWidth="480" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <AutoSuggestBox x:Name="QueryBox" PlaceholderText="{services:Localize Key=Search_Query}" Header="{services:Localize Key=Search_Query}" QuerySubmitted="OnQuerySubmitted" AutomationProperties.AutomationId="PackageSearchQuery" HorizontalAlignment="Stretch" />
-                <ProgressRing Grid.Column="1" Width="24" Height="24" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" Visibility="{x:Bind presentation:PresentationValues.Visibility(ViewModel.IsLoading), Mode=OneWay}" />
-                <commands:OnlyWingetCommandBar Grid.Column="2" ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" />
+                <commands:OnlyWingetCommandBar Grid.Column="1" ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" />
             </Grid>
         </Border>
         <states:StatePresenter x:Name="PageState" Grid.Row="1" />

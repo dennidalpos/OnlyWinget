@@ -20,6 +20,9 @@ public sealed class ApplicationStartupOrchestrator(OnlyWingetApplication applica
         await application.RefreshSourcesAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
+        await application.UpdateSourcesAsync(cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+
         await application.RefreshWorkspacePackageMetadataAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
     }

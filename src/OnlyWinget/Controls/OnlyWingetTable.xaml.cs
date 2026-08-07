@@ -168,7 +168,7 @@ public sealed partial class OnlyWingetTable : UserControl
             double maxTextWidth = 0;
             if (!string.IsNullOrEmpty(col.Header))
             {
-                maxTextWidth = col.Header.Length * 8.2 + 28;
+                maxTextWidth = col.Header.Length * 7.8 + 24;
             }
 
             // Inspect up to first 100 items for performance
@@ -184,7 +184,7 @@ public sealed partial class OnlyWingetTable : UserControl
                     var val = getter(item)?.ToString();
                     if (!string.IsNullOrEmpty(val))
                     {
-                        double estimatedWidth = val.Length * 7.5 + 26;
+                        double estimatedWidth = val.Length * 7.0 + 22;
                         if (estimatedWidth > maxTextWidth)
                         {
                             maxTextWidth = estimatedWidth;
@@ -193,9 +193,9 @@ public sealed partial class OnlyWingetTable : UserControl
                 }
             }
 
-            // Constrain between 60px and 450px
-            // Minimum 90px: the header filter TextBox needs ~88px (64px min + 12px margin each side)
-            double finalWidth = Math.Max(90, Math.Min(maxTextWidth, 450));
+            // Constrain between 60px and 320px
+            // Minimum 72px: the header filter TextBox needs ~70px
+            double finalWidth = Math.Max(72, Math.Min(maxTextWidth, 320));
 
             col.Width = new GridLength(finalWidth);
         }

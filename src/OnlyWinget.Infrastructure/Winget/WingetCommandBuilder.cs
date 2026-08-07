@@ -4,7 +4,7 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class WingetCommandBuilder
 {
-    public IReadOnlyList<string> Build(PackageSelection selection)
+    public IReadOnlyList<string> Build(PackageSelection selection, bool bypassHashValidation = false)
     {
         ArgumentNullException.ThrowIfNull(selection);
 
@@ -31,6 +31,10 @@ public sealed class WingetCommandBuilder
         if (selection.Action is PackageAction.Install or PackageAction.Upgrade)
         {
             arguments.Add("--accept-package-agreements");
+            if (bypassHashValidation)
+            {
+                arguments.Add("--ignore-security-hash");
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(selection.Package.Source))

@@ -69,8 +69,7 @@ public sealed class ProcessWingetCommandRunner(
         if (string.Equals(command, "winget", StringComparison.OrdinalIgnoreCase) && arguments.Count > 0)
         {
             var action = arguments[0].ToLowerInvariant();
-            return action is "install" or "uninstall" or "upgrade" or "pin" ||
-                   (action == "source" && arguments.Count > 1 && arguments[1].ToLowerInvariant() is "add" or "remove" or "reset");
+            return action == "source" && arguments.Count > 1 && arguments[1].ToLowerInvariant() is "add" or "remove" or "reset";
         }
         return false;
     }

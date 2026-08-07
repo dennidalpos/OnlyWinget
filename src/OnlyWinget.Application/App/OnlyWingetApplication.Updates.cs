@@ -171,7 +171,7 @@ public sealed partial class OnlyWingetApplication
                             : (string.IsNullOrWhiteSpace(result.Message) ? $"Result Code: {result.ResultCode}" : $"{result.Message} (Result Code: {result.ResultCode})");
                         AddActivity(severity, result.Title, logMessage);
                         Logger?.Invoke(
-                            AppLogLevel.Verbose,
+                            result.Succeeded ? AppLogLevel.Verbose : AppLogLevel.Error,
                             $"[Windows Update Result] Title: {result.Title}, Succeeded: {result.Succeeded}, ResultCode: {result.ResultCode}, Message: {result.Message}",
                             nameof(InstallSelectedWindowsUpdatesAsync));
                     }
@@ -180,6 +180,9 @@ public sealed partial class OnlyWingetApplication
                     {
                         throw new InvalidOperationException("One or more Windows updates failed.");
                     }
+
+                    operationProgress = operationProgress with { Phase = WingetProgressPhase.Completed, Percentage = 100, PackagePercentage = 100, CompletedPackages = selected.Length };
+                    progress?.Report(operationProgress);
 
                     if (outcome.Rows.Any(result => result.RebootRequired))
                     {

@@ -6,7 +6,7 @@
     xmlns:updates="using:OnlyWinget.Features.Updates"
     xmlns:presentation="using:OnlyWinget.Presentation"
     xmlns:services="using:OnlyWinget.Services">
-    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Nav_Updates}" Subtitle="{services:Localize Key=Updates_Subtitle}" AreaAccentBrush="{ThemeResource AreaUpdatesBrush}">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Nav_Updates}" AreaAccentBrush="{ThemeResource AreaUpdatesBrush}">
         <design:PageScaffold.Commands>
             <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind WingetMode}" AutomationProperties.AutomationId="UpdatesModes">
                 <SelectorBarItem x:Name="WingetMode" Text="{services:Localize Key=Updates_WingetMode}" Icon="Sync" AutomationProperties.AutomationId="UpdatesWingetTab" />

@@ -4,13 +4,14 @@
     <x:Double x:Key="PageMaxWidth">1440</x:Double>
     <x:Double x:Key="PageWideBreakpoint">1100</x:Double>
     <x:Double x:Key="PageMediumBreakpoint">720</x:Double>
-    <Thickness x:Key="PageWidePadding">20,16,20,16</Thickness>
-    <Thickness x:Key="PageMediumPadding">16,14,16,14</Thickness>
-    <Thickness x:Key="PageCompactPadding">12,12,12,14</Thickness>
-    <x:Double x:Key="PageSectionSpacing">14</x:Double>
+    <x:Double x:Key="PageNarrowBreakpoint">900</x:Double>
+    <Thickness x:Key="PageWidePadding">16,12,16,12</Thickness>
+    <Thickness x:Key="PageMediumPadding">12,10,12,10</Thickness>
+    <Thickness x:Key="PageCompactPadding">10,8,10,10</Thickness>
+    <x:Double x:Key="PageSectionSpacing">12</x:Double>
     <x:Double x:Key="ControlSpacing">8</x:Double>
-    <Thickness x:Key="CardPadding">12</Thickness>
+    <Thickness x:Key="CardPadding">10</Thickness>
     <Thickness x:Key="TableCellPadding">10,6</Thickness>
     <x:Double x:Key="TableSelectionColumnWidth">40</x:Double>
-    <x:Double x:Key="TableRowMinHeight">38</x:Double>
+    <x:Double x:Key="TableRowMinHeight">34</x:Double>
 </ResourceDictionary>

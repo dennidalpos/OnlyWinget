@@ -27,6 +27,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool continueOperationsAfterFailure;
 
+    [ObservableProperty]
+    private bool bypassHashValidation;
+
     internal SettingsViewModel(IAppSettingsService settingsService)
     {
         this.settingsService = settingsService;
@@ -36,6 +39,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         diagnosticLogging = settingsService.Current.DiagnosticLogging;
         logLevel = settingsService.Current.LogLevel;
         continueOperationsAfterFailure = settingsService.Current.ContinueOperationsAfterFailure;
+        bypassHashValidation = settingsService.Current.BypassHashValidation;
     }
 
     [RelayCommand]
@@ -47,6 +51,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             DiagnosticLogging,
             LogLevel,
             ContinueOperationsAfterFailure,
+            BypassHashValidation,
             settingsService.Current.SidebarWidth),
         cancellationToken);
 
@@ -60,5 +65,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         DiagnosticLogging = settingsService.Current.DiagnosticLogging;
         LogLevel = settingsService.Current.LogLevel;
         ContinueOperationsAfterFailure = settingsService.Current.ContinueOperationsAfterFailure;
+        BypassHashValidation = settingsService.Current.BypassHashValidation;
     }
 }

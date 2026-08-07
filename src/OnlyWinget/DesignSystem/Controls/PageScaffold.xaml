@@ -5,6 +5,23 @@
     <Grid x:Name="Root" Padding="{StaticResource PageWidePadding}" RowSpacing="12">
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
+                    <VisualState x:Name="Wide">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="1100" />
+                        </VisualState.StateTriggers>
+                    </VisualState>
+                    <VisualState x:Name="Medium">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="800" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="Root.Padding" Value="{StaticResource PageMediumPadding}" />
+                            <Setter Target="HeaderCol1.Width" Value="0" />
+                            <Setter Target="HeaderRow1.Height" Value="Auto" />
+                            <Setter Target="CommandsPresenter.(Grid.Row)" Value="1" />
+                            <Setter Target="CommandsPresenter.(Grid.Column)" Value="0" />
+                        </VisualState.Setters>
+                    </VisualState>
                     <VisualState x:Name="Compact">
                         <VisualState.StateTriggers>
                             <AdaptiveTrigger MinWindowWidth="0" />
@@ -16,19 +33,6 @@
                             <Setter Target="CommandsPresenter.(Grid.Row)" Value="1" />
                             <Setter Target="CommandsPresenter.(Grid.Column)" Value="0" />
                         </VisualState.Setters>
-                    </VisualState>
-                    <VisualState x:Name="Medium">
-                        <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="{StaticResource PageMediumBreakpoint}" />
-                        </VisualState.StateTriggers>
-                        <VisualState.Setters>
-                            <Setter Target="Root.Padding" Value="{StaticResource PageMediumPadding}" />
-                        </VisualState.Setters>
-                    </VisualState>
-                    <VisualState x:Name="Wide">
-                        <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="{StaticResource PageWideBreakpoint}" />
-                        </VisualState.StateTriggers>
                     </VisualState>
                 </VisualStateGroup>
             </VisualStateManager.VisualStateGroups>

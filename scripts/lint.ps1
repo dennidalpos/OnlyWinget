@@ -40,5 +40,7 @@ if (-not $anyIssue) {
         Write-Host 'All scripts OK' -ForegroundColor Green
     }
 }
-if ($anyIssue) { exit 1 }
+if ($anyIssue) {
+    throw 'PSScriptAnalyzer lint fallito.'
+}
 

@@ -9,7 +9,7 @@
     xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
     xmlns:activity="using:OnlyWinget.Features.Activity"
     xmlns:services="using:OnlyWinget.Services">
-    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Activity_Title}" Subtitle="{services:Localize Key=Activity_Subtitle}" AreaAccentBrush="{ThemeResource AreaActivityBrush}">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Activity_Title}" AreaAccentBrush="{ThemeResource AreaActivityBrush}">
         <design:PageScaffold.Commands>
             <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
         </design:PageScaffold.Commands>
@@ -29,15 +29,15 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" AutomationProperties.AutomationId="ActivitySearchBox" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivitySeverityFilter" MinWidth="140" VerticalAlignment="Center">
+                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" AutomationProperties.AutomationId="ActivitySearchBox" AutomationProperties.Name="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivitySeverityFilter" AutomationProperties.Name="Severity Filter" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Content="{services:Localize Key=Activity_AllSeverities}" Tag="all" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Information}" Tag="Information" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Success}" Tag="Success" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Warning}" Tag="Warning" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Error}" Tag="Error" />
                         </ComboBox>
-                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivityCategoryFilter" MinWidth="140" VerticalAlignment="Center">
+                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivityCategoryFilter" AutomationProperties.Name="Category Filter" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_AllCategories}" Tag="all" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_Packages}" Tag="packages" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_WindowsUpdate}" Tag="windows" />

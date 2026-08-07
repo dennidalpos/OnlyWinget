@@ -15,7 +15,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
-            <design:OnlyWingetResponsivePanel ItemMinWidth="280" HorizontalSpacing="16" VerticalSpacing="12">
+            <design:OnlyWingetResponsivePanel ItemMinWidth="220" HorizontalSpacing="16" VerticalSpacing="12">
                 <design:OnlyWingetWrapPanel HorizontalSpacing="16" VerticalSpacing="8" VerticalAlignment="Center">
                     <CheckBox x:Name="SoftwareUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeSoftware}" IsChecked="True" AutomationProperties.AutomationId="WindowsSoftwareFilter" />
                     <CheckBox x:Name="DriverUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeDrivers}" IsChecked="True" AutomationProperties.AutomationId="WindowsDriverFilter" />

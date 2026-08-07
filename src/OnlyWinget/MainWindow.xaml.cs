@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
     private string? lastTheme;
     private string currentRouteId = "home";
     private bool isRestoringNavigation;
+    private bool isNavigating;
 
     public MainWindow()
     {
@@ -40,7 +41,7 @@ public sealed partial class MainWindow : Window
         var currentSettings = App.UiServices.Settings.Current;
         lastLanguage = currentSettings.Language;
         lastTheme = currentSettings.Theme;
-        RootNavigation.OpenPaneLength = Math.Clamp(currentSettings.SidebarWidth, 200, 420);
+        RootNavigation.OpenPaneLength = Math.Clamp(currentSettings.SidebarWidth, 180, 400);
         App.UiServices.Settings.Changed += OnSettingsChanged;
         App.Workflow.StateChanged += OnWorkflowStateChanged;
         Closed += OnClosed;
@@ -234,7 +235,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (isRestoringNavigation)
+        if (isRestoringNavigation || isNavigating)
         {
             return;
         }
@@ -247,23 +248,27 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (!await ConfirmCurrentNavigationAsync())
+        isNavigating = true;
+        try
         {
-            isRestoringNavigation = true;
-            SelectRoute(currentRouteId);
-            isRestoringNavigation = false;
-            return;
+            if (!await ConfirmCurrentNavigationAsync())
+            {
+                isRestoringNavigation = true;
+                SelectRoute(currentRouteId);
+                isRestoringNavigation = false;
+                return;
+            }
+
+            ShowPage(tag);
         }
-
-        ShowPage(tag);
-    }
-
-    private async void OnItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
-    {
-        var tag = args.IsSettingsInvoked
-            ? routeDefinitions.Single(route => route.IsSettings).Id
-            : (args.InvokedItemContainer as NavigationViewItem)?.Tag as string;
-        if (tag is not null && routes.ContainsKey(tag) && await ConfirmCurrentNavigationAsync()) ShowPage(tag);
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("MainWindow.OnSelectionChanged", exception);
+        }
+        finally
+        {
+            isNavigating = false;
+        }
     }
 
     private void ShowPage(string tag)
@@ -282,10 +287,20 @@ public sealed partial class MainWindow : Window
         currentRouteId = tag;
     }
 
-    private async Task<bool> ConfirmCurrentNavigationAsync() =>
-        PageHost.Content is IPendingNavigationGuard guard
-            ? await guard.ConfirmNavigationAsync()
-            : true;
+    private async Task<bool> ConfirmCurrentNavigationAsync()
+    {
+        try
+        {
+            return PageHost.Content is IPendingNavigationGuard guard
+                ? await guard.ConfirmNavigationAsync()
+                : true;
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("MainWindow.ConfirmCurrentNavigationAsync", exception);
+            return true;
+        }
+    }
 
     internal void Navigate(string routeId)
     {

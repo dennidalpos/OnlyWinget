@@ -14,7 +14,8 @@ public sealed class WingetOperationExecutor(
         CancellationToken cancellationToken,
         IProgress<OperationProgress>? progress = null,
         bool continueAfterFailure = false,
-        int maxRetries = 0)
+        int maxRetries = 0,
+        bool bypassHashValidation = false)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
@@ -74,7 +75,7 @@ public sealed class WingetOperationExecutor(
                 {
                     commandResult = await commandRunner.RunAsync(
                             "winget",
-                            commandBuilder.Build(selection),
+                            commandBuilder.Build(selection, bypassHashValidation),
                             cancellationToken,
                             commandProgress,
                             global::System.TimeSpan.FromMinutes(30))

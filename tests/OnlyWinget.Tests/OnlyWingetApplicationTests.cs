@@ -476,7 +476,7 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
-    public async Task StartupRefreshesSourceList()
+    public async Task StartupRefreshesAndUpdatesSources()
     {
         var sources = new StubSourceService(
             new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available),
@@ -485,7 +485,7 @@ public sealed class OnlyWingetApplicationTests
 
         await new ApplicationStartupOrchestrator(app).InitializeAsync(CancellationToken.None);
 
-        Assert.Equal(["list", "list"], sources.Calls);
+        Assert.Equal(["list", "list", "update", "list"], sources.Calls);
         Assert.Equal(2, app.State.Sources.Count);
     }
 
@@ -1280,16 +1280,19 @@ public sealed class OnlyWingetApplicationTests
     {
         public OperationPlan? LastPlan { get; private set; }
         public int LastMaxRetries { get; private set; }
+        public bool LastBypassHashValidation { get; private set; }
 
         public Task<OperationExecutionSummary> ExecuteAsync(
             OperationPlan plan,
             CancellationToken cancellationToken,
             IProgress<OperationProgress>? progress = null,
             bool continueAfterFailure = false,
-            int maxRetries = 0)
+            int maxRetries = 0,
+            bool bypassHashValidation = false)
         {
             LastPlan = plan;
             LastMaxRetries = maxRetries;
+            LastBypassHashValidation = bypassHashValidation;
             return Task.FromResult(summary);
         }
     }
@@ -1360,5 +1363,18 @@ public sealed class OnlyWingetApplicationTests
         app.CancelCurrentOperation();
         Assert.NotNull(app.State);
     }
+
+    [Fact]
+    public async Task OperationProgress_IsUpdatedAndNotified_DuringExecution()
+    {
+        var app = CreateApplication();
+        var reportedStates = new List<OnlyWingetState>();
+        app.StateChanged += (s, e) => reportedStates.Add(app.State);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        Assert.NotEmpty(reportedStates);
+        Assert.Equal(ApplicationBusyState.Idle, app.State.BusyState);
+    }
 }
+
 

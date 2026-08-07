@@ -11,7 +11,6 @@ namespace OnlyWinget.Features.Updates;
 
 public sealed partial class WindowsUpdatePage : UserControl
 {
-    private bool wasBusy;
     public WindowsUpdatesViewModel ViewModel { get; }
 
     public WindowsUpdatePage()
@@ -39,7 +38,6 @@ public sealed partial class WindowsUpdatePage : UserControl
     private void Refresh()
     {
         PageState.Present(ViewModel.PageState);
-        ApplyOperationStatus();
         SoftwareUpdatesBox.IsEnabled = !ViewModel.IsBusy;
         DriverUpdatesBox.IsEnabled = !ViewModel.IsBusy;
         MicrosoftUpdatesBox.IsEnabled = !ViewModel.IsBusy;
@@ -64,21 +62,6 @@ public sealed partial class WindowsUpdatePage : UserControl
         SoftwareUpdatesBox.IsChecked == true,
         DriverUpdatesBox.IsChecked == true,
         MicrosoftUpdatesBox.IsChecked == true);
-
-    private void ApplyOperationStatus()
-    {
-        if (ViewModel.IsBusy)
-        {
-            PageState.Show(TextResources.Get("Operation_WindowsUpdate_Title"), TextResources.Get(ViewModel.IsInstalling ? "Progress_InstallingWindowsUpdates" : "Progress_ScanningWindowsUpdates"), canCancel: true);
-        }
-        else if (wasBusy)
-        {
-            var error = ViewModel.Error;
-            var reboot = ViewModel.RebootRequired;
-            PageState.Complete(error ?? TextResources.Get(reboot ? "WindowsUpdates_RebootRequired" : "Progress_Completed"), error is not null);
-        }
-        wasBusy = ViewModel.IsBusy;
-    }
 
     private void OnWindowsUpdateBatchSelectionChanged(object? sender, OnlyWingetTableBatchSelectionEventArgs args)
     {

@@ -6,7 +6,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Border Style="{StaticResource CardStyle}">
-            <design:OnlyWingetResponsivePanel ItemMinWidth="320" HorizontalSpacing="16" VerticalSpacing="12">
+            <design:OnlyWingetResponsivePanel ItemMinWidth="240" HorizontalSpacing="16" VerticalSpacing="12">
                 <!-- Left Section: Preset Selector and Preset Actions -->
                 <design:OnlyWingetWrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
                     <ComboBox x:Name="PresetSelector" SelectionChanged="OnPresetChanged" AutomationProperties.AutomationId="PresetSelector" Style="{StaticResource FormComboBoxStyle}" Width="160" VerticalAlignment="Center"/>

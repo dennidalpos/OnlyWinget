@@ -24,7 +24,7 @@ New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
 
 $isFastMode = -not $Full
 
-$testArgs = @('test', $testProjectPath, '-c', $Configuration, '--results-directory', $testResultsPath, '--logger', 'trx;LogFileName=unit-tests.trx')
+$testArgs = @('test', $testProjectPath, '-c', $Configuration, '--results-directory', $testResultsPath, '--logger', 'trx;LogFileName=unit-tests.trx', '--maxcpucount:1')
 if (-not $NoRestore) {
     dotnet restore $testProjectPath --locked-mode > $null
     if ($LASTEXITCODE -ne 0) {

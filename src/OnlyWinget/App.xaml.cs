@@ -59,6 +59,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         AppDiagnostics.IsEnabled = settings.DiagnosticLogging;
         AppDiagnostics.MinLogLevel = Enum.TryParse<AppLogLevel>(settings.LogLevel, out var level) ? level : AppLogLevel.Information;
         Workflow.ContinueOperationsAfterFailure = settings.ContinueOperationsAfterFailure;
+        Workflow.BypassHashValidation = settings.BypassHashValidation;
     }
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)

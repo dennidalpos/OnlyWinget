@@ -195,34 +195,47 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
             return true;
         }
 
-        var isEditValid = IsPendingEditValid();
-
-        var dialog = new ContentDialog
+        if (XamlRoot is null)
         {
-            Title = TextResources.Get("Dialog_UnsavedChanges_Title"),
-            Content = TextResources.Get("Dialog_UnsavedChanges_Message"),
-            PrimaryButtonText = TextResources.Get("Dialog_UnsavedChanges_Apply"),
-            IsPrimaryButtonEnabled = isEditValid,
-            SecondaryButtonText = TextResources.Get("Dialog_UnsavedChanges_Discard"),
-            CloseButtonText = TextResources.Get("Dialog_Cancel"),
-            DefaultButton = isEditValid ? ContentDialogButton.Primary : ContentDialogButton.Close,
-            XamlRoot = XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
-        {
-            return await ApplyPendingEditAsync();
-        }
-
-        if (result == ContentDialogResult.Secondary)
-        {
-            pendingFlyout?.Hide();
-            ClearPendingFields();
             return true;
         }
 
-        return false;
+        try
+        {
+            var isEditValid = IsPendingEditValid();
+
+            var dialog = new ContentDialog
+            {
+                Title = TextResources.Get("Dialog_UnsavedChanges_Title"),
+                Content = TextResources.Get("Dialog_UnsavedChanges_Message"),
+                PrimaryButtonText = TextResources.Get("Dialog_UnsavedChanges_Apply"),
+                IsPrimaryButtonEnabled = isEditValid,
+                SecondaryButtonText = TextResources.Get("Dialog_UnsavedChanges_Discard"),
+                CloseButtonText = TextResources.Get("Dialog_Cancel"),
+                DefaultButton = isEditValid ? ContentDialogButton.Primary : ContentDialogButton.Close,
+                XamlRoot = XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                return await ApplyPendingEditAsync();
+            }
+
+            if (result == ContentDialogResult.Secondary)
+            {
+                pendingFlyout?.Hide();
+                ClearPendingFields();
+                return true;
+            }
+
+            return false;
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("PresetsPage.ConfirmNavigationAsync", exception);
+            return true;
+        }
     }
 
     private bool IsPendingEditValid()

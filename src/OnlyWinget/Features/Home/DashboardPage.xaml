@@ -12,56 +12,58 @@
             <states:StatePresenter x:Name="PageState" />
         </design:PageScaffold.State>
         <design:PageScaffold.Body>
-            <Grid RowSpacing="{StaticResource PageSectionSpacing}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Border Style="{StaticResource CardStyle}">
-                    <Grid ColumnSpacing="16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="4">
-                            <TextBlock x:Name="ActivePresetText" Text="{x:Bind viewModel.ActivePresetDisplay, Mode=OneWay}" Style="{StaticResource SectionTitleTextBlockStyle}" AutomationProperties.AutomationId="DashboardActivePreset" />
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                                <FontIcon x:Name="OperationalIcon" Glyph="{x:Bind presentation:PresentationValues.OperationalGlyph(viewModel.HasWarning, viewModel.IsBusy), Mode=OneWay}" Foreground="{x:Bind presentation:PresentationValues.OperationalForeground(viewModel.HasWarning, viewModel.IsBusy), Mode=OneWay}" FontSize="16" VerticalAlignment="Center" />
-                                <TextBlock x:Name="OperationalText" Text="{x:Bind viewModel.OperationalStatus, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalScrollMode="Enabled">
+                <Grid RowSpacing="{StaticResource PageSectionSpacing}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="ActivePresetText" Text="{x:Bind viewModel.ActivePresetDisplay, Mode=OneWay}" Style="{StaticResource SectionTitleTextBlockStyle}" AutomationProperties.AutomationId="DashboardActivePreset" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                    <FontIcon x:Name="OperationalIcon" Glyph="{x:Bind presentation:PresentationValues.OperationalGlyph(viewModel.HasWarning, viewModel.IsBusy), Mode=OneWay}" Foreground="{x:Bind presentation:PresentationValues.OperationalForeground(viewModel.HasWarning, viewModel.IsBusy), Mode=OneWay}" FontSize="16" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="OperationalText" Text="{x:Bind viewModel.OperationalStatus, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </StackPanel>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <Button x:Name="OpenPackagesButton" Style="{StaticResource PrimaryButtonStyle}" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <SymbolIcon Symbol="Library" />
-                                    <TextBlock Text="{services:Localize Key=Dashboard_OpenPackages}" />
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="OpenUpdatesButton" Style="{StaticResource SecondaryButtonStyle}" Click="OnOpenUpdates" AutomationProperties.AutomationId="DashboardOpenUpdates">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <SymbolIcon Symbol="Sync" />
-                                    <TextBlock Text="{services:Localize Key=Dashboard_OpenUpdates}" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                <ItemsRepeater x:Name="MetricRepeater" Grid.Row="1">
-                    <ItemsRepeater.Layout>
-                        <UniformGridLayout MaximumRowsOrColumns="3" MinItemWidth="240" MinItemHeight="110" MinColumnSpacing="16" MinRowSpacing="16" ItemsStretch="Fill" Orientation="Horizontal" />
-                    </ItemsRepeater.Layout>
-                    <ItemsRepeater.ItemTemplate>
-                        <DataTemplate x:DataType="home:DashboardMetric">
-                            <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1" Padding="16">
-                                <StackPanel Spacing="6" VerticalAlignment="Center">
-                                    <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" TextWrapping="Wrap" />
-                                    <TextBlock Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsRepeater.ItemTemplate>
-                </ItemsRepeater>
-            </Grid>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Button x:Name="OpenPackagesButton" Style="{StaticResource PrimaryButtonStyle}" Click="OnOpenPackages" AutomationProperties.AutomationId="DashboardOpenPackages" AutomationProperties.Name="{services:Localize Key=Dashboard_OpenPackages}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <SymbolIcon Symbol="Library" />
+                                        <TextBlock Text="{services:Localize Key=Dashboard_OpenPackages}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="OpenUpdatesButton" Style="{StaticResource SecondaryButtonStyle}" Click="OnOpenUpdates" AutomationProperties.AutomationId="DashboardOpenUpdates" AutomationProperties.Name="{services:Localize Key=Dashboard_OpenUpdates}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <SymbolIcon Symbol="Sync" />
+                                        <TextBlock Text="{services:Localize Key=Dashboard_OpenUpdates}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <ItemsRepeater x:Name="MetricRepeater" Grid.Row="1">
+                        <ItemsRepeater.Layout>
+                            <UniformGridLayout MaximumRowsOrColumns="3" MinItemWidth="200" MinItemHeight="90" MinColumnSpacing="16" MinRowSpacing="16" ItemsStretch="Fill" Orientation="Horizontal" />
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate x:DataType="home:DashboardMetric">
+                                <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1" Padding="16">
+                                    <StackPanel Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                </Grid>
+            </ScrollViewer>
         </design:PageScaffold.Body>
     </design:PageScaffold>
 </Page>

@@ -9,5 +9,6 @@ public interface IOperationExecutor
         CancellationToken cancellationToken,
         IProgress<OperationProgress>? progress = null,
         bool continueAfterFailure = false,
-        int maxRetries = 0);
+        int maxRetries = 0,
+        bool bypassHashValidation = false);
 }

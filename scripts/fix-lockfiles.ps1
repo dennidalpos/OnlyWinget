@@ -6,7 +6,7 @@
 .DESCRIPTION
     Esegue 'dotnet restore --force-evaluate' per risolvere l'errore NU1004
     ("Runtime identifiers del progetto modificati") causato da lock file
-    non più coerenti con lo stato attuale dei .csproj.
+    non piu coerenti con lo stato attuale dei .csproj.
     Da usare ogniqualvolta 'dotnet restore --locked-mode' fallisce con NU1004.
 
 .EXAMPLE
@@ -38,7 +38,7 @@ if ($LASTEXITCODE -ne 0) {
     throw '[fix-lockfiles] Verifica --locked-mode fallita. Controlla le dipendenze.'
 }
 
-Write-Host '[fix-lockfiles] OK — lock file aggiornati e coerenti.' -ForegroundColor Green
+Write-Host '[fix-lockfiles] OK - lock file aggiornati e coerenti.' -ForegroundColor Green
 Write-Host ''
 Write-Host 'Ricorda di committare i packages.lock.json aggiornati:' -ForegroundColor Yellow
 Write-Host '  git add src/**/packages.lock.json tests/**/packages.lock.json' -ForegroundColor Yellow
