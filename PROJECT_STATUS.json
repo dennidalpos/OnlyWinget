@@ -1,6 +1,34 @@
 {
   "todos": [
     {
+      "id": "centralized-progress-bar",
+      "priority": "P1 - Critical",
+      "description": "Implementare una ProgressBar centralizzata condivisa tra tutte le operazioni asincrone dell'applicazione (installazione pacchetti, aggiornamenti, scansione Windows Update). Deve essere un componente singleton visibile globalmente nella shell principale (MainWindow/ShellPage), con supporto a valore determinato/indeterminato, messaggio contestuale e cancellazione. Evitare ProgressBar duplicate o locali nei singoli tab.",
+      "status": "pending",
+      "environment": "UI / Shell / MVVM"
+    },
+    {
+      "id": "minimal-dashboard-with-pc-metrics",
+      "priority": "P1 - Critical",
+      "description": "Ridisegnare la Dashboard come schermata minimale focalizzata esclusivamente su metriche di sistema e stato del PC: CPU usage, RAM usage, spazio disco, uptime, versione OS, stato rete. Rimuovere dalla Dashboard qualsiasi sezione 'Attività recenti' o widget duplicati già presenti in altri tab. Applicare il principio di responsabilità unica per ogni tab: ogni tab mostra solo le informazioni della propria area funzionale (Dashboard=stato sistema, Winget=pacchetti, WinUpdate=aggiornamenti OS, Log=log).",
+      "status": "pending",
+      "environment": "UI / Dashboard / MVVM"
+    },
+    {
+      "id": "open-log-opens-folder",
+      "priority": "P2 - High",
+      "description": "Correggere il comportamento del pulsante/comando 'Apri Log': attualmente apre l'ultimo file di log direttamente; deve invece aprire la cartella dei log in Esplora file (Explorer.exe /select o Process.Start sulla directory dei log). L'utente deve poter navigare liberamente tra tutti i file di log disponibili.",
+      "status": "pending",
+      "environment": "Log / UI"
+    },
+    {
+      "id": "clear-log-cleans-all-local-logs",
+      "priority": "P2 - High",
+      "description": "Estendere il comportamento del pulsante/comando 'Svuota Log': attualmente pulisce solo il log corrente in memoria/visualizzato nell'interfaccia; deve eliminare anche tutti i file di log fisici presenti nella cartella dei log locali (*.log, *.txt o qualsiasi estensione usata). Aggiungere dialog di conferma prima dell'eliminazione permanente. Aggiornare la visualizzazione del tab Log dopo l'operazione.",
+      "status": "pending",
+      "environment": "Log / UI"
+    },
+    {
       "id": "msix-packaging-ci-cd-pipeline",
       "priority": "P3 - Low",
       "description": "Automatizzare l'impacchettamento MSIX, la generazione del certificato di firma e il signing nel processo di CI/CD di GitHub Actions per consentire la distribuzione su Microsoft Store oltre al setup NSIS corrente.",
@@ -9,3 +37,4 @@
     }
   ]
 }
+
