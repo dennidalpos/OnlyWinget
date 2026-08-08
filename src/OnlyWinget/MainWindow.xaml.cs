@@ -38,6 +38,10 @@ public sealed partial class MainWindow : Window
         Activated += OnWindowActivated;
         ResizeAndCenterWindow();
         ApplyWindowIcon();
+        if (Content is FrameworkElement rootElement)
+        {
+            rootElement.ActualThemeChanged += (_, _) => UpdateTitleBarButtons();
+        }
         var currentSettings = App.UiServices.Settings.Current;
         lastLanguage = currentSettings.Language;
         lastTheme = currentSettings.Theme;
@@ -77,17 +81,21 @@ public sealed partial class MainWindow : Window
 
             App.ApplySettings();
 
-            if (languageChanged || themeChanged)
+            if (themeChanged)
+            {
+                lastTheme = currentSettings.Theme;
+                ApplyTheme();
+            }
+
+            if (languageChanged)
             {
                 lastLanguage = currentSettings.Language;
-                lastTheme = currentSettings.Theme;
 
                 var selectedRoute = RootNavigation.SelectedItem is NavigationViewItem selected
                     ? selected.Tag?.ToString()
                     : null;
                 selectedRoute ??= routeDefinitions.Single(route => route.IsSettings).Id;
 
-                ApplyTheme();
                 pageCache.Clear();
                 BuildNavigation();
                 SelectRoute(selectedRoute);
@@ -108,6 +116,40 @@ public sealed partial class MainWindow : Window
         if (Content is FrameworkElement rootElement)
         {
             rootElement.RequestedTheme = theme;
+        }
+        UpdateTitleBarButtons();
+    }
+
+    private void UpdateTitleBarButtons()
+    {
+        if (!AppWindowTitleBar.IsCustomizationSupported() || AppWindow?.TitleBar == null)
+        {
+            return;
+        }
+
+        var isDark = (Content as FrameworkElement)?.ActualTheme == ElementTheme.Dark;
+        var titleBar = AppWindow.TitleBar;
+
+        titleBar.ButtonBackgroundColor = Colors.Transparent;
+        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+
+        if (isDark)
+        {
+            titleBar.ButtonForegroundColor = Colors.White;
+            titleBar.ButtonHoverForegroundColor = Colors.White;
+            titleBar.ButtonPressedForegroundColor = Colors.White;
+            titleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(140, 255, 255, 255);
+            titleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(30, 255, 255, 255);
+            titleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(50, 255, 255, 255);
+        }
+        else
+        {
+            titleBar.ButtonForegroundColor = Colors.Black;
+            titleBar.ButtonHoverForegroundColor = Colors.Black;
+            titleBar.ButtonPressedForegroundColor = Colors.Black;
+            titleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(140, 0, 0, 0);
+            titleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(20, 0, 0, 0);
+            titleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(40, 0, 0, 0);
         }
     }
 
@@ -208,13 +250,6 @@ public sealed partial class MainWindow : Window
     private void UpdateStatusBadges()
     {
         var caps = App.Workflow.State.Capabilities;
-        if (caps.IsElevated.HasValue)
-        {
-            ElevationBadge.Text = caps.IsElevated == true ? "Admin" : "Standard User";
-            ElevationBadge.Glyph = caps.IsElevated == true ? "\uE72A" : "\uE77B";
-            ElevationBadge.Severity = caps.IsElevated == true ? Controls.BadgeSeverity.Warning : Controls.BadgeSeverity.Neutral;
-            ElevationBadge.Visibility = Visibility.Visible;
-        }
 
         if (caps.IsWingetAvailable == true)
         {

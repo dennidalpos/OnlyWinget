@@ -125,8 +125,9 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
 
         try
         {
-            var formattedArgs = string.Join(" ", arguments.Select(a => a.Contains(' ') ? $"\"{a}\"" : a));
-            var shellCmd = $"\"\"{command}\" {formattedArgs} > \"{outPath}\" 2> \"{errPath}\" & echo %ERRORLEVEL% > \"{exitPath}\"\"";
+            var formattedArgs = string.Join(" ", arguments.Select(EscapeCmdArgument));
+            var escapedCommand = EscapeCmdArgument(command);
+            var shellCmd = $"\"{escapedCommand} {formattedArgs} > \"{outPath}\" 2> \"{errPath}\" & echo %ERRORLEVEL% > \"{exitPath}\"\"";
 
             using var process = new Process();
             process.StartInfo.FileName = "cmd.exe";
@@ -183,6 +184,23 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
             TryDeleteFile(errPath);
             TryDeleteFile(exitPath);
         }
+    }
+
+    private static string EscapeCmdArgument(string arg)
+    {
+        if (string.IsNullOrEmpty(arg))
+        {
+            return "\"\"";
+        }
+
+        // Quote if containing spaces, quotes, or cmd special characters
+        if (arg.Any(c => char.IsWhiteSpace(c) || c is '"' or '^' or '&' or '|' or '<' or '>' or '(' or ')' or '%' or '!'))
+        {
+            var escaped = arg.Replace("\"", "\\\"", StringComparison.Ordinal);
+            return $"\"{escaped}\"";
+        }
+
+        return arg;
     }
 
     [global::System.Runtime.Versioning.SupportedOSPlatform("windows")]

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -94,48 +95,81 @@ public sealed class ComWingetPackageService(
         var packageManagerType = Type.GetTypeFromCLSID(WinGetPackageManagerClsid);
         if (packageManagerType is null) return null;
 
-        dynamic packageManager = Activator.CreateInstance(packageManagerType)!;
-        dynamic catalogReference = packageManager.GetPredefinedPackageCatalog(0); // OpenWingetCatalog
-        dynamic connectResult = catalogReference.Connect();
+        object? packageManagerObj = null;
+        object? catalogReferenceObj = null;
+        object? connectResultObj = null;
+        object? catalogObj = null;
+        object? findOptionsObj = null;
+        object? filterObj = null;
+        object? findResultObj = null;
 
-        if (connectResult.Status != 0) return null;
-
-        dynamic catalog = connectResult.PackageCatalog;
-        dynamic findOptions = packageManager.CreateFindPackagesOptions();
-        dynamic filter = packageManager.CreatePackageMatchFilter();
-
-        filter.Field = 0; // Id/Name
-        filter.Option = 1; // Contains
-        filter.Value = request.Query;
-        findOptions.Filters.Add(filter);
-
-        dynamic findResult = catalog.FindPackages(findOptions);
-        dynamic matches = findResult.Matches;
-
-        var results = new List<PackageSearchResult>();
-        int count = matches.Count;
-
-        for (int i = 0; i < count; i++)
+        try
         {
-            dynamic match = matches.Item(i);
-            dynamic catalogPackage = match.CatalogPackage;
+            dynamic packageManager = Activator.CreateInstance(packageManagerType)!;
+            packageManagerObj = (object)packageManager;
 
-            string id = catalogPackage.Id?.ToString() ?? string.Empty;
-            string name = catalogPackage.Name?.ToString() ?? id;
-            string version = catalogPackage.DefaultInstallVersion?.Version?.ToString() ?? "Latest";
-            string source = request.Source ?? "winget";
+            dynamic catalogReference = packageManager.GetPredefinedPackageCatalog(0); // OpenWingetCatalog
+            catalogReferenceObj = (object)catalogReference;
 
-            if (!string.IsNullOrWhiteSpace(id))
+            dynamic connectResult = catalogReference.Connect();
+            connectResultObj = (object)connectResult;
+
+            if (connectResult.Status != 0) return null;
+
+            dynamic catalog = connectResult.PackageCatalog;
+            catalogObj = (object)catalog;
+
+            dynamic findOptions = packageManager.CreateFindPackagesOptions();
+            findOptionsObj = (object)findOptions;
+
+            dynamic filter = packageManager.CreatePackageMatchFilter();
+            filterObj = (object)filter;
+
+            filter.Field = 0; // Id/Name
+            filter.Option = 1; // Contains
+            filter.Value = request.Query;
+            findOptions.Filters.Add(filter);
+
+            dynamic findResult = catalog.FindPackages(findOptions);
+            findResultObj = (object)findResult;
+
+            dynamic matches = findResult.Matches;
+
+            var results = new List<PackageSearchResult>();
+            int count = matches.Count;
+
+            for (int i = 0; i < count; i++)
             {
-                results.Add(new PackageSearchResult(
-                    new PackageIdentity(id, source),
-                    name,
-                    version,
-                    Match: null));
-            }
-        }
+                dynamic match = matches.Item(i);
+                dynamic catalogPackage = match.CatalogPackage;
 
-        return WingetOperationOutcome<PackageSearchResult>.Success(results, "COM Native Search Completed");
+                string id = catalogPackage.Id?.ToString() ?? string.Empty;
+                string name = catalogPackage.Name?.ToString() ?? id;
+                string version = catalogPackage.DefaultInstallVersion?.Version?.ToString() ?? "Latest";
+                string source = request.Source ?? "winget";
+
+                if (!string.IsNullOrWhiteSpace(id))
+                {
+                    results.Add(new PackageSearchResult(
+                        new PackageIdentity(id, source),
+                        name,
+                        version,
+                        Match: null));
+                }
+            }
+
+            return WingetOperationOutcome<PackageSearchResult>.Success(results, "COM Native Search Completed");
+        }
+        finally
+        {
+            TryReleaseCom(findResultObj);
+            TryReleaseCom(filterObj);
+            TryReleaseCom(findOptionsObj);
+            TryReleaseCom(catalogObj);
+            TryReleaseCom(connectResultObj);
+            TryReleaseCom(catalogReferenceObj);
+            TryReleaseCom(packageManagerObj);
+        }
     }
 
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WinGet COM dynamic invocation is protected by try-catch fallback.")]
@@ -146,39 +180,87 @@ public sealed class ComWingetPackageService(
         var packageManagerType = Type.GetTypeFromCLSID(WinGetPackageManagerClsid);
         if (packageManagerType is null) return null;
 
-        dynamic packageManager = Activator.CreateInstance(packageManagerType)!;
-        dynamic catalogReference = packageManager.GetPredefinedPackageCatalog(0);
-        dynamic connectResult = catalogReference.Connect();
+        object? packageManagerObj = null;
+        object? catalogReferenceObj = null;
+        object? connectResultObj = null;
+        object? catalogObj = null;
+        object? findOptionsObj = null;
+        object? filterObj = null;
+        object? findResultObj = null;
 
-        if (connectResult.Status != 0) return null;
+        try
+        {
+            dynamic packageManager = Activator.CreateInstance(packageManagerType)!;
+            packageManagerObj = (object)packageManager;
 
-        dynamic catalog = connectResult.PackageCatalog;
-        dynamic findOptions = packageManager.CreateFindPackagesOptions();
-        dynamic filter = packageManager.CreatePackageMatchFilter();
+            dynamic catalogReference = packageManager.GetPredefinedPackageCatalog(0);
+            catalogReferenceObj = (object)catalogReference;
 
-        filter.Field = 0; // Id
-        filter.Option = 0; // Exact match
-        filter.Value = package.Id;
-        findOptions.Filters.Add(filter);
+            dynamic connectResult = catalogReference.Connect();
+            connectResultObj = (object)connectResult;
 
-        dynamic findResult = catalog.FindPackages(findOptions);
-        if (findResult.Matches.Count == 0) return null;
+            if (connectResult.Status != 0) return null;
 
-        dynamic match = findResult.Matches.Item(0);
-        dynamic catalogPackage = match.CatalogPackage;
-        dynamic defaultVersion = catalogPackage.DefaultInstallVersion;
+            dynamic catalog = connectResult.PackageCatalog;
+            catalogObj = (object)catalog;
 
-        string id = catalogPackage.Id?.ToString() ?? package.Id;
-        string name = catalogPackage.Name?.ToString() ?? id;
-        string version = defaultVersion?.Version?.ToString() ?? "Latest";
-        string publisher = defaultVersion?.Publisher?.ToString() ?? "Unknown";
+            dynamic findOptions = packageManager.CreateFindPackagesOptions();
+            findOptionsObj = (object)findOptions;
 
-        return new PackageResolution(
-            new PackageIdentity(id, package.Source),
-            name,
-            version,
-            publisher,
-            IsResolved: true,
-            Error: null);
+            dynamic filter = packageManager.CreatePackageMatchFilter();
+            filterObj = (object)filter;
+
+            filter.Field = 0; // Id
+            filter.Option = 0; // Exact match
+            filter.Value = package.Id;
+            findOptions.Filters.Add(filter);
+
+            dynamic findResult = catalog.FindPackages(findOptions);
+            findResultObj = (object)findResult;
+
+            if (findResult.Matches.Count == 0) return null;
+
+            dynamic match = findResult.Matches.Item(0);
+            dynamic catalogPackage = match.CatalogPackage;
+            dynamic defaultVersion = catalogPackage.DefaultInstallVersion;
+
+            string id = catalogPackage.Id?.ToString() ?? package.Id;
+            string name = catalogPackage.Name?.ToString() ?? id;
+            string version = defaultVersion?.Version?.ToString() ?? "Latest";
+            string publisher = defaultVersion?.Publisher?.ToString() ?? "Unknown";
+
+            return new PackageResolution(
+                new PackageIdentity(id, package.Source),
+                name,
+                version,
+                publisher,
+                IsResolved: true,
+                Error: null);
+        }
+        finally
+        {
+            TryReleaseCom(findResultObj);
+            TryReleaseCom(filterObj);
+            TryReleaseCom(findOptionsObj);
+            TryReleaseCom(catalogObj);
+            TryReleaseCom(connectResultObj);
+            TryReleaseCom(catalogReferenceObj);
+            TryReleaseCom(packageManagerObj);
+        }
+    }
+
+    private static void TryReleaseCom(object? comObj)
+    {
+        if (comObj is not null && Marshal.IsComObject(comObj))
+        {
+            try
+            {
+                Marshal.ReleaseComObject(comObj);
+            }
+            catch
+            {
+                // Ignore COM release errors
+            }
+        }
     }
 }

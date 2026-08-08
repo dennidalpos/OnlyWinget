@@ -71,19 +71,47 @@ public sealed partial class StatusBadgeControl : UserControl
             BadgeIcon.Visibility = Visibility.Collapsed;
         }
 
-        var (bg, fg, border) = GetColorsForSeverity(Severity);
-        BadgeBorder.Background = new SolidColorBrush(bg);
-        BadgeBorder.BorderBrush = new SolidColorBrush(border);
-        BadgeText.Foreground = new SolidColorBrush(fg);
-        BadgeIcon.Foreground = new SolidColorBrush(fg);
+        ApplySeverityTheme(Severity);
     }
 
-    private static (Color bg, Color fg, Color border) GetColorsForSeverity(BadgeSeverity severity) => severity switch
+    private void ApplySeverityTheme(BadgeSeverity severity)
     {
-        BadgeSeverity.Success => (Color.FromArgb(30, 16, 124, 65), Color.FromArgb(255, 16, 124, 65), Color.FromArgb(80, 16, 124, 65)),
-        BadgeSeverity.Info => (Color.FromArgb(30, 0, 120, 212), Color.FromArgb(255, 0, 120, 212), Color.FromArgb(80, 0, 120, 212)),
-        BadgeSeverity.Warning => (Color.FromArgb(35, 200, 140, 0), Color.FromArgb(255, 180, 125, 0), Color.FromArgb(90, 200, 140, 0)),
-        BadgeSeverity.Error => (Color.FromArgb(30, 216, 59, 1), Color.FromArgb(255, 216, 59, 1), Color.FromArgb(80, 216, 59, 1)),
-        _ => (Color.FromArgb(25, 128, 128, 128), Color.FromArgb(230, 140, 140, 140), Color.FromArgb(50, 128, 128, 128))
-    };
+        switch (severity)
+        {
+            case BadgeSeverity.Error:
+                var criticalBrush = GetThemeBrush("SystemFillColorCriticalBrush");
+                BadgeBorder.ClearValue(Border.BackgroundProperty);
+                BadgeBorder.BorderBrush = criticalBrush;
+                BadgeText.Foreground = criticalBrush;
+                BadgeIcon.Foreground = criticalBrush;
+                break;
+            case BadgeSeverity.Warning:
+                var attentionBrush = GetThemeBrush("SystemFillColorAttentionBrush");
+                BadgeBorder.ClearValue(Border.BackgroundProperty);
+                BadgeBorder.BorderBrush = attentionBrush;
+                BadgeText.Foreground = attentionBrush;
+                BadgeIcon.Foreground = attentionBrush;
+                break;
+            case BadgeSeverity.Success:
+            case BadgeSeverity.Info:
+            case BadgeSeverity.Neutral:
+            default:
+                BadgeBorder.ClearValue(Border.BackgroundProperty);
+                BadgeBorder.ClearValue(Border.BorderBrushProperty);
+                BadgeText.ClearValue(TextBlock.ForegroundProperty);
+                BadgeIcon.ClearValue(FontIcon.ForegroundProperty);
+                break;
+        }
+    }
+
+    private static Brush GetThemeBrush(string key)
+    {
+        if (global::Microsoft.UI.Xaml.Application.Current?.Resources != null &&
+            global::Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue(key, out var resource) &&
+            resource is Brush brush)
+        {
+            return brush;
+        }
+        return new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+    }
 }

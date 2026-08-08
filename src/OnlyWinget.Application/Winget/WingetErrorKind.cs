@@ -8,5 +8,6 @@ public enum WingetErrorKind
     SourceUnavailable,
     Cancelled,
     CannotUpgrade,
+    HashMismatch,
     Unknown
 }

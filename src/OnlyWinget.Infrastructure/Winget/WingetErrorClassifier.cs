@@ -78,8 +78,22 @@ public sealed class WingetErrorClassifier
         {
             kind = WingetErrorKind.CannotUpgrade;
         }
+        else if (ContainsAny(
+            text,
+            "0x8a150002",
+            "-1978335230",
+            "InstallerHashOverride",
+            "InstallerHashMismatch",
+            "ignore-security-hash",
+            "controllo hash del programma di installazione",
+            "hash del programma di installazione non corrisponde",
+            "installer hash does not match"))
+        {
+            kind = WingetErrorKind.HashMismatch;
+        }
 
-        var message = string.IsNullOrWhiteSpace(text) ? "winget failed." : text.Trim();
+        var cleanedText = CleanWingetOutput(text);
+        var message = string.IsNullOrWhiteSpace(cleanedText) ? "winget failed." : cleanedText;
         return new ClassifiedWingetError(kind, message);
     }
 
@@ -96,8 +110,30 @@ public sealed class WingetErrorClassifier
             WingetErrorKind.NoUpdates => false,
             WingetErrorKind.Cancelled => false,
             WingetErrorKind.CannotUpgrade => false,
+            WingetErrorKind.HashMismatch => false,
             _ => true
         };
+    }
+
+    private static string CleanWingetOutput(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        var usageIndex = text.IndexOf("utilizzo: winget", StringComparison.OrdinalIgnoreCase);
+        if (usageIndex < 0)
+        {
+            usageIndex = text.IndexOf("usage: winget", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (usageIndex >= 0)
+        {
+            text = text[..usageIndex];
+        }
+
+        return text.Trim();
     }
 
     private static bool ContainsAny(string text, params string[] needles) =>

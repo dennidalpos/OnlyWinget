@@ -123,6 +123,7 @@ public sealed class WingetInfrastructureTests
         var explicitTargetIt = classifier.Classify(new WingetCommandResult(1, "Per i pacchetti seguenti è disponibile un aggiornamento, ma è necessario un targeting esplicito per l'aggiornamento:", string.Empty));
         var cannotUpgradeIt = classifier.Classify(new WingetCommandResult(-1978334956, "Non è possibile aggiornare il pacchetto con WinGet. Utilizzare il metodo fornito dall'autore per aggiornare il pacchetto.", string.Empty));
         var cannotUpgradeEn = classifier.Classify(new WingetCommandResult(1, string.Empty, "Package cannot be upgraded with WinGet. Use provider's method to upgrade package."));
+        var hashMismatchIt = classifier.Classify(new WingetCommandResult(-1978335230, "Questa funzionalità deve essere abilitata dagli amministratori. Per abilitarlo, eseguire 'winget settings --enable InstallerHashOverride' come amministratore.\nutilizzo: winget install...", string.Empty));
         var source = classifier.Classify(new WingetCommandResult(1, string.Empty, "Failed when searching source: winget"));
 
         Assert.Equal(WingetErrorKind.NotFound, notFound?.Kind);
@@ -134,7 +135,10 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(WingetErrorKind.NoUpdates, explicitTargetIt?.Kind);
         Assert.Equal(WingetErrorKind.CannotUpgrade, cannotUpgradeIt?.Kind);
         Assert.Equal(WingetErrorKind.CannotUpgrade, cannotUpgradeEn?.Kind);
+        Assert.Equal(WingetErrorKind.HashMismatch, hashMismatchIt?.Kind);
+        Assert.DoesNotContain("utilizzo: winget", hashMismatchIt?.Message ?? string.Empty);
         Assert.False(classifier.IsRetryable(cannotUpgradeIt));
+        Assert.False(classifier.IsRetryable(hashMismatchIt));
         Assert.Equal(WingetErrorKind.SourceUnavailable, source?.Kind);
     }
 

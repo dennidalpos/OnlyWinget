@@ -49,15 +49,19 @@
                     </Border>
                     <ItemsRepeater x:Name="MetricRepeater" Grid.Row="1">
                         <ItemsRepeater.Layout>
-                            <UniformGridLayout MaximumRowsOrColumns="3" MinItemWidth="200" MinItemHeight="90" MinColumnSpacing="16" MinRowSpacing="16" ItemsStretch="Fill" Orientation="Horizontal" />
+                            <UniformGridLayout MaximumRowsOrColumns="3" MinItemWidth="200" MinItemHeight="110" MinColumnSpacing="16" MinRowSpacing="16" ItemsStretch="Fill" Orientation="Horizontal" />
                         </ItemsRepeater.Layout>
                         <ItemsRepeater.ItemTemplate>
                             <DataTemplate x:DataType="home:DashboardMetric">
-                                <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1" Padding="16">
-                                    <StackPanel Spacing="6" VerticalAlignment="Center">
+                                <Border Style="{StaticResource MetricCardStyle}" BorderBrush="{x:Bind home:DashboardPage.GetThemeBrush(AccentKey), Mode=OneWay}" BorderThickness="1">
+                                    <Grid RowSpacing="4" VerticalAlignment="Center">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
                                         <TextBlock Text="{x:Bind Value, Mode=OneWay}" Style="{StaticResource MetricValueTextBlockStyle}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />
-                                    </StackPanel>
+                                        <TextBlock Grid.Row="1" Text="{x:Bind Label, Mode=OneWay}" Style="{StaticResource MetricLabelTextBlockStyle}" />
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ItemsRepeater.ItemTemplate>

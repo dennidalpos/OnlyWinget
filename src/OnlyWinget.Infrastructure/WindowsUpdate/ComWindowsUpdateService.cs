@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.System;
@@ -81,82 +82,104 @@ public sealed class ComWindowsUpdateService(
         var sessionType = Type.GetTypeFromProgID(ProgId);
         if (sessionType is null) return null;
 
-        dynamic session = Activator.CreateInstance(sessionType)!;
-        dynamic searcher = session.CreateUpdateSearcher();
+        object? sessionObj = null;
+        object? searcherObj = null;
+        object? searchResultObj = null;
 
-        var query = options.IncludeDrivers
-            ? "IsInstalled=0"
-            : "IsInstalled=0 and Type='Software'";
-
-        dynamic searchResult = searcher.Search(query);
-        dynamic updateCollection = searchResult.Updates;
-
-        var items = new List<WindowsUpdateItem>();
-        int count = updateCollection.Count;
-
-        for (int i = 0; i < count; i++)
+        try
         {
-            dynamic update = updateCollection.Item(i);
-            dynamic identity = update.Identity;
+            dynamic session = Activator.CreateInstance(sessionType)!;
+            sessionObj = (object)session;
 
-            string updateId = identity.UpdateID?.ToString() ?? Guid.NewGuid().ToString();
-            int revisionNumber = (int)(identity.RevisionNumber ?? 1);
-            string title = update.Title?.ToString() ?? "Windows Update";
-            string? description = update.Description?.ToString();
+            dynamic searcher = session.CreateUpdateSearcher();
+            searcherObj = (object)searcher;
 
-            var categories = new List<string>();
-            try
+            var query = options.IncludeDrivers
+                ? "IsInstalled=0"
+                : "IsInstalled=0 and Type='Software'";
+
+            dynamic searchResult = searcher.Search(query);
+            searchResultObj = (object)searchResult;
+
+            dynamic updateCollection = searchResult.Updates;
+
+            var items = new List<WindowsUpdateItem>();
+            int count = updateCollection.Count;
+
+            for (int i = 0; i < count; i++)
             {
-                dynamic categoryColl = update.Categories;
-                int catCount = categoryColl.Count;
-                for (int c = 0; c < catCount; c++)
+                dynamic update = updateCollection.Item(i);
+                dynamic identity = update.Identity;
+
+                string updateId = identity.UpdateID?.ToString() ?? Guid.NewGuid().ToString();
+                int revisionNumber = (int)(identity.RevisionNumber ?? 1);
+                string title = update.Title?.ToString() ?? "Windows Update";
+                string? description = update.Description?.ToString();
+
+                var categories = new List<string>();
+                try
                 {
-                    string? catName = categoryColl.Item(c).Name?.ToString();
-                    if (!string.IsNullOrWhiteSpace(catName)) categories.Add(catName);
+                    dynamic categoryColl = update.Categories;
+                    int catCount = categoryColl.Count;
+                    for (int c = 0; c < catCount; c++)
+                    {
+                        string? catName = categoryColl.Item(c).Name?.ToString();
+                        if (!string.IsNullOrWhiteSpace(catName)) categories.Add(catName);
+                    }
+                    TryReleaseCom((object)categoryColl);
                 }
-            }
-            catch { }
+                catch { }
 
-            var kbArticles = new List<string>();
-            try
-            {
-                dynamic kbColl = update.KBArticleIDs;
-                int kbCount = kbColl.Count;
-                for (int k = 0; k < kbCount; k++)
+                var kbArticles = new List<string>();
+                try
                 {
-                    string? kb = kbColl.Item(k)?.ToString();
-                    if (!string.IsNullOrWhiteSpace(kb)) kbArticles.Add($"KB{kb}");
+                    dynamic kbColl = update.KBArticleIDs;
+                    int kbCount = kbColl.Count;
+                    for (int k = 0; k < kbCount; k++)
+                    {
+                        string? kb = kbColl.Item(k)?.ToString();
+                        if (!string.IsNullOrWhiteSpace(kb)) kbArticles.Add($"KB{kb}");
+                    }
+                    TryReleaseCom((object)kbColl);
                 }
+                catch { }
+
+                ulong maxDownloadSize = 0;
+                try { maxDownloadSize = Convert.ToUInt64(update.MaxDownloadSize); } catch { }
+
+                bool isDownloaded = false;
+                try { isDownloaded = Convert.ToBoolean(update.IsDownloaded); } catch { }
+
+                bool rebootRequired = false;
+                try
+                {
+                    int behavior = Convert.ToInt32(update.InstallationBehavior.RebootBehavior);
+                    rebootRequired = behavior != 0;
+                }
+                catch { }
+
+                items.Add(new WindowsUpdateItem(
+                    new WindowsUpdateIdentity(updateId, revisionNumber),
+                    title,
+                    description,
+                    "Important",
+                    categories,
+                    kbArticles,
+                    maxDownloadSize,
+                    isDownloaded,
+                    rebootRequired));
+
+                TryReleaseCom((object)update);
             }
-            catch { }
 
-            ulong maxDownloadSize = 0;
-            try { maxDownloadSize = Convert.ToUInt64(update.MaxDownloadSize); } catch { }
-
-            bool isDownloaded = false;
-            try { isDownloaded = Convert.ToBoolean(update.IsDownloaded); } catch { }
-
-            bool rebootRequired = false;
-            try
-            {
-                int behavior = Convert.ToInt32(update.InstallationBehavior.RebootBehavior);
-                rebootRequired = behavior != 0;
-            }
-            catch { }
-
-            items.Add(new WindowsUpdateItem(
-                new WindowsUpdateIdentity(updateId, revisionNumber),
-                title,
-                description,
-                "Important",
-                categories,
-                kbArticles,
-                maxDownloadSize,
-                isDownloaded,
-                rebootRequired));
+            return WindowsUpdateOperationOutcome<WindowsUpdateItem>.Success(items, "COM Native Search Completed");
         }
-
-        return WindowsUpdateOperationOutcome<WindowsUpdateItem>.Success(items, "COM Native Search Completed");
+        finally
+        {
+            TryReleaseCom(searchResultObj);
+            TryReleaseCom(searcherObj);
+            TryReleaseCom(sessionObj);
+        }
     }
 
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
@@ -171,66 +194,102 @@ public sealed class ComWindowsUpdateService(
         var sessionType = Type.GetTypeFromProgID(ProgId);
         if (sessionType is null) return null;
 
-        dynamic session = Activator.CreateInstance(sessionType)!;
-        dynamic searcher = session.CreateUpdateSearcher();
+        object? sessionObj = null;
+        object? searcherObj = null;
+        object? searchResultObj = null;
+        object? installCollectionObj = null;
 
-        dynamic searchResult = searcher.Search("IsInstalled=0");
-        dynamic availableUpdates = searchResult.Updates;
-        int availableCount = availableUpdates.Count;
-
-        var targetMap = targetUpdates.ToDictionary(u => u.UpdateId, StringComparer.OrdinalIgnoreCase);
-        var updateCollectionType = Type.GetTypeFromProgID("Microsoft.Update.UpdateColl");
-        dynamic installCollection = Activator.CreateInstance(updateCollectionType ?? Type.GetTypeFromCLSID(new Guid("1361661A-2A21-4226-928E-2E31A2F69527"))!)!;
-
-        var matchedItems = new List<(string Title, WindowsUpdateIdentity Identity)>();
-
-        for (int i = 0; i < availableCount; i++)
+        try
         {
-            dynamic update = availableUpdates.Item(i);
-            dynamic identity = update.Identity;
-            string updateId = identity.UpdateID?.ToString() ?? string.Empty;
+            dynamic session = Activator.CreateInstance(sessionType)!;
+            sessionObj = (object)session;
 
-            if (targetMap.TryGetValue(updateId, out var targetIdent))
+            dynamic searcher = session.CreateUpdateSearcher();
+            searcherObj = (object)searcher;
+
+            dynamic searchResult = searcher.Search("IsInstalled=0");
+            searchResultObj = (object)searchResult;
+
+            dynamic availableUpdates = searchResult.Updates;
+            int availableCount = availableUpdates.Count;
+
+            var targetMap = targetUpdates.ToDictionary(u => u.UpdateId, StringComparer.OrdinalIgnoreCase);
+            var updateCollectionType = Type.GetTypeFromProgID("Microsoft.Update.UpdateColl");
+            dynamic installCollection = Activator.CreateInstance(updateCollectionType ?? Type.GetTypeFromCLSID(new Guid("1361661A-2A21-4226-928E-2E31A2F69527"))!)!;
+            installCollectionObj = (object)installCollection;
+
+            var matchedItems = new List<(string Title, WindowsUpdateIdentity Identity)>();
+
+            for (int i = 0; i < availableCount; i++)
             {
-                installCollection.Add(update);
-                matchedItems.Add((update.Title?.ToString() ?? updateId, targetIdent));
+                dynamic update = availableUpdates.Item(i);
+                dynamic identity = update.Identity;
+                string updateId = identity.UpdateID?.ToString() ?? string.Empty;
+
+                if (targetMap.TryGetValue(updateId, out var targetIdent))
+                {
+                    installCollection.Add(update);
+                    matchedItems.Add((update.Title?.ToString() ?? updateId, targetIdent));
+                }
+            }
+
+            if (matchedItems.Count == 0)
+            {
+                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success([], "No matching COM updates found to install");
+            }
+
+            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, 10, 0, targetUpdates.Count));
+
+            dynamic downloader = session.CreateUpdateDownloader();
+            downloader.Updates = installCollection;
+            downloader.Download();
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Installing, 50, 0, targetUpdates.Count));
+
+            dynamic installer = session.CreateUpdateInstaller();
+            installer.Updates = installCollection;
+            dynamic installResult = installer.Install();
+
+            int resultCode = Convert.ToInt32(installResult.ResultCode);
+            bool rebootRequired = Convert.ToBoolean(installResult.RebootRequired);
+            bool succeeded = resultCode is 2 or 3;
+
+            var results = matchedItems.Select(m => new WindowsUpdateInstallResult(
+                m.Identity,
+                m.Title,
+                succeeded,
+                rebootRequired,
+                resultCode.ToString(),
+                succeeded ? "Installed via Direct COM" : "COM installation completed with result code " + resultCode
+            )).ToList();
+
+            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Completed, 100, targetUpdates.Count, targetUpdates.Count));
+
+            return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(results, "COM Native Install Completed");
+        }
+        finally
+        {
+            TryReleaseCom(installCollectionObj);
+            TryReleaseCom(searchResultObj);
+            TryReleaseCom(searcherObj);
+            TryReleaseCom(sessionObj);
+        }
+    }
+
+    private static void TryReleaseCom(object? comObj)
+    {
+        if (comObj is not null && Marshal.IsComObject(comObj))
+        {
+            try
+            {
+                Marshal.ReleaseComObject(comObj);
+            }
+            catch
+            {
+                // Ignore COM release errors
             }
         }
-
-        if (matchedItems.Count == 0)
-        {
-            return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success([], "No matching COM updates found to install");
-        }
-
-        progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, 10, 0, targetUpdates.Count));
-
-        dynamic downloader = session.CreateUpdateDownloader();
-        downloader.Updates = installCollection;
-        downloader.Download();
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Installing, 50, 0, targetUpdates.Count));
-
-        dynamic installer = session.CreateUpdateInstaller();
-        installer.Updates = installCollection;
-        dynamic installResult = installer.Install();
-
-        int resultCode = Convert.ToInt32(installResult.ResultCode);
-        bool rebootRequired = Convert.ToBoolean(installResult.RebootRequired);
-        bool succeeded = resultCode is 2 or 3;
-
-        var results = matchedItems.Select(m => new WindowsUpdateInstallResult(
-            m.Identity,
-            m.Title,
-            succeeded,
-            rebootRequired,
-            resultCode.ToString(),
-            succeeded ? "Installed via Direct COM" : "COM installation completed with result code " + resultCode
-        )).ToList();
-
-        progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Completed, 100, targetUpdates.Count, targetUpdates.Count));
-
-        return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(results, "COM Native Install Completed");
     }
 }

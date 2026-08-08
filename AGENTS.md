@@ -33,3 +33,8 @@ Minimize response size to conserve tokens. Structure final responses strictly in
 4. **Cleanliness status:** Confirmation that no temp/secret files remain.
 5. **Remaining limitations / risks:** Concrete risks only.
 6. **Next steps:** Immediate necessary follow-ups only.
+
+## 7. Developer Skills & Loading Instructions
+* **Location:** Official developer skills are located in `/skills` (root) and `.agents/skills`.
+* **Loading Rule:** Before starting any work on WinUI 3 UI design, WinGet process execution, NSIS packaging, or OnlyWinget architecture changes, agents MUST read the relevant `SKILL.md` file using `view_file` (e.g. [`skills/onlywinget/SKILL.md`](file:///d:/GITHUB/OnlyWinget/skills/onlywinget/SKILL.md), [`skills/winget-cli/SKILL.md`](file:///d:/GITHUB/OnlyWinget/skills/winget-cli/SKILL.md), [`skills/winui/SKILL.md`](file:///d:/GITHUB/OnlyWinget/skills/winui/SKILL.md), [`skills/nsis-installer/SKILL.md`](file:///d:/GITHUB/OnlyWinget/skills/nsis-installer/SKILL.md)).
+* **Synchronization:** Run `.\scripts\install-skills.ps1` or `.\scripts\sync-win-dev-skills.ps1` to update or verify skill configurations in the workspace.

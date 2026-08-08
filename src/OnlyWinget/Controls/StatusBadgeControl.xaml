@@ -12,17 +12,21 @@
         Padding="8,3,10,3"
         BorderThickness="1"
         HorizontalAlignment="Left"
-        VerticalAlignment="Center">
+        VerticalAlignment="Center"
+        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
             <FontIcon
                 x:Name="BadgeIcon"
                 FontSize="11"
                 VerticalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Visibility="Collapsed" />
             <TextBlock
                 x:Name="BadgeText"
                 Style="{StaticResource CaptionTextBlockStyle}"
                 FontWeight="Medium"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 VerticalAlignment="Center" />
         </StackPanel>
     </Border>

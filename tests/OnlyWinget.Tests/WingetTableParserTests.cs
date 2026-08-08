@@ -91,4 +91,21 @@ public sealed class WingetTableParserTests
         Assert.Equal("AnyDesk.AnyDesk", rows[0]["Id"]);
         Assert.Equal("WinDirStat.WinDirStat", rows[1]["Id"]);
     }
+
+    [Fact]
+    public void ParseFiltersOutHeaderFragmentsAndWrappedHeaders()
+    {
+        const string output = """
+            Nome        Id                         Versione    Disponibile
+            --------------------------------------------------------------
+            Nome        Id                         Vers        ione Dispo
+            PowerToys   Microsoft.PowerToys        v0.80.0     v0.82.0
+            Vers        Ver                        Disp        Dispo
+            """;
+
+        var rows = new WingetTableParser().Parse(output);
+
+        var row = Assert.Single(rows);
+        Assert.Equal("Microsoft.PowerToys", row["Id"]);
+    }
 }

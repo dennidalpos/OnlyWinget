@@ -9,17 +9,27 @@ param()
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$targetDir = Join-Path $PSScriptRoot '..\.agents\skills'
+$rootSkillsDir = Join-Path $PSScriptRoot '..\skills'
+$agentsSkillsDir = Join-Path $PSScriptRoot '..\.agents\skills'
 
 Write-Host 'Verifying developer skills in workspace...' -ForegroundColor Cyan
 
-if (-not (Test-Path $targetDir)) {
-    New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+if (-not (Test-Path $rootSkillsDir)) {
+    New-Item -ItemType Directory -Path $rootSkillsDir -Force | Out-Null
+}
+if (-not (Test-Path $agentsSkillsDir)) {
+    New-Item -ItemType Directory -Path $agentsSkillsDir -Force | Out-Null
 }
 
-$installedSkills = Get-ChildItem -Path $targetDir -Directory
-foreach ($skill in $installedSkills) {
-    Write-Host "Skill present: '$($skill.Name)'" -ForegroundColor Green
+# Sync root skills to .agents/skills if present
+$rootSkills = Get-ChildItem -Path $rootSkillsDir -Directory
+foreach ($skill in $rootSkills) {
+    Write-Host "Skill present in /skills: '$($skill.Name)'" -ForegroundColor Green
+    $dest = Join-Path $agentsSkillsDir $skill.Name
+    if (-not (Test-Path $dest)) {
+        Copy-Item -Path $skill.FullName -Destination $agentsSkillsDir -Recurse -Force
+    }
 }
 
-Write-Host "All $($installedSkills.Count) developer skills verified at: $targetDir" -ForegroundColor Green
+$agentsSkills = Get-ChildItem -Path $agentsSkillsDir -Directory
+Write-Host "All $($agentsSkills.Count) developer skills verified at: $rootSkillsDir & $agentsSkillsDir" -ForegroundColor Green

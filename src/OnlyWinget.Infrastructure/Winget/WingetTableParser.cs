@@ -44,7 +44,27 @@ public sealed class WingetTableParser
 
         { "Type", "Type" },
         { "Tipo", "Type" },
-        { "Typ", "Type" }
+        { "Typ", "Type" },
+
+        { "Publisher", "Publisher" },
+        { "Editore", "Publisher" },
+        { "Autore", "Publisher" },
+        { "Editeur", "Publisher" },
+        { "Herausgeber", "Publisher" }
+    };
+
+    private static readonly HashSet<string> HeaderWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Name", "Nome", "Nom", "Nombre",
+        "Id", "ID", "ID.",
+        "Version", "Versione", "Versión", "Vers", "Ver",
+        "Available", "Disponibile", "Disponible", "Verfügbar", "Disp", "Dispo", "Dispon",
+        "Source", "Origine", "Quelle", "Origen", "Src",
+        "Match", "Corrispondenza", "Correspondance", "Coincidencia", "Übereinstimmung", "Treffer",
+        "Argument", "Argomento", "Argumento",
+        "Explicit", "Specificato",
+        "Type", "Tipo", "Typ",
+        "Publisher", "Editore", "Autore", "Editeur", "Herausgeber"
     };
 
     public IReadOnlyList<IReadOnlyDictionary<string, string>> Parse(string output)
@@ -220,6 +240,11 @@ public sealed class WingetTableParser
 
     public static bool IsValidRow(IReadOnlyDictionary<string, string> row)
     {
+        if (row == null || row.Count == 0)
+        {
+            return false;
+        }
+
         if (row.TryGetValue("Id", out var id) && IsInvalidIdentifier(id))
         {
             return false;
@@ -230,7 +255,23 @@ public sealed class WingetTableParser
             return false;
         }
 
+        if (row.TryGetValue("Version", out var version) && IsHeaderWord(version))
+        {
+            return false;
+        }
+
         return true;
+    }
+
+    public static bool IsHeaderWord(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        var trimmed = value.Trim();
+        return HeaderWords.Contains(trimmed);
     }
 
     private static bool IsInvalidIdentifier(string? value)
@@ -246,25 +287,6 @@ public sealed class WingetTableParser
             return true;
         }
 
-        if (HeaderTranslations.ContainsKey(trimmed))
-        {
-            return true;
-        }
-
-        if (trimmed.Equals("Nome", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Ver", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Name", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Version", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Versione", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Available", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Disponibile", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Source", StringComparison.OrdinalIgnoreCase) ||
-            trimmed.Equals("Origine", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return false;
+        return IsHeaderWord(trimmed);
     }
 }

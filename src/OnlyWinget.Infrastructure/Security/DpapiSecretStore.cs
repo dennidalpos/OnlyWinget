@@ -172,13 +172,24 @@ public sealed class DpapiSecretStore(
                     .ConfigureAwait(false);
             }
 
-            File.Move(temporaryPath, filePath, overwrite: true);
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                try
+                {
+                    File.Move(temporaryPath, filePath, overwrite: true);
+                    break;
+                }
+                catch (IOException) when (attempt < 3)
+                {
+                    await Task.Delay(100 * attempt, cancellationToken).ConfigureAwait(false);
+                }
+            }
         }
         finally
         {
             if (File.Exists(temporaryPath))
             {
-                File.Delete(temporaryPath);
+                try { File.Delete(temporaryPath); } catch { }
             }
         }
     }
