@@ -1,3 +1,5 @@
+using System.Runtime.Versioning;
+using Microsoft.Extensions.Caching.Memory;
 using OnlyWinget.Application.Operations;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
@@ -579,6 +581,81 @@ public sealed class WingetInfrastructureTests
         Assert.Single(summary.Results);
         Assert.Equal(1, summary.Results[0].AttemptCount);
         Assert.Single(runner.Calls);
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWingetPackageServiceReturnsCachedSearchResultWithoutTouchingFallback()
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, "should not run", string.Empty));
+        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var request = new PackageSearchRequest("git", "winget");
+        var cachedOutcome = WingetOperationOutcome<PackageSearchResult>.Success(
+            [new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null)],
+            "cached");
+        cache.Set($"com_winget_search_{request.Query}_{request.Source}", cachedOutcome, TimeSpan.FromMinutes(5));
+        var service = new ComWingetPackageService(search, resolver, cache);
+
+        var outcome = await service.SearchAsync(request, CancellationToken.None);
+
+        Assert.Same(cachedOutcome, outcome);
+        Assert.Empty(runner.Calls);
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWingetPackageServiceDelegatesInstalledStatusCheckToFallbackResolver()
+    {
+        const string output = """
+            Name Id      Version
+            --------------------
+            Git  Git.Git 2.54.0
+            """;
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
+        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var service = new ComWingetPackageService(search, resolver);
+
+        var status = await service.CheckInstalledStatusAsync(new PackageIdentity("Git.Git"), CancellationToken.None);
+
+        Assert.True(status.IsInstalled);
+        Assert.Equal("2.54.0", status.InstalledVersion);
+        Assert.Contains(runner.Calls, call => call.Contains("list"));
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWindowsUpdateServiceInstallSkipsComAndDelegatesToFallbackWhenNoUpdatesRequested()
+    {
+        var runner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, """{"succeeded":true,"rows":[],"error":null}""", string.Empty));
+        var fallback = new PowerShellWindowsUpdateService(
+            runner,
+            new StubSystemCapabilityService(new SystemCapabilities(true, true, true, true, null)));
+        var service = new ComWindowsUpdateService(fallback);
+
+        var outcome = await service.InstallAsync([], new WindowsUpdateOptions(), CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Empty(outcome.Rows);
+        Assert.Single(runner.Calls);
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWindowsUpdateServiceInstallThrowsOnNullUpdates()
+    {
+        var runner = new RecordingExternalProcessRunner();
+        var fallback = new PowerShellWindowsUpdateService(
+            runner,
+            new StubSystemCapabilityService(new SystemCapabilities(true, true, true, true, null)));
+        var service = new ComWindowsUpdateService(fallback);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            service.InstallAsync(null!, new WindowsUpdateOptions(), CancellationToken.None));
+        Assert.Empty(runner.Calls);
     }
 
     private sealed class RecordingWingetCommandRunner(params WingetCommandResult[] results) : IWingetCommandRunner

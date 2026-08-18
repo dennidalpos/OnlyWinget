@@ -1,6 +1,5 @@
 {
   "todos": [
-    "ALTO: Aggiungere test per ComWingetPackageService e ComWindowsUpdateService (percorso primario secondo docs/architecture.md, oggi coperto solo da smoke test opt-in)",
     "MEDIO: WingetErrorClassifier riconosce i messaggi di errore solo in EN/IT (HeaderTranslations di WingetTableParser gia' sistemato con fallback posizionale Name/Id/Version) - su altre lingue di sistema gli errori winget (es. 'nessun pacchetto trovato') ricadono in Unknown con retry inutili e messaggio generico; servirebbe classificazione basata su ExitCode numerico (locale-indipendente) invece che su testo, ma richiede dati verificati sui codici di uscita di winget non ancora raccolti",
     "MEDIO: Progress percentuale hard-coded (10/50/100%) sia in ComWindowsUpdateService (righe 241,249,268) sia in PowerShellWindowsUpdateService (righe 60-99) invece di usare i callback reali di download/installazione della Windows Update Agent API",
     "BASSO: Verificare in produzione se la mitigazione 'schermata bianca dopo inattivita'' aggiunta in MainWindow.xaml.cs (RefreshAfterLongIdle, toggle SystemBackdrop + InvalidateMeasure/Arrange dopo 5+ minuti di inattivita') risolve effettivamente il sintomo - root cause mai confermata, nessun repro disponibile",

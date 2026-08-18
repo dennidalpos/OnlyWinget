@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Application.Winget;
@@ -50,6 +51,55 @@ public sealed class LiveUpdateSearchSmokeTests
         var processRunner = new ProcessExternalProcessRunner();
         ISystemCapabilityService capabilities = new SystemCapabilityService(processRunner);
         var service = new PowerShellWindowsUpdateService(processRunner, capabilities);
+
+        var outcome = await service.ScanAsync(
+            new WindowsUpdateOptions(IncludeSoftware: true, IncludeDrivers: true),
+            CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Error?.Message);
+    }
+
+    [Fact]
+    [Trait("Category", "Smoke")]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWingetPackageServiceSearchesLiveCatalogThroughComOrCliFallback()
+    {
+        if (!ShouldRun())
+        {
+            return;
+        }
+
+        var processRunner = new ProcessExternalProcessRunner();
+        var commandRunner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
+        var parser = new WingetTableParser();
+        var classifier = new WingetErrorClassifier();
+        var search = new WingetPackageSearchService(commandRunner, parser, classifier);
+        var resolver = new WingetPackageResolver(commandRunner, parser, classifier);
+        var service = new ComWingetPackageService(search, resolver);
+
+        var outcome = await service.SearchAsync(
+            new PackageSearchRequest("powertoys", "winget"),
+            CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Error?.Message);
+        Assert.Contains(outcome.Rows, row =>
+            string.Equals(row.Package.Id, "Microsoft.PowerToys", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    [Trait("Category", "Smoke")]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWindowsUpdateServiceScansLiveSystemThroughComOrPowerShellFallback()
+    {
+        if (!ShouldRun())
+        {
+            return;
+        }
+
+        var processRunner = new ProcessExternalProcessRunner();
+        ISystemCapabilityService capabilities = new SystemCapabilityService(processRunner);
+        var fallback = new PowerShellWindowsUpdateService(processRunner, capabilities);
+        var service = new ComWindowsUpdateService(fallback);
 
         var outcome = await service.ScanAsync(
             new WindowsUpdateOptions(IncludeSoftware: true, IncludeDrivers: true),
