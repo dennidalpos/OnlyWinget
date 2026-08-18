@@ -175,6 +175,15 @@ public sealed partial class SourcesViewModel : FeatureViewModel
             return TextResources.Get("Validation_Required");
         }
 
+        try
+        {
+            OnlyWinget.Infrastructure.Winget.WingetCommandBuilder.ValidateInput(value, nameof(value));
+        }
+        catch (ArgumentException)
+        {
+            return TextResources.Get("Validation_SourceName");
+        }
+
         return Sources.Any(source => string.Equals(source.Name, value, StringComparison.OrdinalIgnoreCase))
             ? TextResources.Get("Validation_DuplicateSource")
             : null;

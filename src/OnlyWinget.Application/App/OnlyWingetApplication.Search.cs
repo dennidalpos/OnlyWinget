@@ -7,11 +7,12 @@ namespace OnlyWinget.Application.App;
 
 public sealed partial class OnlyWingetApplication
 {
-    public async Task<ApplicationActionResult> SearchAsync(string query, CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> SearchAsync(string query, CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.Searching,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     var enabledSources = GetEnabledSourceNames();
@@ -88,11 +89,12 @@ public sealed partial class OnlyWingetApplication
     public ApplicationActionResult SetSearchResultsSelection(IEnumerable<PackageIdentity> packages, bool isSelected) =>
         Run(() => { foreach (var p in packages) searchSelection.SetSelected(p, isSelected); });
 
-    public async Task<ApplicationActionResult> AddSelectedSearchResultsToActivePresetAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> AddSelectedSearchResultsToActivePresetAsync(CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.Searching,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     var active = EnsureActivePreset();
@@ -120,11 +122,12 @@ public sealed partial class OnlyWingetApplication
             .ConfigureAwait(false);
     }
 
-    public async Task<ApplicationActionResult> RefreshWorkspacePackageMetadataAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> RefreshWorkspacePackageMetadataAsync(CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.ValidatingPackages,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     var packages = workspace.Presets
@@ -148,7 +151,7 @@ public sealed partial class OnlyWingetApplication
     {
         lock (packageMetadata)
         {
-            return packageMetadata.GetValueOrDefault(package);
+            return packageMetadata.TryGetValue(package, out var cached) ? cached.Resolution : null;
         }
     }
 
@@ -156,7 +159,7 @@ public sealed partial class OnlyWingetApplication
     {
         lock (packageMetadata)
         {
-            return new Dictionary<PackageIdentity, PackageResolution>(packageMetadata);
+            return packageMetadata.ToDictionary(pair => pair.Key, pair => pair.Value.Resolution);
         }
     }
 
@@ -185,7 +188,7 @@ public sealed partial class OnlyWingetApplication
 
             lock (packageMetadata)
             {
-                packageMetadata[resolution.Package] = resolution;
+                packageMetadata[resolution.Package] = new CachedPackageResolution(resolution, clock.GetUtcNow());
             }
             return resolution;
         }
@@ -229,7 +232,7 @@ public sealed partial class OnlyWingetApplication
         var match = matches[0];
         lock (packageMetadata)
         {
-            packageMetadata[match.Package] = match;
+            packageMetadata[match.Package] = new CachedPackageResolution(match, clock.GetUtcNow());
         }
         return match;
     }
@@ -245,7 +248,8 @@ public sealed partial class OnlyWingetApplication
             {
                 lock (packageMetadata)
                 {
-                    return !packageMetadata.ContainsKey(package);
+                    return !packageMetadata.TryGetValue(package, out var cached) ||
+                        clock.GetUtcNow() - cached.ResolvedAt >= PackageMetadataCacheDuration;
                 }
             })
             .ToArray();
@@ -259,10 +263,11 @@ public sealed partial class OnlyWingetApplication
                 var resolution = await packageResolver.ResolveAsync(package, cancellationToken).ConfigureAwait(false);
                 if (resolution.IsResolved)
                 {
+                    var cached = new CachedPackageResolution(resolution, clock.GetUtcNow());
                     lock (packageMetadata)
                     {
-                        packageMetadata[package] = resolution;
-                        packageMetadata[resolution.Package] = resolution;
+                        packageMetadata[package] = cached;
+                        packageMetadata[resolution.Package] = cached;
                     }
                 }
                 else

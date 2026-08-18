@@ -7,12 +7,38 @@ using OnlyWinget.Application.Winget;
 
 namespace OnlyWinget.Infrastructure.WindowsUpdate;
 
+/// <summary>
+/// Builds the WUApi search criteria string. Pure string logic shared by the native COM path
+/// (<see cref="ComWindowsUpdateService"/>) and mirrors PowerShellWindowsUpdateService.ApplyOptions,
+/// so it is kept outside the [SupportedOSPlatform("windows")] type to stay unit-testable on any OS.
+/// </summary>
+public static class WindowsUpdateSearchCriteria
+{
+    public static string Build(WindowsUpdateOptions options)
+    {
+        if (!options.IncludeSoftware && !options.IncludeDrivers)
+        {
+            throw new ArgumentException("Select software updates, drivers, or both.", nameof(options));
+        }
+
+        var typeCriteria = (options.IncludeSoftware, options.IncludeDrivers) switch
+        {
+            (true, false) => " and Type='Software'",
+            (false, true) => " and Type='Driver'",
+            _ => string.Empty
+        };
+
+        return $"IsInstalled=0 and IsHidden=0{typeCriteria}";
+    }
+}
+
 [SupportedOSPlatform("windows")]
 public sealed class ComWindowsUpdateService(
     PowerShellWindowsUpdateService fallbackService,
     ILogger<ComWindowsUpdateService>? logger = null) : IWindowsUpdateService
 {
     private const string ProgId = "Microsoft.Update.Session";
+    private const string MicrosoftUpdateServiceId = "7971f918-a847-4430-9279-4a52d1efe18d";
 
     public async Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(
         WindowsUpdateOptions options,
@@ -93,12 +119,9 @@ public sealed class ComWindowsUpdateService(
 
             dynamic searcher = session.CreateUpdateSearcher();
             searcherObj = (object)searcher;
+            TryRegisterMicrosoftUpdateService(searcher, options);
 
-            var query = options.IncludeDrivers
-                ? "IsInstalled=0"
-                : "IsInstalled=0 and Type='Software'";
-
-            dynamic searchResult = searcher.Search(query);
+            dynamic searchResult = searcher.Search(WindowsUpdateSearchCriteria.Build(options));
             searchResultObj = (object)searchResult;
 
             dynamic updateCollection = searchResult.Updates;
@@ -206,8 +229,9 @@ public sealed class ComWindowsUpdateService(
 
             dynamic searcher = session.CreateUpdateSearcher();
             searcherObj = (object)searcher;
+            TryRegisterMicrosoftUpdateService(searcher, options);
 
-            dynamic searchResult = searcher.Search("IsInstalled=0");
+            dynamic searchResult = searcher.Search(WindowsUpdateSearchCriteria.Build(options));
             searchResultObj = (object)searchResult;
 
             dynamic availableUpdates = searchResult.Updates;
@@ -228,6 +252,13 @@ public sealed class ComWindowsUpdateService(
 
                 if (targetMap.TryGetValue(updateId, out var targetIdent))
                 {
+                    bool eulaAccepted = false;
+                    try { eulaAccepted = Convert.ToBoolean(update.EulaAccepted); } catch { }
+                    if (!eulaAccepted)
+                    {
+                        try { update.AcceptEula(); } catch { }
+                    }
+
                     installCollection.Add(update);
                     matchedItems.Add((update.Title?.ToString() ?? updateId, targetIdent));
                 }
@@ -275,6 +306,52 @@ public sealed class ComWindowsUpdateService(
             TryReleaseCom(searchResultObj);
             TryReleaseCom(searcherObj);
             TryReleaseCom(sessionObj);
+        }
+    }
+
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Windows Update ProgID type instantiation.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
+    private static void TryRegisterMicrosoftUpdateService(dynamic searcher, WindowsUpdateOptions options)
+    {
+        if (!options.IncludeMicrosoftUpdates)
+        {
+            return;
+        }
+
+        object? serviceManagerObj = null;
+        try
+        {
+            var serviceManagerType = Type.GetTypeFromProgID("Microsoft.Update.ServiceManager");
+            if (serviceManagerType is null)
+            {
+                return;
+            }
+
+            dynamic serviceManager = Activator.CreateInstance(serviceManagerType)!;
+            serviceManagerObj = (object)serviceManager;
+
+            dynamic services = serviceManager.Services;
+            int count = services.Count;
+            for (int i = 0; i < count; i++)
+            {
+                dynamic service = services.Item(i);
+                string serviceId = service.ServiceID?.ToString() ?? string.Empty;
+                if (string.Equals(serviceId, MicrosoftUpdateServiceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    searcher.ServerSelection = 3; // ssOthers
+                    searcher.ServiceID = serviceId;
+                    break;
+                }
+            }
+        }
+        catch
+        {
+            // Continue with the default Windows Update service. Optional service discovery must not block scanning/installing.
+        }
+        finally
+        {
+            TryReleaseCom(serviceManagerObj);
         }
     }
 

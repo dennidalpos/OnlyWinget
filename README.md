@@ -21,7 +21,7 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | Presets | Create package lists, import/export the current `onlywinget.preset.v1` format, and run selected install/uninstall actions. |
 | Search | Search local `winget` sources via native COM APIs (`Microsoft.Management.Deployment`) with in-memory caching (`IMemoryCache`), resolve package identity, and add selected results in batches. |
 | Updates | Review available `winget` upgrades and Windows Update results via direct C# COM Interop (`WUApiLib` / `CsWin32`), select all or specific rows, and apply selected updates with real-time progress. |
-| Sources | Inspect `winget` sources, update/reset source metadata, add/remove sources, and query remote REST source manifests (`WingetRestSourceClient`). |
+| Sources | Inspect `winget` sources, update/reset source metadata, and add/remove sources. |
 | Architecture | Clean Architecture Onion boundaries, `Microsoft.Extensions.Hosting` DI, Serilog structured logging, `CommunityToolkit.Mvvm` source generators, and embedded SQLite relateral storage (`EF Core 10`). |
 | Safety & Storage | Embedded transactional SQLite database (`onlywinget.db`) with automatic JSON migration, cancellable operation design, and DPAPI encrypted secret storage. |
 | Installer | Unified x64 NSIS setup EXE and self-contained portable ZIP. |

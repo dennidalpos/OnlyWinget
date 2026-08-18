@@ -9,6 +9,14 @@ public sealed class ProcessWingetCommandRunner(
     WingetProgressParser progressParser,
     ILogger<ProcessWingetCommandRunner>? logger = null) : IWingetCommandRunner
 {
+    // --disable-interactivity was introduced in winget (App Installer) v1.4. Older versions reject it
+    // as an unrecognized argument, so it is stripped when an older version is detected.
+    private static readonly Version MinimumDisableInteractivityVersion = new(1, 4);
+
+    private readonly SemaphoreSlim versionCheckLock = new(1, 1);
+    private Version? cachedWingetVersion;
+    private bool wingetVersionChecked;
+
     public ProcessWingetCommandRunner()
         : this(new global::OnlyWinget.Infrastructure.System.ProcessExternalProcessRunner(), new WingetProgressParser(), null)
     {
@@ -19,8 +27,7 @@ public sealed class ProcessWingetCommandRunner(
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         IProgress<WingetProgress>? progress = null,
-        TimeSpan? timeout = null,
-        bool requireElevation = false)
+        TimeSpan? timeout = null)
     {
         progressParser.Reset();
         progress?.Report(new WingetProgress(WingetProgressPhase.Starting, 0, null));
@@ -34,10 +41,17 @@ public sealed class ProcessWingetCommandRunner(
                 }
             });
 
-        var mustElevate = requireElevation || IsWriteOperation(command, arguments);
+        if (command == "winget" && arguments.Contains("--disable-interactivity"))
+        {
+            var wingetVersion = await GetWingetVersionAsync(cancellationToken).ConfigureAwait(false);
+            if (wingetVersion is not null && wingetVersion < MinimumDisableInteractivityVersion)
+            {
+                arguments = arguments.Where(argument => argument != "--disable-interactivity").ToArray();
+            }
+        }
 
-        logger?.LogInformation("Running winget command '{Command}' (Elevated: {Elevated}) with args: {Arguments}", command, mustElevate, string.Join(" ", arguments));
-        var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout, requireElevation: mustElevate)
+        logger?.LogInformation("Running winget command '{Command}' with args: {Arguments}", command, string.Join(" ", arguments));
+        var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
             .ConfigureAwait(false);
         logger?.LogDebug("Command '{Command}' finished with exit code {ExitCode}", command, result.ExitCode);
 
@@ -48,11 +62,11 @@ public sealed class ProcessWingetCommandRunner(
              result.StandardOutput.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase) ||
              result.StandardError.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase)))
         {
-            var resetResult = await processRunner.RunAsync("winget", ["source", "reset", "--force"], cancellationToken, timeout: timeout, requireElevation: true)
+            var resetResult = await processRunner.RunAsync("winget", ["source", "reset", "--force"], cancellationToken, timeout: timeout)
                 .ConfigureAwait(false);
             if (resetResult.Succeeded)
             {
-                result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout, requireElevation: mustElevate)
+                result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
                     .ConfigureAwait(false);
             }
         }
@@ -64,13 +78,34 @@ public sealed class ProcessWingetCommandRunner(
         return new WingetCommandResult(result.ExitCode, result.StandardOutput, result.StandardError);
     }
 
-    private static bool IsWriteOperation(string command, IReadOnlyList<string> arguments)
+    private async Task<Version?> GetWingetVersionAsync(CancellationToken cancellationToken)
     {
-        if (string.Equals(command, "winget", StringComparison.OrdinalIgnoreCase) && arguments.Count > 0)
+        if (wingetVersionChecked)
         {
-            var action = arguments[0].ToLowerInvariant();
-            return action == "source" && arguments.Count > 1 && arguments[1].ToLowerInvariant() is "add" or "remove" or "reset";
+            return cachedWingetVersion;
         }
-        return false;
+
+        await versionCheckLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (wingetVersionChecked)
+            {
+                return cachedWingetVersion;
+            }
+
+            var result = await processRunner.RunAsync("winget", ["--version"], cancellationToken).ConfigureAwait(false);
+            if (result.Succeeded)
+            {
+                var versionText = result.StandardOutput.Trim().TrimStart('v').Split('-')[0];
+                cachedWingetVersion = Version.TryParse(versionText, out var parsed) ? parsed : null;
+            }
+
+            wingetVersionChecked = true;
+            return cachedWingetVersion;
+        }
+        finally
+        {
+            versionCheckLock.Release();
+        }
     }
 }

@@ -23,8 +23,7 @@ public class PackageSearchCacheTests
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
             IProgress<WingetProgress>? progress = null,
-            TimeSpan? timeout = null,
-            bool requireElevation = false)
+            TimeSpan? timeout = null)
         {
             CallCount++;
             return Task.FromResult(returnResult);

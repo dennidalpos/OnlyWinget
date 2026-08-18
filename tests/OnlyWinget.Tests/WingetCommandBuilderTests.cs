@@ -40,4 +40,20 @@ public sealed class WingetCommandBuilderTests
 
         Assert.DoesNotContain("--accept-package-agreements", arguments);
     }
+
+    [Theory]
+    [InlineData("valid-source_1.2")]
+    [InlineData("My Source")]
+    public void ValidateInputAcceptsSafeCharacters(string value) =>
+        WingetCommandBuilder.ValidateInput(value, nameof(value));
+
+    [Theory]
+    [InlineData("evil\" & calc")]
+    [InlineData("name; rm -rf /")]
+    [InlineData("name|pipe")]
+    [InlineData("name`backtick`")]
+    [InlineData("name'quote'")]
+    [InlineData("name<redirect>")]
+    public void ValidateInputRejectsShellMetacharacters(string value) =>
+        Assert.Throws<ArgumentException>(() => WingetCommandBuilder.ValidateInput(value, nameof(value)));
 }

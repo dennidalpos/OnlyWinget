@@ -8,11 +8,12 @@ namespace OnlyWinget.Application.App;
 
 public sealed partial class OnlyWingetApplication
 {
-    public async Task<ApplicationActionResult> LoadWorkspaceAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> LoadWorkspaceAsync(CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.LoadingWorkspace,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     workspace = NormalizeWorkspace(await workspaceStore.LoadAsync(cancellationToken).ConfigureAwait(false));
                     var preferences = await sourcePreferences.LoadAsync(cancellationToken).ConfigureAwait(false);
@@ -26,11 +27,12 @@ public sealed partial class OnlyWingetApplication
             .ConfigureAwait(false);
     }
 
-    public async Task<ApplicationActionResult> SaveWorkspaceAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> SaveWorkspaceAsync(CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.SavingWorkspace,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     await workspaceStore.SaveAsync(workspace, cancellationToken).ConfigureAwait(false);
                     AddActivity(ActivitySeverity.Success, "Workspace saved", "Workspace state was saved.");
@@ -39,11 +41,12 @@ public sealed partial class OnlyWingetApplication
             .ConfigureAwait(false);
     }
 
-    public async Task<ApplicationActionResult> RefreshCapabilitiesAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> RefreshCapabilitiesAsync(CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.CheckingCapabilities,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     capabilities = await capabilityService.GetCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
                     AddActivity(
@@ -107,8 +110,8 @@ public sealed partial class OnlyWingetApplication
 
     public async Task<ApplicationActionResult> AddPackageToActivePresetAsync(
         PackageIdentity package,
-        CancellationToken cancellationToken) =>
-        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
+        CancellationToken callerCancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, callerCancellationToken, async cancellationToken =>
         {
             ArgumentNullException.ThrowIfNull(package);
             var validated = await ValidatePackageAsync(package, cancellationToken).ConfigureAwait(false);
@@ -125,8 +128,8 @@ public sealed partial class OnlyWingetApplication
     public async Task<ApplicationActionResult> ReplacePackageInActivePresetAsync(
         PackageIdentity current,
         PackageIdentity replacement,
-        CancellationToken cancellationToken) =>
-        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
+        CancellationToken callerCancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, callerCancellationToken, async cancellationToken =>
         {
             ArgumentNullException.ThrowIfNull(current);
             ArgumentNullException.ThrowIfNull(replacement);
@@ -184,8 +187,8 @@ public sealed partial class OnlyWingetApplication
 
     public async Task<ApplicationActionResult> AddPackagesToActivePresetAsync(
         IEnumerable<PackageIdentity> packages,
-        CancellationToken cancellationToken) =>
-        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
+        CancellationToken callerCancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, callerCancellationToken, async cancellationToken =>
         {
             ArgumentNullException.ThrowIfNull(packages);
             var active = RequireActivePreset();
@@ -230,8 +233,8 @@ public sealed partial class OnlyWingetApplication
         return presetDocuments.Export(active);
     }
 
-    public async Task<ApplicationActionResult> ImportPresetAsync(string json, CancellationToken cancellationToken) =>
-        await RunAsync(ApplicationBusyState.ValidatingPackages, async () =>
+    public async Task<ApplicationActionResult> ImportPresetAsync(string json, CancellationToken callerCancellationToken) =>
+        await RunAsync(ApplicationBusyState.ValidatingPackages, callerCancellationToken, async cancellationToken =>
         {
             var preset = presetDocuments.Import(json);
             if (FindPreset(preset.Name) is not null)

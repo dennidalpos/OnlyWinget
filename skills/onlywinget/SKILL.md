@@ -24,7 +24,7 @@ Infrastructure -----> Application -> Domain
 ## 2. Process Execution & Security Rules
 
 - **Process Isolation**: All external process execution must use `ProcessExternalProcessRunner`.
-- **Command Argument Sanitization**: When running elevated tasks (`runas` UAC), arguments passed to `cmd.exe /c` must be sanitized via `EscapeCmdArgument` to prevent command injection vulnerabilities.
+- **Command Argument Sanitization**: Arguments must always be passed via `ProcessStartInfo.ArgumentList` (never concatenated into a shell command line). The app always runs elevated (`app.manifest` requests `requireAdministrator`), so there is no on-demand UAC re-launch path.
 - **CancellationToken Propagation**: Every asynchronous operation must accept and honor real `CancellationToken` instances.
 
 ## 3. Native COM Interop & Resource Safety

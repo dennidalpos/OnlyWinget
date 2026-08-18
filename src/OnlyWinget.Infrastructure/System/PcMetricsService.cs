@@ -8,8 +8,9 @@ namespace OnlyWinget.Infrastructure.System;
 
 public sealed class PcMetricsService : IPcMetricsService
 {
-    private static long lastIdleTime;
-    private static long lastTotalTime;
+    private long lastIdleTime;
+    private long lastTotalTime;
+    private (string status, DateTime timestamp) cachedNetworkStatus = ("Unknown", DateTime.MinValue);
 
     public PcMetrics GetCurrentMetrics()
     {
@@ -31,7 +32,7 @@ public sealed class PcMetricsService : IPcMetricsService
             networkStatusText);
     }
 
-    private static double GetCpuUsage()
+    private double GetCpuUsage()
     {
         try
         {
@@ -54,8 +55,9 @@ public sealed class PcMetricsService : IPcMetricsService
                 }
             }
         }
-        catch
+        catch (Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetCpuUsage: {exception}");
         }
         return 0.0;
     }
@@ -77,8 +79,9 @@ public sealed class PcMetricsService : IPcMetricsService
                 }
             }
         }
-        catch
+        catch (Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetRamInfo: {exception}");
         }
         return (0, "N/A");
     }
@@ -98,8 +101,9 @@ public sealed class PcMetricsService : IPcMetricsService
                 return (Math.Round(pct, 1), $"{freeGb:F1} GB free / {totalGb:F1} GB");
             }
         }
-        catch
+        catch (Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetDiskInfo: {exception}");
         }
         return (0, "N/A");
     }
@@ -117,9 +121,7 @@ public sealed class PcMetricsService : IPcMetricsService
         return RuntimeInformation.OSDescription;
     }
 
-    private static (string status, DateTime timestamp) cachedNetworkStatus = ("Unknown", DateTime.MinValue);
-
-    private static string GetNetworkStatusText()
+    private string GetNetworkStatusText()
     {
         try
         {
@@ -157,8 +159,9 @@ public sealed class PcMetricsService : IPcMetricsService
             cachedNetworkStatus = (result, DateTime.UtcNow);
             return result;
         }
-        catch
+        catch (Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetNetworkStatusText: {exception}");
             return "Unknown";
         }
     }

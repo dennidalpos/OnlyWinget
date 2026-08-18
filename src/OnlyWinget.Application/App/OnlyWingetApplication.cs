@@ -46,7 +46,8 @@ public sealed partial class OnlyWingetApplication(
     private readonly List<WingetSource> sources = [];
     private readonly List<ActivityEntry> activity = [];
     private readonly List<OperationExecutionResult> lastOperationResults = [];
-    private readonly Dictionary<PackageIdentity, PackageResolution> packageMetadata = new();
+    private readonly Dictionary<PackageIdentity, CachedPackageResolution> packageMetadata = new();
+    private static readonly TimeSpan PackageMetadataCacheDuration = TimeSpan.FromMinutes(5);
     private readonly List<WindowsUpdateInstallResult> lastWindowsUpdateResults = [];
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
     private readonly ISourcePreferenceStore sourcePreferences = sourcePreferenceStore ?? new EmptySourcePreferenceStore();
@@ -125,14 +126,9 @@ public sealed partial class OnlyWingetApplication(
         }
     }
 
-    private Task<ApplicationActionResult> RunAsync(
-        ApplicationBusyState state,
-        Func<Task> action,
-        string fallbackError) =>
-        RunAsync(state, _ => action(), fallbackError);
-
     private async Task<ApplicationActionResult> RunAsync(
         ApplicationBusyState state,
+        CancellationToken cancellationToken,
         Func<CancellationToken, Task> action,
         string fallbackError)
     {
@@ -141,10 +137,12 @@ public sealed partial class OnlyWingetApplication(
             return ApplicationActionResult.Failure("Another operation is already in progress.");
         }
 
+        // Linked so that either the caller's own token (e.g. a page-level Cancel button)
+        // or CancelCurrentOperation() (the global tracker's Cancel button) can stop this operation.
         lock (stateLock)
         {
             currentOperationCts?.Dispose();
-            currentOperationCts = new CancellationTokenSource();
+            currentOperationCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         }
 
         busyState = state;
@@ -266,4 +264,6 @@ public sealed partial class OnlyWingetApplication(
 
     private static bool PresetNameEquals(string left, string right) =>
         string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private readonly record struct CachedPackageResolution(PackageResolution Resolution, DateTimeOffset ResolvedAt);
 }

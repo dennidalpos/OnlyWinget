@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Security.Principal;
 using System.Text;
 using OnlyWinget.Application.System;
 
@@ -13,18 +12,12 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         IProgress<string>? standardOutputLines = null,
-        TimeSpan? timeout = null,
-        bool requireElevation = false)
+        TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(arguments);
 
         var actualTimeout = timeout ?? TimeSpan.FromSeconds(120);
-
-        if (requireElevation && OperatingSystem.IsWindows() && !IsElevated())
-        {
-            return await RunElevatedAsync(command, arguments, cancellationToken, standardOutputLines, actualTimeout).ConfigureAwait(false);
-        }
 
         using var timeoutCts = actualTimeout != Timeout.InfiniteTimeSpan
             ? new CancellationTokenSource(actualTimeout)
@@ -106,130 +99,6 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
         {
             global::System.Diagnostics.Debug.WriteLine($"ProcessExternalProcessRunner.RunAsync (general): {exception}");
             return new ExternalProcessResult(-1, string.Empty, exception.Message);
-        }
-    }
-
-    [global::System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static async Task<ExternalProcessResult> RunElevatedAsync(
-        string command,
-        IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken,
-        IProgress<string>? standardOutputLines,
-        TimeSpan actualTimeout)
-    {
-        var runId = Guid.NewGuid().ToString("N");
-        var tempFolder = Path.GetTempPath();
-        var outPath = Path.Combine(tempFolder, $"onlywinget-elevated-out-{runId}.tmp");
-        var errPath = Path.Combine(tempFolder, $"onlywinget-elevated-err-{runId}.tmp");
-        var exitPath = Path.Combine(tempFolder, $"onlywinget-elevated-exit-{runId}.tmp");
-
-        try
-        {
-            var formattedArgs = string.Join(" ", arguments.Select(EscapeCmdArgument));
-            var escapedCommand = EscapeCmdArgument(command);
-            var shellCmd = $"\"{escapedCommand} {formattedArgs} > \"{outPath}\" 2> \"{errPath}\" & echo %ERRORLEVEL% > \"{exitPath}\"\"";
-
-            using var process = new Process();
-            process.StartInfo.FileName = "cmd.exe";
-            process.StartInfo.Arguments = $"/c {shellCmd}";
-            process.StartInfo.UseShellExecute = true;
-            process.StartInfo.Verb = "runas";
-            process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-
-            try
-            {
-                process.Start();
-            }
-            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED (user cancelled UAC prompt)
-            {
-                return new ExternalProcessResult(unchecked((int)0x8a150012), string.Empty, "Operation cancelled by user at UAC prompt.");
-            }
-            catch (Exception ex)
-            {
-                return new ExternalProcessResult(9009, string.Empty, ex.Message);
-            }
-
-            try
-            {
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                TryKill(process);
-                throw;
-            }
-
-            var stdout = File.Exists(outPath) ? await File.ReadAllTextAsync(outPath, cancellationToken).ConfigureAwait(false) : string.Empty;
-            var stderr = File.Exists(errPath) ? await File.ReadAllTextAsync(errPath, cancellationToken).ConfigureAwait(false) : string.Empty;
-
-            if (!string.IsNullOrWhiteSpace(stdout) && standardOutputLines is not null)
-            {
-                foreach (var line in stdout.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries))
-                {
-                    standardOutputLines.Report(line);
-                }
-            }
-
-            var exitCode = process.ExitCode;
-            if (File.Exists(exitPath) && int.TryParse((await File.ReadAllTextAsync(exitPath, cancellationToken).ConfigureAwait(false)).Trim(), out var parsedCode))
-            {
-                exitCode = parsedCode;
-            }
-
-            return new ExternalProcessResult(exitCode, stdout, stderr);
-        }
-        finally
-        {
-            TryDeleteFile(outPath);
-            TryDeleteFile(errPath);
-            TryDeleteFile(exitPath);
-        }
-    }
-
-    private static string EscapeCmdArgument(string arg)
-    {
-        if (string.IsNullOrEmpty(arg))
-        {
-            return "\"\"";
-        }
-
-        // Quote if containing spaces, quotes, or cmd special characters
-        if (arg.Any(c => char.IsWhiteSpace(c) || c is '"' or '^' or '&' or '|' or '<' or '>' or '(' or ')' or '%' or '!'))
-        {
-            var escaped = arg.Replace("\"", "\\\"", StringComparison.Ordinal);
-            return $"\"{escaped}\"";
-        }
-
-        return arg;
-    }
-
-    [global::System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static bool IsElevated()
-    {
-        try
-        {
-            using var identity = WindowsIdentity.GetCurrent();
-            var principal = new WindowsPrincipal(identity);
-            return principal.IsInRole(WindowsBuiltInRole.Administrator);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static void TryDeleteFile(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch
-        {
-            // Ignore temporary cleanup errors
         }
     }
 

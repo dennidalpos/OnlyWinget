@@ -21,8 +21,9 @@ public static class UrlProtocolRegistrationService
             using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath);
             return key is not null && key.GetValue("URL Protocol") is not null;
         }
-        catch
+        catch (Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"UrlProtocolRegistrationService.IsRegistered: {exception}");
             return false;
         }
     }
@@ -56,8 +57,9 @@ public static class UrlProtocolRegistrationService
             commandKey.SetValue(string.Empty, $"\"{executablePath}\" \"%1\"");
             return true;
         }
-        catch
+        catch (Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"UrlProtocolRegistrationService.Register: {exception}");
             return false;
         }
     }
@@ -74,8 +76,9 @@ public static class UrlProtocolRegistrationService
             Registry.CurrentUser.DeleteSubKeyTree(RegistryKeyPath, throwOnMissingSubKey: false);
             return true;
         }
-        catch
+        catch (Exception exception)
         {
+            global::System.Diagnostics.Debug.WriteLine($"UrlProtocolRegistrationService.Unregister: {exception}");
             return false;
         }
     }

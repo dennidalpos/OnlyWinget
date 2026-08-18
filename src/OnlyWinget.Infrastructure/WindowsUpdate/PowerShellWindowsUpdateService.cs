@@ -77,7 +77,7 @@ public sealed class PowerShellWindowsUpdateService(
             0,
             updates.Count));
 
-        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30), requireElevation: true).ConfigureAwait(false);
+        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30)).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateInstallResultDto>(result);
 
         if (envelope.Succeeded)
@@ -111,16 +111,14 @@ public sealed class PowerShellWindowsUpdateService(
     private async Task<ExternalProcessResult> RunPowerShellAsync(
         string script,
         CancellationToken cancellationToken,
-        global::System.TimeSpan? timeout = null,
-        bool requireElevation = false)
+        global::System.TimeSpan? timeout = null)
     {
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         return await commandRunner.RunAsync(
                 "powershell.exe",
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
                 cancellationToken,
-                timeout: timeout,
-                requireElevation: requireElevation)
+                timeout: timeout)
             .ConfigureAwait(false);
     }
 
@@ -324,7 +322,6 @@ __SELECTED_JSON__
         $updateResult = $install.GetUpdateResult($index)
         $item = $metadata[$index]
         $succeeded = $updateResult.ResultCode -eq 2 -or $updateResult.ResultCode -eq 3
-        $message = if ($updateResult.HResult -eq 0) { $null } else { ('HRESULT 0x{0:X8}' -f $updateResult.HResult) }
         $rows += [pscustomobject]@{
             updateId = [string]$item.updateId
             revisionNumber = [int]$item.revisionNumber
@@ -332,7 +329,7 @@ __SELECTED_JSON__
             succeeded = [bool]$succeeded
             rebootRequired = [bool]$install.RebootRequired
             resultCode = [string]$updateResult.ResultCode
-            message = $message
+            hResult = [int]$updateResult.HResult
         }
     }
 
@@ -396,7 +393,7 @@ catch {
         [property: JsonPropertyName("succeeded")] bool Succeeded,
         [property: JsonPropertyName("rebootRequired")] bool RebootRequired,
         [property: JsonPropertyName("resultCode")] string ResultCode,
-        [property: JsonPropertyName("message")] string? Message)
+        [property: JsonPropertyName("hResult")] int HResult)
     {
         public WindowsUpdateInstallResult ToModel() =>
             new(
@@ -405,6 +402,6 @@ catch {
                 Succeeded,
                 RebootRequired,
                 ResultCode,
-                Message);
+                WindowsUpdateErrorCodes.Describe(HResult));
     }
 }

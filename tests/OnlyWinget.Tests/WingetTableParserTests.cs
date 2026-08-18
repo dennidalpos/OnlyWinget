@@ -93,6 +93,27 @@ public sealed class WingetTableParserTests
     }
 
     [Fact]
+    public void ParseFallsBackToPositionalMappingForUnrecognizedLocale()
+    {
+        // Regression test: winget localizes header TEXT but always orders columns Name, Id, Version
+        // first. When the system locale's header words aren't in HeaderTranslations (e.g. a language
+        // not yet covered), rows used to be silently dropped because "Id"/"Name" were never found.
+        // Placeholder header words below stand in for a not-yet-covered locale — not a real translation.
+        const string output = """
+            Zzzname   Zzzid       Zzzversion
+            ---------------------------------
+            Git       Git.Git     2.54.0
+            """;
+
+        var rows = new WingetTableParser().Parse(output);
+
+        var row = Assert.Single(rows);
+        Assert.Equal("Git.Git", row["Id"]);
+        Assert.Equal("2.54.0", row["Version"]);
+        Assert.Equal("Git", row["Name"]);
+    }
+
+    [Fact]
     public void ParseFiltersOutHeaderFragmentsAndWrappedHeaders()
     {
         const string output = """

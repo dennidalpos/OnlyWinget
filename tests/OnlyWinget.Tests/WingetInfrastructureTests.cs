@@ -36,6 +36,52 @@ public sealed class WingetInfrastructureTests
     }
 
     [Fact]
+    public async Task ProcessWingetCommandRunnerKeepsDisableInteractivityOnModernWinget()
+    {
+        var processRunner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, "v1.9.0", string.Empty),
+            new ExternalProcessResult(0, "search results", string.Empty));
+        var runner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
+
+        await runner.RunAsync("winget", ["search", "git", "--disable-interactivity"], CancellationToken.None);
+
+        Assert.Contains(processRunner.CommandCalls, call =>
+            call.Command == "winget" && call.Arguments.Contains("--disable-interactivity"));
+    }
+
+    [Fact]
+    public async Task ProcessWingetCommandRunnerStripsDisableInteractivityOnOldWinget()
+    {
+        // Regression test: --disable-interactivity was introduced in winget v1.4. Older versions
+        // reject it as an unrecognized argument, so ProcessWingetCommandRunner must detect the
+        // installed version (once, cached) and omit the flag rather than let every command fail.
+        var processRunner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, "v1.2.10271", string.Empty),
+            new ExternalProcessResult(0, "search results", string.Empty));
+        var runner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
+
+        await runner.RunAsync("winget", ["search", "git", "--disable-interactivity"], CancellationToken.None);
+
+        var searchCall = Assert.Single(processRunner.CommandCalls, call => call.Arguments.Contains("search"));
+        Assert.DoesNotContain("--disable-interactivity", searchCall.Arguments);
+    }
+
+    [Fact]
+    public async Task ProcessWingetCommandRunnerChecksWingetVersionOnlyOnce()
+    {
+        var processRunner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, "v1.2.10271", string.Empty),
+            new ExternalProcessResult(0, "ok", string.Empty),
+            new ExternalProcessResult(0, "ok", string.Empty));
+        var runner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
+
+        await runner.RunAsync("winget", ["search", "git", "--disable-interactivity"], CancellationToken.None);
+        await runner.RunAsync("winget", ["list", "--disable-interactivity"], CancellationToken.None);
+
+        Assert.Single(processRunner.CommandCalls, call => call.Arguments.SequenceEqual(["--version"]));
+    }
+
+    [Fact]
     public async Task WindowsUpdateServiceReturnsFailureWithoutRunningPowerShellWhenCapabilityIsMissing()
     {
         var runner = new RecordingExternalProcessRunner();
@@ -93,6 +139,30 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(["5000001"], update.KnowledgeBaseArticles);
         Assert.Equal(12_345_678UL, update.MaxDownloadSize);
         Assert.True(update.RebootRequired);
+    }
+
+    [Fact]
+    public async Task WindowsUpdateServiceMapsHResultToFriendlyInstallMessage()
+    {
+        // Regression test: install failures used to surface only the raw "HRESULT 0x..." text
+        // (PowerShellWindowsUpdateService.cs). WU_E_* codes must now map to a human-readable message.
+        var allUpdatesFailed = unchecked((int)0x80240022); // WU_E_ALL_UPDATES_FAILED
+        var output = $$"""
+            {"succeeded":true,"rows":[{"updateId":"update-1","revisionNumber":3,"title":"Security update","succeeded":false,"rebootRequired":false,"resultCode":"4","hResult":{{allUpdatesFailed}}}],"error":null}
+            """;
+        var runner = new RecordingExternalProcessRunner(new ExternalProcessResult(0, output, string.Empty));
+        var service = new PowerShellWindowsUpdateService(
+            runner,
+            new StubSystemCapabilityService(new SystemCapabilities(true, true, true, true, null)));
+
+        var outcome = await service.InstallAsync(
+            [new WindowsUpdateIdentity("update-1", 3)],
+            new WindowsUpdateOptions(),
+            CancellationToken.None);
+
+        var result = Assert.Single(outcome.Rows);
+        Assert.False(result.Succeeded);
+        Assert.Equal("The operation failed for all the updates. (0x80240022)", result.Message);
     }
 
     [Fact]
@@ -530,8 +600,7 @@ public sealed class WingetInfrastructureTests
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
             IProgress<WingetProgress>? progress = null,
-            TimeSpan? timeout = null,
-            bool requireElevation = false)
+            TimeSpan? timeout = null)
         {
             LastCommand = command;
             LastArguments = arguments.ToArray();
@@ -563,8 +632,7 @@ public sealed class WingetInfrastructureTests
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
             IProgress<string>? standardOutputLines = null,
-            TimeSpan? timeout = null,
-            bool requireElevation = false)
+            TimeSpan? timeout = null)
         {
             LastArguments = arguments.ToArray();
             Calls.Add(LastArguments);

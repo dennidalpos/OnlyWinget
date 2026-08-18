@@ -6,11 +6,12 @@ namespace OnlyWinget.Application.App;
 
 public sealed partial class OnlyWingetApplication
 {
-    public async Task<ApplicationActionResult> RefreshSourcesAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> RefreshSourcesAsync(CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.ManagingSources,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     await EnsureOfficialSourcesConfiguredAsync(cancellationToken).ConfigureAwait(false);
@@ -77,11 +78,12 @@ public sealed partial class OnlyWingetApplication
     public async Task<ApplicationActionResult> SetSourceEnabledAsync(
         string name,
         bool isEnabled,
-        CancellationToken cancellationToken)
+        CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.ManagingSources,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     if (!sources.Any(source => string.Equals(source.Name, name, StringComparison.OrdinalIgnoreCase)))
@@ -113,11 +115,12 @@ public sealed partial class OnlyWingetApplication
         Func<Task<WingetOperationOutcome<WingetSource>>> operation,
         string title,
         string message,
-        CancellationToken cancellationToken)
+        CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.ManagingSources,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     var outcome = await operation().ConfigureAwait(false);

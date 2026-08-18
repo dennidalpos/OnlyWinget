@@ -227,7 +227,8 @@ public static class TextResources
         ["Validation_SourceArgument"] = "Enter an absolute HTTP or HTTPS URL.",
         ["Validation_DuplicateSource"] = "A source with this name already exists.",
         ["Validation_DuplicatePreset"] = "A preset with this name already exists.",
-        ["Validation_DuplicatePackage"] = "This package is already in the active preset."
+        ["Validation_DuplicatePackage"] = "This package is already in the active preset.",
+        ["Validation_SourceName"] = "The name cannot contain quotes, backticks, or shell characters (; | & < >)."
     };
 
     private static readonly IReadOnlyDictionary<string, string> Italian = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -451,7 +452,8 @@ public static class TextResources
         ["Validation_SourceArgument"] = "Inserisci un URL HTTP o HTTPS assoluto.",
         ["Validation_DuplicateSource"] = "Esiste già una sorgente con questo nome.",
         ["Validation_DuplicatePreset"] = "Esiste già un preset con questo nome.",
-        ["Validation_DuplicatePackage"] = "Questo pacchetto è già presente nel preset attivo."
+        ["Validation_DuplicatePackage"] = "Questo pacchetto è già presente nel preset attivo.",
+        ["Validation_SourceName"] = "Il nome non può contenere virgolette, apici inversi o caratteri di shell (; | & < >)."
     };
 
     public static string Get(string key)

@@ -612,6 +612,51 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task CancelCurrentOperationStopsOperationRegardlessOfCallersOwnToken()
+    {
+        // Regression test: CancelCurrentOperation() (the global tracker's Cancel button) must be able
+        // to stop an in-flight operation even when the caller supplied CancellationToken.None (e.g. because
+        // it started on a different page than the one showing the global tracker).
+        var capabilities = new BlockingSystemCapabilityService();
+        var app = CreateApplication(capabilityService: capabilities);
+
+        var first = app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await capabilities.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        app.CancelCurrentOperation();
+        var result = await first.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(ApplicationBusyState.Idle, app.State.BusyState);
+    }
+
+    [Fact]
+    public async Task RefreshWorkspacePackageMetadataResolvesStaleEntriesAfterCacheExpiry()
+    {
+        // Regression test: RefreshPackageMetadataAsync used to skip any package already present in
+        // the metadata cache forever, so the "Version" column shown in Preset/Search grids never
+        // refreshed once resolved. It must now re-resolve entries older than the cache TTL.
+        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "winget", true, null));
+        var app = CreateApplication(resolver: resolver, timeProvider: clock);
+
+        app.AddPreset("Default");
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(new PackageIdentity("Git.Git", "winget"), CancellationToken.None);
+
+        var requestsAfterAdd = resolver.Requests.Count;
+
+        await app.RefreshWorkspacePackageMetadataAsync(CancellationToken.None);
+        Assert.Equal(requestsAfterAdd, resolver.Requests.Count);
+
+        clock.Advance(TimeSpan.FromMinutes(6));
+        await app.RefreshWorkspacePackageMetadataAsync(CancellationToken.None);
+        Assert.Equal(requestsAfterAdd + 1, resolver.Requests.Count);
+    }
+
+    [Fact]
     public void ClearedActivityCanBeRestoredWithoutCreatingSyntheticEntries()
     {
         var app = CreateApplication();
@@ -1062,7 +1107,8 @@ public sealed class OnlyWingetApplicationTests
         RecordingOperationExecutor? executor = null,
         ISourcePreferenceStore? sourcePreferences = null,
         ISystemCapabilityService? capabilityService = null,
-        IWorkspaceStore? workspaceStore = null)
+        IWorkspaceStore? workspaceStore = null,
+        TimeProvider? timeProvider = null)
     {
         return new OnlyWingetApplication(
             workspaceStore ?? new MemoryWorkspaceStore(),
@@ -1073,6 +1119,7 @@ public sealed class OnlyWingetApplicationTests
             windowsUpdates ?? new StubWindowsUpdateService([], []),
             sources ?? new StubSourceService(new WingetSource("winget", "https://cdn.winget.microsoft.com/cache", false, WingetSourceStatus.Available)),
             executor ?? new RecordingOperationExecutor(new OperationExecutionSummary([])),
+            timeProvider,
             sourcePreferenceStore: sourcePreferences);
     }
 
@@ -1109,6 +1156,15 @@ public sealed class OnlyWingetApplicationTests
     {
         public Task<SystemCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken) =>
             Task.FromResult(capabilities ?? new SystemCapabilities(true, true, true, true, null));
+    }
+
+    private sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
+    {
+        private DateTimeOffset now = start;
+
+        public override DateTimeOffset GetUtcNow() => now;
+
+        public void Advance(TimeSpan delta) => now += delta;
     }
 
     private sealed class BlockingSystemCapabilityService : ISystemCapabilityService

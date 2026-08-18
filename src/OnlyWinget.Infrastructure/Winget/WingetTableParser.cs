@@ -97,6 +97,7 @@ public sealed class WingetTableParser
         var headers = starts
             .Select((start, index) => SliceColumn(header, starts, index).Trim())
             .ToArray();
+        ApplyPositionalFallback(headers);
 
         return lines
             .Skip(separatorIndex + 1)
@@ -104,6 +105,35 @@ public sealed class WingetTableParser
             .Select(line => ParseRow(line, starts, headers))
             .Where(row => row.Count > 0 && IsValidRow(row))
             .ToArray();
+    }
+
+    /// <summary>
+    /// winget's CLI table output always orders Name, Id, Version as the first three columns,
+    /// regardless of the display language — only the header text is localized. When none of the
+    /// headers match a known translation (an unrecognized system locale), fall back to that fixed
+    /// column order for Name/Id/Version instead of silently dropping every row. Trailing columns
+    /// (Source/Available/Publisher/...) are left untranslated rather than guessed, since their order
+    /// is not as consistently guaranteed and a wrong guess would be worse than a missing field.
+    /// </summary>
+    private static void ApplyPositionalFallback(string[] headers)
+    {
+        if (headers.Length < 3)
+        {
+            return;
+        }
+
+        var recognizesNameOrId = headers.Any(candidate =>
+            HeaderTranslations.TryGetValue(candidate, out var translated) && translated is "Name" or "Id");
+        if (recognizesNameOrId)
+        {
+            return;
+        }
+
+        global::System.Diagnostics.Debug.WriteLine(
+            $"WingetTableParser: unrecognized header locale ('{string.Join(" | ", headers)}'), falling back to positional Name/Id/Version mapping.");
+        headers[0] = "Name";
+        headers[1] = "Id";
+        headers[2] = "Version";
     }
 
     private static int FindSeparatorIndex(IReadOnlyList<string> lines)

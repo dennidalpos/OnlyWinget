@@ -9,11 +9,12 @@ namespace OnlyWinget.Application.App;
 
 public sealed partial class OnlyWingetApplication
 {
-    public async Task<ApplicationActionResult> RefreshUpdatesAsync(CancellationToken cancellationToken)
+    public async Task<ApplicationActionResult> RefreshUpdatesAsync(CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.RefreshingUpdates,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     var enabledSources = GetEnabledSourceNames();
@@ -97,11 +98,12 @@ public sealed partial class OnlyWingetApplication
 
     public async Task<ApplicationActionResult> ScanWindowsUpdatesAsync(
         WindowsUpdateOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken callerCancellationToken)
     {
         return await RunAsync(
                 ApplicationBusyState.ScanningWindowsUpdates,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWindowsUpdate();
                     lastWindowsUpdateResults.Clear();
@@ -133,13 +135,14 @@ public sealed partial class OnlyWingetApplication
 
     public async Task<ApplicationActionResult> InstallSelectedWindowsUpdatesAsync(
         WindowsUpdateOptions options,
-        CancellationToken cancellationToken,
+        CancellationToken callerCancellationToken,
         IProgress<OperationProgress>? progress = null)
     {
         var selected = windowsUpdateSelection.Selected.ToArray();
         return await RunAsync(
                 ApplicationBusyState.InstallingWindowsUpdates,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWindowsUpdate();
                     if (selected.Length == 0)

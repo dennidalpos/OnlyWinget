@@ -51,7 +51,7 @@ Application startup builds the `IHost`, loads the SQLite workspace, checks OS su
 
 - **WinGet**: `ComWingetPackageService` leverages native COM interfaces (`Microsoft.Management.Deployment`) with `IMemoryCache` TTL caching, falling back to CLI execution (`ProcessWingetCommandRunner`) if COM is unavailable. Operation failures are classified by `WingetErrorClassifier` (`HashMismatch`, `NoUpdates`, `CannotUpgrade`, `NotFound`, `SourceUnavailable`, `Cancelled`). Non-retryable errors like `HashMismatch` (`0x8A150002`) fail cleanly with actionable user guidance to enable `InstallerHashOverride` or bypass validation in Settings.
 - **Windows Update**: `ComWindowsUpdateService` executes direct C# COM Interop (`IUpdateSession` / `IUpdateSearcher`) with real-time progress callbacks, falling back to PowerShell Base64 scripts if needed.
-- **Process Security**: `ProcessExternalProcessRunner` handles process execution asynchronously, incorporating command argument sanitization (`EscapeCmdArgument`) to prevent command injection when elevating via UAC (`runas`).
+- **Process Security**: `ProcessExternalProcessRunner` handles process execution asynchronously using `ProcessStartInfo.ArgumentList` (no shell involved), so arguments are passed as discrete process parameters rather than a concatenated command line. The app always runs elevated (`app.manifest` requests `requireAdministrator`), so there is no on-demand UAC re-launch path to secure.
 
 ## Presentation & MVVM
 

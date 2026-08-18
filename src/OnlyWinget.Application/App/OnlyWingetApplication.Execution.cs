@@ -62,12 +62,13 @@ public sealed partial class OnlyWingetApplication
 
     private async Task<ApplicationActionResult> ExecutePlanAsync(
         OperationPlan plan,
-        CancellationToken cancellationToken,
+        CancellationToken callerCancellationToken,
         IProgress<OperationProgress>? progress)
     {
         return await RunAsync(
                 ApplicationBusyState.ExecutingOperation,
-                async () =>
+                callerCancellationToken,
+                async cancellationToken =>
                 {
                     RequireWinget();
                     if (!plan.HasWork)

@@ -18,6 +18,12 @@ public sealed partial class MainWindow : Window
     private const double InitialWidth = 1180;
     private const double InitialHeight = 760;
 
+    // Mitigation for a reported "blank window" symptom after the app has been idle/backgrounded for a
+    // long time — a known class of issue with WinUI3 Mica/Composition surfaces losing their DirectX
+    // resources during long idle/suspend periods. Not a confirmed root cause (no repro captured yet);
+    // this is a best-effort redraw nudge, not a guaranteed fix.
+    private static readonly TimeSpan LongIdleThreshold = TimeSpan.FromMinutes(5);
+
     private readonly IReadOnlyList<NavigationRoute> routeDefinitions = App.UiServices.Navigation.Routes;
     private readonly IReadOnlyDictionary<string, NavigationRoute> routes = App.UiServices.Navigation.Routes
         .ToDictionary(route => route.Id, StringComparer.Ordinal);
@@ -28,6 +34,7 @@ public sealed partial class MainWindow : Window
     private string currentRouteId = "home";
     private bool isRestoringNavigation;
     private bool isNavigating;
+    private DateTimeOffset lastActivatedAt = DateTimeOffset.UtcNow;
 
     public MainWindow()
     {
@@ -193,6 +200,39 @@ public sealed partial class MainWindow : Window
     private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
     {
         UpdateTitleBarPadding();
+
+        if (args.WindowActivationState == WindowActivationState.Deactivated)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var idleFor = now - lastActivatedAt;
+        lastActivatedAt = now;
+
+        if (idleFor >= LongIdleThreshold)
+        {
+            RefreshAfterLongIdle();
+        }
+    }
+
+    private void RefreshAfterLongIdle()
+    {
+        try
+        {
+            SystemBackdrop = null;
+            if (Content is FrameworkElement rootElement)
+            {
+                rootElement.InvalidateMeasure();
+                rootElement.InvalidateArrange();
+            }
+
+            DispatcherQueue.TryEnqueue(() => SystemBackdrop = new MicaBackdrop());
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("MainWindow.RefreshAfterLongIdle", exception);
+        }
     }
 
     private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs args)
