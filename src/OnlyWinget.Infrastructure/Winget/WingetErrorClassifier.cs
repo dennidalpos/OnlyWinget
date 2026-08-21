@@ -4,6 +4,19 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class WingetErrorClassifier
 {
+    // winget's exit codes are HRESULT-style values baked into the CLI itself, so unlike its message text
+    // they do not change with the system display language. Verified live against winget v1.29.280 (it-IT)
+    // on 2026-08-19 by triggering each scenario directly (see PROJECT_STATUS.json for the exact commands
+    // and captured output). Checked before the text heuristics below so non-EN/IT locales get a correct
+    // classification instead of falling into Unknown; unrecognized codes fall through to text matching.
+    private static readonly IReadOnlyDictionary<int, WingetErrorKind> KnownExitCodes = new Dictionary<int, WingetErrorKind>
+    {
+        // "winget search <nothing matches>" -> "Nessun pacchetto trovato con criteri di input corrispondenti."
+        [unchecked((int)0x8A150014)] = WingetErrorKind.NotFound,
+        // "winget upgrade <up-to-date package>" -> "Non sono stati trovati aggiornamenti disponibili."
+        [unchecked((int)0x8A15002B)] = WingetErrorKind.NoUpdates,
+    };
+
     public ClassifiedWingetError? Classify(WingetCommandResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -18,78 +31,85 @@ public sealed class WingetErrorClassifier
             result.StandardOutput,
             result.StandardError);
 
-        var kind = WingetErrorKind.Unknown;
-        if (ContainsAny(
-            text,
-            "No installed package found matching input criteria",
-            "No applicable update found",
-            "No available upgrade found",
-            "Nessun aggiornamento disponibile",
-            "Nessun aggiornamento applicabile",
-            "Non è stato trovato alcun aggiornamento applicabile",
-            "Non è stato trovato alcun pacchetto installato corrispondente ai criteri di input",
-            "Nessun pacchetto installato corrispondente",
-            "non si applica al sistema o ai requisiti",
-            "does not apply to the system or requirements",
-            "No applicable update was found",
-            "è necessario un targeting esplicito"))
+        if (!KnownExitCodes.TryGetValue(result.ExitCode, out var kind))
         {
-            kind = WingetErrorKind.NoUpdates;
+            kind = WingetErrorKind.Unknown;
         }
-        else if (ContainsAny(
-            text,
-            "No package found",
-            "No installed package found",
-            "No package found matching input criteria",
-            "Nessun pacchetto trovato con criteri di input corrispondenti",
-            "Nessun pacchetto trovato",
-            "Nessun pacchetto installato trovato"))
+
+        if (kind == WingetErrorKind.Unknown)
         {
-            kind = WingetErrorKind.NotFound;
-        }
-        else if (ContainsAny(
-            text,
-            "Failed when searching source",
-            "Failed when opening source",
-            "0x8a15005e",
-            "source agreements",
-            "source is not configured",
-            "No sources are configured",
-            "origine non configurata",
-            "origini non sono configurate",
-            "contratti dell'origine"))
-        {
-            kind = WingetErrorKind.SourceUnavailable;
-        }
-        else if (ContainsAny(text, "cancelled", "canceled", "operation was canceled", "annullata", "annullato"))
-        {
-            kind = WingetErrorKind.Cancelled;
-        }
-        else if (ContainsAny(
-            text,
-            "0x8a150114",
-            "0x8a150115",
-            "0x8a150116",
-            "Non è possibile aggiornare il pacchetto con WinGet",
-            "Package cannot be upgraded with WinGet",
-            "Utilizzare il metodo fornito dall'autore",
-            "Use provider's method to upgrade",
-            "Utilizzare il metodo fornito dal provider"))
-        {
-            kind = WingetErrorKind.CannotUpgrade;
-        }
-        else if (ContainsAny(
-            text,
-            "0x8a150002",
-            "-1978335230",
-            "InstallerHashOverride",
-            "InstallerHashMismatch",
-            "ignore-security-hash",
-            "controllo hash del programma di installazione",
-            "hash del programma di installazione non corrisponde",
-            "installer hash does not match"))
-        {
-            kind = WingetErrorKind.HashMismatch;
+            if (ContainsAny(
+                text,
+                "No installed package found matching input criteria",
+                "No applicable update found",
+                "No available upgrade found",
+                "Nessun aggiornamento disponibile",
+                "Nessun aggiornamento applicabile",
+                "Non è stato trovato alcun aggiornamento applicabile",
+                "Non è stato trovato alcun pacchetto installato corrispondente ai criteri di input",
+                "Nessun pacchetto installato corrispondente",
+                "non si applica al sistema o ai requisiti",
+                "does not apply to the system or requirements",
+                "No applicable update was found",
+                "è necessario un targeting esplicito"))
+            {
+                kind = WingetErrorKind.NoUpdates;
+            }
+            else if (ContainsAny(
+                text,
+                "No package found",
+                "No installed package found",
+                "No package found matching input criteria",
+                "Nessun pacchetto trovato con criteri di input corrispondenti",
+                "Nessun pacchetto trovato",
+                "Nessun pacchetto installato trovato"))
+            {
+                kind = WingetErrorKind.NotFound;
+            }
+            else if (ContainsAny(
+                text,
+                "Failed when searching source",
+                "Failed when opening source",
+                "0x8a15005e",
+                "source agreements",
+                "source is not configured",
+                "No sources are configured",
+                "origine non configurata",
+                "origini non sono configurate",
+                "contratti dell'origine"))
+            {
+                kind = WingetErrorKind.SourceUnavailable;
+            }
+            else if (ContainsAny(text, "cancelled", "canceled", "operation was canceled", "annullata", "annullato"))
+            {
+                kind = WingetErrorKind.Cancelled;
+            }
+            else if (ContainsAny(
+                text,
+                "0x8a150114",
+                "0x8a150115",
+                "0x8a150116",
+                "Non è possibile aggiornare il pacchetto con WinGet",
+                "Package cannot be upgraded with WinGet",
+                "Utilizzare il metodo fornito dall'autore",
+                "Use provider's method to upgrade",
+                "Utilizzare il metodo fornito dal provider"))
+            {
+                kind = WingetErrorKind.CannotUpgrade;
+            }
+            else if (ContainsAny(
+                text,
+                "0x8a150002",
+                "-1978335230",
+                "InstallerHashOverride",
+                "InstallerHashMismatch",
+                "ignore-security-hash",
+                "controllo hash del programma di installazione",
+                "hash del programma di installazione non corrisponde",
+                "installer hash does not match"))
+            {
+                kind = WingetErrorKind.HashMismatch;
+            }
         }
 
         var cleanedText = CleanWingetOutput(text);

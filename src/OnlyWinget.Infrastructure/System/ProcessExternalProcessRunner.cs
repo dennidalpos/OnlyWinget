@@ -12,7 +12,8 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         IProgress<string>? standardOutputLines = null,
-        TimeSpan? timeout = null)
+        TimeSpan? timeout = null,
+        IProgress<string>? standardErrorLines = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(arguments);
@@ -52,7 +53,7 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
             }
 
             var standardOutput = ReadOutputAsync(process.StandardOutput, standardOutputLines, effectiveToken);
-            var standardError = process.StandardError.ReadToEndAsync(effectiveToken);
+            var standardError = ReadOutputAsync(process.StandardError, standardErrorLines, effectiveToken);
             try
             {
                 await process.WaitForExitAsync(effectiveToken).ConfigureAwait(false);

@@ -269,19 +269,50 @@ public sealed class ComWindowsUpdateService(
                 return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success([], "No matching COM updates found to install");
             }
 
-            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, 10, 0, targetUpdates.Count));
+            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, 0, 0, targetUpdates.Count));
 
             dynamic downloader = session.CreateUpdateDownloader();
             downloader.Updates = installCollection;
-            downloader.Download();
+            dynamic downloadJob = downloader.BeginDownload(null, null, null);
+            object? downloadJobObj = (object)downloadJob;
+            try
+            {
+                while (!(bool)downloadJob.IsCompleted)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, ReadPercentComplete(downloadJob), 0, targetUpdates.Count));
+                    Thread.Sleep(500);
+                }
+                downloader.EndDownload(downloadJob);
+            }
+            finally
+            {
+                TryReleaseCom(downloadJobObj);
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Installing, 50, 0, targetUpdates.Count));
+            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Installing, 0, 0, targetUpdates.Count));
 
             dynamic installer = session.CreateUpdateInstaller();
             installer.Updates = installCollection;
-            dynamic installResult = installer.Install();
+            dynamic installJob = installer.BeginInstall(null, null, null);
+            object? installJobObj = (object)installJob;
+            dynamic installResult;
+            try
+            {
+                while (!(bool)installJob.IsCompleted)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Installing, ReadPercentComplete(installJob), 0, targetUpdates.Count));
+                    Thread.Sleep(500);
+                }
+                installResult = installer.EndInstall(installJob);
+            }
+            finally
+            {
+                TryReleaseCom(installJobObj);
+            }
 
             int resultCode = Convert.ToInt32(installResult.ResultCode);
             bool rebootRequired = Convert.ToBoolean(installResult.RebootRequired);
@@ -352,6 +383,20 @@ public sealed class ComWindowsUpdateService(
         finally
         {
             TryReleaseCom(serviceManagerObj);
+        }
+    }
+
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
+    private static int ReadPercentComplete(dynamic job)
+    {
+        try
+        {
+            return Math.Clamp(Convert.ToInt32(job.GetProgress().PercentComplete), 0, 100);
+        }
+        catch
+        {
+            return 0;
         }
     }
 

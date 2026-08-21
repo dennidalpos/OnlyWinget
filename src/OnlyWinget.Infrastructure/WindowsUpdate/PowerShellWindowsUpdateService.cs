@@ -57,27 +57,23 @@ public sealed class PowerShellWindowsUpdateService(
                 string.Empty);
         }
 
-        progress?.Report(new OperationProgress(
-            "WindowsUpdate",
-            WingetProgressPhase.Downloading,
-            10,
-            0,
-            updates.Count));
-
         var selectedJson = JsonSerializer.Serialize(
             updates.Select(update => new WindowsUpdateIdentityDto(update.UpdateId, update.RevisionNumber)),
             JsonOptions);
         var script = ApplyOptions(InstallScript, options)
             .Replace("__SELECTED_JSON__", EscapePowerShellHereString(selectedJson), StringComparison.Ordinal);
 
-        progress?.Report(new OperationProgress(
-            "WindowsUpdate",
-            WingetProgressPhase.Installing,
-            50,
-            0,
-            updates.Count));
+        var progressLines = progress is null
+            ? null
+            : new InlineProgress<string>(line =>
+            {
+                if (WindowsUpdateProgressParser.Parse(line, updates.Count) is { } parsed)
+                {
+                    progress.Report(parsed);
+                }
+            });
 
-        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30)).ConfigureAwait(false);
+        var result = await RunPowerShellAsync(script, cancellationToken, global::System.TimeSpan.FromMinutes(30), progressLines).ConfigureAwait(false);
         var envelope = ReadEnvelope<WindowsUpdateInstallResultDto>(result);
 
         if (envelope.Succeeded)
@@ -104,21 +100,23 @@ public sealed class PowerShellWindowsUpdateService(
                 envelope.Rows.Select(row => row.ToModel()).ToArray(),
                 result.StandardOutput)
             : WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(
-                new WindowsUpdateError(envelope.Error ?? "Windows Update install failed.", result.StandardError),
+                new WindowsUpdateError(envelope.Error ?? "Windows Update install failed.", WindowsUpdateProgressParser.StripMarkerLines(result.StandardError)),
                 result.StandardOutput);
     }
 
     private async Task<ExternalProcessResult> RunPowerShellAsync(
         string script,
         CancellationToken cancellationToken,
-        global::System.TimeSpan? timeout = null)
+        global::System.TimeSpan? timeout = null,
+        IProgress<string>? standardErrorLines = null)
     {
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         return await commandRunner.RunAsync(
                 "powershell.exe",
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
                 cancellationToken,
-                timeout: timeout)
+                timeout: timeout,
+                standardErrorLines: standardErrorLines)
             .ConfigureAwait(false);
     }
 
@@ -312,11 +310,27 @@ __SELECTED_JSON__
 
     $downloader = $session.CreateUpdateDownloader()
     $downloader.Updates = $collection
-    [void]$downloader.Download()
+    $downloadJob = $downloader.BeginDownload($null, $null, $null)
+    while (-not $downloadJob.IsCompleted) {
+        Start-Sleep -Milliseconds 500
+        try {
+            $downloadProgress = $downloadJob.GetProgress()
+            [Console]::Error.WriteLine("##OWU-PROGRESS##Downloading##$([int]$downloadProgress.PercentComplete)")
+        } catch {}
+    }
+    [void]$downloader.EndDownload($downloadJob)
 
     $installer = $session.CreateUpdateInstaller()
     $installer.Updates = $collection
-    $install = $installer.Install()
+    $installJob = $installer.BeginInstall($null, $null, $null)
+    while (-not $installJob.IsCompleted) {
+        Start-Sleep -Milliseconds 500
+        try {
+            $installProgress = $installJob.GetProgress()
+            [Console]::Error.WriteLine("##OWU-PROGRESS##Installing##$([int]$installProgress.PercentComplete)")
+        } catch {}
+    }
+    $install = $installer.EndInstall($installJob)
     $rows = @()
     for ($index = 0; $index -lt $collection.Count; $index++) {
         $updateResult = $install.GetUpdateResult($index)

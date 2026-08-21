@@ -214,6 +214,45 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(WingetErrorKind.SourceUnavailable, source?.Kind);
     }
 
+    [Fact]
+    public void ErrorClassifierUsesExitCodeWhenMessageTextDoesNotMatchAnyKnownLocale()
+    {
+        // Exit codes captured live from a real winget v1.29.280 (it-IT) run on 2026-08-19:
+        //   `winget search "zzz-definitely-nonexistent-package-xyz-123" --disable-interactivity` -> exit -1978335212 (0x8A150014)
+        //   `winget upgrade Famatech.AdvancedIPScanner --disable-interactivity` (already up to date) -> exit -1978335189 (0x8A15002B)
+        // The message text below is deliberately in a language none of the existing needles cover, so only
+        // the exit code (not the text heuristics) can produce the correct classification.
+        var classifier = new WingetErrorClassifier();
+
+        var notFoundByExitCode = classifier.Classify(new WingetCommandResult(-1978335212, string.Empty, "Geen pakket gevonden dat overeenkomt met de invoercriteria."));
+        var noUpdatesByExitCode = classifier.Classify(new WingetCommandResult(-1978335189, string.Empty, "Er zijn geen updates gevonden voor dit pakket."));
+
+        Assert.Equal(WingetErrorKind.NotFound, notFoundByExitCode?.Kind);
+        Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesByExitCode?.Kind);
+    }
+
+    [Fact]
+    public void ErrorClassifierExitCodeMatchIsNotOverriddenByUnrelatedTextHeuristics()
+    {
+        // The NotFound exit code is real (0x8A150014), but the accompanying text happens to also contain
+        // "cancelled" - the exit code must win, not the later text heuristic.
+        var classifier = new WingetErrorClassifier();
+
+        var result = classifier.Classify(new WingetCommandResult(-1978335212, string.Empty, "Search cancelled: no package found matching input criteria."));
+
+        Assert.Equal(WingetErrorKind.NotFound, result?.Kind);
+    }
+
+    [Fact]
+    public void ErrorClassifierFallsBackToTextHeuristicsForUnrecognizedExitCodes()
+    {
+        var classifier = new WingetErrorClassifier();
+
+        var result = classifier.Classify(new WingetCommandResult(1, string.Empty, "No package found matching input criteria."));
+
+        Assert.Equal(WingetErrorKind.NotFound, result?.Kind);
+    }
+
     [Theory]
     [InlineData("\u001b[32mDownloading 42%\u001b[0m", WingetProgressPhase.Downloading, 42, "Downloading 42%")]
     [InlineData("Scaricamento 7%", WingetProgressPhase.Downloading, 7, "Scaricamento 7%")]
@@ -234,6 +273,43 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(expectedPhase, parsed.Phase);
         Assert.Equal(expectedPercentage, parsed.Percentage);
         Assert.Equal(expectedMessage, parsed.Message);
+    }
+
+    [Theory]
+    [InlineData("##OWU-PROGRESS##Downloading##42", WingetProgressPhase.Downloading, 42)]
+    [InlineData("##OWU-PROGRESS##Installing##100", WingetProgressPhase.Installing, 100)]
+    [InlineData("##OWU-PROGRESS##Installing##150", WingetProgressPhase.Installing, 100)]
+    [InlineData("##OWU-PROGRESS##Downloading##-5", WingetProgressPhase.Downloading, 0)]
+    public void WindowsUpdateProgressParserParsesMarkerLines(string line, WingetProgressPhase expectedPhase, int expectedPercent)
+    {
+        var parsed = WindowsUpdateProgressParser.Parse(line, totalUpdates: 3);
+
+        Assert.NotNull(parsed);
+        Assert.Equal(expectedPhase, parsed!.Phase);
+        Assert.Equal(expectedPercent, parsed.Percentage);
+        Assert.Equal(0, parsed.CompletedPackages);
+        Assert.Equal(3, parsed.TotalPackages);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Downloading 42%")]
+    [InlineData("##OWU-PROGRESS##Unknown##42")]
+    [InlineData("##OWU-PROGRESS##Downloading##nope")]
+    [InlineData("##OWU-PROGRESS##Downloading##42##extra")]
+    public void WindowsUpdateProgressParserIgnoresNonMarkerOrMalformedLines(string line)
+    {
+        Assert.Null(WindowsUpdateProgressParser.Parse(line, totalUpdates: 1));
+    }
+
+    [Fact]
+    public void WindowsUpdateProgressParserStripsMarkerLinesFromDiagnosticText()
+    {
+        var text = "##OWU-PROGRESS##Downloading##10\r\nActual error message\r\n##OWU-PROGRESS##Installing##50";
+
+        var cleaned = WindowsUpdateProgressParser.StripMarkerLines(text);
+
+        Assert.Equal("Actual error message", cleaned);
     }
 
     [Fact]
@@ -709,7 +785,8 @@ public sealed class WingetInfrastructureTests
             IReadOnlyList<string> arguments,
             CancellationToken cancellationToken,
             IProgress<string>? standardOutputLines = null,
-            TimeSpan? timeout = null)
+            TimeSpan? timeout = null,
+            IProgress<string>? standardErrorLines = null)
         {
             LastArguments = arguments.ToArray();
             Calls.Add(LastArguments);

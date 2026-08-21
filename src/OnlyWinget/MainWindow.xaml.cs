@@ -212,14 +212,15 @@ public sealed partial class MainWindow : Window
 
         if (idleFor >= LongIdleThreshold)
         {
-            RefreshAfterLongIdle();
+            RefreshAfterLongIdle(idleFor);
         }
     }
 
-    private void RefreshAfterLongIdle()
+    private void RefreshAfterLongIdle(TimeSpan idleFor)
     {
         try
         {
+            AppDiagnostics.Write($"Window reactivated after {idleFor:hh\\:mm\\:ss} idle; applying blank-window mitigation.");
             SystemBackdrop = null;
             if (Content is FrameworkElement rootElement)
             {

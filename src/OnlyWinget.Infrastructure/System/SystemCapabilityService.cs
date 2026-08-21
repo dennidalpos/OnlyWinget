@@ -1,5 +1,4 @@
 using OnlyWinget.Application.System;
-using System.Security.Principal;
 
 namespace OnlyWinget.Infrastructure.System;
 
@@ -39,7 +38,6 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
             : new WindowsUpdateCapability(false, null);
 
         var buildNumber = OperatingSystem.IsWindows() ? Environment.OSVersion.Version.Build : (int?)null;
-        var isElevated = OperatingSystem.IsWindows() && CheckElevation();
 
         return new SystemCapabilities(
             isSupportedOs,
@@ -48,23 +46,7 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
             windowsUpdate.IsAvailable,
             windowsUpdate.UnavailableReason,
             wingetVersion,
-            buildNumber,
-            isElevated);
-    }
-
-    [global::System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static bool CheckElevation()
-    {
-        try
-        {
-            using var identity = WindowsIdentity.GetCurrent();
-            var principal = new WindowsPrincipal(identity);
-            return principal.IsInRole(WindowsBuiltInRole.Administrator);
-        }
-        catch
-        {
-            return false;
-        }
+            buildNumber);
     }
 
     private async Task<WindowsUpdateCapability> CheckWindowsUpdateComAsync(CancellationToken cancellationToken)

@@ -7,7 +7,8 @@ public interface IExternalProcessRunner
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         IProgress<string>? standardOutputLines = null,
-        TimeSpan? timeout = null);
+        TimeSpan? timeout = null,
+        IProgress<string>? standardErrorLines = null);
 }
 
 public sealed record ExternalProcessResult(int ExitCode, string StandardOutput, string StandardError)

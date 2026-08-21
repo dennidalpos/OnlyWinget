@@ -108,6 +108,30 @@ public sealed class LiveUpdateSearchSmokeTests
         Assert.True(outcome.Succeeded, outcome.Error?.Message);
     }
 
+    [Fact]
+    [Trait("Category", "Smoke")]
+    public async Task ProcessExternalProcessRunnerStreamsStandardErrorLines()
+    {
+        if (!ShouldRun())
+        {
+            return;
+        }
+
+        var processRunner = new ProcessExternalProcessRunner();
+        var lines = new List<string>();
+        var progress = new InlineProgress<string>(lines.Add);
+
+        var result = await processRunner.RunAsync(
+            "powershell.exe",
+            ["-NoProfile", "-Command", "[Console]::Error.WriteLine('one'); [Console]::Error.WriteLine('two')"],
+            CancellationToken.None,
+            standardErrorLines: progress);
+
+        Assert.True(result.Succeeded, result.StandardError);
+        Assert.Contains("one", lines);
+        Assert.Contains("two", lines);
+    }
+
     private static bool ShouldRun() =>
         string.Equals(Environment.GetEnvironmentVariable("ONLYWINGET_RUN_WINGET_SMOKE"), "1", StringComparison.Ordinal);
 }
