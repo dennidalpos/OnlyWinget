@@ -87,6 +87,10 @@ function Invoke-OnlyWingetTask {
             & (Join-Path $PSScriptRoot 'generate-landing-setup.ps1') -Configuration $Configuration -NoRestore:$NoRestore -NonInteractive
         }
     }
+
+    if ((Test-Path Variable:\LASTEXITCODE) -and $LASTEXITCODE -ne 0) {
+        throw "Task $SelectedTask fallito (ExitCode: $LASTEXITCODE)."
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($Task)) {

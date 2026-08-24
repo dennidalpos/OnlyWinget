@@ -49,6 +49,7 @@ public sealed partial class SearchPage : UserControl
         switch (args.Command.Id)
         {
             case UiCommandId.SearchPackages: await SearchAsync(); break;
+            case UiCommandId.InstallSearchResults: await ViewModel.InstallSelectedDirectAsync(); break;
             case UiCommandId.AddSearchResults: await ViewModel.AddSelectedAsync(); break;
         }
     }

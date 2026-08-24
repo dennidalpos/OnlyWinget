@@ -1,5 +1,6 @@
 using OnlyWinget.Application.Activity;
 using OnlyWinget.Application.Winget;
+using OnlyWinget.Domain.Operations;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Presets;
 
@@ -120,6 +121,22 @@ public sealed partial class OnlyWingetApplication
                 },
                 "Unable to add selected packages.")
             .ConfigureAwait(false);
+    }
+
+    public async Task<ApplicationActionResult> InstallSelectedSearchResultsDirectAsync(
+        CancellationToken callerCancellationToken,
+        IProgress<OperationProgress>? progress = null)
+    {
+        RequireWinget();
+        var selected = searchSelection.Selected.ToArray();
+        if (selected.Length == 0)
+        {
+            return ApplicationActionResult.Failure("Select at least one package to install.");
+        }
+
+        var selections = selected.Select(p => new PackageSelection(p, PackageAction.Install)).ToArray();
+        var plan = new OperationPlan("Direct Search Install", selections);
+        return await ExecutePlanAsync(plan, callerCancellationToken, progress).ConfigureAwait(false);
     }
 
     public async Task<ApplicationActionResult> RefreshWorkspacePackageMetadataAsync(CancellationToken callerCancellationToken)

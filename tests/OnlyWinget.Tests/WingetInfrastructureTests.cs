@@ -226,9 +226,19 @@ public sealed class WingetInfrastructureTests
 
         var notFoundByExitCode = classifier.Classify(new WingetCommandResult(-1978335212, string.Empty, "Geen pakket gevonden dat overeenkomt met de invoercriteria."));
         var noUpdatesByExitCode = classifier.Classify(new WingetCommandResult(-1978335189, string.Empty, "Er zijn geen updates gevonden voor dit pakket."));
+        var hashMismatchByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150002), string.Empty, "Hash mismatch error in any language"));
+        var cancelledByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150015), string.Empty, "Operation cancelled in any language"));
+        var errorCancelledByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x800704C7), string.Empty, "UAC prompt dismissed by user"));
+        var sourceUnavailableByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A15005E), string.Empty, "Source unavailable error"));
+        var cannotUpgradeByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150114), string.Empty, "Cannot upgrade generic"));
 
         Assert.Equal(WingetErrorKind.NotFound, notFoundByExitCode?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesByExitCode?.Kind);
+        Assert.Equal(WingetErrorKind.HashMismatch, hashMismatchByExitCode?.Kind);
+        Assert.Equal(WingetErrorKind.Cancelled, cancelledByExitCode?.Kind);
+        Assert.Equal(WingetErrorKind.Cancelled, errorCancelledByExitCode?.Kind);
+        Assert.Equal(WingetErrorKind.SourceUnavailable, sourceUnavailableByExitCode?.Kind);
+        Assert.Equal(WingetErrorKind.CannotUpgrade, cannotUpgradeByExitCode?.Kind);
     }
 
     [Fact]
@@ -624,7 +634,8 @@ public sealed class WingetInfrastructureTests
         var executor = new WingetOperationExecutor(
             runner,
             new WingetCommandBuilder(),
-            new WingetErrorClassifier());
+            new WingetErrorClassifier(),
+            retryDelay: TimeSpan.Zero);
         var plan = new OperationPlanner().CreatePresetPlan(
             new Preset("Default", [new PackageIdentity("Retry.App")]),
             PackageAction.Install);
@@ -699,6 +710,47 @@ public sealed class WingetInfrastructureTests
         Assert.True(status.IsInstalled);
         Assert.Equal("2.54.0", status.InstalledVersion);
         Assert.Contains(runner.Calls, call => call.Contains("list"));
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWingetPackageServiceResolvesThroughFallbackWhenComFails()
+    {
+        const string showOutput = """
+            Found Git [Git.Git]
+            Version: 2.54.0
+            Publisher: The Git Project
+            """;
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, showOutput, string.Empty));
+        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var service = new ComWingetPackageService(search, resolver);
+
+        var resolution = await service.ResolveAsync(new PackageIdentity("Git.Git"), CancellationToken.None);
+
+        Assert.True(resolution.IsResolved);
+        Assert.Equal("Git.Git", resolution.Package.Id);
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWingetPackageServiceSearchesThroughFallbackWhenComFails()
+    {
+        const string searchOutput = """
+            Name Id      Version Source
+            ---------------------------
+            Git  Git.Git 2.54.0  winget
+            """;
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, searchOutput, string.Empty));
+        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var service = new ComWingetPackageService(search, resolver);
+
+        var outcome = await service.SearchAsync(new PackageSearchRequest("git", "winget"), CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Single(outcome.Rows);
+        Assert.Equal("Git.Git", outcome.Rows[0].Package.Id);
     }
 
     [Fact]

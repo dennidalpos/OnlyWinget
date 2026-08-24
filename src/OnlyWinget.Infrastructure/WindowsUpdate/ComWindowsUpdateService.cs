@@ -28,7 +28,11 @@ public static class WindowsUpdateSearchCriteria
             _ => string.Empty
         };
 
-        return $"IsInstalled=0 and IsHidden=0{typeCriteria}";
+        var browseCriteria = options.IncludeOptionalUpdates
+            ? string.Empty
+            : " and BrowseOnly=0";
+
+        return $"IsInstalled=0 and IsHidden=0{typeCriteria}{browseCriteria}";
     }
 }
 
@@ -273,21 +277,15 @@ public sealed class ComWindowsUpdateService(
 
             dynamic downloader = session.CreateUpdateDownloader();
             downloader.Updates = installCollection;
-            dynamic downloadJob = downloader.BeginDownload(null, null, null);
-            object? downloadJobObj = (object)downloadJob;
+            object? downloadResultObj = null;
             try
             {
-                while (!(bool)downloadJob.IsCompleted)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, ReadPercentComplete(downloadJob), 0, targetUpdates.Count));
-                    Thread.Sleep(500);
-                }
-                downloader.EndDownload(downloadJob);
+                dynamic downloadResult = downloader.Download();
+                downloadResultObj = (object)downloadResult;
             }
             finally
             {
-                TryReleaseCom(downloadJobObj);
+                TryReleaseCom(downloadResultObj);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -296,40 +294,41 @@ public sealed class ComWindowsUpdateService(
 
             dynamic installer = session.CreateUpdateInstaller();
             installer.Updates = installCollection;
-            dynamic installJob = installer.BeginInstall(null, null, null);
-            object? installJobObj = (object)installJob;
-            dynamic installResult;
+            object? installResultObj = null;
             try
             {
-                while (!(bool)installJob.IsCompleted)
+                dynamic installResult = installer.Install();
+                installResultObj = (object)installResult;
+
+                bool overallRebootRequired = Convert.ToBoolean(installResult.RebootRequired);
+                var results = new List<WindowsUpdateInstallResult>();
+
+                for (int i = 0; i < matchedItems.Count; i++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Installing, ReadPercentComplete(installJob), 0, targetUpdates.Count));
-                    Thread.Sleep(500);
+                    var (title, identity) = matchedItems[i];
+                    dynamic updateResult = installResult.GetUpdateResult(i);
+                    int resultCode = Convert.ToInt32(updateResult.ResultCode);
+                    bool succeeded = resultCode is 2 or 3;
+                    bool itemReboot = overallRebootRequired || Convert.ToBoolean(updateResult.RebootRequired);
+
+                    results.Add(new WindowsUpdateInstallResult(
+                        identity,
+                        title,
+                        succeeded,
+                        itemReboot,
+                        resultCode.ToString(),
+                        succeeded ? "Installed via Direct COM" : "COM installation completed with result code " + resultCode
+                    ));
                 }
-                installResult = installer.EndInstall(installJob);
+
+                progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Completed, 100, targetUpdates.Count, targetUpdates.Count));
+
+                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(results, "COM Native Install Completed");
             }
             finally
             {
-                TryReleaseCom(installJobObj);
+                TryReleaseCom(installResultObj);
             }
-
-            int resultCode = Convert.ToInt32(installResult.ResultCode);
-            bool rebootRequired = Convert.ToBoolean(installResult.RebootRequired);
-            bool succeeded = resultCode is 2 or 3;
-
-            var results = matchedItems.Select(m => new WindowsUpdateInstallResult(
-                m.Identity,
-                m.Title,
-                succeeded,
-                rebootRequired,
-                resultCode.ToString(),
-                succeeded ? "Installed via Direct COM" : "COM installation completed with result code " + resultCode
-            )).ToList();
-
-            progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Completed, 100, targetUpdates.Count, targetUpdates.Count));
-
-            return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(results, "COM Native Install Completed");
         }
         finally
         {
@@ -383,20 +382,6 @@ public sealed class ComWindowsUpdateService(
         finally
         {
             TryReleaseCom(serviceManagerObj);
-        }
-    }
-
-    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
-    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
-    private static int ReadPercentComplete(dynamic job)
-    {
-        try
-        {
-            return Math.Clamp(Convert.ToInt32(job.GetProgress().PercentComplete), 0, 100);
-        }
-        catch
-        {
-            return 0;
         }
     }
 

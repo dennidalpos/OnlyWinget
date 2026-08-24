@@ -12,8 +12,6 @@ public sealed class WorkspaceDbContext : DbContext
 
     public DbSet<WorkspaceMetadataEntity> WorkspaceMetadata => Set<WorkspaceMetadataEntity>();
 
-    public DbSet<OperationLogEntity> OperationLogs => Set<OperationLogEntity>();
-
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "EF Core model is defined statically.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "EF Core model is defined statically.")]
     public WorkspaceDbContext(string dbPath)
@@ -62,11 +60,6 @@ public sealed class WorkspaceDbContext : DbContext
         {
             entity.HasKey(e => e.Key);
             entity.Property(e => e.Value).IsRequired();
-        });
-
-        modelBuilder.Entity<OperationLogEntity>(entity =>
-        {
-            entity.HasKey(e => e.Id);
         });
     }
 

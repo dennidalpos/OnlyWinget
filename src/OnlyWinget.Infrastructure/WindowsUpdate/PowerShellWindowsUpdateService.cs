@@ -110,9 +110,10 @@ public sealed class PowerShellWindowsUpdateService(
         global::System.TimeSpan? timeout = null,
         IProgress<string>? standardErrorLines = null)
     {
+        var executable = OnlyWinget.Infrastructure.System.PowerShellExecutableProvider.GetPreferredExecutable();
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         return await commandRunner.RunAsync(
-                "powershell.exe",
+                executable,
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
                 cancellationToken,
                 timeout: timeout,
@@ -157,24 +158,7 @@ public sealed class PowerShellWindowsUpdateService(
     private static string ApplyOptions(string script, WindowsUpdateOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (!options.IncludeSoftware && !options.IncludeDrivers)
-        {
-            throw new ArgumentException("Select software updates, drivers, or both.", nameof(options));
-        }
-
-        var types = new List<string>();
-        if (options.IncludeSoftware)
-        {
-            types.Add("Type='Software'");
-        }
-
-        if (options.IncludeDrivers)
-        {
-            types.Add("Type='Driver'");
-        }
-
-        var typeCriteria = types.Count == 2 ? string.Empty : $" and {types[0]}";
-        var criteria = $"IsInstalled=0 and IsHidden=0{typeCriteria}";
+        var criteria = WindowsUpdateSearchCriteria.Build(options);
         var optionsJson = JsonSerializer.Serialize(
             new WindowsUpdateOptionsDto(
                 criteria,
@@ -308,29 +292,17 @@ __SELECTED_JSON__
         exit 0
     }
 
+    [Console]::Error.WriteLine("##OWU-PROGRESS##Downloading##0")
     $downloader = $session.CreateUpdateDownloader()
     $downloader.Updates = $collection
-    $downloadJob = $downloader.BeginDownload($null, $null, $null)
-    while (-not $downloadJob.IsCompleted) {
-        Start-Sleep -Milliseconds 500
-        try {
-            $downloadProgress = $downloadJob.GetProgress()
-            [Console]::Error.WriteLine("##OWU-PROGRESS##Downloading##$([int]$downloadProgress.PercentComplete)")
-        } catch {}
-    }
-    [void]$downloader.EndDownload($downloadJob)
+    $downloadResult = $downloader.Download()
+    [Console]::Error.WriteLine("##OWU-PROGRESS##Downloading##100")
 
+    [Console]::Error.WriteLine("##OWU-PROGRESS##Installing##0")
     $installer = $session.CreateUpdateInstaller()
     $installer.Updates = $collection
-    $installJob = $installer.BeginInstall($null, $null, $null)
-    while (-not $installJob.IsCompleted) {
-        Start-Sleep -Milliseconds 500
-        try {
-            $installProgress = $installJob.GetProgress()
-            [Console]::Error.WriteLine("##OWU-PROGRESS##Installing##$([int]$installProgress.PercentComplete)")
-        } catch {}
-    }
-    $install = $installer.EndInstall($installJob)
+    $install = $installer.Install()
+    [Console]::Error.WriteLine("##OWU-PROGRESS##Installing##100")
     $rows = @()
     for ($index = 0; $index -lt $collection.Count; $index++) {
         $updateResult = $install.GetUpdateResult($index)

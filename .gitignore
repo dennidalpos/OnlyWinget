@@ -39,3 +39,9 @@ Thumbs.db
 coverage/
 *.coverage
 *.trx
+
+*.db
+*.db-shm
+*.db-wal
+*.lock
+!packages.lock.json

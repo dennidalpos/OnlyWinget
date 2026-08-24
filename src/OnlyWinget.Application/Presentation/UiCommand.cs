@@ -14,6 +14,7 @@ public enum UiCommandId
     InstallPreset,
     UninstallPreset,
     SearchPackages,
+    InstallSearchResults,
     AddSearchResults,
     RefreshUpdates,
     ApplyUpdates,

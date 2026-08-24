@@ -1,3 +1,6 @@
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
 $script:OnlyWingetScriptsRoot = Split-Path $PSScriptRoot -Parent
 $script:OnlyWingetRepositoryRoot = Split-Path $script:OnlyWingetScriptsRoot -Parent
 

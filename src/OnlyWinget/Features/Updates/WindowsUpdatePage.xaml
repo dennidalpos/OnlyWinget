@@ -18,8 +18,9 @@
             <design:OnlyWingetResponsivePanel ItemMinWidth="220" HorizontalSpacing="16" VerticalSpacing="12">
                 <design:OnlyWingetWrapPanel HorizontalSpacing="16" VerticalSpacing="8" VerticalAlignment="Center">
                     <CheckBox x:Name="SoftwareUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeSoftware}" IsChecked="True" AutomationProperties.AutomationId="WindowsSoftwareFilter" />
-                    <CheckBox x:Name="DriverUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeDrivers}" IsChecked="True" AutomationProperties.AutomationId="WindowsDriverFilter" />
-                    <CheckBox x:Name="MicrosoftUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeMicrosoft}" IsChecked="True" AutomationProperties.AutomationId="WindowsMicrosoftFilter" />
+                    <CheckBox x:Name="DriverUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeDrivers}" IsChecked="False" AutomationProperties.AutomationId="WindowsDriverFilter" />
+                    <CheckBox x:Name="MicrosoftUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeMicrosoft}" IsChecked="False" AutomationProperties.AutomationId="WindowsMicrosoftFilter" />
+                    <CheckBox x:Name="OptionalUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeOptional}" IsChecked="False" AutomationProperties.AutomationId="WindowsOptionalFilter" />
                 </design:OnlyWingetWrapPanel>
                 <commands:OnlyWingetCommandBar ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />
             </design:OnlyWingetResponsivePanel>

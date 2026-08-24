@@ -7,7 +7,14 @@ public sealed record SystemCapabilities(
     bool? IsWindowsUpdateComAvailable,
     string? WindowsUpdateUnavailableReason,
     string? WingetVersion = null,
-    int? WindowsBuildNumber = null)
+    int? WindowsBuildNumber = null,
+    string? WindowsEdition = null,
+    string? WindowsDisplayVersion = null,
+    string? SystemLanguage = null,
+    bool? IsElevated = null,
+    string? PowerShellType = null,
+    bool? IsPowerShell7Available = null,
+    bool? IsLegacyPowerShellAvailable = null)
 {
     public static SystemCapabilities Unknown { get; } = new(null, null, null, null, null, null, null);
 

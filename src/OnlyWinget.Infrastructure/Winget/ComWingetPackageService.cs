@@ -16,6 +16,8 @@ public sealed class ComWingetPackageService(
 {
     private static readonly Guid WinGetPackageManagerClsid = new("c84f4a4d-068d-4e92-beab-73e449ff39a8");
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private const int RegdbEClassnotreg = unchecked((int)0x80040154);
+    private static int comAvailability; // 0 = unprobed, 1 = available, -1 = unavailable
 
     public async Task<WingetOperationOutcome<PackageSearchResult>> SearchAsync(
         PackageSearchRequest request,
@@ -29,7 +31,7 @@ public sealed class ComWingetPackageService(
             return cachedOutcome;
         }
 
-        if (OperatingSystem.IsWindows() && !string.IsNullOrWhiteSpace(request.Query))
+        if (Volatile.Read(ref comAvailability) != -1 && OperatingSystem.IsWindows() && !string.IsNullOrWhiteSpace(request.Query))
         {
             try
             {
@@ -39,10 +41,18 @@ public sealed class ComWingetPackageService(
                     var outcome = await Task.Run(() => SearchNativeCom(request), cancellationToken).ConfigureAwait(false);
                     if (outcome is not null && outcome.Succeeded)
                     {
+                        Volatile.Write(ref comAvailability, 1);
                         logger?.LogInformation("WinGet native COM search completed for query '{Query}' with {Count} results.", request.Query, outcome.Rows.Count);
                         cache?.Set(cacheKey, outcome, CacheDuration);
                         return outcome;
                     }
+                }
+            }
+            catch (COMException comEx) when (comEx.HResult == RegdbEClassnotreg)
+            {
+                if (Interlocked.CompareExchange(ref comAvailability, -1, 0) == 0)
+                {
+                    logger?.LogInformation("WinGet native COM is not registered (REGDB_E_CLASSNOTREG 0x80040154). Using CLI fallback.");
                 }
             }
             catch (Exception ex)
@@ -58,7 +68,7 @@ public sealed class ComWingetPackageService(
     {
         ArgumentNullException.ThrowIfNull(package);
 
-        if (OperatingSystem.IsWindows())
+        if (Volatile.Read(ref comAvailability) != -1 && OperatingSystem.IsWindows())
         {
             try
             {
@@ -68,9 +78,17 @@ public sealed class ComWingetPackageService(
                     var outcome = await Task.Run(() => ResolveNativeCom(package), cancellationToken).ConfigureAwait(false);
                     if (outcome is not null && outcome.IsResolved)
                     {
+                        Volatile.Write(ref comAvailability, 1);
                         logger?.LogInformation("WinGet native COM package resolution succeeded for package '{Id}'.", package.Id);
                         return outcome;
                     }
+                }
+            }
+            catch (COMException comEx) when (comEx.HResult == RegdbEClassnotreg)
+            {
+                if (Interlocked.CompareExchange(ref comAvailability, -1, 0) == 0)
+                {
+                    logger?.LogInformation("WinGet native COM is not registered (REGDB_E_CLASSNOTREG 0x80040154). Using CLI fallback.");
                 }
             }
             catch (Exception ex)

@@ -41,6 +41,7 @@ public sealed partial class WindowsUpdatePage : UserControl
         SoftwareUpdatesBox.IsEnabled = !ViewModel.IsBusy;
         DriverUpdatesBox.IsEnabled = !ViewModel.IsBusy;
         MicrosoftUpdatesBox.IsEnabled = !ViewModel.IsBusy;
+        OptionalUpdatesBox.IsEnabled = !ViewModel.IsBusy;
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
@@ -61,7 +62,8 @@ public sealed partial class WindowsUpdatePage : UserControl
     private WindowsUpdateOptions CreateOptions() => new(
         SoftwareUpdatesBox.IsChecked == true,
         DriverUpdatesBox.IsChecked == true,
-        MicrosoftUpdatesBox.IsChecked == true);
+        MicrosoftUpdatesBox.IsChecked == true,
+        OptionalUpdatesBox.IsChecked == true);
 
     private void OnWindowsUpdateBatchSelectionChanged(object? sender, OnlyWingetTableBatchSelectionEventArgs args)
     {

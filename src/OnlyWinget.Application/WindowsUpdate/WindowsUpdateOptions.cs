@@ -2,5 +2,6 @@ namespace OnlyWinget.Application.WindowsUpdate;
 
 public sealed record WindowsUpdateOptions(
     bool IncludeSoftware = true,
-    bool IncludeDrivers = true,
-    bool IncludeMicrosoftUpdates = false);
+    bool IncludeDrivers = false,
+    bool IncludeMicrosoftUpdates = false,
+    bool IncludeOptionalUpdates = false);

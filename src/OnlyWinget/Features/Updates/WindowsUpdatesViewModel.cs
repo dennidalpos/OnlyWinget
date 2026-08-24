@@ -37,7 +37,14 @@ public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch) : F
     public void Cancel() => cancellation?.Cancel();
 
     public Task ScanAsync(WindowsUpdateOptions options) => RunAsync(token => Workflow.ScanWindowsUpdatesAsync(options, token));
-    public Task InstallAsync(WindowsUpdateOptions options) => RunAsync(token => Workflow.InstallSelectedWindowsUpdatesAsync(options, token));
+    public Task InstallAsync(WindowsUpdateOptions options) => RunAsync(async token =>
+    {
+        await Workflow.InstallSelectedWindowsUpdatesAsync(options, token);
+        if (!token.IsCancellationRequested)
+        {
+            await Workflow.ScanWindowsUpdatesAsync(options, token);
+        }
+    });
 
     protected override void Refresh()
     {

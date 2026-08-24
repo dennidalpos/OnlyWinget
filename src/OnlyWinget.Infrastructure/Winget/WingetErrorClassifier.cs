@@ -11,10 +11,23 @@ public sealed class WingetErrorClassifier
     // classification instead of falling into Unknown; unrecognized codes fall through to text matching.
     private static readonly IReadOnlyDictionary<int, WingetErrorKind> KnownExitCodes = new Dictionary<int, WingetErrorKind>
     {
-        // "winget search <nothing matches>" -> "Nessun pacchetto trovato con criteri di input corrispondenti."
+        // 0x8A150002: WINGET_INST_HASH_MISMATCH
+        [unchecked((int)0x8A150002)] = WingetErrorKind.HashMismatch,
+        // 0x8A150014: WINGET_INST_NO_APPLICABLE_PACKAGE / WINGET_INST_NO_SOURCES_DEFINED
         [unchecked((int)0x8A150014)] = WingetErrorKind.NotFound,
-        // "winget upgrade <up-to-date package>" -> "Non sono stati trovati aggiornamenti disponibili."
+        // 0x8A150015: WINGET_INST_OPERATION_CANCELLED
+        [unchecked((int)0x8A150015)] = WingetErrorKind.Cancelled,
+        // 0x800704C7: ERROR_CANCELLED (user cancelled operation / UAC prompt)
+        [unchecked((int)0x800704C7)] = WingetErrorKind.Cancelled,
+        // 0x8A15002B: WINGET_INST_NO_UPGRADE_AVAILABLE
         [unchecked((int)0x8A15002B)] = WingetErrorKind.NoUpdates,
+        // 0x8A15005E: WINGET_INST_SOURCE_UNAVAILABLE / WINGET_INST_SOURCE_DATA_MISSING
+        [unchecked((int)0x8A15005E)] = WingetErrorKind.SourceUnavailable,
+        // 0x8A150114 - 0x8A150117: WINGET_INST_CANNOT_UPGRADE family
+        [unchecked((int)0x8A150114)] = WingetErrorKind.CannotUpgrade,
+        [unchecked((int)0x8A150115)] = WingetErrorKind.CannotUpgrade,
+        [unchecked((int)0x8A150116)] = WingetErrorKind.CannotUpgrade,
+        [unchecked((int)0x8A150117)] = WingetErrorKind.CannotUpgrade,
     };
 
     public ClassifiedWingetError? Classify(WingetCommandResult result)

@@ -194,7 +194,16 @@ public sealed partial class OnlyWingetApplication
 
                         if (!summary.Succeeded || validationFailures.Count > 0)
                         {
-                            throw new InvalidOperationException("One or more winget operations failed.");
+                            var failedPackages = summary.Results
+                                .Where(r => !r.Succeeded)
+                                .Select(r => r.Selection.Package.Id)
+                                .Concat(validationFailures.Select(f => $"{f.Selection.Package.Id} (validation)"))
+                                .Distinct()
+                                .ToArray();
+                            var detail = failedPackages.Length > 0
+                                ? $"One or more winget operations failed: {string.Join(", ", failedPackages)}"
+                                : "One or more winget operations failed.";
+                            throw new InvalidOperationException(detail);
                         }
 
                         operationProgress = operationProgress with { Phase = WingetProgressPhase.Completed, Percentage = 100, PackagePercentage = 100, CompletedPackages = plan.Selections.Count };

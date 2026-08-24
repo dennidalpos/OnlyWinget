@@ -40,6 +40,8 @@ public sealed partial class SearchViewModel(Action<Action> dispatch) : FeatureVi
     }
 
     public Task SearchAsync(string query) => RunAsync(token => Workflow.SearchAsync(query, token));
+    public Task InstallSelectedDirectAsync() =>
+        RunAsync(token => Workflow.InstallSelectedSearchResultsDirectAsync(token));
     public async Task AddSelectedAsync()
     {
         var added = false;

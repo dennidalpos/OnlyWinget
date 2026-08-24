@@ -118,6 +118,34 @@ public sealed class PcMetricsService : IPcMetricsService
 
     private static string GetOsVersionText()
     {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+                if (key is not null)
+                {
+                    var productName = key.GetValue("ProductName")?.ToString();
+                    var displayVersion = key.GetValue("DisplayVersion")?.ToString() ?? key.GetValue("ReleaseId")?.ToString();
+                    if (Environment.OSVersion.Version.Build >= 22000 && productName is not null && productName.StartsWith("Windows 10", StringComparison.OrdinalIgnoreCase))
+                    {
+                        productName = "Windows 11" + productName["Windows 10".Length..];
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(productName))
+                    {
+                        return !string.IsNullOrWhiteSpace(displayVersion)
+                            ? $"{productName} {displayVersion}"
+                            : productName;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to OSDescription
+            }
+        }
+
         return RuntimeInformation.OSDescription;
     }
 

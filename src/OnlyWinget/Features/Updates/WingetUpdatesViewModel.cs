@@ -53,7 +53,14 @@ public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch) : Fe
     }
 
     public Task RefreshAsync() => RunAsync(token => Workflow.RefreshUpdatesAsync(token));
-    public Task ApplyAsync() => RunAsync(token => Workflow.ApplySelectedUpdatesAsync(token));
+    public Task ApplyAsync() => RunAsync(async token =>
+    {
+        await Workflow.ApplySelectedUpdatesAsync(token);
+        if (!token.IsCancellationRequested)
+        {
+            await Workflow.RefreshUpdatesAsync(token);
+        }
+    });
     protected override void Refresh()
     {
         var state = PresentationStateMapper.FromApplicationState(Workflow.State).Updates;

@@ -74,6 +74,32 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task SearchInstallSelectedDirectExecutesOperationPlanWithoutAddingToPreset()
+    {
+        var search = new StubPackageSearch(
+            new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "winget"));
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", "winget", true, null));
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([]));
+        var app = CreateApplication(search: search, resolver: resolver, executor: executor);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.SearchAsync("git", CancellationToken.None);
+        app.ToggleAllSearchResults();
+
+        var result = await app.InstallSelectedSearchResultsDirectAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(executor.LastPlan);
+        Assert.Equal("Direct Search Install", executor.LastPlan.Name);
+        Assert.Single(executor.LastPlan.Selections);
+        Assert.Equal("Git.Git", executor.LastPlan.Selections[0].Package.Id);
+        Assert.Equal(PackageAction.Install, executor.LastPlan.Selections[0].Action);
+        Assert.Null(app.State.ActivePreset);
+    }
+
+    [Fact]
     public async Task SearchAddSelectedCreatesDefaultPresetWhenWorkspaceIsEmpty()
     {
         var search = new StubPackageSearch(
@@ -1430,6 +1456,16 @@ public sealed class OnlyWingetApplicationTests
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
         Assert.NotEmpty(reportedStates);
         Assert.Equal(ApplicationBusyState.Idle, app.State.BusyState);
+    }
+
+    [Fact]
+    public void WindowsUpdateOptions_DefaultValues_AreSafe()
+    {
+        var options = new WindowsUpdateOptions();
+        Assert.True(options.IncludeSoftware);
+        Assert.False(options.IncludeDrivers);
+        Assert.False(options.IncludeMicrosoftUpdates);
+        Assert.False(options.IncludeOptionalUpdates);
     }
 }
 

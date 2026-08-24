@@ -10,11 +10,19 @@ public sealed class WindowsUpdateSearchCriteriaTests
     // fallback. WindowsUpdateSearchCriteria.Build must now match PowerShellWindowsUpdateService's
     // ApplyOptions logic exactly so both execution paths behave the same way.
     [Fact]
+    public void BuildDefaultOptionsIncludesOnlySoftwareAndExcludesOptional()
+    {
+        var criteria = WindowsUpdateSearchCriteria.Build(new WindowsUpdateOptions());
+
+        Assert.Equal("IsInstalled=0 and IsHidden=0 and Type='Software' and BrowseOnly=0", criteria);
+    }
+
+    [Fact]
     public void BuildIncludesBothTypesWhenSoftwareAndDriversSelected()
     {
         var criteria = WindowsUpdateSearchCriteria.Build(new WindowsUpdateOptions(IncludeSoftware: true, IncludeDrivers: true));
 
-        Assert.Equal("IsInstalled=0 and IsHidden=0", criteria);
+        Assert.Equal("IsInstalled=0 and IsHidden=0 and BrowseOnly=0", criteria);
     }
 
     [Fact]
@@ -22,7 +30,7 @@ public sealed class WindowsUpdateSearchCriteriaTests
     {
         var criteria = WindowsUpdateSearchCriteria.Build(new WindowsUpdateOptions(IncludeSoftware: true, IncludeDrivers: false));
 
-        Assert.Equal("IsInstalled=0 and IsHidden=0 and Type='Software'", criteria);
+        Assert.Equal("IsInstalled=0 and IsHidden=0 and Type='Software' and BrowseOnly=0", criteria);
     }
 
     [Fact]
@@ -30,7 +38,15 @@ public sealed class WindowsUpdateSearchCriteriaTests
     {
         var criteria = WindowsUpdateSearchCriteria.Build(new WindowsUpdateOptions(IncludeSoftware: false, IncludeDrivers: true));
 
-        Assert.Equal("IsInstalled=0 and IsHidden=0 and Type='Driver'", criteria);
+        Assert.Equal("IsInstalled=0 and IsHidden=0 and Type='Driver' and BrowseOnly=0", criteria);
+    }
+
+    [Fact]
+    public void BuildIncludesOptionalUpdatesWithoutBrowseOnlyConstraint()
+    {
+        var criteria = WindowsUpdateSearchCriteria.Build(new WindowsUpdateOptions(IncludeSoftware: true, IncludeDrivers: true, IncludeOptionalUpdates: true));
+
+        Assert.Equal("IsInstalled=0 and IsHidden=0", criteria);
     }
 
     [Fact]

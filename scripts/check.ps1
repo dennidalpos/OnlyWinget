@@ -2,6 +2,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [switch]$RunWingetSmoke,
+    [switch]$StopRunningInstance,
     [switch]$NonInteractive,
     [switch]$Fast,
     [switch]$Full
@@ -41,6 +42,7 @@ function Invoke-Step {
         Write-Host "==> $Name" -ForegroundColor Cyan
     }
     & $Action
+    Assert-LastExitCode "$Name fallito."
     $steps.Add("${Name}: OK")
 }
 
@@ -49,7 +51,7 @@ function Assert-LastExitCode {
         [string]$FailureMessage
     )
 
-    if ($LASTEXITCODE -ne 0) {
+    if ((Test-Path Variable:\LASTEXITCODE) -and $LASTEXITCODE -ne 0) {
         throw $FailureMessage
     }
 }
@@ -106,7 +108,7 @@ Invoke-Step 'script lint' {
 }
 
 Invoke-Step 'typecheck' {
-    & $typecheckScriptPath -Configuration $Configuration -NoRestore -Full:$Full -NonInteractive:$NonInteractive
+    & $typecheckScriptPath -Configuration $Configuration -NoRestore -StopRunningInstance:$StopRunningInstance -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'unit test' {
@@ -139,11 +141,11 @@ Invoke-Step 'integration/e2e test' {
 }
 
 Invoke-Step 'build' {
-    & $buildScriptPath -Configuration $Configuration -NoRestore -Full:$Full -NonInteractive:$NonInteractive
+    & $buildScriptPath -Configuration $Configuration -NoRestore -StopRunningInstance:$StopRunningInstance -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'setup package' {
-    & $packageScriptPath -Configuration $Configuration -NoRestore -Full:$Full -NonInteractive:$NonInteractive
+    & $packageScriptPath -Configuration $Configuration -NoRestore -StopRunningInstance:$StopRunningInstance -Full:$Full -NonInteractive:$NonInteractive
 }
 
 Invoke-Step 'artifact analysis' {

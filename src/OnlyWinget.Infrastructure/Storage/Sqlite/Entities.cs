@@ -36,20 +36,3 @@ public sealed class WorkspaceMetadataEntity
 
     public string Value { get; set; } = string.Empty;
 }
-
-public sealed class OperationLogEntity
-{
-    public long Id { get; set; }
-
-    public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
-
-    public string OperationType { get; set; } = string.Empty;
-
-    public string TargetId { get; set; } = string.Empty;
-
-    public string Status { get; set; } = string.Empty;
-
-    public int? ExitCode { get; set; }
-
-    public string? DetailsText { get; set; }
-}

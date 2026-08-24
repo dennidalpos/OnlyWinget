@@ -19,6 +19,9 @@ if ($Build) {
     $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
     Assert-Path -Path $buildScriptPath -Description 'Build script'
     & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance
+    if ((Test-Path Variable:\LASTEXITCODE) -and $LASTEXITCODE -ne 0) {
+        throw 'Build fallito prima dell''avvio in dev mode.'
+    }
 }
 
 Assert-Path -Path $exePath -Description 'Built application executable'

@@ -162,7 +162,10 @@ public sealed partial class OnlyWingetApplication
                     var outcome = await windowsUpdateService.InstallAsync(selected, options, cancellationToken, forwardingProgress).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
-                        throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update install failed.");
+                        var errorMsg = !string.IsNullOrWhiteSpace(outcome.Error?.Message)
+                            ? outcome.Error.Message
+                            : "Windows Update install failed.";
+                        throw new InvalidOperationException(errorMsg);
                     }
 
                     lastWindowsUpdateResults.AddRange(outcome.Rows);
@@ -179,9 +182,11 @@ public sealed partial class OnlyWingetApplication
                             nameof(InstallSelectedWindowsUpdatesAsync));
                     }
 
-                    if (outcome.Rows.Any(result => !result.Succeeded))
+                    var failedUpdates = outcome.Rows.Where(result => !result.Succeeded).ToArray();
+                    if (failedUpdates.Length > 0)
                     {
-                        throw new InvalidOperationException("One or more Windows updates failed.");
+                        var failedTitles = string.Join(", ", failedUpdates.Select(f => f.Title));
+                        throw new InvalidOperationException($"One or more Windows updates failed: {failedTitles}");
                     }
 
                     operationProgress = operationProgress with { Phase = WingetProgressPhase.Completed, Percentage = 100, PackagePercentage = 100, CompletedPackages = selected.Length };

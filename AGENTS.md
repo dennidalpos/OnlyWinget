@@ -39,9 +39,10 @@
 
 AI Agents working in this repository MUST inspect and read the relevant `SKILL.md` instructions from `/skills` whenever engaging in tasks matching their scope:
 
-* **[skills/onlyrag-workspace-guidelines/SKILL.md](file:///d:/GITHUB/OnlyRagV2/skills/onlyrag-workspace-guidelines/SKILL.md)**: Trigger for architectural changes, Electron main/preload modifications, Python FastAPI sidecar refactoring, LanceDB vector DB schema modifications, context window budgeting, complexity routing, Skill Hub & Marketplace (Anthropic `agentskills.io` and LobeHub adapters), local skill CRUD with SHA-256 provenance tracking, or Ollama local API integrations.
-* **[skills/code-quality-and-linting/SKILL.md](file:///d:/GITHUB/OnlyRagV2/skills/code-quality-and-linting/SKILL.md)**: Trigger before running linting, type checks, Vitest/Pytest test executions, build operations, workspace cleanup, or PowerShell scripts in `./scripts/` (`lint_format.ps1`, `clean_workspace.ps1`, `build_package.ps1`).
-* **[skills/agent-security-and-tool-calling/SKILL.md](file:///d:/GITHUB/OnlyRagV2/skills/agent-security-and-tool-calling/SKILL.md)**: Trigger for agentic tool loop modifications, AppSec sandboxing, directory traversal prevention, secret/credential protection, shell command security guardrails, SSRF protection, Ollama generation hyperparameters, or auto-healing loop refactoring.
+* **[skills/onlywinget/SKILL.md](file:///d:/GITHUB/OnlyWinget/skills/onlywinget/SKILL.md)**: Trigger for Clean Architecture domain/application/infrastructure/presentation modifications, application lifecycle, dependency injection, and PowerShell run script workflows.
+* **[skills/winget-cli/SKILL.md](file:///d:/GITHUB/OnlyWinget/skills/winget-cli/SKILL.md)**: Trigger for Windows Package Manager (`winget`) CLI integration, manifest schemas, source preference handling, silent install switches, exit codes, and process execution.
+* **[skills/winui/SKILL.md](file:///d:/GITHUB/OnlyWinget/skills/winui/SKILL.md)**: Trigger for WinUI 3, Windows App SDK, Fluent Design UI layout, MVVM data binding, XAML controls, accessibility, and Native AOT / Trimming compilation rules.
+* **[skills/nsis-installer/SKILL.md](file:///d:/GITHUB/OnlyWinget/skills/nsis-installer/SKILL.md)**: Trigger for NSIS 3.x setup scripting, Modern UI 2 (MUI2), x64 architecture targets, Windows registry uninstaller registration, and self-contained packaging.
 
 ## 7. Final Agent Response Format
 

@@ -119,6 +119,7 @@ public static class PresentationStateMapper
             state.SearchSelectionHeader,
             [
                 new(UiCommandId.SearchPackages, "Command_Search_Execute", canUseWinget && !isLoading && !isExecuting, UiCommandKind.Primary, Icon: "Find"),
+                new(UiCommandId.InstallSearchResults, "Command_Search_InstallSelected", canUseWinget && state.SelectedSearchPackages.Count > 0 && !isLoading && !isExecuting, Icon: "Download"),
                 new(UiCommandId.AddSearchResults, "Command_Search_AddSelected", canUseWinget && state.SelectedSearchPackages.Count > 0 && !isLoading && !isExecuting, Icon: "Add")
             ],
             isLoading,

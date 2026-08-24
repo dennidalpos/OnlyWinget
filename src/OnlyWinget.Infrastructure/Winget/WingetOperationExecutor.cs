@@ -7,7 +7,8 @@ namespace OnlyWinget.Infrastructure.Winget;
 public sealed class WingetOperationExecutor(
     IWingetCommandRunner commandRunner,
     WingetCommandBuilder commandBuilder,
-    WingetErrorClassifier errorClassifier) : IOperationExecutor
+    WingetErrorClassifier errorClassifier,
+    TimeSpan? retryDelay = null) : IOperationExecutor
 {
     public async Task<OperationExecutionSummary> ExecuteAsync(
         OperationPlan plan,
@@ -98,13 +99,17 @@ public sealed class WingetOperationExecutor(
                     break;
                 }
 
-                try
+                var delay = retryDelay ?? TimeSpan.FromMilliseconds(1000);
+                if (delay > TimeSpan.Zero)
                 {
-                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
+                    try
+                    {
+                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
                 }
             }
 
