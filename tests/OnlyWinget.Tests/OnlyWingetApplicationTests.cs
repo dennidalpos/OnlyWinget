@@ -50,6 +50,39 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public void StatePropertyIsThreadSafeAndConsistentUnderConcurrentAccess()
+    {
+        var app = CreateApplication();
+        app.AddPreset("InitialPreset");
+
+        var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+        Parallel.For(0, 50, i =>
+        {
+            try
+            {
+                if (i % 2 == 0)
+                {
+                    app.AddPreset($"Preset_{i}");
+                }
+                var state = app.State;
+                Assert.NotNull(state);
+                Assert.NotNull(state.Workspace);
+                if (state.ActivePreset != null)
+                {
+                    Assert.Contains(state.Workspace.Presets, p => p.Name == state.ActivePreset.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
+        });
+
+        Assert.Empty(exceptions);
+    }
+
+    [Fact]
     public async Task SearchAddSelectedResolvesPackagesAndSkipsDuplicates()
     {
         var search = new StubPackageSearch(
@@ -1122,6 +1155,8 @@ public sealed class OnlyWingetApplicationTests
         Assert.Contains(resolver.Requests, r => r.Source == "msstore");
         Assert.Single(app.State.ActivePreset!.Packages);
     }
+
+    internal static OnlyWingetApplication CreateDefaultApplication() => CreateApplication();
 
     private static OnlyWingetApplication CreateApplication(
         SystemCapabilities? capabilities = null,

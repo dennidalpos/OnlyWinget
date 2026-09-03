@@ -26,6 +26,7 @@ public sealed partial class WindowsUpdatePage : UserControl
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         ViewModel.Activate();
+        Refresh();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
@@ -33,7 +34,14 @@ public sealed partial class WindowsUpdatePage : UserControl
         ViewModel.Deactivate();
     }
 
-    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(WindowsUpdatesViewModel.PageState) or
+                                nameof(WindowsUpdatesViewModel.IsBusy))
+        {
+            Refresh();
+        }
+    }
 
     private void Refresh()
     {

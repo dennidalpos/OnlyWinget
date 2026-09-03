@@ -28,6 +28,7 @@ public sealed partial class UpdatesPage : UserControl
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
         ViewModel.Activate();
+        PageState.Present(ViewModel.PageState);
         if (!initialRefreshStarted &&
             ViewModel.ShouldInitialRefresh)
         {
@@ -41,11 +42,12 @@ public sealed partial class UpdatesPage : UserControl
         ViewModel.Deactivate();
     }
 
-    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
-
-    private void Refresh()
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
     {
-        PageState.Present(ViewModel.PageState);
+        if (args.PropertyName == nameof(WingetUpdatesViewModel.PageState))
+        {
+            PageState.Present(ViewModel.PageState);
+        }
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)

@@ -1,13 +1,20 @@
 using System.Runtime.Versioning;
 using Microsoft.Win32;
+using OnlyWinget.Application.System;
 
 namespace OnlyWinget.Infrastructure.System;
 
 [SupportedOSPlatform("windows")]
-public static class UrlProtocolRegistrationService
+public sealed class UrlProtocolRegistrationService : IUrlProtocolService
 {
     private const string ProtocolScheme = "onlywinget";
     private const string RegistryKeyPath = @"Software\Classes\" + ProtocolScheme;
+
+    bool IUrlProtocolService.IsRegistered() => IsRegistered();
+
+    bool IUrlProtocolService.Register(string executablePath) => Register(executablePath);
+
+    bool IUrlProtocolService.Unregister() => Unregister();
 
     public static bool IsRegistered()
     {

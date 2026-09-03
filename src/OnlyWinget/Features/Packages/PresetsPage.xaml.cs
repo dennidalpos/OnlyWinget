@@ -37,6 +37,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         ViewModel.Activate();
+        Refresh();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
@@ -44,7 +45,32 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         ViewModel.Deactivate();
     }
 
-    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (string.IsNullOrEmpty(args.PropertyName))
+        {
+            Refresh();
+            return;
+        }
+
+        if (args.PropertyName == nameof(PresetsViewModel.ActivePresetName))
+        {
+            isRefreshing = true;
+            PresetSelector.SelectedItem = ViewModel.ActivePresetName;
+            ViewModel.PresetName.Value = ViewModel.ActivePresetName ?? string.Empty;
+            isRefreshing = false;
+        }
+
+        if (args.PropertyName == nameof(PresetsViewModel.PageState))
+        {
+            PageState.Present(ViewModel.PageState);
+        }
+
+        if (args.PropertyName == nameof(PresetsViewModel.Commands))
+        {
+            ApplyValidationToCommands();
+        }
+    }
 
     private void Refresh()
     {

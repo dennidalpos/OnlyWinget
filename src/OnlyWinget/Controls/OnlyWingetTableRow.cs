@@ -11,6 +11,8 @@ public sealed class OnlyWingetTableRow : Grid
 {
     private bool isInitialized;
     private TableLayoutHelper? subscribedLayoutHelper;
+    private WeakReference<OnlyWingetTable>? cachedParentTableRef;
+    private bool cachedIsSelectionEnabled;
 
     public OnlyWingetTableRow()
     {
@@ -27,9 +29,10 @@ public sealed class OnlyWingetTableRow : Grid
         }
         else
         {
-            var parentTable = FindParentTable();
+            var parentTable = GetParentTable();
             if (parentTable != null)
             {
+                cachedIsSelectionEnabled = parentTable.IsSelectionEnabled;
                 SubscribeLayoutHelper(parentTable.layoutHelper);
                 SyncWidths(parentTable);
             }
@@ -69,11 +72,7 @@ public sealed class OnlyWingetTableRow : Grid
 
     private void OnColumnWidthChanged(int index, double newWidth)
     {
-        var parentTable = FindParentTable();
-        if (parentTable == null) return;
-
-        var isSelectionEnabled = parentTable.IsSelectionEnabled;
-        var colIndex = index + (isSelectionEnabled ? 1 : 0);
+        var colIndex = index + (cachedIsSelectionEnabled ? 1 : 0);
 
         if (colIndex < ColumnDefinitions.Count)
         {
@@ -114,7 +113,7 @@ public sealed class OnlyWingetTableRow : Grid
 
     private void InitializeRow()
     {
-        var parentTable = FindParentTable();
+        var parentTable = GetParentTable();
         if (parentTable == null) return;
 
         isInitialized = true;
@@ -122,6 +121,7 @@ public sealed class OnlyWingetTableRow : Grid
         var columns = parentTable.Columns;
         var layoutHelper = parentTable.layoutHelper;
         var isSelectionEnabled = parentTable.IsSelectionEnabled;
+        cachedIsSelectionEnabled = isSelectionEnabled;
 
         SubscribeLayoutHelper(layoutHelper);
 
@@ -211,7 +211,7 @@ public sealed class OnlyWingetTableRow : Grid
             {
                 border.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler((sender, args) =>
                 {
-                    var parent = FindParentTable();
+                    var parent = GetParentTable();
                     if (parent != null && DataContext != null)
                     {
                         var pointerPoint = args.GetCurrentPoint(border);
@@ -243,7 +243,7 @@ public sealed class OnlyWingetTableRow : Grid
 
     private void UpdateAutomationProperties()
     {
-        var parentTable = FindParentTable();
+        var parentTable = GetParentTable();
         if (parentTable == null) return;
 
         var primaryCol = parentTable.Columns.FirstOrDefault(c => c.IsPrimary) ?? parentTable.Columns.FirstOrDefault();
@@ -256,6 +256,22 @@ public sealed class OnlyWingetTableRow : Grid
                 AutomationProperties.SetName(this, val);
             }
         }
+    }
+
+    private OnlyWingetTable? GetParentTable()
+    {
+        if (cachedParentTableRef != null && cachedParentTableRef.TryGetTarget(out var table))
+        {
+            return table;
+        }
+
+        var parent = FindParentTable();
+        if (parent != null)
+        {
+            cachedParentTableRef = new WeakReference<OnlyWingetTable>(parent);
+            cachedIsSelectionEnabled = parent.IsSelectionEnabled;
+        }
+        return parent;
     }
 
     private OnlyWingetTable? FindParentTable()

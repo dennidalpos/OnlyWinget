@@ -24,15 +24,25 @@
 !endif
 
 Unicode true
-RequestExecutionLevel admin
 SetCompressor /SOLID lzma
+
+; MultiUser Configuration
+!define MULTIUSER_EXECUTIONLEVEL Highest
+!define MULTIUSER_MUI
+!define MULTIUSER_INSTALLMODE_COMMANDLINE
+!define MULTIUSER_USE_PROGRAMFILES64
+!define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_KEY "${REGKEY}"
+!define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_VALUENAME "InstallDir"
+!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY "${REGKEY}"
+!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_VALUENAME "InstallDir"
+!define MULTIUSER_INSTALLMODE_INSTDIR "OnlyWinget"
+
+!include "MultiUser.nsh"
+!include "MUI2.nsh"
+!include "x64.nsh"
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "${OUT_FILE}"
-InstallDir "$PROGRAMFILES64\OnlyWinget"
-InstallDirRegKey HKLM "${REGKEY}" "InstallDir"
-
-!include "MUI2.nsh"
 
 !define MUI_ICON "${APP_ICON}"
 !define MUI_UNICON "${APP_ICON}"
@@ -45,6 +55,7 @@ InstallDirRegKey HKLM "${REGKEY}" "InstallDir"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${LICENSE_RTF}"
+!insertmacro MULTIUSER_PAGE_INSTALLMODE
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_RUN "$INSTDIR\OnlyWinget.exe"
@@ -58,11 +69,28 @@ InstallDirRegKey HKLM "${REGKEY}" "InstallDir"
 !insertmacro MUI_LANGUAGE "Italian"
 !insertmacro MUI_LANGUAGE "English"
 
+Function .onInit
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
+  !insertmacro MULTIUSER_INIT
+FunctionEnd
+
+Function un.onInit
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
+  !insertmacro MULTIUSER_UNINIT
+FunctionEnd
+
 Section "MainSection" SEC01
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
   SetOutPath "$INSTDIR"
   File /r "${PUBLISH_DIR}\*.*"
 
-  WriteRegStr HKLM "${REGKEY}" "InstallDir" "$INSTDIR"
+  WriteRegStr SHCTX "${REGKEY}" "InstallDir" "$INSTDIR"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
@@ -71,17 +99,20 @@ Section "MainSection" SEC01
   CreateShortcut "$SMPROGRAMS\OnlyWinget\Uninstall.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
   CreateShortcut "$DESKTOP\OnlyWinget.lnk" "$INSTDIR\OnlyWinget.exe" "" "$INSTDIR\OnlyWinget.exe" 0
 
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayName" "${PRODUCT_NAME}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayVersion" "${PRODUCT_VERSION}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "Publisher" "${PUBLISHER}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayIcon" '"$INSTDIR\OnlyWinget.exe"'
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "InstallLocation" '"$INSTDIR"'
-  WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "NoModify" 1
-  WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "NoRepair" 1
+  WriteRegStr SHCTX "${UNINSTALL_REGKEY}" "DisplayName" "${PRODUCT_NAME}"
+  WriteRegStr SHCTX "${UNINSTALL_REGKEY}" "DisplayVersion" "${PRODUCT_VERSION}"
+  WriteRegStr SHCTX "${UNINSTALL_REGKEY}" "Publisher" "${PUBLISHER}"
+  WriteRegStr SHCTX "${UNINSTALL_REGKEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegStr SHCTX "${UNINSTALL_REGKEY}" "DisplayIcon" '"$INSTDIR\OnlyWinget.exe"'
+  WriteRegStr SHCTX "${UNINSTALL_REGKEY}" "InstallLocation" '"$INSTDIR"'
+  WriteRegDWORD SHCTX "${UNINSTALL_REGKEY}" "NoModify" 1
+  WriteRegDWORD SHCTX "${UNINSTALL_REGKEY}" "NoRepair" 1
 SectionEnd
 
 Section "Uninstall"
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
   nsExec::Exec 'taskkill /F /IM OnlyWinget.exe'
 
   Delete "$DESKTOP\OnlyWinget.lnk"
@@ -91,6 +122,6 @@ Section "Uninstall"
 
   RMDir /r "$INSTDIR"
 
-  DeleteRegKey HKLM "${UNINSTALL_REGKEY}"
-  DeleteRegKey HKLM "${REGKEY}"
+  DeleteRegKey SHCTX "${UNINSTALL_REGKEY}"
+  DeleteRegKey SHCTX "${REGKEY}"
 SectionEnd

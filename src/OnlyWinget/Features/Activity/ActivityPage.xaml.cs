@@ -54,8 +54,7 @@ public sealed partial class ActivityPage : Page
         else if (args.Command.Id == UiCommandId.ClearActivity &&
             await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Command_Activity_Clear", args.Command.ConfirmationResourceKey ?? "Dialog_ClearActivity_Message"))
         {
-            clearedEntries = App.Workflow.State.Activity.ToArray();
-            App.Workflow.ClearActivity();
+            clearedEntries = viewModel.ClearActivity();
             AppDiagnostics.ClearLogs();
             PageState.ShowUndo(TextResources.Get("Activity_Cleared"), TextResources.Get("Command_Undo"));
         }
@@ -81,7 +80,7 @@ public sealed partial class ActivityPage : Page
     private void OnUndoClear(object? sender, EventArgs args)
     {
         if (clearedEntries is null) return;
-        App.Workflow.RestoreActivity(clearedEntries);
+        viewModel.RestoreActivity(clearedEntries);
         clearedEntries = null;
         PageState.Hide();
     }

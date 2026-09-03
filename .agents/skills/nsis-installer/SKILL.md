@@ -13,36 +13,64 @@ Source: [NSIS Official Documentation & Reference Manual](https://nsis.sourceforg
 
 - **Engine**: NSIS produces script-driven, low-overhead native Windows setup executables (`.exe`) without runtime dependencies.
 - **Targeting**: Target **x64 only** for modern .NET 10 / Windows App SDK applications (`SetRegView 64`, `$PROGRAMFILES64`).
-- **Execution Level**: `RequestExecutionLevel admin` (or `user` depending on installation scope).
+- **Execution Level & Scope**: Multi-user support via `MultiUser.nsh` with `MULTIUSER_EXECUTIONLEVEL Highest` (`asInvoker` / non-admin support installing to `$LOCALAPPDATA\Programs`, and per-machine installing to `$PROGRAMFILES64`).
 - **Structure**:
-  - `src/OnlyWinget.Setup/OnlyWinget.nsi`: Main script defining pages, files, shortcuts, and registry keys.
+  - `src/OnlyWinget.Setup/OnlyWinget.nsi`: Main script defining pages, files, shortcuts, and registry keys via `SHCTX`.
   - `scripts/package.ps1`: Automation entry point that runs `makensis.exe` against the setup script after `dotnet publish`.
 
 ## 2. Modern UI 2 (MUI2) Page Stack
 
-Include Modern UI 2 macros (`!include "MUI2.nsh"`) for standard Fluent-aligned installer dialogs:
+Include Modern UI 2 macros (`!include "MUI2.nsh"`) and `MultiUser.nsh` for standard Fluent-aligned installer dialogs:
 - **Installer Pages**:
   - `!insertmacro MUI_PAGE_WELCOME`
+  - `!insertmacro MUI_PAGE_LICENSE`
+  - `!insertmacro MULTIUSER_PAGE_INSTALLMODE`
   - `!insertmacro MUI_PAGE_DIRECTORY`
   - `!insertmacro MUI_PAGE_INSTFILES`
   - `!insertmacro MUI_PAGE_FINISH`
 - **Uninstaller Pages**:
   - `!insertmacro MUI_UNPAGE_CONFIRM`
   - `!insertmacro MUI_UNPAGE_INSTFILES`
+  - `!insertmacro MUI_UNPAGE_FINISH`
 
 ## 3. Mandatory Setup Directives for x64 Self-Contained Apps
 
 ```nsis
+!define MULTIUSER_EXECUTIONLEVEL Highest
+!define MULTIUSER_MUI
+!define MULTIUSER_INSTALLMODE_COMMANDLINE
+!define MULTIUSER_USE_PROGRAMFILES64
+!define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_KEY "Software\OnlyWinget"
+!define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_VALUENAME "InstallDir"
+!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY "Software\OnlyWinget"
+!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_VALUENAME "InstallDir"
+!define MULTIUSER_INSTALLMODE_INSTDIR "OnlyWinget"
+
+!include "MultiUser.nsh"
 !include "MUI2.nsh"
 !include "x64.nsh"
 
 Name "OnlyWinget"
 OutFile "OnlyWinget-Setup-x64.exe"
-InstallDir "$PROGRAMFILES64\OnlyWinget"
-RequestExecutionLevel admin
+
+Function .onInit
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
+  !insertmacro MULTIUSER_INIT
+FunctionEnd
+
+Function un.onInit
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
+  !insertmacro MULTIUSER_UNINIT
+FunctionEnd
 
 Section "MainSection" SEC01
-  SetRegView 64
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
   SetOutPath "$INSTDIR"
   
   ; Copy published self-contained output files
@@ -52,19 +80,21 @@ Section "MainSection" SEC01
   CreateDirectory "$SMPROGRAMS\OnlyWinget"
   CreateShortCut "$SMPROGRAMS\OnlyWinget\OnlyWinget.lnk" "$INSTDIR\OnlyWinget.exe"
   
-  ; Register Uninstaller in Windows Add/Remove Programs
+  ; Register Uninstaller in Windows Add/Remove Programs (SHCTX routes to HKLM or HKCU dynamically)
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "DisplayName" "OnlyWinget"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "UninstallString" "$INSTDIR\Uninstall.exe"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "Publisher" "OnlyWinget"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "DisplayIcon" "$INSTDIR\OnlyWinget.exe"
+  WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "DisplayName" "OnlyWinget"
+  WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "UninstallString" "$INSTDIR\Uninstall.exe"
+  WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "Publisher" "OnlyWinget"
+  WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget" "DisplayIcon" "$INSTDIR\OnlyWinget.exe"
 SectionEnd
 
 Section "Uninstall"
-  SetRegView 64
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
   RMDir /r "$INSTDIR"
   RMDir /r "$SMPROGRAMS\OnlyWinget"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget"
+  DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\OnlyWinget"
 SectionEnd
 ```
 

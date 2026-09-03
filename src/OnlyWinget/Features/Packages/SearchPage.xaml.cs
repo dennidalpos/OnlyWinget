@@ -25,6 +25,7 @@ public sealed partial class SearchPage : UserControl
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         ViewModel.Activate();
+        PageState.Present(ViewModel.PageState);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
@@ -32,11 +33,12 @@ public sealed partial class SearchPage : UserControl
         ViewModel.Deactivate();
     }
 
-    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args) => Refresh();
-
-    private void Refresh()
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs args)
     {
-        PageState.Present(ViewModel.PageState);
+        if (args.PropertyName == nameof(SearchViewModel.PageState))
+        {
+            PageState.Present(ViewModel.PageState);
+        }
     }
 
     private async void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)

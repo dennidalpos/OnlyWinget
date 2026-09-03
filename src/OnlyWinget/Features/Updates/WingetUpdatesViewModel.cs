@@ -9,7 +9,8 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Updates;
 
-public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch, OnlyWingetApplication? workflow = null)
+    : FeatureViewModel(dispatch, workflow)
 {
     private CancellationTokenSource? cancellation;
 
@@ -41,15 +42,22 @@ public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch) : Fe
     public void Toggle(UpdateRow row) => Workflow.ToggleUpdate(new PackageIdentity(row.PackageId, row.Source));
     public void SetSelected(IEnumerable<UpdateRow> rows, bool isSelected) =>
         Workflow.SetUpdatesSelection(rows.Select(row => new PackageIdentity(row.PackageId, row.Source)), isSelected);
-    public void Cancel() => cancellation?.Cancel();
+    public void Cancel()
+    {
+        try { cancellation?.Cancel(); } catch (ObjectDisposedException) { }
+    }
 
     private async Task RunAsync(Func<CancellationToken, Task> action)
     {
         if (cancellation is not null) return;
-        using var current = new CancellationTokenSource();
+        var current = new CancellationTokenSource();
         cancellation = current;
         try { await action(current.Token); }
-        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+        finally
+        {
+            if (ReferenceEquals(cancellation, current)) cancellation = null;
+            current.Dispose();
+        }
     }
 
     public Task RefreshAsync() => RunAsync(token => Workflow.RefreshUpdatesAsync(token));
@@ -63,7 +71,7 @@ public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch) : Fe
     });
     protected override void Refresh()
     {
-        var state = PresentationStateMapper.FromApplicationState(Workflow.State).Updates;
+        var state = PresentationStateMapper.ToUpdatesState(Workflow.State);
         Updates.SynchronizeWith(state.Updates.Select(row => row with
         {
             Publisher = TextResources.Get(row.Publisher),

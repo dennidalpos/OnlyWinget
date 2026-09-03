@@ -19,6 +19,7 @@ public sealed partial class OnlyWingetTable : UserControl
     private INotifyCollectionChanged? subscribedCollection;
     internal readonly TableLayoutHelper layoutHelper = new();
     private Grid? headerGrid;
+    private CheckBox? headerSelectAllCheckBox;
     private bool hasAutoFitDone;
     private readonly OnlyWingetTableFilterEngine filterEngine = new();
     private ObservableCollection<object> filteredItems => filterEngine.FilteredItems;
@@ -99,7 +100,6 @@ public sealed partial class OnlyWingetTable : UserControl
         var table = (OnlyWingetTable)sender;
         table.UpdateCollectionSubscription(args.NewValue as INotifyCollectionChanged);
         table.ApplyFilters();
-        table.SyncListViewSelectionWithItems();
         table.hasAutoFitDone = false;
         table.AutoFitColumns();
     }
@@ -120,7 +120,6 @@ public sealed partial class OnlyWingetTable : UserControl
     private void OnItemsSourceCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         ApplyFilters();
-        SyncListViewSelectionWithItems();
         if (e.Action == NotifyCollectionChangedAction.Add || e.Action == NotifyCollectionChangedAction.Reset)
         {
             hasAutoFitDone = false;
@@ -147,9 +146,9 @@ public sealed partial class OnlyWingetTable : UserControl
     {
         if (Columns.Count == 0 || ItemsSource == null) return;
 
-        var items = new List<object>();
+        var items = new List<object>(100);
         var enumerator = ItemsSource.GetEnumerator();
-        while (enumerator.MoveNext())
+        while (enumerator.MoveNext() && items.Count < 100)
         {
             if (enumerator.Current != null)
             {
@@ -158,6 +157,8 @@ public sealed partial class OnlyWingetTable : UserControl
         }
 
         if (items.Count == 0) return;
+
+        var firstItemType = items[0].GetType();
 
         for (int i = 0; i < Columns.Count; i++)
         {
@@ -172,16 +173,16 @@ public sealed partial class OnlyWingetTable : UserControl
             }
 
             // Inspect up to first 100 items for performance
-            var sampleCount = Math.Min(items.Count, 100);
-            for (int j = 0; j < sampleCount; j++)
+            var getter = GetCachedGetter(firstItemType, col.BindingPath);
+            for (int j = 0; j < items.Count; j++)
             {
                 var item = items[j];
                 if (item == null) continue;
 
-                var getter = GetCachedGetter(item.GetType(), col.BindingPath);
-                if (getter != null)
+                var effectiveGetter = item.GetType() == firstItemType ? getter : GetCachedGetter(item.GetType(), col.BindingPath);
+                if (effectiveGetter != null)
                 {
-                    var val = getter(item)?.ToString();
+                    var val = effectiveGetter(item)?.ToString();
                     if (!string.IsNullOrEmpty(val))
                     {
                         double estimatedWidth = val.Length * 7.0 + 22;
@@ -220,16 +221,16 @@ public sealed partial class OnlyWingetTable : UserControl
         Rows.SelectionMode = IsSelectionEnabled ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
         Rows.IsItemClickEnabled = false;
         ApplyFilters();
-        Rows.ItemsSource = filteredItems;
-        SyncListViewSelectionWithItems();
     }
 
     private FrameworkElement BuildHeader()
     {
         headerGrid = CreateGrid();
+        headerSelectAllCheckBox = null;
         if (IsSelectionEnabled)
         {
             var selectAll = new CheckBox { IsThreeState = true, IsChecked = HeaderSelection, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, Tag = "Header", MinWidth = 0, MinHeight = 0, Padding = new Thickness(0) };
+            headerSelectAllCheckBox = selectAll;
             AutomationProperties.SetAutomationId(selectAll, $"{AutomationProperties.GetAutomationId(this)}SelectAll");
             AutomationProperties.SetName(selectAll, SelectionLabel);
             selectAll.Click += (_, _) => ToggleAllRequested?.Invoke(this, EventArgs.Empty);
@@ -493,15 +494,23 @@ public sealed partial class OnlyWingetTable : UserControl
 
     private void SynchronizeSelection()
     {
+        if (headerSelectAllCheckBox is not null)
+        {
+            headerSelectAllCheckBox.IsChecked = HeaderSelection;
+            return;
+        }
+
         if (Rows.Header is Border { Child: Grid grid })
         {
             var firstChild = grid.Children.FirstOrDefault();
             if (firstChild is CheckBox cb)
             {
+                headerSelectAllCheckBox = cb;
                 cb.IsChecked = HeaderSelection;
             }
             else if (firstChild is Border border && border.Child is CheckBox cbBorder)
             {
+                headerSelectAllCheckBox = cbBorder;
                 cbBorder.IsChecked = HeaderSelection;
             }
         }

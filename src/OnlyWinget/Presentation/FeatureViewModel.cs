@@ -1,20 +1,24 @@
-using CommunityToolkit.Mvvm.Messaging;
 using OnlyWinget.Application.App;
 
 namespace OnlyWinget.Presentation;
 
-public abstract class FeatureViewModel(OnlyWingetApplication workflow, Action<Action> dispatch) : ObservableObject, IDisposable
+public abstract class FeatureViewModel : ObservableObject, IDisposable
 {
-    private readonly Action<Action> dispatch = dispatch;
+    private readonly Action<Action> dispatch;
     private bool isDisposed;
 
-    internal OnlyWingetApplication Workflow { get; } = workflow;
+    protected FeatureViewModel(Action<Action> dispatch, OnlyWingetApplication? workflow = null)
+    {
+        this.dispatch = dispatch;
+        Workflow = workflow ?? App.Workflow;
+    }
+
+    internal OnlyWingetApplication Workflow { get; }
+    protected Action<Action> Dispatch => dispatch;
 
     public void Activate()
     {
         ObjectDisposedException.ThrowIf(isDisposed, this);
-        WeakReferenceMessenger.Default.Unregister<StateChangedMessage>(this);
-        WeakReferenceMessenger.Default.Register<FeatureViewModel, StateChangedMessage>(this, (r, _) => r.dispatch(r.Refresh));
         Workflow.StateChanged -= OnStateChanged;
         Workflow.StateChanged += OnStateChanged;
         Refresh();
@@ -22,7 +26,6 @@ public abstract class FeatureViewModel(OnlyWingetApplication workflow, Action<Ac
 
     public void Deactivate()
     {
-        WeakReferenceMessenger.Default.Unregister<StateChangedMessage>(this);
         Workflow.StateChanged -= OnStateChanged;
     }
 

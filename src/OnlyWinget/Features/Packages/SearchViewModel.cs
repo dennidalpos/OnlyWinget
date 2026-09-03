@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Selection;
@@ -7,7 +8,8 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Packages;
 
-public sealed partial class SearchViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class SearchViewModel(Action<Action> dispatch, OnlyWingetApplication? workflow = null)
+    : FeatureViewModel(dispatch, workflow)
 {
     private CancellationTokenSource? cancellation;
 
@@ -28,15 +30,22 @@ public sealed partial class SearchViewModel(Action<Action> dispatch) : FeatureVi
     public void Toggle(SearchResultRow row) => Workflow.ToggleSearchResult(new PackageIdentity(row.PackageId, row.Source));
     public void SetSelected(IEnumerable<SearchResultRow> rows, bool isSelected) =>
         Workflow.SetSearchResultsSelection(rows.Select(row => new PackageIdentity(row.PackageId, row.Source)), isSelected);
-    public void Cancel() => cancellation?.Cancel();
+    public void Cancel()
+    {
+        try { cancellation?.Cancel(); } catch (ObjectDisposedException) { }
+    }
 
     private async Task RunAsync(Func<CancellationToken, Task> action)
     {
         if (cancellation is not null) return;
-        using var current = new CancellationTokenSource();
+        var current = new CancellationTokenSource();
         cancellation = current;
         try { await action(current.Token); }
-        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+        finally
+        {
+            if (ReferenceEquals(cancellation, current)) cancellation = null;
+            current.Dispose();
+        }
     }
 
     public Task SearchAsync(string query) => RunAsync(token => Workflow.SearchAsync(query, token));
@@ -57,7 +66,7 @@ public sealed partial class SearchViewModel(Action<Action> dispatch) : FeatureVi
 
     protected override void Refresh()
     {
-        var state = PresentationStateMapper.FromApplicationState(Workflow.State).Search;
+        var state = PresentationStateMapper.ToSearchState(Workflow.State);
         Results.SynchronizeWith(state.Results.Select(row => row with
         {
             Publisher = TextResources.Get(row.Publisher),

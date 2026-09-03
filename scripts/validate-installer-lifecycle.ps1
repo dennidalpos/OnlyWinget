@@ -1,6 +1,8 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
+    [ValidateSet('AllUsers', 'CurrentUser')]
+    [string]$Scope = 'AllUsers',
     [string]$CurrentSetupPath,
     [string]$PreviousSetupPath,
     [string]$PreviousVersion,
@@ -35,13 +37,17 @@ $distPath = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
 $validationPath = Join-Path $artifactsPath "installer-validation/$Configuration"
 $reportPath = Join-Path $validationPath 'installer-lifecycle-report.txt'
 $productName = 'OnlyWinget'
-$installFolder = Join-Path $env:ProgramFiles $productName
+$installFolder = if ($Scope -eq 'CurrentUser') {
+    Join-Path (Join-Path $env:LOCALAPPDATA 'Programs') $productName
+} else {
+    Join-Path $env:ProgramFiles $productName
+}
 
 function Assert-Administrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = [Security.Principal.WindowsPrincipal]::new($identity)
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        throw 'La validazione installer richiede PowerShell elevato come amministratore.'
+        throw 'La validazione installer per AllUsers richiede PowerShell elevato come amministratore.'
     }
 }
 
@@ -50,10 +56,16 @@ function Get-InstalledOnlyWingetProduct {
         [switch]$VisibleOnly
     )
 
-    $roots = @(
-        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
-        'HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
-    )
+    $roots = if ($Scope -eq 'CurrentUser') {
+        @(
+            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+        )
+    } else {
+        @(
+            'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+            'HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+        )
+    }
 
     foreach ($root in $roots) {
         if (-not (Test-Path -LiteralPath $root)) {
@@ -134,12 +146,17 @@ function Invoke-NsisInstall {
     )
 
     Assert-Path -Path $SetupPath -Description 'NSIS Setup EXE'
-    $process = Start-Process -FilePath $SetupPath -ArgumentList '/S' -Wait -PassThru -WindowStyle Hidden
+    $argList = if ($Scope -eq 'CurrentUser') {
+        @('/S', '/CurrentUser')
+    } else {
+        @('/S', '/AllUsers')
+    }
+    $process = Start-Process -FilePath $SetupPath -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden
     if ($process.ExitCode -ne 0) {
         throw "NSIS Setup fallito con exit code $($process.ExitCode)."
     }
 
-    return "NSIS silent execution OK"
+    return "NSIS silent execution OK ($Scope)"
 }
 
 function Invoke-NsisUninstall {
@@ -214,10 +231,16 @@ function Assert-SingleInstalledProduct {
 }
 
 function Assert-StartMenuShortcut {
-    $shortcutPaths = @(
-        (Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'OnlyWinget/OnlyWinget.lnk'),
-        (Join-Path ([Environment]::GetFolderPath('Programs')) 'OnlyWinget/OnlyWinget.lnk')
-    )
+    $shortcutPaths = if ($Scope -eq 'CurrentUser') {
+        @(
+            (Join-Path ([Environment]::GetFolderPath('Programs')) 'OnlyWinget/OnlyWinget.lnk')
+        )
+    } else {
+        @(
+            (Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'OnlyWinget/OnlyWinget.lnk'),
+            (Join-Path ([Environment]::GetFolderPath('Programs')) 'OnlyWinget/OnlyWinget.lnk')
+        )
+    }
 
     if (-not ($shortcutPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1)) {
         throw "Shortcut Start Menu non trovato. Percorsi controllati: $($shortcutPaths -join '; ')"
@@ -225,10 +248,16 @@ function Assert-StartMenuShortcut {
 }
 
 function Assert-DesktopShortcut {
-    $shortcutPaths = @(
-        (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'OnlyWinget.lnk'),
-        (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'OnlyWinget.lnk')
-    )
+    $shortcutPaths = if ($Scope -eq 'CurrentUser') {
+        @(
+            (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'OnlyWinget.lnk')
+        )
+    } else {
+        @(
+            (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'OnlyWinget.lnk'),
+            (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'OnlyWinget.lnk')
+        )
+    }
 
     if (-not ($shortcutPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1)) {
         throw "Shortcut Desktop non trovato. Percorsi controllati: $($shortcutPaths -join '; ')"
@@ -251,7 +280,9 @@ function Assert-AppLaunch {
 
 Assert-Command -Name 'dotnet'
 Assert-Path -Path $packageScriptPath -Description 'Packaging script'
-Assert-Administrator
+if ($Scope -eq 'AllUsers') {
+    Assert-Administrator
+}
 New-Item -ItemType Directory -Path $validationPath -Force | Out-Null
 Assert-CleanInstallState
 
@@ -276,6 +307,7 @@ elseif ([string]::IsNullOrWhiteSpace($CurrentSetupPath)) {
 $currentVersion = Get-ProjectVersion
 $reportLines = [System.Collections.Generic.List[string]]::new()
 $reportLines.Add("ValidationStartedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+$reportLines.Add("Scope: $Scope")
 $reportLines.Add("CurrentSetup: $CurrentSetupPath")
 $reportLines.Add("PreviousSetup: $PreviousSetupPath")
 

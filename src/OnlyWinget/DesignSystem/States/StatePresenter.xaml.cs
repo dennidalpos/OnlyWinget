@@ -23,9 +23,11 @@ public sealed partial class StatePresenter : UserControl, INotifyPropertyChanged
     public static readonly DependencyProperty IsIndeterminateProperty = DependencyProperty.Register(nameof(IsIndeterminate), typeof(bool), typeof(StatePresenter), new PropertyMetadata(true, OnPropertyChanged));
     public static readonly DependencyProperty CanCancelProperty = DependencyProperty.Register(nameof(CanCancel), typeof(bool), typeof(StatePresenter), new PropertyMetadata(false, OnPropertyChanged));
 
+    private bool isBatchUpdating;
+
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is StatePresenter presenter)
+        if (d is StatePresenter { isBatchUpdating: false } presenter)
         {
             presenter.Bindings.Update();
         }
@@ -79,60 +81,84 @@ public sealed partial class StatePresenter : UserControl, INotifyPropertyChanged
 
     public void Present(FeatureState state)
     {
-        IsOpen = state.Kind != FeatureStateKind.Ready;
-        IsLoading = state.Kind is FeatureStateKind.Loading or FeatureStateKind.Executing;
-        IsIndeterminate = true;
-        Progress = 0;
-        CanCancel = false;
-        Title = state.Kind switch
+        isBatchUpdating = true;
+        try
         {
-            FeatureStateKind.Error => TextResources.Get("State_Error"),
-            FeatureStateKind.Unavailable => TextResources.Get("State_Unavailable"),
-            _ => string.Empty
-        };
-        Message = state.Message;
-        Details = state.Details ?? string.Empty;
-        Severity = state.Kind switch
+            IsOpen = state.Kind != FeatureStateKind.Ready;
+            IsLoading = state.Kind is FeatureStateKind.Loading or FeatureStateKind.Executing;
+            IsIndeterminate = true;
+            Progress = 0;
+            CanCancel = false;
+            Title = state.Kind switch
+            {
+                FeatureStateKind.Error => TextResources.Get("State_Error"),
+                FeatureStateKind.Unavailable => TextResources.Get("State_Unavailable"),
+                _ => string.Empty
+            };
+            Message = state.Message;
+            Details = state.Details ?? string.Empty;
+            Severity = state.Kind switch
+            {
+                FeatureStateKind.Error => InfoBarSeverity.Error,
+                FeatureStateKind.Unavailable => InfoBarSeverity.Warning,
+                _ => InfoBarSeverity.Informational
+            };
+            ActionButton.Content = string.IsNullOrWhiteSpace(state.ActionResourceKey)
+                ? string.Empty
+                : TextResources.Get(state.ActionResourceKey);
+            DetailsExpander.Header = TextResources.Get("State_TechnicalDetails");
+        }
+        finally
         {
-            FeatureStateKind.Error => InfoBarSeverity.Error,
-            FeatureStateKind.Unavailable => InfoBarSeverity.Warning,
-            _ => InfoBarSeverity.Informational
-        };
-        ActionButton.Content = string.IsNullOrWhiteSpace(state.ActionResourceKey)
-            ? string.Empty
-            : TextResources.Get(state.ActionResourceKey);
-        DetailsExpander.Header = TextResources.Get("State_TechnicalDetails");
+            isBatchUpdating = false;
+        }
         Bindings.Update();
     }
 
     public void Show(string title, string message, string? detail = null, double? progress = null, bool canCancel = false)
     {
-        IsOpen = true;
-        IsLoading = true;
-        Title = title;
-        Message = message;
-        Details = detail ?? string.Empty;
-        Progress = progress ?? 0;
-        IsIndeterminate = progress is null;
-        CanCancel = canCancel;
-        Severity = InfoBarSeverity.Informational;
-        ActionButton.Content = string.Empty;
-        DetailsExpander.Header = TextResources.Get("State_TechnicalDetails");
+        isBatchUpdating = true;
+        try
+        {
+            IsOpen = true;
+            IsLoading = true;
+            Title = title;
+            Message = message;
+            Details = detail ?? string.Empty;
+            Progress = progress ?? 0;
+            IsIndeterminate = progress is null;
+            CanCancel = canCancel;
+            Severity = InfoBarSeverity.Informational;
+            ActionButton.Content = string.Empty;
+            DetailsExpander.Header = TextResources.Get("State_TechnicalDetails");
+        }
+        finally
+        {
+            isBatchUpdating = false;
+        }
         Bindings.Update();
     }
 
     public void Complete(string message, bool failed = false)
     {
-        IsOpen = true;
-        IsLoading = false;
-        Title = string.Empty;
-        Message = message;
-        Details = string.Empty;
-        Progress = failed ? 0 : 100;
-        IsIndeterminate = false;
-        CanCancel = false;
-        Severity = failed ? InfoBarSeverity.Error : InfoBarSeverity.Success;
-        ActionButton.Content = string.Empty;
+        isBatchUpdating = true;
+        try
+        {
+            IsOpen = true;
+            IsLoading = false;
+            Title = string.Empty;
+            Message = message;
+            Details = string.Empty;
+            Progress = failed ? 0 : 100;
+            IsIndeterminate = false;
+            CanCancel = false;
+            Severity = failed ? InfoBarSeverity.Error : InfoBarSeverity.Success;
+            ActionButton.Content = string.Empty;
+        }
+        finally
+        {
+            isBatchUpdating = false;
+        }
         Bindings.Update();
     }
 
@@ -144,16 +170,24 @@ public sealed partial class StatePresenter : UserControl, INotifyPropertyChanged
 
     public void ShowUndo(string message, string actionText)
     {
-        IsOpen = true;
-        IsLoading = false;
-        Title = string.Empty;
-        Message = message;
-        Details = string.Empty;
-        Progress = 0;
-        IsIndeterminate = false;
-        CanCancel = false;
-        Severity = InfoBarSeverity.Informational;
-        ActionButton.Content = actionText;
+        isBatchUpdating = true;
+        try
+        {
+            IsOpen = true;
+            IsLoading = false;
+            Title = string.Empty;
+            Message = message;
+            Details = string.Empty;
+            Progress = 0;
+            IsIndeterminate = false;
+            CanCancel = false;
+            Severity = InfoBarSeverity.Informational;
+            ActionButton.Content = actionText;
+        }
+        finally
+        {
+            isBatchUpdating = false;
+        }
         Bindings.Update();
     }
 

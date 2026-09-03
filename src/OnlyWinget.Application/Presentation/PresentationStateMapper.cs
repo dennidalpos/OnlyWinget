@@ -12,17 +12,18 @@ public static class PresentationStateMapper
         ArgumentNullException.ThrowIfNull(state);
 
         return new OnlyWingetPresentationState(
-            CreateDashboardState(state),
-            CreatePresetsState(state),
-            CreateSearchState(state),
-            CreateUpdatesState(state),
-            CreateWindowsUpdateState(state),
-            CreateSourceState(state),
-            CreateActivityState(state));
+            ToDashboardState(state),
+            ToPresetsState(state),
+            ToSearchState(state),
+            ToUpdatesState(state),
+            ToWindowsUpdateState(state),
+            ToSourceState(state),
+            ToActivityState(state));
     }
 
-    private static DashboardPresentationState CreateDashboardState(OnlyWingetState state)
+    public static DashboardPresentationState ToDashboardState(OnlyWingetState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
         return new DashboardPresentationState(
             state.Capabilities.IsWingetAvailable,
             state.Workspace.Presets.Count,
@@ -43,8 +44,9 @@ public static class PresentationStateMapper
                 .ToArray());
     }
 
-    private static PresetsPresentationState CreatePresetsState(OnlyWingetState state)
+    public static PresetsPresentationState ToPresetsState(OnlyWingetState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
         var active = state.ActivePreset;
         var hasPreset = active is not null;
         var hasPackages = active?.Packages.Count > 0;
@@ -92,8 +94,9 @@ public static class PresentationStateMapper
             state.UserVisibleError);
     }
 
-    private static SearchPresentationState CreateSearchState(OnlyWingetState state)
+    public static SearchPresentationState ToSearchState(OnlyWingetState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
         var isLoading = state.BusyState == ApplicationBusyState.Searching;
         var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
         var canUseWinget = state.Capabilities.CanUseWinget;
@@ -126,8 +129,9 @@ public static class PresentationStateMapper
             state.UserVisibleError);
     }
 
-    private static UpdatesPresentationState CreateUpdatesState(OnlyWingetState state)
+    public static UpdatesPresentationState ToUpdatesState(OnlyWingetState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
         var isLoading = state.BusyState == ApplicationBusyState.RefreshingUpdates;
         var isExecuting = state.BusyState == ApplicationBusyState.ExecutingOperation;
         var canUseWinget = state.Capabilities.CanUseWinget;
@@ -171,8 +175,9 @@ public static class PresentationStateMapper
             state.UserVisibleError);
     }
 
-    private static WindowsUpdatePresentationState CreateWindowsUpdateState(OnlyWingetState state)
+    public static WindowsUpdatePresentationState ToWindowsUpdateState(OnlyWingetState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
         var isScanning = state.BusyState == ApplicationBusyState.ScanningWindowsUpdates;
         var isInstalling = state.BusyState == ApplicationBusyState.InstallingWindowsUpdates;
         var isBusy = isScanning || isInstalling;
@@ -225,8 +230,9 @@ public static class PresentationStateMapper
             state.UserVisibleError ?? (canUseWindowsUpdate ? null : state.Capabilities.WindowsUpdateUnavailableMessage));
     }
 
-    private static SourcePresentationState CreateSourceState(OnlyWingetState state)
+    public static SourcePresentationState ToSourceState(OnlyWingetState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
         var isLoading = state.BusyState is ApplicationBusyState.ManagingSources or ApplicationBusyState.CheckingCapabilities;
         var hasSource = state.Sources.Count > 0;
         var canUseWinget = state.Capabilities.CanUseWinget;
@@ -253,8 +259,9 @@ public static class PresentationStateMapper
             state.SourceError?.Message ?? state.UserVisibleError ?? (canUseWinget ? null : state.Capabilities.WingetUnavailableMessage));
     }
 
-    private static ActivityPresentationState CreateActivityState(OnlyWingetState state)
+    public static ActivityPresentationState ToActivityState(OnlyWingetState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
         return new ActivityPresentationState(
             state.Activity
                 .Select(entry => new ActivityRow(entry.Timestamp, entry.Timestamp.ToString("g", global::System.Globalization.CultureInfo.CurrentCulture), entry.Severity, entry.Title, entry.Message))

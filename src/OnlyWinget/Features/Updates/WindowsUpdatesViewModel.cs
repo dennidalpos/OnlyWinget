@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Selection;
@@ -7,7 +8,8 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Updates;
 
-public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch, OnlyWingetApplication? workflow = null)
+    : FeatureViewModel(dispatch, workflow)
 {
     private CancellationTokenSource? cancellation;
 
@@ -34,7 +36,10 @@ public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch) : F
     public void Toggle(WindowsUpdateDisplayRow row) => Workflow.ToggleWindowsUpdate(new WindowsUpdateIdentity(row.UpdateId, row.RevisionNumber));
     public void SetSelected(IEnumerable<WindowsUpdateDisplayRow> rows, bool isSelected) =>
         Workflow.SetWindowsUpdatesSelection(rows.Select(row => new WindowsUpdateIdentity(row.UpdateId, row.RevisionNumber)), isSelected);
-    public void Cancel() => cancellation?.Cancel();
+    public void Cancel()
+    {
+        try { cancellation?.Cancel(); } catch (ObjectDisposedException) { }
+    }
 
     public Task ScanAsync(WindowsUpdateOptions options) => RunAsync(token => Workflow.ScanWindowsUpdatesAsync(options, token));
     public Task InstallAsync(WindowsUpdateOptions options) => RunAsync(async token =>
@@ -48,7 +53,7 @@ public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch) : F
 
     protected override void Refresh()
     {
-        var state = PresentationStateMapper.FromApplicationState(Workflow.State).WindowsUpdates;
+        var state = PresentationStateMapper.ToWindowsUpdateState(Workflow.State);
         Updates.SynchronizeWith(state.Updates.Select(ToDisplayRow), Key);
         Commands = state.Commands.ToDictionary(command => command.Id);
         IsScanning = state.IsScanning;
@@ -68,10 +73,14 @@ public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch) : F
     private async Task RunAsync(Func<CancellationToken, Task> action)
     {
         if (cancellation is not null) return;
-        using var current = new CancellationTokenSource();
+        var current = new CancellationTokenSource();
         cancellation = current;
         try { await action(current.Token); }
-        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+        finally
+        {
+            if (ReferenceEquals(cancellation, current)) cancellation = null;
+            current.Dispose();
+        }
     }
 
     private static string Empty(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;

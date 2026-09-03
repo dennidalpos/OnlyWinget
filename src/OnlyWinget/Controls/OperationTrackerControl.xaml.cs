@@ -9,10 +9,14 @@ namespace OnlyWinget.Controls;
 
 public sealed partial class OperationTrackerControl : UserControl
 {
+    private readonly OnlyWingetApplication workflow;
     private DispatcherTimer? autoDismissTimer;
 
-    public OperationTrackerControl()
+    public OperationTrackerControl() : this(null) { }
+
+    public OperationTrackerControl(OnlyWingetApplication? workflow = null)
     {
+        this.workflow = workflow ?? App.Workflow;
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -20,19 +24,19 @@ public sealed partial class OperationTrackerControl : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        App.Workflow.StateChanged += OnStateChanged;
-        UpdateState(App.Workflow.State);
+        workflow.StateChanged += OnStateChanged;
+        UpdateState(workflow.State);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        App.Workflow.StateChanged -= OnStateChanged;
+        workflow.StateChanged -= OnStateChanged;
         StopAutoDismissTimer();
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
-        DispatcherQueue.TryEnqueue(() => UpdateState(App.Workflow.State));
+        DispatcherQueue.TryEnqueue(() => UpdateState(workflow.State));
     }
 
     public void UpdateState(OnlyWingetState state)
@@ -185,7 +189,7 @@ public sealed partial class OperationTrackerControl : UserControl
 
     private void OnCancelOperationClick(object sender, RoutedEventArgs e)
     {
-        App.Workflow.CancelCurrentOperation();
+        workflow.CancelCurrentOperation();
     }
 
     private void OnViewActivityClick(object sender, RoutedEventArgs e)

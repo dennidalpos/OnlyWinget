@@ -1,9 +1,9 @@
 using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.Navigation;
 using OnlyWinget.Application.System;
-using OnlyWinget.Infrastructure.System;
 using OnlyWinget.Services;
 
 namespace OnlyWinget;
@@ -40,7 +40,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             var exePath = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
             if (!string.IsNullOrWhiteSpace(exePath))
             {
-                UrlProtocolRegistrationService.Register(exePath);
+                Host.Services.GetRequiredService<IUrlProtocolService>().Register(exePath);
             }
         }
 

@@ -72,7 +72,6 @@ public sealed partial class OnlyWingetApplication(
 
     private OnlyWingetState CreateState()
     {
-        var active = ActivePreset;
         lock (stateLock)
         {
             if (!isStateDirty && cachedState != null)
@@ -80,6 +79,7 @@ public sealed partial class OnlyWingetApplication(
                 return cachedState;
             }
 
+            var active = ActivePreset;
             cachedState = new OnlyWingetState(
                 workspace,
                 active,
@@ -207,7 +207,10 @@ public sealed partial class OnlyWingetApplication(
         userVisibleError = null;
         try
         {
-            action();
+            lock (stateLock)
+            {
+                action();
+            }
             return ApplicationActionResult.Success;
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)

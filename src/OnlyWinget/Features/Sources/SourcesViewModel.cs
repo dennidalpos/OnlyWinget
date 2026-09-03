@@ -1,6 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
+using OnlyWinget.Application.Winget;
 using OnlyWinget.Presentation;
+using OnlyWinget.Services;
 using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Sources;
@@ -8,6 +11,7 @@ namespace OnlyWinget.Features.Sources;
 public sealed partial class SourcesViewModel : FeatureViewModel
 {
     private CancellationTokenSource? cancellation;
+    private readonly IConfirmationService? confirmationService;
     private IReadOnlyList<SourceRow> allSources = [];
     private string nameFilter = string.Empty;
     private string argumentFilter = string.Empty;
@@ -25,8 +29,15 @@ public sealed partial class SourcesViewModel : FeatureViewModel
 
     partial void OnSelectedSourceChanged(SourceRow? value) => OnPropertyChanged(nameof(Commands));
 
-    public SourcesViewModel(Action<Action> dispatch) : base(App.Workflow, dispatch)
+    public SourcesViewModel(Action<Action> dispatch) : this(dispatch, null, null) { }
+
+    internal SourcesViewModel(
+        Action<Action> dispatch,
+        OnlyWingetApplication? workflow = null,
+        IConfirmationService? confirmationService = null)
+        : base(dispatch, workflow)
     {
+        this.confirmationService = confirmationService;
         Name = new(ValidateName);
     }
 
@@ -37,15 +48,22 @@ public sealed partial class SourcesViewModel : FeatureViewModel
     public bool CanAdd => Name.IsValid && Argument.IsValid && Name.Value.Trim().Length > 0 && Argument.Value.Trim().Length > 0 && IsEnabled(UiCommandId.AddSource);
 
     public bool IsEnabled(UiCommandId id) => Commands.TryGetValue(id, out var command) && command.IsEnabled;
-    public void Cancel() => cancellation?.Cancel();
+    public void Cancel()
+    {
+        try { cancellation?.Cancel(); } catch (ObjectDisposedException) { }
+    }
 
     private async Task RunAsync(Func<CancellationToken, Task> action)
     {
         if (cancellation is not null) return;
-        using var current = new CancellationTokenSource();
+        var current = new CancellationTokenSource();
         cancellation = current;
         try { await action(current.Token); }
-        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+        finally
+        {
+            if (ReferenceEquals(cancellation, current)) cancellation = null;
+            current.Dispose();
+        }
     }
 
     public async Task AddAsync()
@@ -98,13 +116,14 @@ public sealed partial class SourcesViewModel : FeatureViewModel
         ApplyFilters();
     }
 
-    private static Task<bool> ConfirmAsync(string title, string message) => App.XamlRoot is { } root
-        ? App.UiServices.Confirmation.ConfirmAsync(root, title, message)
-        : Task.FromResult(false);
+    private Task<bool> ConfirmAsync(string title, string message) =>
+        confirmationService is not null && App.XamlRoot is { } rootWithService
+            ? confirmationService.ConfirmAsync(rootWithService, title, message)
+            : (App.XamlRoot is { } root ? App.UiServices.Confirmation.ConfirmAsync(root, title, message) : Task.FromResult(false));
 
     protected override void Refresh()
     {
-        var state = PresentationStateMapper.FromApplicationState(Workflow.State).Sources;
+        var state = PresentationStateMapper.ToSourceState(Workflow.State);
         IsRefreshing = state.IsLoading;
         Commands = state.Commands.ToDictionary(command => command.Id);
         allSources = state.Sources.Select(source => new SourceRow(
@@ -175,11 +194,7 @@ public sealed partial class SourcesViewModel : FeatureViewModel
             return TextResources.Get("Validation_Required");
         }
 
-        try
-        {
-            OnlyWinget.Infrastructure.Winget.WingetCommandBuilder.ValidateInput(value, nameof(value));
-        }
-        catch (ArgumentException)
+        if (!WingetInputValidator.IsValid(value))
         {
             return TextResources.Get("Validation_SourceName");
         }

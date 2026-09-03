@@ -21,11 +21,11 @@ WinUI Presentation -> Application -> Domain
 Infrastructure -----> Application -> Domain
 ```
 
-The presentation layer can reference infrastructure for composition via `AppComposition.cs` (`IHostBuilder` DI). Domain does not reference application, infrastructure, or UI code.
+The presentation layer references infrastructure strictly for composition via `AppComposition.cs` (`IHostBuilder` DI). No feature page, control, or ViewModel may reference infrastructure directly. Protocol registration is mediated by `IUrlProtocolService` and input validation by `WingetInputValidator`. Domain does not reference application, infrastructure, or UI code.
 
 ## Bootstrapping & Composition
 
-Application lifecycle and Dependency Injection are managed in `AppComposition.cs` using `Microsoft.Extensions.Hosting` (`IHost` / `IServiceCollection`). Structured logging is handled via **Serilog** configured with rolling file outputs in `%LOCALAPPDATA%\OnlyWinget\logs\` and an in-memory debug sink `AppDiagnosticsSerilogSink`.
+Application lifecycle and Dependency Injection are managed in `AppComposition.cs` using `Microsoft.Extensions.Hosting` (`IHost` / `IServiceCollection`). All UI services (`IAppSettingsService`, `IConfirmationService`, `IFilePickerService`, `IClipboardService`, `INavigationRegistry`, `IUrlProtocolService`) and orchestrators (`ApplicationStartupOrchestrator`) are registered by interface/type in DI. Structured logging is handled via **Serilog** configured with rolling file outputs in `%LOCALAPPDATA%\OnlyWinget\logs\` and an in-memory debug sink `AppDiagnosticsSerilogSink`.
 
 ## Local State & Persistence
 
@@ -52,7 +52,7 @@ Application startup builds the `IHost`, loads the SQLite workspace, checks OS su
 - **WinGet**: `ComWingetPackageService` leverages native COM interfaces (`Microsoft.Management.Deployment`) with `IMemoryCache` TTL caching, falling back to CLI execution (`ProcessWingetCommandRunner`) if COM is unavailable. Operation failures are classified by `WingetErrorClassifier` across all locales using standard HRESULT exit codes (`HashMismatch` `0x8A150002`, `NotFound` `0x8A150014`, `Cancelled` `0x8A150015`/`0x800704C7`, `NoUpdates` `0x8A15002B`, `SourceUnavailable` `0x8A15005E`, `CannotUpgrade` `0x8A150114`-`0x8A150117`). Non-retryable errors like `HashMismatch` fail cleanly with actionable user guidance to enable `InstallerHashOverride` or bypass validation in Settings.
 - **Windows Update**: `ComWindowsUpdateService` executes direct C# COM Interop (`IUpdateSession` / `IUpdateSearcher`) with real-time progress callbacks, falling back to dynamic PowerShell Base64 scripts (`PowerShellWindowsUpdateService`) supporting both `pwsh.exe` and `powershell.exe`. Supports optional updates (drivers and preview updates via `BrowseOnly`).
 - **Direct Search Operations**: Packages found via search can be installed directly without requiring inclusion in a preset or modifying existing presets.
-- **Process Security**: `ProcessExternalProcessRunner` handles process execution asynchronously using `ProcessStartInfo.ArgumentList` (no shell involved), so arguments are passed as discrete process parameters rather than a concatenated command line. The app runs elevated (`app.manifest` requests `requireAdministrator`) with runtime UAC privilege verification.
+- **Process Security**: `ProcessExternalProcessRunner` handles process execution asynchronously using `ProcessStartInfo.ArgumentList` (no shell involved), so arguments are passed as discrete process parameters rather than a concatenated command line. The app runs as invoker (`app.manifest` specifies `asInvoker`) supporting standard non-admin users without elevation prompts, with runtime UAC privilege verification.
 
 ## Presentation & MVVM
 
@@ -67,7 +67,7 @@ Feature ViewModels own operations, cancellation, validation, confirmation, clipb
 
 ## Installer
 
-The release artifact is an x64 NSIS setup EXE created from a self-contained `win-x64` publish. Packaging also produces a matching self-contained x64 portable ZIP.
+The release artifact is an x64 NSIS multi-user setup EXE created from a self-contained `win-x64` publish (`MultiUser.nsh` supporting per-machine `$PROGRAMFILES64` and per-user `$LOCALAPPDATA\Programs\OnlyWinget`). Packaging also produces a matching self-contained x64 portable ZIP.
 
 ## Notes
 

@@ -116,7 +116,11 @@ public sealed class PcMetricsService : IPcMetricsService
             : $"{uptime.Hours}h {uptime.Minutes}m {uptime.Seconds}s";
     }
 
-    private static string GetOsVersionText()
+    private static readonly Lazy<string> CachedOsVersionText = new(ResolveOsVersionText);
+
+    private static string GetOsVersionText() => CachedOsVersionText.Value;
+
+    private static string ResolveOsVersionText()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {

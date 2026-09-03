@@ -1,5 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using OnlyWinget.Application.System;
 using System.ComponentModel;
 
 namespace OnlyWinget.Features.Home;
@@ -11,7 +13,8 @@ public sealed partial class DashboardPage : Page
     public DashboardPage()
     {
         InitializeComponent();
-        viewModel = new(Dispatch);
+        var metricsService = App.Host.Services.GetRequiredService<IPcMetricsService>();
+        viewModel = new(Dispatch, metricsService);
         MetricRepeater.ItemsSource = viewModel.Metrics;
         viewModel.PropertyChanged += OnViewModelChanged;
         Loaded += OnLoaded;

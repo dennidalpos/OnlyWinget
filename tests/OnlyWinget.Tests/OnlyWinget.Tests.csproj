@@ -20,4 +20,5 @@
     <ProjectReference Include="..\..\src\OnlyWinget.Domain\OnlyWinget.Domain.csproj" />
     <ProjectReference Include="..\..\src\OnlyWinget.Infrastructure\OnlyWinget.Infrastructure.csproj" />
   </ItemGroup>
+
 </Project>

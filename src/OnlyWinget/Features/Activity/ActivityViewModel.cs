@@ -1,12 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using OnlyWinget.Application.Activity;
+using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Presentation;
 using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Activity;
 
-public sealed partial class ActivityViewModel(Action<Action> dispatch) : FeatureViewModel(App.Workflow, dispatch)
+public sealed partial class ActivityViewModel(Action<Action> dispatch, OnlyWingetApplication? workflow = null)
+    : FeatureViewModel(dispatch, workflow)
 {
     private IReadOnlyList<ActivityRow> allEntries = [];
     private string query = string.Empty;
@@ -70,9 +72,21 @@ public sealed partial class ActivityViewModel(Action<Action> dispatch) : Feature
 
     public string ExportText() => string.Join("\r\n\r\n", allEntries.Select(Format));
 
+    public IReadOnlyList<ActivityEntry> ClearActivity()
+    {
+        var snapshot = Workflow.State.Activity.ToArray();
+        Workflow.ClearActivity();
+        return snapshot;
+    }
+
+    public void RestoreActivity(IEnumerable<ActivityEntry> entries)
+    {
+        Workflow.RestoreActivity(entries);
+    }
+
     protected override void Refresh()
     {
-        var state = PresentationStateMapper.FromApplicationState(Workflow.State).Activity;
+        var state = PresentationStateMapper.ToActivityState(Workflow.State);
         allEntries = state.Entries;
         Commands = state.Commands;
         OnPropertyChanged(nameof(Commands));

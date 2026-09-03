@@ -1,3 +1,4 @@
+using OnlyWinget.Application.Winget;
 using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Infrastructure.Winget;
@@ -47,13 +48,7 @@ public sealed class WingetCommandBuilder
         return arguments;
     }
 
-    public static void ValidateInput(string input, string paramName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(input, paramName);
-        if (input.Any(c => char.IsControl(c) || c is '"' or '\'' or '`' or ';' or '|' or '&' or '<' or '>'))
-        {
-            throw new ArgumentException($"Invalid characters in argument: {paramName}", paramName);
-        }
-    }
+    public static void ValidateInput(string input, string paramName) =>
+        WingetInputValidator.Validate(input, paramName);
 }
 

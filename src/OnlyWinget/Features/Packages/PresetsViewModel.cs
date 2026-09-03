@@ -6,6 +6,7 @@ using OnlyWinget.Domain.Selection;
 using OnlyWinget.Application.Presets;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Presentation;
+using OnlyWinget.Services;
 using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Packages;
@@ -25,9 +26,20 @@ public sealed partial class PresetsViewModel : FeatureViewModel
     private SelectionHeaderState headerState;
 
     private CancellationTokenSource? cancellation;
+    private readonly IConfirmationService? confirmationService;
+    private readonly IFilePickerService? filePickerService;
 
-    public PresetsViewModel(Action<Action> dispatch) : base(App.Workflow, dispatch)
+    public PresetsViewModel(Action<Action> dispatch) : this(dispatch, null, null, null) { }
+
+    internal PresetsViewModel(
+        Action<Action> dispatch,
+        OnlyWingetApplication? workflow = null,
+        IConfirmationService? confirmationService = null,
+        IFilePickerService? filePickerService = null)
+        : base(dispatch, workflow)
     {
+        this.confirmationService = confirmationService;
+        this.filePickerService = filePickerService;
         PresetName = new(ValidatePresetName);
         PackageId = new(ValidatePackageId);
     }
@@ -49,7 +61,10 @@ public sealed partial class PresetsViewModel : FeatureViewModel
     public void SetSelected(IEnumerable<PresetPackageRow> rows, bool isSelected) =>
         Workflow.SetPresetPackagesInclusion(rows.Select(row => new PackageIdentity(row.PackageId, row.Source)), isSelected);
     public void Select(PresetPackageRow row) => Workflow.SelectPresetPackage(new PackageIdentity(row.PackageId, row.Source));
-    public void Cancel() => cancellation?.Cancel();
+    public void Cancel()
+    {
+        try { cancellation?.Cancel(); } catch (ObjectDisposedException) { }
+    }
 
     public async Task AddPackagesAsync(IEnumerable<PackageIdentity> packages)
     {
@@ -132,16 +147,22 @@ public sealed partial class PresetsViewModel : FeatureViewModel
 
     private PackageIdentity Package(string source) => new(PackageId.Value.Trim(), source.Trim());
     private static bool Validate(ValidatedField field) { field.Validate(); return field.IsValid; }
-    private static Task<bool> ConfirmAsync(string title, string message) => App.XamlRoot is { } root
-        ? App.UiServices.Confirmation.ConfirmAsync(root, title, message) : Task.FromResult(false);
+    private Task<bool> ConfirmAsync(string title, string message) =>
+        confirmationService is not null && App.XamlRoot is { } rootWithService
+            ? confirmationService.ConfirmAsync(rootWithService, title, message)
+            : (App.XamlRoot is { } root ? App.UiServices.Confirmation.ConfirmAsync(root, title, message) : Task.FromResult(false));
 
     private async Task RunAsync(Func<CancellationToken, Task> action)
     {
         if (cancellation is not null) return;
-        using var current = new CancellationTokenSource();
+        var current = new CancellationTokenSource();
         cancellation = current;
         try { await action(current.Token); }
-        finally { if (ReferenceEquals(cancellation, current)) cancellation = null; }
+        finally
+        {
+            if (ReferenceEquals(cancellation, current)) cancellation = null;
+            current.Dispose();
+        }
     }
 
     private async Task<bool> RunResultAsync(Func<CancellationToken, Task<ApplicationActionResult>> action)
@@ -165,9 +186,10 @@ public sealed partial class PresetsViewModel : FeatureViewModel
         try
         {
             var imported = false;
+            var picker = filePickerService ?? App.UiServices.FilePicker;
             await RunAsync(async token =>
             {
-                var json = await App.UiServices.FilePicker.PickAndReadTextAsync(App.WindowId, ".json", token);
+                var json = await picker.PickAndReadTextAsync(App.WindowId, ".json", token);
                 if (json is not null)
                 {
                     imported = (await Workflow.ImportPresetAsync(json, token)).Succeeded;
@@ -186,7 +208,8 @@ public sealed partial class PresetsViewModel : FeatureViewModel
         if (Workflow.State.ActivePreset is not { } active) return;
         try
         {
-            await RunAsync(token => App.UiServices.FilePicker.PickAndWriteTextAsync(App.WindowId, PresetDocumentService.GetExportFileName(active.Name), ".json", "Preset_FileType", Workflow.ExportActivePreset(), token));
+            var picker = filePickerService ?? App.UiServices.FilePicker;
+            await RunAsync(token => picker.PickAndWriteTextAsync(App.WindowId, PresetDocumentService.GetExportFileName(active.Name), ".json", "Preset_FileType", Workflow.ExportActivePreset(), token));
         }
         catch (Exception exception) when (exception is not OperationCanceledException) { Workflow.ReportExternalFailure(TextResources.Get("Error_PresetExportWrite")); }
     }
@@ -203,7 +226,7 @@ public sealed partial class PresetsViewModel : FeatureViewModel
 
     protected override void Refresh()
     {
-        var state = PresentationStateMapper.FromApplicationState(Workflow.State).Presets;
+        var state = PresentationStateMapper.ToPresetsState(Workflow.State);
         PresetNames.SynchronizeWith(state.PresetNames, name => name);
         Packages.SynchronizeWith(state.Packages.Select(row => row with
         {

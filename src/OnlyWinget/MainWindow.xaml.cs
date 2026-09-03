@@ -271,7 +271,7 @@ public sealed partial class MainWindow : Window
         UpdateTitleBarPadding();
         try
         {
-            await new ApplicationStartupOrchestrator(App.Workflow).InitializeAsync(windowLifetime.Token);
+            await AppComposition.CreateStartupOrchestrator().InitializeAsync(windowLifetime.Token);
             UpdateStatusBadges();
         }
         catch (OperationCanceledException) when (windowLifetime.IsCancellationRequested)

@@ -22,8 +22,9 @@ This skill is the project-specific developer guide for agents working on [OnlyWi
 
 2. **Concurrency & Thread Safety**:
    - Guard shared in-memory updates (like `packageMetadata` additions) with `lock` sync primitives.
-   - Persistence operations (`SqliteWorkspaceStore`, `JsonSourcePreferenceStore`, app settings storage) use embedded SQLite transaction blocks and instance-scoped `SemaphoreSlim(1,1)` guards.
-   - Always pass a real `CancellationToken` to every cancellable operation. Never use `CancellationToken.None` for work designed to support cancellation.
+   - **Process Isolation**: All external process execution must use `ProcessExternalProcessRunner`.
+   - **Command Argument Sanitization**: Arguments must always be passed via `ProcessStartInfo.ArgumentList` (never concatenated into a shell command line). The app runs as invoker (`app.manifest` specifies `asInvoker`), supporting both standard non-admin users and elevated execution with runtime privilege detection.
+   - **CancellationToken Propagation**: Every asynchronous operation must accept and honor real `CancellationToken` instances for work designed to support cancellation.
 
 3. **WinUI Presentation & MVVM**:
    - Use `CommunityToolkit.Mvvm` source generators (`[ObservableProperty]`, `[RelayCommand]`) and `WeakReferenceMessenger`. ViewModels bound via `x:Bind` must be declared `public` (constructors can remain `internal`) for successful compilation.

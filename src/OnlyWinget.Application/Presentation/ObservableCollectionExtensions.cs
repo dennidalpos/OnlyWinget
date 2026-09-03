@@ -16,8 +16,13 @@ public static class ObservableCollectionExtensions
     public static void SynchronizeWith<T, TKey>(this ObservableCollection<T> target, IEnumerable<T> source, Func<T, TKey> keySelector, System.Action<T, T>? updateAction = null)
         where TKey : notnull
     {
-        var desired = source.ToArray();
-        var desiredKeys = desired.Select(keySelector).ToHashSet();
+        var desired = source as T[] ?? source.ToArray();
+        var desiredKeys = new HashSet<TKey>(desired.Length);
+        for (var i = 0; i < desired.Length; i++)
+        {
+            desiredKeys.Add(keySelector(desired[i]));
+        }
+
         for (var index = target.Count - 1; index >= 0; index--)
         {
             if (!desiredKeys.Contains(keySelector(target[index])))
@@ -30,12 +35,20 @@ public static class ObservableCollectionExtensions
         {
             var key = keySelector(desired[index]);
             var currentIndex = -1;
-            for (var candidate = index; candidate < target.Count; candidate++)
+
+            if (index < target.Count && EqualityComparer<TKey>.Default.Equals(keySelector(target[index]), key))
             {
-                if (EqualityComparer<TKey>.Default.Equals(keySelector(target[candidate]), key))
+                currentIndex = index;
+            }
+            else
+            {
+                for (var candidate = index + 1; candidate < target.Count; candidate++)
                 {
-                    currentIndex = candidate;
-                    break;
+                    if (EqualityComparer<TKey>.Default.Equals(keySelector(target[candidate]), key))
+                    {
+                        currentIndex = candidate;
+                        break;
+                    }
                 }
             }
 

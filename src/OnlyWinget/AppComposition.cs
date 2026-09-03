@@ -47,17 +47,22 @@ internal static class AppComposition
                 services.AddSingleton(sp => new JsonAppSettingsService(JsonAppSettingsService.DefaultFilePath));
                 services.AddSingleton<IAppSettingsService>(sp => sp.GetRequiredService<JsonAppSettingsService>());
                 services.AddSingleton(sp => new ConfirmationService(sp.GetRequiredService<JsonAppSettingsService>()));
+                services.AddSingleton<IConfirmationService>(sp => sp.GetRequiredService<ConfirmationService>());
                 services.AddSingleton<FilePickerService>();
+                services.AddSingleton<IFilePickerService>(sp => sp.GetRequiredService<FilePickerService>());
                 services.AddSingleton<ClipboardService>();
+                services.AddSingleton<IClipboardService>(sp => sp.GetRequiredService<ClipboardService>());
                 services.AddSingleton<NavigationRegistry>();
+                services.AddSingleton<INavigationRegistry>(sp => sp.GetRequiredService<NavigationRegistry>());
                 services.AddSingleton<UiServiceCollection>(sp => new UiServiceCollection(
-                    sp.GetRequiredService<JsonAppSettingsService>(),
-                    sp.GetRequiredService<ConfirmationService>(),
-                    sp.GetRequiredService<FilePickerService>(),
-                    sp.GetRequiredService<ClipboardService>(),
-                    sp.GetRequiredService<NavigationRegistry>()));
+                    sp.GetRequiredService<IAppSettingsService>(),
+                    sp.GetRequiredService<IConfirmationService>(),
+                    sp.GetRequiredService<IFilePickerService>(),
+                    sp.GetRequiredService<IClipboardService>(),
+                    sp.GetRequiredService<INavigationRegistry>()));
 
                 // Infrastructure & Application Services
+                services.AddSingleton<IUrlProtocolService, UrlProtocolRegistrationService>();
                 services.AddSingleton<IExternalProcessRunner, ProcessExternalProcessRunner>();
                 services.AddSingleton<WingetProgressParser>();
                 services.AddSingleton<WingetTableParser>();
@@ -131,9 +136,10 @@ internal static class AppComposition
 
                     app.ExceptionLogger = AppDiagnostics.WriteException;
                     app.Logger = AppDiagnostics.Write;
-                    app.StateChanged += (_, _) => CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send(new Presentation.StateChangedMessage(app.State));
                     return app;
                 });
+
+                services.AddSingleton<ApplicationStartupOrchestrator>();
             });
 
         return builder.Build();
@@ -142,4 +148,6 @@ internal static class AppComposition
     public static UiServiceCollection CreateUiServices() => Host.Services.GetRequiredService<UiServiceCollection>();
 
     public static OnlyWingetApplication CreateWorkflow() => Host.Services.GetRequiredService<OnlyWingetApplication>();
+
+    public static ApplicationStartupOrchestrator CreateStartupOrchestrator() => Host.Services.GetRequiredService<ApplicationStartupOrchestrator>();
 }

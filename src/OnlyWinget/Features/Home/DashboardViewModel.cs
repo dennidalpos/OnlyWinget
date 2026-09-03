@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
+using OnlyWinget.Application.App;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.Application.System;
 using OnlyWinget.Presentation;
@@ -23,21 +24,54 @@ public sealed partial class DashboardViewModel : FeatureViewModel
     [ObservableProperty]
     private bool hasWarning;
 
-    public DashboardViewModel(Action<Action> dispatch, IPcMetricsService? pcMetricsService = null)
-        : base(App.Workflow, dispatch)
+    public DashboardViewModel(
+        Action<Action> dispatch,
+        IPcMetricsService? pcMetricsService = null,
+        OnlyWingetApplication? workflow = null)
+        : base(dispatch, workflow)
     {
-        metricsService = pcMetricsService ?? AppComposition.Host.Services.GetRequiredService<IPcMetricsService>();
+        metricsService = pcMetricsService ?? App.Host.Services.GetRequiredService<IPcMetricsService>();
     }
 
     public ObservableCollection<DashboardMetric> Metrics { get; } = [new(), new(), new(), new(), new(), new()];
     public bool IsBusy => OperationalStatus == TextResources.Get("Dashboard_Busy");
     public string ActivePresetDisplay => $"{TextResources.Get("Dashboard_ActivePreset")}: {ActivePreset}";
 
+    private int metricsRefreshVersion;
+
     protected override void Refresh()
     {
-        var state = PresentationStateMapper.FromApplicationState(Workflow.State).Dashboard;
-        var pcMetrics = metricsService.GetCurrentMetrics();
+        var state = PresentationStateMapper.ToDashboardState(Workflow.State);
 
+        ActivePreset = state.ActivePresetName ?? TextResources.Get("Dashboard_NoActivePreset");
+        HasWarning = state.RebootRequired || state.IsWingetAvailable == false || state.IsWindowsUpdateAvailable == false;
+        OperationalStatus = state.RebootRequired
+            ? TextResources.Get("Dashboard_RebootWarning")
+            : state.IsBusy ? TextResources.Get("Dashboard_Busy") : TextResources.Get("Dashboard_Ready");
+
+        PageState = state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : FeatureState.Ready;
+
+        OnPropertyChanged(nameof(IsBusy));
+        OnPropertyChanged(nameof(ActivePresetDisplay));
+
+        var currentVersion = Interlocked.Increment(ref metricsRefreshVersion);
+        Task.Run(() =>
+        {
+            var pcMetrics = metricsService.GetCurrentMetrics();
+            if (Volatile.Read(ref metricsRefreshVersion) != currentVersion) return;
+
+            Dispatch(() =>
+            {
+                if (Volatile.Read(ref metricsRefreshVersion) != currentVersion) return;
+                UpdateMetrics(pcMetrics);
+            });
+        });
+    }
+
+    private void UpdateMetrics(PcMetrics pcMetrics)
+    {
         Metrics[0].AccentKey = "AreaHomeBrush";
         Metrics[1].AccentKey = "AreaPackagesBrush";
         Metrics[2].AccentKey = "AreaHomeBrush";
@@ -62,19 +96,6 @@ public sealed partial class DashboardViewModel : FeatureViewModel
 
         Metrics[5].Label = TextResources.Get("Dashboard_Network");
         Metrics[5].Value = pcMetrics.NetworkStatusText;
-
-        ActivePreset = state.ActivePresetName ?? TextResources.Get("Dashboard_NoActivePreset");
-        HasWarning = state.RebootRequired || state.IsWingetAvailable == false || state.IsWindowsUpdateAvailable == false;
-        OperationalStatus = state.RebootRequired
-            ? TextResources.Get("Dashboard_RebootWarning")
-            : state.IsBusy ? TextResources.Get("Dashboard_Busy") : TextResources.Get("Dashboard_Ready");
-
-        PageState = state.Error is not null
-            ? FeatureState.Error(state.Error)
-            : FeatureState.Ready;
-
-        OnPropertyChanged(nameof(IsBusy));
-        OnPropertyChanged(nameof(ActivePresetDisplay));
     }
 }
 
