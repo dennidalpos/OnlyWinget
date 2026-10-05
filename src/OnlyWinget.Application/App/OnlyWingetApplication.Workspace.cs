@@ -209,21 +209,22 @@ public sealed partial class OnlyWingetApplication
                     updatedPackages.Add(validated.Package);
                     addedCount++;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
                 {
                     errors.Add($"{package.Id}: {ex.Message}");
                 }
             }
 
+            if (errors.Count > 0)
+            {
+                throw new InvalidOperationException($"No packages were added because validation failed:{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
             if (addedCount > 0)
             {
                 ReplacePreset(active.Name, new Preset(active.Name, updatedPackages), active.Name);
                 AddActivity(ActivitySeverity.Success, "Packages pasted", $"{addedCount} package(s) added.");
-            }
-
-            if (errors.Count > 0)
-            {
-                throw new InvalidOperationException($"Failed to add some packages:{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
             }
         }, "Unable to validate pasted packages.").ConfigureAwait(false);
 

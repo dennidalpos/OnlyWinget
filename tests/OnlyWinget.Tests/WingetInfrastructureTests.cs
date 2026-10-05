@@ -15,6 +15,22 @@ namespace OnlyWinget.Tests;
 public sealed class WingetInfrastructureTests
 {
     [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task CancelledWindowsUpdateOperationsDoNotInvokeComOrFallback()
+    {
+        var runner = new RecordingExternalProcessRunner();
+        var capabilities = new SystemCapabilityService(runner);
+        var service = new ComWindowsUpdateService(new PowerShellWindowsUpdateService(runner, capabilities));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.ScanAsync(new(), cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.InstallAsync(
+            [new WindowsUpdateIdentity("dummy", 1)], new(), cancellation.Token));
+        Assert.Empty(runner.CommandCalls);
+    }
+
+    [Fact]
     public async Task SystemCapabilityServiceChecksRequiredCommandsAndWindowsUpdateCom()
     {
         var runner = new RecordingExternalProcessRunner(
@@ -672,18 +688,16 @@ public sealed class WingetInfrastructureTests
 
     [Fact]
     [SupportedOSPlatform("windows")]
-    public async Task ComWingetPackageServiceReturnsCachedSearchResultWithoutTouchingFallback()
+    public async Task WingetSearchReturnsCachedResultWithoutRunningACommand()
     {
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, "should not run", string.Empty));
-        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
-        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var request = new PackageSearchRequest("git", "winget");
         var cachedOutcome = WingetOperationOutcome<PackageSearchResult>.Success(
             [new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null)],
             "cached");
-        cache.Set($"com_winget_search_{request.Query}_{request.Source}", cachedOutcome, TimeSpan.FromMinutes(5));
-        var service = new ComWingetPackageService(search, resolver, cache);
+        cache.Set($"winget_search_{request.Query}_{request.Source}", cachedOutcome, TimeSpan.FromMinutes(5));
+        var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier(), cache);
 
         var outcome = await service.SearchAsync(request, CancellationToken.None);
 
@@ -693,7 +707,7 @@ public sealed class WingetInfrastructureTests
 
     [Fact]
     [SupportedOSPlatform("windows")]
-    public async Task ComWingetPackageServiceDelegatesInstalledStatusCheckToFallbackResolver()
+    public async Task WingetResolverChecksInstalledStatus()
     {
         const string output = """
             Name Id      Version
@@ -701,9 +715,7 @@ public sealed class WingetInfrastructureTests
             Git  Git.Git 2.54.0
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
-        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
-        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
-        var service = new ComWingetPackageService(search, resolver);
+        var service = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
 
         var status = await service.CheckInstalledStatusAsync(new PackageIdentity("Git.Git"), CancellationToken.None);
 
@@ -714,7 +726,7 @@ public sealed class WingetInfrastructureTests
 
     [Fact]
     [SupportedOSPlatform("windows")]
-    public async Task ComWingetPackageServiceResolvesThroughFallbackWhenComFails()
+    public async Task WingetResolverResolvesPackagesThroughCli()
     {
         const string showOutput = """
             Found Git [Git.Git]
@@ -722,9 +734,7 @@ public sealed class WingetInfrastructureTests
             Publisher: The Git Project
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, showOutput, string.Empty));
-        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
-        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
-        var service = new ComWingetPackageService(search, resolver);
+        var service = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
 
         var resolution = await service.ResolveAsync(new PackageIdentity("Git.Git"), CancellationToken.None);
 
@@ -734,7 +744,7 @@ public sealed class WingetInfrastructureTests
 
     [Fact]
     [SupportedOSPlatform("windows")]
-    public async Task ComWingetPackageServiceSearchesThroughFallbackWhenComFails()
+    public async Task WingetSearchUsesRequestedCliSource()
     {
         const string searchOutput = """
             Name Id      Version Source
@@ -742,15 +752,14 @@ public sealed class WingetInfrastructureTests
             Git  Git.Git 2.54.0  winget
             """;
         var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, searchOutput, string.Empty));
-        var search = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
-        var resolver = new WingetPackageResolver(runner, new WingetTableParser(), new WingetErrorClassifier());
-        var service = new ComWingetPackageService(search, resolver);
+        var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier());
 
         var outcome = await service.SearchAsync(new PackageSearchRequest("git", "winget"), CancellationToken.None);
 
         Assert.True(outcome.Succeeded);
         Assert.Single(outcome.Rows);
         Assert.Equal("Git.Git", outcome.Rows[0].Package.Id);
+        Assert.Contains(runner.Calls, call => call.Contains("--source") && call[^1] == "winget");
     }
 
     [Fact]

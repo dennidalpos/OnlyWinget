@@ -6,7 +6,7 @@ OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows and 
 
 - `src/OnlyWinget.Domain`: package identity, presets, batch selection, operation plans, status, and validation primitives.
 - `src/OnlyWinget.Application`: use-case orchestration, preset import/export, workspace/source-preference storage contracts, capability contracts, and `winget`/Windows Update ports.
-- `src/OnlyWinget.Infrastructure`: SQLite relateral workspace persistence (`EF Core 10`), native WinGet COM API (`Microsoft.Management.Deployment`), direct Windows Update COM interop (`WUApiLib`), DPAPI secret storage, capability probing, and REST source client.
+- `src/OnlyWinget.Infrastructure`: SQLite workspace persistence (`EF Core 10`), WinGet CLI execution, Windows Update COM automation, DPAPI secret storage, and capability probing.
 - `src/OnlyWinget`: WinUI 3 presentation shell targeting `.NET 10` and Windows 10 build `17763`, configured via `Microsoft.Extensions.Hosting` (`Host.CreateDefaultBuilder()`), Serilog structured logging, and `CommunityToolkit.Mvvm` ViewModels.
 - `src/OnlyWinget.Setup`: NSIS setup script and assets, packaged by `scripts/package.ps1`.
 - `tests/OnlyWinget.Tests`: xUnit tests for domain, application, infrastructure, and automated UI Automation accessibility audits.
@@ -45,12 +45,14 @@ Upon application startup, `SqliteWorkspaceStore` automatically detects and migra
 
 Preset exchange supports only `onlywinget.preset.v1`.
 
+A failed workspace load is reported to the UI and blocks SQLite saves until a successful reload. Startup stops after a load failure to preserve the diagnostic. Bulk preset paste validates the full batch before changing the preset.
+
 ## Native Interop & Capabilities
 
 Application startup builds the `IHost`, loads the SQLite workspace, checks OS support, probes Windows edition (Home/Pro/Enterprise/IoT), display version, UI culture/language (`CultureInfo.CurrentUICulture`), UAC elevation privileges, probes `winget` COM and CLI capabilities, checks dual PowerShell availability (PowerShell 7 Core `pwsh.exe` and Windows PowerShell 5.1 `powershell.exe` with dynamic fallback), lists sources, and probes Windows Update COM availability (`WUApiLib`) through `ISystemCapabilityService`.
 
-- **WinGet**: `ComWingetPackageService` leverages native COM interfaces (`Microsoft.Management.Deployment`) with `IMemoryCache` TTL caching, falling back to CLI execution (`ProcessWingetCommandRunner`) if COM is unavailable. Operation failures are classified by `WingetErrorClassifier` across all locales using standard HRESULT exit codes (`HashMismatch` `0x8A150002`, `NotFound` `0x8A150014`, `Cancelled` `0x8A150015`/`0x800704C7`, `NoUpdates` `0x8A15002B`, `SourceUnavailable` `0x8A15005E`, `CannotUpgrade` `0x8A150114`-`0x8A150117`). Non-retryable errors like `HashMismatch` fail cleanly with actionable user guidance to enable `InstallerHashOverride` or bypass validation in Settings.
-- **Windows Update**: `ComWindowsUpdateService` executes direct C# COM Interop (`IUpdateSession` / `IUpdateSearcher`) with real-time progress callbacks, falling back to dynamic PowerShell Base64 scripts (`PowerShellWindowsUpdateService`) supporting both `pwsh.exe` and `powershell.exe`. Supports optional updates (drivers and preview updates via `BrowseOnly`).
+- **WinGet**: `WingetPackageSearchService` and `WingetPackageResolver` use `ProcessWingetCommandRunner` with explicit source arguments. Search results are cached per query/source for five minutes. Unknown or nonnumeric versions are left to WinGet's upgrade logic. Operation failures are classified by `WingetErrorClassifier` across locales using standard HRESULT exit codes.
+- **Windows Update**: `ComWindowsUpdateService` uses `BeginSearch`, `BeginDownload`, and `BeginInstall` off the UI thread. Cancellation requests `RequestAbort`; `CleanUp` waits for WUA to release the callbacks. Installation failures and cancellation do not automatically repeat the operation through PowerShell. PowerShell fallback remains available when COM cannot be activated. Installation matches both update ID and revision, and incomplete result sets fail explicitly. Results and restart warnings survive rescans; failed installations are not followed by automatic rescans. Supports optional updates via `BrowseOnly`.
 - **Direct Search Operations**: Packages found via search can be installed directly without requiring inclusion in a preset or modifying existing presets.
 - **Process Security**: `ProcessExternalProcessRunner` handles process execution asynchronously using `ProcessStartInfo.ArgumentList` (no shell involved), so arguments are passed as discrete process parameters rather than a concatenated command line. The app runs as invoker (`app.manifest` specifies `asInvoker`) supporting standard non-admin users without elevation prompts, with runtime UAC privilege verification.
 
@@ -68,6 +70,8 @@ Feature ViewModels own operations, cancellation, validation, confirmation, clipb
 ## Installer
 
 The release artifact is an x64 NSIS multi-user setup EXE created from a self-contained `win-x64` publish (`MultiUser.nsh` supporting per-machine `$PROGRAMFILES64` and per-user `$LOCALAPPDATA\Programs\OnlyWinget`). Packaging also produces a matching self-contained x64 portable ZIP.
+
+Packaging generates `InstalledFiles.nsh` from the publish directory. The same file list controls extraction and removal. Uninstall removes only distributed files and empty directories, preserving unrelated files in the chosen destination. Run `scripts/test-installer-owned-files.ps1` to verify this behavior with an isolated NSIS fixture.
 
 ## Notes
 

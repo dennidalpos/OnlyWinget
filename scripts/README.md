@@ -29,7 +29,8 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `build.ps1` | Direct WinUI build action. |
 | `dev.ps1` | Direct app launch action. |
 | `package.ps1` | Direct x64 NSIS setup executable and self-contained portable ZIP packaging action. |
-| `check.ps1` | Direct full gate action. Supports `-Fast` (default) and `-Full`. |
+| `test-installer-owned-files.ps1` | Compiles and runs an isolated NSIS fixture; verifies removal of distributed files and preservation of unrelated root/nested files. Requires NSIS. |
+| `check.ps1` | Full gate including the installer file ownership regression. Supports `-Fast` (default) and `-Full`. |
 | `clean.ps1` | Direct guarded cleanup action. |
 | `validate-installer-lifecycle.ps1` | Direct elevated clean-host lifecycle validation. |
 | `validate-installed-startup.ps1` | Verifies that an installed executable starts and remains responsive. |

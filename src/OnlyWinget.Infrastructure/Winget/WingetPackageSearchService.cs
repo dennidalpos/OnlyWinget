@@ -17,6 +17,7 @@ public sealed class WingetPackageSearchService(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var cacheKey = $"winget_search_{request.Query}_{request.Source}";
         if (cache is not null && cache.TryGetValue(cacheKey, out WingetOperationOutcome<PackageSearchResult>? cachedOutcome) && cachedOutcome is not null)

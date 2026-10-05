@@ -37,8 +37,8 @@ This skill is the project-specific developer guide for agents working on [OnlyWi
    - Do NOT create `.resw` or `.resx` files. All string values are stored in [TextResources.cs](file:///d:/GITHUB/OnlyWinget/src/OnlyWinget/TextResources.cs) code dictionaries.
 
 5. **External Processes & COM**:
-   - Primary WinGet search/resolve uses native COM API (`ComWingetPackageService` / `Microsoft.Management.Deployment`) with `IMemoryCache` TTL caching, falling back to CLI process parsing (`ProcessWingetCommandRunner`).
-   - Windows Update uses direct C# COM Interop (`ComWindowsUpdateService` / `WUApiLib`) with real-time progress callbacks, falling back to PowerShell Base64 scripts.
+   - WinGet search/resolve uses `WingetPackageSearchService` and `WingetPackageResolver` through `ProcessWingetCommandRunner`, with source-specific `IMemoryCache` TTL caching.
+   - Windows Update uses COM automation (`ComWindowsUpdateService`) with asynchronous jobs and `RequestAbort` cancellation. PowerShell fallback is allowed when COM cannot be activated; never retry a cancelled or failed installation automatically.
    - Centralize OS/winget/PowerShell capability checks in `ISystemCapabilityService`.
    - Scan Windows Update only on explicit user action; read-only discovery must not require administrative elevation.
    - Guard all process execution and COM interop with structured failure handling. Return actionable results (`WingetOperationOutcome`, `WindowsUpdateOperationOutcome`).

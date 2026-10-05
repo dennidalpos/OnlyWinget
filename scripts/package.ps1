@@ -12,6 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/InstallerFiles.ps1')
 
 $isFastMode = -not $Full
 
@@ -193,12 +194,15 @@ function Invoke-PublishAndPackage {
     $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
     Assert-Path -Path $publishedExePath -Description 'Published executable x64'
     Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
+    $installerFileInclude = Join-Path $nsisStagingRoot 'InstalledFiles.nsh'
+    Write-InstallerFileInclude -PublishDirectory $publishDir -OutputPath $installerFileInclude
 
     # 1. NSIS Installer Setup EXE
     $makensisExe = Resolve-MakensisExe
     $nsisArgs = @(
         "-DPRODUCT_VERSION=$installerVersion",
         "-DPUBLISH_DIR=$publishDir",
+        "-DINSTALLER_FILE_INCLUDE=$installerFileInclude",
         "-DOUT_FILE=$setupFilePath",
         $nsisScriptPath
     )

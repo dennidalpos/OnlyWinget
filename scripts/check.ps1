@@ -148,6 +148,10 @@ Invoke-Step 'setup package' {
     & $packageScriptPath -Configuration $Configuration -NoRestore -StopRunningInstance:$StopRunningInstance -Full:$Full -NonInteractive:$NonInteractive
 }
 
+Invoke-Step 'installer file ownership regression' {
+    & (Join-Path $PSScriptRoot 'test-installer-owned-files.ps1')
+}
+
 Invoke-Step 'artifact analysis' {
     New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
     $artifact = Get-Item (Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe")

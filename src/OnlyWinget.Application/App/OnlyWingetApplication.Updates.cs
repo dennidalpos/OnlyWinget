@@ -106,7 +106,6 @@ public sealed partial class OnlyWingetApplication
                 async cancellationToken =>
                 {
                     RequireWindowsUpdate();
-                    lastWindowsUpdateResults.Clear();
                     var outcome = await windowsUpdateService.ScanAsync(options, cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
@@ -169,6 +168,14 @@ public sealed partial class OnlyWingetApplication
                     }
 
                     lastWindowsUpdateResults.AddRange(outcome.Rows);
+                    var selectedKeys = selected.Select(WindowsUpdateFingerprint).ToHashSet(StringComparer.Ordinal);
+                    var resultKeys = outcome.Rows.Select(result => WindowsUpdateFingerprint(result.Identity)).ToArray();
+                    if (resultKeys.Length != selectedKeys.Count ||
+                        resultKeys.Distinct(StringComparer.Ordinal).Count() != selectedKeys.Count ||
+                        resultKeys.Any(key => !selectedKeys.Contains(key)))
+                    {
+                        throw new InvalidOperationException("Windows Update did not return a result for every selected update and revision. Scan again before retrying.");
+                    }
                     foreach (var result in outcome.Rows)
                     {
                         var severity = result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error;
@@ -226,46 +233,17 @@ public sealed partial class OnlyWingetApplication
     internal static bool IsUpToDate(string? installed, string? available)
     {
         if (string.IsNullOrWhiteSpace(installed)) return false;
-        if (string.IsNullOrWhiteSpace(available)) return true;
+        if (string.IsNullOrWhiteSpace(available)) return false;
 
         installed = CleanVersion(installed);
         available = CleanVersion(available);
-
-        if (string.Equals(installed, available, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
 
         if (Version.TryParse(installed, out var installedVer) && Version.TryParse(available, out var availableVer))
         {
             return installedVer >= availableVer;
         }
 
-        var installedParts = installed.Split('.', '-', '+', '_');
-        var availableParts = available.Split('.', '-', '+', '_');
-
-        for (int i = 0; i < Math.Min(installedParts.Length, availableParts.Length); i++)
-        {
-            var instPart = installedParts[i];
-            var availPart = availableParts[i];
-
-            if (int.TryParse(instPart, out var instInt) && int.TryParse(availPart, out var availInt))
-            {
-                if (instInt != availInt)
-                {
-                    return instInt > availInt;
-                }
-            }
-            else
-            {
-                var cmp = string.Compare(instPart, availPart, StringComparison.OrdinalIgnoreCase);
-                if (cmp != 0)
-                {
-                    return cmp > 0;
-                }
-            }
-        }
-
-        return installedParts.Length >= availableParts.Length;
+        // WinGet owns the ordering of versions outside System.Version's numeric format.
+        return false;
     }
 }

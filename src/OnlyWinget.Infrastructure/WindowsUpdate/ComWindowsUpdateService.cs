@@ -48,6 +48,7 @@ public sealed class ComWindowsUpdateService(
         WindowsUpdateOptions options,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (OperatingSystem.IsWindows())
         {
             try
@@ -55,7 +56,7 @@ public sealed class ComWindowsUpdateService(
                 var sessionType = Type.GetTypeFromProgID(ProgId);
                 if (sessionType is not null)
                 {
-                    var outcome = await Task.Run(() => ScanNativeCom(options), cancellationToken).ConfigureAwait(false);
+                    var outcome = await Task.Run(() => ScanNativeComAsync(options, cancellationToken), cancellationToken).ConfigureAwait(false);
                     if (outcome is not null && outcome.Succeeded)
                     {
                         logger?.LogInformation("Windows Update COM scan completed successfully via Microsoft.Update.Session with {Count} updates.", outcome.Rows.Count);
@@ -63,7 +64,11 @@ public sealed class ComWindowsUpdateService(
                     }
                 }
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
             {
                 logger?.LogWarning(ex, "Windows Update COM Interop failed. Falling back to PowerShell execution.");
             }
@@ -79,6 +84,7 @@ public sealed class ComWindowsUpdateService(
         IProgress<OperationProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(updates);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (OperatingSystem.IsWindows() && updates.Count > 0)
         {
@@ -87,17 +93,26 @@ public sealed class ComWindowsUpdateService(
                 var sessionType = Type.GetTypeFromProgID(ProgId);
                 if (sessionType is not null)
                 {
-                    var outcome = await Task.Run(() => InstallNativeCom(updates, options, progress, cancellationToken), cancellationToken).ConfigureAwait(false);
-                    if (outcome is not null && outcome.Succeeded)
+                    var outcome = await Task.Run(() => InstallNativeComAsync(updates, options, progress, cancellationToken), cancellationToken).ConfigureAwait(false);
+                    if (outcome is not null)
                     {
-                        logger?.LogInformation("Windows Update COM installation completed successfully for {Count} updates.", outcome.Rows.Count);
+                        logger?.LogInformation("Windows Update COM installation returned {Count} results; successful outcome: {Succeeded}.", outcome.Rows.Count, outcome.Succeeded);
                         return outcome;
                     }
                 }
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                logger?.LogWarning(ex, "Windows Update COM install failed. Falling back to PowerShell execution.");
+                throw;
+            }
+            catch (COMException ex) when (ex.HResult == unchecked((int)0x80040154))
+            {
+                logger?.LogWarning(ex, "Windows Update COM is not registered. Falling back to PowerShell execution.");
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                logger?.LogError(ex, "Windows Update COM install failed; automatic retry is disabled to avoid repeating installation.");
+                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(new WindowsUpdateError(ex.Message), string.Empty);
             }
         }
 
@@ -107,7 +122,7 @@ public sealed class ComWindowsUpdateService(
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Windows Update ProgID type instantiation.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
-    private static WindowsUpdateOperationOutcome<WindowsUpdateItem>? ScanNativeCom(WindowsUpdateOptions options)
+    private static async Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>?> ScanNativeComAsync(WindowsUpdateOptions options, CancellationToken cancellationToken)
     {
         var sessionType = Type.GetTypeFromProgID(ProgId);
         if (sessionType is null) return null;
@@ -125,8 +140,14 @@ public sealed class ComWindowsUpdateService(
             searcherObj = (object)searcher;
             TryRegisterMicrosoftUpdateService(searcher, options);
 
-            dynamic searchResult = searcher.Search(WindowsUpdateSearchCriteria.Build(options));
+            dynamic searchResult = await RunComJobAsync(
+                callback => searcher.BeginSearch(WindowsUpdateSearchCriteria.Build(options), callback, null),
+                job => searcher.EndSearch(job), cancellationToken).ConfigureAwait(false);
             searchResultObj = (object)searchResult;
+            if (Convert.ToInt32(searchResult.ResultCode) != 2)
+            {
+                throw new InvalidOperationException("Windows Update search did not complete successfully.");
+            }
 
             dynamic updateCollection = searchResult.Updates;
 
@@ -135,6 +156,7 @@ public sealed class ComWindowsUpdateService(
 
             for (int i = 0; i < count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 dynamic update = updateCollection.Item(i);
                 dynamic identity = update.Identity;
 
@@ -212,7 +234,7 @@ public sealed class ComWindowsUpdateService(
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Windows Update ProgID type instantiation.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
-    private static WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>? InstallNativeCom(
+    private static async Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>?> InstallNativeComAsync(
         IReadOnlyList<WindowsUpdateIdentity> targetUpdates,
         WindowsUpdateOptions options,
         IProgress<OperationProgress>? progress,
@@ -235,13 +257,20 @@ public sealed class ComWindowsUpdateService(
             searcherObj = (object)searcher;
             TryRegisterMicrosoftUpdateService(searcher, options);
 
-            dynamic searchResult = searcher.Search(WindowsUpdateSearchCriteria.Build(options));
+            dynamic searchResult = await RunComJobAsync(
+                callback => searcher.BeginSearch(WindowsUpdateSearchCriteria.Build(options), callback, null),
+                job => searcher.EndSearch(job), cancellationToken).ConfigureAwait(false);
             searchResultObj = (object)searchResult;
+            if (Convert.ToInt32(searchResult.ResultCode) != 2)
+            {
+                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(
+                    new WindowsUpdateError("Windows Update search did not complete successfully. Installation was not started."), string.Empty);
+            }
 
             dynamic availableUpdates = searchResult.Updates;
             int availableCount = availableUpdates.Count;
 
-            var targetMap = targetUpdates.ToDictionary(u => u.UpdateId, StringComparer.OrdinalIgnoreCase);
+            var targetMap = targetUpdates.ToDictionary(u => $"{u.UpdateId}|{u.RevisionNumber}", StringComparer.OrdinalIgnoreCase);
             var updateCollectionType = Type.GetTypeFromProgID("Microsoft.Update.UpdateColl");
             dynamic installCollection = Activator.CreateInstance(updateCollectionType ?? Type.GetTypeFromCLSID(new Guid("1361661A-2A21-4226-928E-2E31A2F69527"))!)!;
             installCollectionObj = (object)installCollection;
@@ -250,11 +279,13 @@ public sealed class ComWindowsUpdateService(
 
             for (int i = 0; i < availableCount; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 dynamic update = availableUpdates.Item(i);
                 dynamic identity = update.Identity;
                 string updateId = identity.UpdateID?.ToString() ?? string.Empty;
+                int revisionNumber = Convert.ToInt32(identity.RevisionNumber);
 
-                if (targetMap.TryGetValue(updateId, out var targetIdent))
+                if (targetMap.TryGetValue($"{updateId}|{revisionNumber}", out var targetIdent))
                 {
                     bool eulaAccepted = false;
                     try { eulaAccepted = Convert.ToBoolean(update.EulaAccepted); } catch { }
@@ -268,9 +299,10 @@ public sealed class ComWindowsUpdateService(
                 }
             }
 
-            if (matchedItems.Count == 0)
+            if (matchedItems.Count != targetMap.Count)
             {
-                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success([], "No matching COM updates found to install");
+                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(
+                    new WindowsUpdateError("Some selected Windows updates or revisions were not found. Scan again before installing."), string.Empty);
             }
 
             progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, 0, 0, targetUpdates.Count));
@@ -280,12 +312,20 @@ public sealed class ComWindowsUpdateService(
             object? downloadResultObj = null;
             try
             {
-                dynamic downloadResult = downloader.Download();
+                dynamic downloadResult = await RunComJobAsync(
+                    callback => downloader.BeginDownload(new WindowsUpdateCompletionCallback(), callback, null),
+                    job => downloader.EndDownload(job), cancellationToken).ConfigureAwait(false);
                 downloadResultObj = (object)downloadResult;
+                if (Convert.ToInt32(downloadResult.ResultCode) != 2)
+                {
+                    return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(
+                        new WindowsUpdateError("Windows Update download did not complete successfully. Installation was not started."), string.Empty);
+                }
             }
             finally
             {
                 TryReleaseCom(downloadResultObj);
+                TryReleaseCom((object)downloader);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -297,7 +337,9 @@ public sealed class ComWindowsUpdateService(
             object? installResultObj = null;
             try
             {
-                dynamic installResult = installer.Install();
+                dynamic installResult = await RunComJobAsync(
+                    callback => installer.BeginInstall(new WindowsUpdateCompletionCallback(), callback, null),
+                    job => installer.EndInstall(job), cancellationToken).ConfigureAwait(false);
                 installResultObj = (object)installResult;
 
                 bool overallRebootRequired = Convert.ToBoolean(installResult.RebootRequired);
@@ -308,7 +350,7 @@ public sealed class ComWindowsUpdateService(
                     var (title, identity) = matchedItems[i];
                     dynamic updateResult = installResult.GetUpdateResult(i);
                     int resultCode = Convert.ToInt32(updateResult.ResultCode);
-                    bool succeeded = resultCode is 2 or 3;
+                    bool succeeded = resultCode == 2;
                     bool itemReboot = overallRebootRequired || Convert.ToBoolean(updateResult.RebootRequired);
 
                     results.Add(new WindowsUpdateInstallResult(
@@ -328,6 +370,7 @@ public sealed class ComWindowsUpdateService(
             finally
             {
                 TryReleaseCom(installResultObj);
+                TryReleaseCom((object)installer);
             }
         }
         finally
@@ -338,6 +381,21 @@ public sealed class ComWindowsUpdateService(
             TryReleaseCom(sessionObj);
         }
     }
+
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WUA automation job methods are provided by the operating system.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WUA automation job methods are provided by the operating system.")]
+    private static Task<object> RunComJobAsync(Func<object, object> begin, Func<dynamic, object> end, CancellationToken cancellationToken) =>
+        WindowsUpdateComJob.RunAsync(begin, job => end(job), job => ((dynamic)job).RequestAbort(), job =>
+        {
+            try
+            {
+                ((dynamic)job).CleanUp();
+            }
+            finally
+            {
+                TryReleaseCom(job);
+            }
+        }, cancellationToken);
 
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Windows Update ProgID type instantiation.")]

@@ -6,8 +6,12 @@ public sealed class ApplicationStartupOrchestrator(OnlyWingetApplication applica
     {
         ArgumentNullException.ThrowIfNull(application);
 
-        await application.LoadWorkspaceAsync(cancellationToken).ConfigureAwait(false);
+        var loaded = await application.LoadWorkspaceAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
+        if (!loaded.Succeeded)
+        {
+            return;
+        }
 
         await application.RefreshCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();

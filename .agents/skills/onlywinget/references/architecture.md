@@ -39,9 +39,9 @@ Infrastructure      ──> Application ──> Domain
 - **Dependencies**: Depends on the Application and Domain layers.
 - **Key Implementations**:
   - `SqliteWorkspaceStore` & `WorkspaceDbContext`: Primary relateral persistence via **SQLite embedded** and **Entity Framework Core 10** (`%LOCALAPPDATA%\OnlyWinget\onlywinget.db`) with automatic legacy JSON data migration.
-  - `ComWingetPackageService`: Primary WinGet package search/resolve engine using native COM API (`Microsoft.Management.Deployment`) with `IMemoryCache` TTL caching.
-  - `ComWindowsUpdateService`: Primary Windows Update engine using direct C# COM Interop (`WUApiLib` / `IUpdateSession`) with real-time progress callbacks.
-  - `ProcessWingetCommandRunner` & `PowerShellWindowsUpdateService`: Fallback execution runners for CLI execution when COM APIs are unavailable.
+  - `WingetPackageSearchService` & `WingetPackageResolver`: WinGet CLI search/resolve engines with source-specific search caching.
+  - `ComWindowsUpdateService`: Windows Update COM automation using asynchronous jobs, completion callbacks, and `RequestAbort` cancellation.
+  - `ProcessWingetCommandRunner`: Canonical WinGet execution runner. `PowerShellWindowsUpdateService`: Windows Update fallback when COM cannot be activated.
   - `WingetTableParser`: Parses winget's tabular CLI stdout with multi-language column header localization (EN, IT, FR, ES, DE).
   - `WingetErrorClassifier`: Classifies CLI string outputs to map failures into structured `WingetErrorKind` enums.
   - `JsonSourcePreferenceStore` & `DpapiSecretStore`: Implements DPAPI-encrypted secret storage and source preference persistence in `%LOCALAPPDATA%\OnlyWinget\`.
@@ -84,6 +84,6 @@ Infrastructure      ──> Application ──> Domain
 ## 4. COM Interop Guidelines
 
 - **Windows Update COM Interop**:
-  Avoid calling Windows Update COM APIs (`WUApiLib`) directly from the main WinUI STA (Single-Threaded Apartment) thread, as blocking COM operations will freeze the user interface. Run them inside background PowerShell processes using JSON output serialization.
+  Never invoke Windows Update COM operations from the main WinUI STA. Start asynchronous WUA jobs on background workers, request cancellation with `RequestAbort`, and release callbacks with `CleanUp` outside the callback. Never retry a cancelled or failed installation through the fallback.
 - **Embed Interop Types**:
   If direct COM references are ever introduced to the C# projects, the assembly property `Embed Interop Types` must be set to `False` on the COM reference (e.g., `WUApiLib`) to avoid runtime `MissingMethodException`s. Alternatively, use late-binding dynamic instantiation (`Type.GetTypeFromProgID("Microsoft.Update.Session")`).

@@ -283,7 +283,7 @@ __SELECTED_JSON__
         }
     }
 
-    if ($collection.Count -eq 0) {
+    if ($collection.Count -eq 0 -or $collection.Count -ne $selected.Count) {
         [pscustomobject]@{
             succeeded = $false
             rows = @()
@@ -296,6 +296,9 @@ __SELECTED_JSON__
     $downloader = $session.CreateUpdateDownloader()
     $downloader.Updates = $collection
     $downloadResult = $downloader.Download()
+    if ([int]$downloadResult.ResultCode -ne 2) {
+        throw 'Windows Update download did not complete successfully. Installation was not started.'
+    }
     [Console]::Error.WriteLine("##OWU-PROGRESS##Downloading##100")
 
     [Console]::Error.WriteLine("##OWU-PROGRESS##Installing##0")
@@ -307,7 +310,7 @@ __SELECTED_JSON__
     for ($index = 0; $index -lt $collection.Count; $index++) {
         $updateResult = $install.GetUpdateResult($index)
         $item = $metadata[$index]
-        $succeeded = $updateResult.ResultCode -eq 2 -or $updateResult.ResultCode -eq 3
+        $succeeded = $updateResult.ResultCode -eq 2
         $rows += [pscustomobject]@{
             updateId = [string]$item.updateId
             revisionNumber = [int]$item.revisionNumber

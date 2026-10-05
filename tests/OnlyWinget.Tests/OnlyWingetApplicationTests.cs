@@ -15,6 +15,94 @@ namespace OnlyWinget.Tests;
 public sealed class OnlyWingetApplicationTests
 {
     [Fact]
+    public async Task PasteWithInvalidPackageDoesNotPartiallyMutateThePreset()
+    {
+        var resolver = new StubPackageResolver(
+            new PackageResolution(new PackageIdentity("Valid.App", "winget"), "Valid", "1", null, true, null),
+            new PackageResolution(new PackageIdentity("Invalid.App", "winget"), null, null, null, false,
+                new ClassifiedWingetError(WingetErrorKind.NotFound, "Package was not found.")));
+        var app = CreateApplication(resolver: resolver);
+        app.AddPreset("Original");
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        var original = app.State.ActivePreset;
+
+        var result = await app.AddPackagesToActivePresetAsync(
+            [new PackageIdentity("Valid.App", "winget"), new PackageIdentity("Invalid.App", "winget")], CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Same(original, app.State.ActivePreset);
+        Assert.Empty(app.State.ActivePreset!.Packages);
+    }
+
+    [Fact]
+    public async Task WindowsUpdateRescanPreservesInstallationResultsAndRestartWarning()
+    {
+        var identity = new WindowsUpdateIdentity("update-1", 1);
+        var service = new StubWindowsUpdateService(
+            [new WindowsUpdateItem(identity, "Update", null, null, [], [], 0, false, false)],
+            [new WindowsUpdateInstallResult(identity, "Update", true, true, "2", null)]);
+        var app = CreateApplication(windowsUpdates: service);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.ScanWindowsUpdatesAsync(new(), CancellationToken.None);
+        app.ToggleAllWindowsUpdates();
+        Assert.True((await app.InstallSelectedWindowsUpdatesAsync(new(), CancellationToken.None)).Succeeded);
+
+        await app.ScanWindowsUpdatesAsync(new(), CancellationToken.None);
+
+        Assert.True(Assert.Single(app.State.LastWindowsUpdateResults).RebootRequired);
+        Assert.True(PresentationStateMapper.ToDashboardState(app.State).RebootRequired);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task WindowsUpdateRejectsMissingDuplicateOrWrongRevisionResults(int scenario)
+    {
+        var identity = new WindowsUpdateIdentity("update-1", 1);
+        var correct = new WindowsUpdateInstallResult(identity, "Update", true, false, "2", null);
+        WindowsUpdateInstallResult[] results = scenario switch
+        {
+            0 => [],
+            1 => [correct, correct],
+            _ => [correct with { Identity = new WindowsUpdateIdentity(identity.UpdateId, 2) }]
+        };
+        var service = new StubWindowsUpdateService(
+            [new WindowsUpdateItem(identity, "Update", null, null, [], [], 0, false, false)], results);
+        var app = CreateApplication(windowsUpdates: service);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.ScanWindowsUpdatesAsync(new(), CancellationToken.None);
+        app.ToggleAllWindowsUpdates();
+
+        var result = await app.InstallSelectedWindowsUpdatesAsync(new(), CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("every selected update and revision", app.State.UserVisibleError);
+        Assert.Equal(WingetProgressPhase.Failed, app.State.OperationProgress!.Phase);
+    }
+
+    [Fact]
+    public async Task StartupStopsAfterWorkspaceLoadFailureAndKeepsTheErrorVisible()
+    {
+        var app = CreateApplication(workspaceStore: new FailingWorkspaceStore());
+        await new ApplicationStartupOrchestrator(app).InitializeAsync(CancellationToken.None);
+
+        Assert.Contains("Workspace unavailable", app.State.UserVisibleError);
+        Assert.Null(app.State.Capabilities.IsSupportedOs);
+        Assert.DoesNotContain(app.State.Activity, entry => entry.Title == "Workspace loaded");
+    }
+
+    private sealed class FailingWorkspaceStore : IWorkspaceStore
+    {
+        public Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Workspace unavailable");
+
+        public Task SaveAsync(WorkspaceState state, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Workspace unavailable");
+    }
+
+    [Fact]
     public async Task PresetLifecycleUpdatesWorkspaceAndSelection()
     {
         var app = CreateApplication();
@@ -1462,11 +1550,15 @@ public sealed class OnlyWingetApplicationTests
     [InlineData("10.0", "9.0", true)]
     [InlineData("9.0.14", "9.0.14", true)]
     [InlineData("9.0.14", "9.0.15", false)]
-    [InlineData("9.0.14-beta", "9.0.14", true)]
+    [InlineData("9.0.14-beta", "9.0.14", false)]
+    [InlineData("Unknown", "1.0", false)]
+    [InlineData("Unknown", "Unknown", false)]
+    [InlineData("Latest", "Latest", false)]
+    [InlineData("1.0.0", "1.0.0-beta", false)]
     [InlineData("", "9.7.10", false)]
-    [InlineData("9.0.14", "", true)]
+    [InlineData("9.0.14", "", false)]
     [InlineData(null, "9.7.10", false)]
-    [InlineData("9.0.14", null, true)]
+    [InlineData("9.0.14", null, false)]
     public void IsUpToDate_CorrectlyComparesVersions(string? installed, string? available, bool expected)
     {
         var result = OnlyWingetApplication.IsUpToDate(installed, available);

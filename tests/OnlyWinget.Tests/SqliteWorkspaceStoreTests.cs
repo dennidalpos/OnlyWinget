@@ -10,6 +10,48 @@ namespace OnlyWinget.Tests;
 public sealed class SqliteWorkspaceStoreTests
 {
     [Fact]
+    public async Task FailedLoadBlocksSaveAndPreservesOriginalPresetUntilSuccessfulReload()
+    {
+        var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");
+        var dbPath = Path.Combine(tempFolder, "onlywinget.db");
+        var store = new SqliteWorkspaceStore(dbPath, Path.Combine(tempFolder, "legacy.json"));
+        var original = new WorkspaceState([new Preset("Original", [new PackageIdentity("Dummy.App")])], "Original");
+        await store.SaveAsync(original, CancellationToken.None);
+
+        await using var connection = new SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE PresetItems SET PackageId = '';";
+        await command.ExecuteNonQueryAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.LoadAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.SaveAsync(WorkspaceState.Empty, CancellationToken.None));
+        command.CommandText = "SELECT Name FROM Presets;";
+        Assert.Equal("Original", await command.ExecuteScalarAsync());
+
+        command.CommandText = "UPDATE PresetItems SET PackageId = 'Dummy.App';";
+        await command.ExecuteNonQueryAsync();
+        Assert.Equal("Original", (await store.LoadAsync(CancellationToken.None)).ActivePresetName);
+        await store.SaveAsync(original, CancellationToken.None);
+        Assert.Equal("Original", (await store.LoadAsync(CancellationToken.None)).ActivePresetName);
+    }
+
+    [Fact]
+    public async Task MalformedLegacyWorkspaceDoesNotBecomeAnEmptyWritableWorkspace()
+    {
+        var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempFolder);
+        var legacyPath = Path.Combine(tempFolder, "workspace-v1.json");
+        const string damagedJson = "{ damaged";
+        await File.WriteAllTextAsync(legacyPath, damagedJson);
+        var store = new SqliteWorkspaceStore(Path.Combine(tempFolder, "onlywinget.db"), legacyPath);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.LoadAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.SaveAsync(WorkspaceState.Empty, CancellationToken.None));
+        Assert.Equal(damagedJson, await File.ReadAllTextAsync(legacyPath));
+    }
+
+    [Fact]
     public async Task SaveAndLoadUseSqliteDatabase()
     {
         var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");

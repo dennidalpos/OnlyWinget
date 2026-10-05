@@ -106,14 +106,8 @@ internal static class AppComposition
                 services.AddSingleton<WingetPackageResolver>();
                 services.AddSingleton<PowerShellWindowsUpdateService>();
 
-                services.AddSingleton<ComWingetPackageService>(sp => new ComWingetPackageService(
-                    sp.GetRequiredService<WingetPackageSearchService>(),
-                    sp.GetRequiredService<WingetPackageResolver>(),
-                    sp.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
-                    sp.GetService<ILogger<ComWingetPackageService>>()));
-
-                services.AddSingleton<IPackageSearchService>(sp => sp.GetRequiredService<ComWingetPackageService>());
-                services.AddSingleton<IPackageResolver>(sp => sp.GetRequiredService<ComWingetPackageService>());
+                services.AddSingleton<IPackageSearchService>(sp => sp.GetRequiredService<WingetPackageSearchService>());
+                services.AddSingleton<IPackageResolver>(sp => sp.GetRequiredService<WingetPackageResolver>());
                 services.AddSingleton<IUpdateLoader, WingetUpdateLoader>();
                 services.AddSingleton<IWindowsUpdateService, ComWindowsUpdateService>();
                 services.AddSingleton<IWingetSourceService, WingetSourceService>();

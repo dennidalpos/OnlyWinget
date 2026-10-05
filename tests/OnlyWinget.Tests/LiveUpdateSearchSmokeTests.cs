@@ -62,7 +62,7 @@ public sealed class LiveUpdateSearchSmokeTests
     [Fact]
     [Trait("Category", "Smoke")]
     [SupportedOSPlatform("windows")]
-    public async Task ComWingetPackageServiceSearchesLiveCatalogThroughComOrCliFallback()
+    public async Task WingetPackageSearchServiceSearchesLiveCatalogThroughCli()
     {
         if (!ShouldRun())
         {
@@ -73,9 +73,7 @@ public sealed class LiveUpdateSearchSmokeTests
         var commandRunner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
         var parser = new WingetTableParser();
         var classifier = new WingetErrorClassifier();
-        var search = new WingetPackageSearchService(commandRunner, parser, classifier);
-        var resolver = new WingetPackageResolver(commandRunner, parser, classifier);
-        var service = new ComWingetPackageService(search, resolver);
+        var service = new WingetPackageSearchService(commandRunner, parser, classifier);
 
         var outcome = await service.SearchAsync(
             new PackageSearchRequest("powertoys", "winget"),

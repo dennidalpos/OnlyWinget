@@ -8,6 +8,23 @@ namespace OnlyWinget.Tests;
 
 public class PackageSearchCacheTests
 {
+    [Fact]
+    public async Task CacheDoesNotMixSourcesAndAlreadyCancelledSearchesDoNotRun()
+    {
+        var runner = new DummyCommandRunner(new WingetCommandResult(0, string.Empty, string.Empty));
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier(), cache);
+        await service.SearchAsync(new("same query", "winget"), CancellationToken.None);
+        await service.SearchAsync(new("same query", "msstore"), CancellationToken.None);
+        await service.SearchAsync(new("same query", "winget"), CancellationToken.None);
+        Assert.Equal(2, runner.CallCount);
+
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.SearchAsync(new("same query", "winget"), cancellation.Token));
+        Assert.Equal(2, runner.CallCount);
+    }
+
     private class DummyCommandRunner : IWingetCommandRunner
     {
         private readonly WingetCommandResult returnResult;

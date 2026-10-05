@@ -15,6 +15,7 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
     private readonly ILogger<SqliteWorkspaceStore>? storeLogger;
     private readonly SemaphoreSlim saveGate = new(1, 1);
     private bool isInitialized;
+    private bool loadFailed;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -73,13 +74,15 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
                 ? null
                 : activePresetMeta.Value;
 
+            loadFailed = false;
             return new WorkspaceState(presets, activePresetName);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            loadFailed = true;
             logger?.Invoke("SqliteWorkspaceStore.LoadAsync", exception);
             storeLogger?.LogError(exception, "Failed to load workspace state from SQLite database at '{DbPath}'", dbPath);
-            return WorkspaceState.Empty;
+            throw new InvalidOperationException("Unable to load the workspace. Existing data has been preserved; reload successfully before saving.", exception);
         }
         finally
         {
@@ -94,6 +97,10 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
         await saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (loadFailed)
+            {
+                throw new InvalidOperationException("Saving is disabled after a workspace load failure. Reload the workspace successfully before saving.");
+            }
             await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
 
             await using var context = new WorkspaceDbContext(dbPath);
@@ -245,6 +252,7 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
         {
             logger?.Invoke("SqliteWorkspaceStore.PerformTransparentMigrationAsync", exception);
             storeLogger?.LogWarning(exception, "Failed transparent migration from legacy workspace JSON file '{LegacyPath}'", legacyJsonPath);
+            throw new InvalidOperationException("Unable to migrate the legacy workspace. Existing data has been preserved.", exception);
         }
     }
 }

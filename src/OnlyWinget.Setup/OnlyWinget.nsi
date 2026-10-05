@@ -15,6 +15,11 @@
   !define OUT_FILE "..\..\artifacts\dist\OnlyWinget\Release\OnlyWinget-${PRODUCT_VERSION}-setup.exe"
 !endif
 
+!ifndef INSTALLER_FILE_INCLUDE
+  !define INSTALLER_FILE_INCLUDE "${PUBLISH_DIR}\..\InstalledFiles.nsh"
+!endif
+!include "${INSTALLER_FILE_INCLUDE}"
+
 !ifndef APP_ICON
   !define APP_ICON "..\OnlyWinget\Assets\OnlyWinget.ico"
 !endif
@@ -88,7 +93,7 @@ Section "MainSection" SEC01
     SetRegView 64
   ${EndIf}
   SetOutPath "$INSTDIR"
-  File /r "${PUBLISH_DIR}\*.*"
+  !insertmacro OnlyWingetInstallFiles
 
   WriteRegStr SHCTX "${REGKEY}" "InstallDir" "$INSTDIR"
 
@@ -120,7 +125,9 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\OnlyWinget\Uninstall.lnk"
   RMDir "$SMPROGRAMS\OnlyWinget"
 
-  RMDir /r "$INSTDIR"
+  !insertmacro OnlyWingetUninstallFiles
+  Delete "$INSTDIR\Uninstall.exe"
+  RMDir "$INSTDIR"
 
   DeleteRegKey SHCTX "${UNINSTALL_REGKEY}"
   DeleteRegKey SHCTX "${REGKEY}"
