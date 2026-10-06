@@ -11,6 +11,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/UiTestWindowHelpers.ps1')
 
 $isFastMode = -not $Full
 
@@ -57,8 +58,6 @@ public static class OnlyWingetUiTestNative {
     public static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extraInfo);
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 }
 '@
 
@@ -126,22 +125,34 @@ Test-Ui 'Source toggle can be changed and restored' {
 
 Test-Ui 'Import picker can be cancelled without mutation' {
     winapp ui invoke 'NavPackages' -a $AppPid -q
+    $existingWindowsRaw = winapp ui list-windows --json
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inventory windows before opening the picker.' }
+    $existingHandles = [System.Collections.Generic.HashSet[long]]::new()
+    foreach ($existingWindow in @($existingWindowsRaw | ConvertFrom-Json)) {
+        $existingHandles.Add([int64]@($existingWindow.hwnd)[0]) | Out-Null
+    }
     winapp ui invoke 'ImportPresetBtn' -a $AppPid -q
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot open the import picker.' }
     Start-Sleep -Seconds 2
-    $pickers = @(winapp ui list-windows --json 2>$null | ConvertFrom-Json |
+    $pickerWindowsRaw = winapp ui list-windows --json
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inventory picker windows.' }
+    $pickers = @($pickerWindowsRaw | ConvertFrom-Json |
         Where-Object {
             $_.title -match 'Open|Apri' -or $_.className -eq '#32770'
         })
 
+    $closedPicker = $false
     foreach ($p in $pickers) {
         if ($null -ne $p -and $null -ne $p.hwnd) {
             $hVal = [int64]@($p.hwnd)[0]
             $pHwnd = [IntPtr]::new($hVal)
-            winapp ui send-keys '{ESC}' -w $hVal -q 2>$null
-            [OnlyWingetUiTestNative]::SendMessage($pHwnd, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+            if (-not $existingHandles.Contains($hVal) -and
+                (Close-UiTestOwnedDialog -WindowHandle $pHwnd -AppWindowHandle $hwnd -AppProcessId $AppPid)) {
+                $closedPicker = $true
+            }
         }
     }
-    Get-Process -Name 'PickerHost' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    if (-not $closedPicker) { throw 'No new picker owned by the test app was found; no unrelated window was closed.' }
     Start-Sleep -Seconds 2
 }
 

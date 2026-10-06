@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -49,6 +51,6 @@ jobs:
           path: |
             artifacts/build-report.txt
             artifacts/dist/OnlyWinget/Release/*-setup.exe
-            artifacts/dist/OnlyWinget/Release/msi/*.msi
+            artifacts/dist/OnlyWinget/Release/*-portable-x64.zip
             artifacts/test-results/**/*.trx
           if-no-files-found: error

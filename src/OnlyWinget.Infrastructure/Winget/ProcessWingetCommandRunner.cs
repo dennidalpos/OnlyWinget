@@ -55,27 +55,25 @@ public sealed class ProcessWingetCommandRunner(
             .ConfigureAwait(false);
         logger?.LogDebug("Command '{Command}' finished with exit code {ExitCode}", command, result.ExitCode);
 
-        if (!result.Succeeded &&
-            !(command == "winget" && arguments.Count > 1 && arguments[0] == "source" && arguments[1] == "reset") &&
-            (result.StandardOutput.Contains("0x8a15005e") ||
-             result.StandardError.Contains("0x8a15005e") ||
-             result.StandardOutput.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase) ||
-             result.StandardError.Contains("The server certificate did not match", global::System.StringComparison.OrdinalIgnoreCase)))
+        var standardError = result.StandardError;
+        if (!result.Succeeded && command.Equals("winget", StringComparison.OrdinalIgnoreCase) &&
+            (result.ExitCode == unchecked((int)0x8A15005E) ||
+             result.StandardOutput.Contains("0x8a15005e", StringComparison.OrdinalIgnoreCase) ||
+             result.StandardError.Contains("0x8a15005e", StringComparison.OrdinalIgnoreCase) ||
+             result.StandardOutput.Contains("The server certificate did not match", StringComparison.OrdinalIgnoreCase) ||
+             result.StandardError.Contains("The server certificate did not match", StringComparison.OrdinalIgnoreCase)))
         {
-            var resetResult = await processRunner.RunAsync("winget", ["source", "reset", "--force"], cancellationToken, timeout: timeout)
-                .ConfigureAwait(false);
-            if (resetResult.Succeeded)
-            {
-                result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
-                    .ConfigureAwait(false);
-            }
+            standardError = string.Join(Environment.NewLine, standardError,
+                "WinGet source certificate validation failed; source configuration was not changed. " +
+                "Run 'winget source list' to identify the affected source and check its endpoint/certificate before retrying. " +
+                "A global source reset removes custom sources and must be an explicit user action.");
         }
 
         progress?.Report(new WingetProgress(
             result.Succeeded ? WingetProgressPhase.Completed : WingetProgressPhase.Failed,
             result.Succeeded ? 100 : null,
             null));
-        return new WingetCommandResult(result.ExitCode, result.StandardOutput, result.StandardError);
+        return new WingetCommandResult(result.ExitCode, result.StandardOutput, standardError);
     }
 
     private async Task<Version?> GetWingetVersionAsync(CancellationToken cancellationToken)

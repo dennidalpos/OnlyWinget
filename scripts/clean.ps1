@@ -118,7 +118,7 @@ function Invoke-NuGetCacheClean {
 
 Assert-Command -Name 'dotnet'
 
-$projectPaths = Get-SupportedProjectPath
+$projectPaths = @(Get-SupportedProjectPath)
 if ($projectPaths.Count -eq 0) {
     throw "Nessun progetto .csproj trovato sotto '$repoRoot'."
 }
@@ -203,23 +203,6 @@ if ($All) {
 
     foreach ($target in $aggressiveTargets) {
         Remove-GeneratedPath -Path $target
-    }
-
-    # Pulizia profonda lato OS: preferenze e cache locali dell'app nel PC
-    $localAppDataPath = Join-Path $env:LocalAppData 'OnlyWinget'
-    if (Test-Path -LiteralPath $localAppDataPath) {
-        if ($DryRun) {
-            Write-Host "[dry-run] remove $localAppDataPath (AppData locale)" -ForegroundColor Yellow
-        } else {
-            Remove-Item -LiteralPath $localAppDataPath -Recurse -Force -ErrorAction SilentlyContinue
-            if (Test-Path -LiteralPath $localAppDataPath) {
-                try {
-                    [System.IO.Directory]::Delete($localAppDataPath, $true)
-                } catch {
-                    Write-Warning "Impossibile rimuovere completamente la cartella AppData '$localAppDataPath': $_"
-                }
-            }
-        }
     }
 }
 

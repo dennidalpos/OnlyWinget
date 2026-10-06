@@ -14,6 +14,45 @@ namespace OnlyWinget.Tests;
 
 public sealed class WingetInfrastructureTests
 {
+    [Theory]
+    [InlineData("search", unchecked((int)0x8A15005E), "", "")]
+    [InlineData("list", 1, "0x8A15005E", "")]
+    [InlineData("upgrade", 1, "", "0x8a15005e")]
+    [InlineData("install", 1, "The server certificate did not match", "")]
+    [InlineData("source", 1, "", "The server certificate did not match")]
+    public async Task CertificateFailurePreservesSourcesAndDoesNotRetry(
+        string operation, int exitCode, string output, string error)
+    {
+        var processRunner = new RecordingExternalProcessRunner(new ExternalProcessResult(exitCode, output, error));
+        var runner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
+        var progress = new RecordingProgress<WingetProgress>();
+
+        var result = await runner.RunAsync("winget", [operation], CancellationToken.None, progress);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(exitCode, result.ExitCode);
+        Assert.Equal(output, result.StandardOutput);
+        Assert.Contains(error, result.StandardError, StringComparison.Ordinal);
+        Assert.Contains("source configuration was not changed", result.StandardError, StringComparison.Ordinal);
+        Assert.Contains("winget source list", result.StandardError, StringComparison.Ordinal);
+        var call = Assert.Single(processRunner.CommandCalls);
+        Assert.Equal(new[] { operation }, call.Arguments);
+        Assert.Equal(WingetProgressPhase.Failed, progress.Values.Last().Phase);
+    }
+
+    [Fact]
+    public async Task SuccessfulCommandDoesNotAddCertificateRecoveryDiagnostic()
+    {
+        var processRunner = new RecordingExternalProcessRunner(new ExternalProcessResult(0, "0x8A15005E", string.Empty));
+        var runner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
+
+        var result = await runner.RunAsync("winget", ["search"], CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.StandardError);
+        Assert.Single(processRunner.CommandCalls);
+    }
+
     [Fact]
     [SupportedOSPlatform("windows")]
     public async Task CancelledWindowsUpdateOperationsDoNotInvokeComOrFallback()

@@ -26,12 +26,16 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `typecheck.ps1` | Direct warnings-as-errors build action. |
 | `test.ps1` | Direct xUnit action. Default `-Fast` returns concise PASS/FAIL + minimal stack trace; use `-Full` for verbose developer logs. |
 | `ui-test.ps1` | Repeatable WinApp UI checks against a running app PID. Supports `-Fast` (default) and `-Full`. |
+| `test-ui-dialog-ownership.ps1` | Native-window ownership regression: preserves unrelated windows and rejects a mismatched app PID. |
+| `validate-release.ps1` | Validates tag/HEAD/project versions, optionally remote tag SHA and required setup/portable assets. |
+| `test-release-validation.ps1` | Isolated Git/tag and sentinel-asset release regression; included in the full gate. |
 | `build.ps1` | Direct WinUI build action. |
 | `dev.ps1` | Direct app launch action. |
 | `package.ps1` | Direct x64 NSIS setup executable and self-contained portable ZIP packaging action. |
 | `test-installer-owned-files.ps1` | Compiles and runs an isolated NSIS fixture; verifies removal of distributed files and preservation of unrelated root/nested files. Requires NSIS. |
 | `check.ps1` | Full gate including the installer file ownership regression. Supports `-Fast` (default) and `-Full`. |
-| `clean.ps1` | Direct guarded cleanup action. |
+| `clean.ps1` | Guarded generated-output cleanup; `-All` also clears NuGet caches, never application data. |
+| `test-clean-preserves-data.ps1` | Isolated cleanup regression preserving workspace/settings/preferences/log sentinels; no real cache clearing. |
 | `validate-installer-lifecycle.ps1` | Direct elevated clean-host lifecycle validation. |
 | `validate-installed-startup.ps1` | Verifies that an installed executable starts and remains responsive. |
 | `align-logos.ps1` | Converts the master brand logo from JPEG to standard PNG/ICO formats and distributes them to application and landing assets. |
@@ -41,4 +45,6 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 
 Support files live under `scripts/support/` and are not standalone entrypoints.
 
-Packaging is serialized per worktree through `artifacts/.package.lock`. NSIS writes setup outputs in staging and moves them into `artifacts/dist/` only after a successful compilation, so failed or overlapping runs cannot leave a partially replaced release artifact.
+Only NSIS setup EXE and self-contained portable ZIP distribution are supported. The unused `PackageMsix` task/script/manifest have been removed; use `run.ps1 -Task Package` for both supported assets.
+
+Packaging is serialized per worktree through `artifacts/.package.lock`. Final NSIS/portable files are currently written directly into `artifacts/dist/`; preserving prior artifacts through atomic staging/promotion remains tracked under AUDIT-24.

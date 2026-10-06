@@ -107,6 +107,18 @@ Invoke-Step 'script lint' {
     & $scriptLintPath -Full:$Full -NonInteractive:$NonInteractive
 }
 
+Invoke-Step 'cleanup data preservation regression' {
+    & (Join-Path $scriptsRoot 'test-clean-preserves-data.ps1')
+}
+
+Invoke-Step 'UI dialog ownership regression' {
+    & (Join-Path $scriptsRoot 'test-ui-dialog-ownership.ps1')
+}
+
+Invoke-Step 'release identity regression' {
+    & (Join-Path $scriptsRoot 'test-release-validation.ps1')
+}
+
 Invoke-Step 'typecheck' {
     & $typecheckScriptPath -Configuration $Configuration -NoRestore -StopRunningInstance:$StopRunningInstance -Full:$Full -NonInteractive:$NonInteractive
 }

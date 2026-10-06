@@ -21,7 +21,7 @@ public sealed class WingetErrorClassifier
         [unchecked((int)0x800704C7)] = WingetErrorKind.Cancelled,
         // 0x8A15002B: WINGET_INST_NO_UPGRADE_AVAILABLE
         [unchecked((int)0x8A15002B)] = WingetErrorKind.NoUpdates,
-        // 0x8A15005E: WINGET_INST_SOURCE_UNAVAILABLE / WINGET_INST_SOURCE_DATA_MISSING
+        // 0x8A15005E: APPINSTALLER_CLI_ERROR_PINNED_CERTIFICATE_MISMATCH
         [unchecked((int)0x8A15005E)] = WingetErrorKind.SourceUnavailable,
         // 0x8A150114 - 0x8A150117: WINGET_INST_CANNOT_UPGRADE family
         [unchecked((int)0x8A150114)] = WingetErrorKind.CannotUpgrade,
