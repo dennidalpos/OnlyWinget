@@ -57,6 +57,12 @@ public sealed partial class SourcesPage : Page
         UpdateSourcesBtn.IsEnabled = viewModel.IsEnabled(UiCommandId.UpdateSources);
         RemoveSourceBtn.IsEnabled = viewModel.IsEnabled(UiCommandId.RemoveSource) && viewModel.SelectedSource?.IsExplicit == true;
         ResetSourcesBtn.IsEnabled = viewModel.IsEnabled(UiCommandId.ResetSources);
+        var privilegeHint = TextResources.Get("Sources_RequiresAdministrator");
+        foreach (var button in new[] { AddSourceBtn, RemoveSourceBtn, ResetSourcesBtn })
+        {
+            ToolTipService.SetToolTip(button, privilegeHint);
+            AutomationProperties.SetHelpText(button, privilegeHint);
+        }
     }
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)

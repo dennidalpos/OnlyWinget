@@ -57,6 +57,7 @@ public sealed class WingetPackageResolver(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(package);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var arguments = new List<string>
         {
@@ -78,6 +79,7 @@ public sealed class WingetPackageResolver(
         {
             var result = await commandRunner.RunAsync("winget", arguments, cancellationToken)
                 .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (!result.Succeeded)
             {
@@ -96,8 +98,9 @@ public sealed class WingetPackageResolver(
 
             return new PackageInstalledStatus(false, null);
         }
-        catch (Exception)
+        catch (Exception exception) when (exception is IOException or global::System.ComponentModel.Win32Exception or TimeoutException)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return new PackageInstalledStatus(false, null);
         }
     }

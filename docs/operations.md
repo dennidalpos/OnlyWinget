@@ -76,6 +76,18 @@ UI automation against a running app PID:
 
 Import-picker cancellation targets only newly opened windows whose owner chain reaches the tested main window, with its PID verified. It never terminates `PickerHost` or closes unrelated dialogs. If ownership cannot be established, that check fails without closing the window. The full gate includes `scripts/test-ui-dialog-ownership.ps1`, an isolated native-window ownership regression; real brokered picker compatibility still needs an interactive check.
 
+## Source preferences and privileges
+
+Source refresh and startup preserve disabled sources, existing URLs and intentionally removed defaults. Initial configuration adds missing `winget`/`msstore` sources once; it never removes an existing source to replace its endpoint. Without elevation, missing defaults are reported in Activity and existing sources remain usable. A failed add or preference save leaves initialization incomplete so a later refresh can retry.
+
+Add, remove and reset require restarting OnlyWinget as administrator. Their UI commands are disabled without confirmed elevation and expose an EN/IT privilege hint. Refresh, metadata update and local enable/disable preferences remain available without elevation. Enable/disable changes retain the initialization flag and take effect only after preferences are saved successfully.
+
+See [Microsoft's source-command contract](https://learn.microsoft.com/en-us/windows/package-manager/winget/source).
+
+The global tracker Cancel button and the caller token both cancel source update/add/remove/reset and preference saves. Reset saves its cleared preferences once within the guarded operation; idle notification and success activity occur after persistence. If persistence fails, the result explains that native sources changed but local preferences could not be saved, retaining the previous local enable/disable choices. Cancellation cannot undo a source change already completed by WinGet; refresh the source list before deciding whether to retry.
+
+Capability and installed-status probes propagate cancellation instead of reporting unavailable/not installed. See [Microsoft's cancellation guidance](https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads).
+
 ## WinGet certificate failures
 
 Certificate failures return the original exit code/output and an actionable diagnostic. Search, discovery and package execution do not automatically reset sources or retry the failed command. Inspect `winget source list` and the affected endpoint/certificate before retrying. An explicit global reset removes custom sources and requires administrative privileges; use it only after reviewing the configuration. See [Microsoft's source-command contract](https://learn.microsoft.com/en-us/windows/package-manager/winget/source).

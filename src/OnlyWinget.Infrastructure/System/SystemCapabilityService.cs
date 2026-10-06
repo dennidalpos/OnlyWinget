@@ -11,6 +11,7 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
 
     public async Task<SystemCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var isSupportedOs = OperatingSystem.IsWindows() &&
             Environment.OSVersion.Version.Build >= MinimumSupportedBuild;
 
@@ -19,14 +20,16 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
         try
         {
             var wingetResult = await commandRunner.RunAsync("winget", ["--version"], cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             if (wingetResult.Succeeded && !string.IsNullOrWhiteSpace(wingetResult.StandardOutput))
             {
                 isWingetAvailable = true;
                 wingetVersion = wingetResult.StandardOutput.Trim();
             }
         }
-        catch
+        catch (Exception exception) when (exception is IOException or global::System.ComponentModel.Win32Exception or TimeoutException)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Leave winget as unavailable
         }
 
@@ -53,6 +56,7 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
         var windowsUpdate = isSupportedOs && isPowerShellAvailable
             ? await CheckWindowsUpdateComAsync(preferredPs, cancellationToken).ConfigureAwait(false)
             : new WindowsUpdateCapability(false, null);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var buildNumber = OperatingSystem.IsWindows() ? Environment.OSVersion.Version.Build : (int?)null;
         var (edition, displayVersion) = ReadWindowsEditionInfo();
@@ -106,13 +110,16 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var result = await commandRunner.RunAsync(command, arguments, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             return result.Succeeded && !string.IsNullOrWhiteSpace(result.StandardOutput);
         }
-        catch
+        catch (Exception exception) when (exception is IOException or global::System.ComponentModel.Win32Exception or TimeoutException)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return false;
         }
     }

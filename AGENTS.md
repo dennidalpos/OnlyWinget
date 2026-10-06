@@ -11,7 +11,7 @@
 ## 2. Verified Commands
 | Workflow | Command | Shell / Cwd | Verified on | Notes / Examples |
 | :--- | :--- | :--- | :--- | :--- |
-| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-06 | 271 pass (5 inactive smoke methods) |
+| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-06 | 296 pass (5 inactive smoke methods) |
 | **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-06 | 28 scripts OK |
 | **Typecheck** | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-06 | Zero warnings/errors |
 | **Packaging** | `.\scripts\package.ps1 -NoRestore -Fast -NonInteractive` | pwsh / repo root | 2026-10-06 | NSIS EXE & portable ZIP only |

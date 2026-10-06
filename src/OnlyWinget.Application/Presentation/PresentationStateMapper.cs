@@ -236,6 +236,7 @@ public static class PresentationStateMapper
         var isLoading = state.BusyState is ApplicationBusyState.ManagingSources or ApplicationBusyState.CheckingCapabilities;
         var hasSource = state.Sources.Count > 0;
         var canUseWinget = state.Capabilities.CanUseWinget;
+        var canConfigureSources = canUseWinget && state.Capabilities.IsElevated == true;
 
         return new SourcePresentationState(
             state.Sources
@@ -251,9 +252,9 @@ public static class PresentationStateMapper
             [
                 new(UiCommandId.RefreshSources, "Command_Sources_Refresh", canUseWinget && !isLoading, UiCommandKind.Primary, Icon: "Refresh"),
                 new(UiCommandId.UpdateSources, "Command_Sources_Update", canUseWinget && !isLoading),
-                new(UiCommandId.AddSource, "Command_Sources_Add", canUseWinget && !isLoading, Icon: "Add"),
-                new(UiCommandId.RemoveSource, "Command_Sources_Remove", canUseWinget && hasSource && !isLoading, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_RemoveSource_Message"),
-                new(UiCommandId.ResetSources, "Command_Sources_Reset", canUseWinget && !isLoading, UiCommandKind.Destructive, UiCommandPlacement.Overflow, ConfirmationResourceKey: "Dialog_ResetSources_Message")
+                new(UiCommandId.AddSource, "Command_Sources_Add", canConfigureSources && !isLoading, Icon: "Add", TooltipResourceKey: "Sources_RequiresAdministrator"),
+                new(UiCommandId.RemoveSource, "Command_Sources_Remove", canConfigureSources && hasSource && !isLoading, UiCommandKind.Destructive, TooltipResourceKey: "Sources_RequiresAdministrator", ConfirmationResourceKey: "Dialog_RemoveSource_Message"),
+                new(UiCommandId.ResetSources, "Command_Sources_Reset", canConfigureSources && !isLoading, UiCommandKind.Destructive, UiCommandPlacement.Overflow, TooltipResourceKey: "Sources_RequiresAdministrator", ConfirmationResourceKey: "Dialog_ResetSources_Message")
             ],
             isLoading,
             state.SourceError?.Message ?? state.UserVisibleError ?? (canUseWinget ? null : state.Capabilities.WingetUnavailableMessage));
