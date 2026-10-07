@@ -9,6 +9,7 @@ using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Operations;
 using OnlyWinget.Domain.Packages;
 using OnlyWinget.Domain.Presets;
+using OnlyWinget.Infrastructure.Winget;
 
 namespace OnlyWinget.Tests;
 
@@ -1484,14 +1485,281 @@ public sealed class OnlyWingetApplicationTests
         public Task<WingetOperationOutcome<WingetSource>> ResetSourcesAsync(CancellationToken token) => RunAsync("reset", token);
     }
 
+    [Fact]
+    public async Task DelayedWorkspaceLoadRejectsPersistentEditsAndPublishesOneWorkspace()
+    {
+        var package = new PackageIdentity("Loaded.App", "winget");
+        var store = new BlockingWorkspaceStore(new WorkspaceState([new Preset("Loaded", [package])], "Loaded"));
+        var app = CreateApplication(workspaceStore: store);
+        var load = app.LoadWorkspaceAsync(CancellationToken.None);
+        await store.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        try
+        {
+            Assert.False(app.AddPreset("Unsaved").Succeeded);
+            Assert.False(app.RenameActivePreset("Unsaved").Succeeded);
+            Assert.False(app.RemoveActivePreset().Succeeded);
+            Assert.False(app.SetActivePreset("Unsaved").Succeeded);
+            Assert.False(app.RemoveSelectedPackagesFromActivePreset().Succeeded);
+            Assert.Empty(app.State.Workspace.Presets);
+            Assert.Empty(app.State.SelectedPresetPackages);
+        }
+        finally { store.Release.TrySetResult(); }
+        Assert.True((await load).Succeeded);
+        Assert.Equal("Loaded", app.State.ActivePreset?.Name);
+        Assert.Equal(package, Assert.Single(app.State.SelectedPresetPackages));
+    }
+
+    [Fact]
+    public async Task EditDuringSearchIsRejectedAndRequestedSaveWaitsForCompletion()
+    {
+        var search = new BlockingPackageSearch();
+        var store = new MemoryWorkspaceStore();
+        var app = CreateApplication(search: search, workspaceStore: store);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        Assert.True(app.AddPreset("Persisted").Succeeded);
+        var pendingSearch = app.SearchAsync("App", CancellationToken.None);
+        await search.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var save = app.SaveWorkspaceAsync(CancellationToken.None);
+        try
+        {
+            Assert.False(app.AddPreset("Rejected").Succeeded);
+            Assert.False(app.RenameActivePreset("Rejected").Succeeded);
+            Assert.False(save.IsCompleted);
+            Assert.Equal(0, store.SaveCount);
+        }
+        finally { search.Release.TrySetResult(); }
+        Assert.True((await pendingSearch).Succeeded);
+        Assert.True((await save).Succeeded);
+        Assert.Equal(1, store.SaveCount);
+        Assert.Equal("Persisted", Assert.Single((await store.LoadAsync(CancellationToken.None)).Presets).Name);
+    }
+
+    [Fact]
+    public async Task QueuedWorkspaceSaveHonorsCancellationWithoutInterruptingSearch()
+    {
+        var search = new BlockingPackageSearch();
+        var store = new MemoryWorkspaceStore();
+        var app = CreateApplication(search: search, workspaceStore: store);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        var pendingSearch = app.SearchAsync("App", CancellationToken.None);
+        await search.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        using var cancellation = new CancellationTokenSource();
+        var save = app.SaveWorkspaceAsync(cancellation.Token);
+        cancellation.Cancel();
+        try
+        {
+            Assert.False((await save.WaitAsync(TimeSpan.FromSeconds(5))).Succeeded);
+            Assert.Equal(0, store.SaveCount);
+            Assert.Equal(ApplicationBusyState.Searching, app.State.BusyState);
+        }
+        finally { search.Release.TrySetResult(); }
+        Assert.True((await pendingSearch).Succeeded);
+        Assert.True((await app.SaveWorkspaceAsync(CancellationToken.None)).Succeeded);
+    }
+
+    [Fact]
+    public async Task ConcurrentSearchPublicationAndSelectionKeepSnapshotsCoherent()
+    {
+        var first = new PackageIdentity("First.App", "winget");
+        var second = new PackageIdentity("Second.App", "winget");
+        var search = new BlockingPackageSearch(new PackageSearchResult(second, "Second", "1.0", null));
+        var app = CreateApplication(search: search);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        var pendingSearch = Task.Run(() => app.SearchAsync("App", CancellationToken.None));
+        await search.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        try
+        {
+            await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Task.Run(() =>
+            {
+                for (var index = 0; index < 200; index++)
+                {
+                    app.ToggleSearchResult(first);
+                    app.ToggleSearchResult(second);
+                    var snapshot = app.State;
+                    Assert.All(snapshot.SelectedSearchPackages,
+                        package => Assert.Contains(snapshot.SearchResults, row => row.Package == package));
+                    if (index == 50) search.Release.TrySetResult();
+                }
+            })));
+        }
+        finally { search.Release.TrySetResult(); }
+        Assert.True((await pendingSearch).Succeeded);
+        Assert.Equal(second, Assert.Single(app.State.SearchResults).Package);
+    }
+
+    private sealed class BlockingWorkspaceStore(WorkspaceState state) : IWorkspaceStore
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken)
+        {
+            Started.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
+            return state;
+        }
+        public Task SaveAsync(WorkspaceState workspace, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class BlockingPackageSearch(params PackageSearchResult[] results) : IPackageSearchService
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async Task<WingetOperationOutcome<PackageSearchResult>> SearchAsync(PackageSearchRequest request, CancellationToken cancellationToken)
+        {
+            Started.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
+            return WingetOperationOutcome<PackageSearchResult>.Success(results, string.Empty);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RescanPreservesMixedOperationResultsAndRetryContext(bool scanSucceeds)
+    {
+        var successPackage = new PackageIdentity("Success.App", "winget");
+        var failedPackage = new PackageIdentity("Failed.App", "winget");
+        var updates = new StubUpdateLoader(new(successPackage, "Success", "1", "2"), new(failedPackage, "Failed", "1", "2"));
+        var executor = new RecordingOperationExecutor(new([
+            new(new(successPackage, PackageAction.Upgrade), new(0, "upgraded", string.Empty), null),
+            new(new(failedPackage, PackageAction.Upgrade), new(1, string.Empty, "permission denied"), new(WingetErrorKind.Unknown, "permission denied"))]));
+        var app = CreateApplication(updates: updates, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        Assert.False((await app.ApplySelectedUpdatesAsync(CancellationToken.None)).Succeeded);
+        var results = app.State.LastOperationResults.ToArray();
+        if (!scanSucceeds)
+        {
+            updates.FailingSources.Add("winget");
+            updates.FailingSources.Add("msstore");
+        }
+        Assert.Equal(scanSucceeds, (await app.RefreshUpdatesAsync(CancellationToken.None)).Succeeded);
+        Assert.Equal(results, app.State.LastOperationResults);
+        Assert.Contains(PresentationStateMapper.ToUpdatesState(app.State).OperationResults,
+            row => row.PackageId == "Failed.App" && row.ErrorDetails!.Contains("permission denied"));
+        if (!scanSucceeds)
+        {
+            Assert.Equal(failedPackage, Assert.Single(app.State.Updates).Package);
+            var scanError = app.State.UserVisibleError;
+            Assert.NotNull(scanError);
+            app.ToggleAllUpdates();
+            Assert.Equal(scanError, app.State.UserVisibleError);
+        }
+        await app.RetryFailedOperationsAsync(CancellationToken.None);
+        Assert.Equal(failedPackage, Assert.Single(executor.LastPlan!.Selections).Package);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ApplicationCancellationKeepsCompletedActivityAndResults(bool globalCancellation)
+    {
+        var first = new PackageIdentity("One.App", "winget");
+        var second = new PackageIdentity("Two.App", "winget");
+        var third = new PackageIdentity("Three.App", "winget");
+        var updates = new StubUpdateLoader(new(first, "One", "1", "2"), new(second, "Two", "1", "2"), new(third, "Three", "1", "2"));
+        var runner = new BlockingWingetCommandRunner();
+        var executor = new WingetOperationExecutor(runner, new(), new());
+        var app = CreateApplication(updates: updates, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        using var cancellation = new CancellationTokenSource();
+        var apply = app.ApplySelectedUpdatesAsync(cancellation.Token);
+        await runner.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        if (globalCancellation) app.CancelCurrentOperation();
+        else cancellation.Cancel();
+        Assert.False((await apply.WaitAsync(TimeSpan.FromSeconds(5))).Succeeded);
+        Assert.Equal(3, app.State.LastOperationResults.Count);
+        Assert.True(app.State.LastOperationResults[0].Succeeded);
+        Assert.All(app.State.LastOperationResults.Skip(1), result => Assert.Equal(WingetErrorKind.Cancelled, result.Error?.Kind));
+        Assert.All(PresentationStateMapper.ToUpdatesState(app.State).OperationResults.Where(row => !row.Succeeded),
+            row => Assert.Equal("Operation_Status_Cancelled", row.Status));
+        Assert.DoesNotContain(app.State.Updates, row => row.Package == first);
+        Assert.Equal(2, app.State.SelectedUpdates.Count);
+        Assert.Contains(app.State.Activity, entry => entry.Title == first.Id && entry.Severity == ActivitySeverity.Success);
+        Assert.Equal(2, runner.Calls.Count);
+        Assert.Equal(ApplicationBusyState.Idle, app.State.BusyState);
+        // Refreshing rows preserves the cancellation results used by explicit retry.
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        Assert.Equal(3, app.State.LastOperationResults.Count);
+    }
+
+    [Fact]
+    public async Task SuccessfulRescanKeepsSuccessfulBatchResults()
+    {
+        var package = new PackageIdentity("Success.App", "winget");
+        var updates = new StubUpdateLoader(new PackageUpdate(package, "Success", "1", "2"));
+        var executor = new RecordingOperationExecutor(new([new(new(package, PackageAction.Upgrade), new(0, "upgraded", string.Empty), null)]));
+        var app = CreateApplication(updates: updates, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        Assert.True((await app.ApplySelectedUpdatesAsync(CancellationToken.None)).Succeeded);
+        Assert.True((await app.RefreshUpdatesAsync(CancellationToken.None)).Succeeded);
+        Assert.True(Assert.Single(app.State.LastOperationResults).Succeeded);
+    }
+
+    [Fact]
+    public async Task CancellationDuringValidationKeepsSkippedResultsAndMarksUnstartedPackages()
+    {
+        var first = new PackageIdentity("One.App", "winget");
+        var second = new PackageIdentity("Two.App", "winget");
+        var resolver = new StubPackageResolver { BlockingInstalledPackageId = second.Id };
+        resolver.InstalledPackages[first.Id] = "1.0";
+        var app = CreateApplication(resolver: resolver);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Batch");
+        await app.AddPackageToActivePresetAsync(first, CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(second, CancellationToken.None);
+        var apply = app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
+        await resolver.InstalledCheckStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        app.CancelCurrentOperation();
+        Assert.False((await apply.WaitAsync(TimeSpan.FromSeconds(5))).Succeeded);
+        Assert.Equal(2, app.State.LastOperationResults.Count);
+        Assert.True(app.State.LastOperationResults[0].Succeeded);
+        Assert.Equal(WingetErrorKind.Cancelled, app.State.LastOperationResults[1].Error?.Kind);
+        Assert.All(app.State.LastOperationResults, result => Assert.Equal(0, result.AttemptCount));
+    }
+
+    [Fact]
+    public async Task FailFastValidationPreservesEarlierSkippedPackageAndActualFailure()
+    {
+        var first = new PackageIdentity("One.App", "winget");
+        var second = new PackageIdentity("Two.App", "winget");
+        var store = new MemoryWorkspaceStore();
+        await store.SaveAsync(new WorkspaceState([new Preset("Batch", [first, second])], "Batch"), CancellationToken.None);
+        var resolver = new StubPackageResolver(new PackageResolution(second, null, null, null, false,
+            new ClassifiedWingetError(WingetErrorKind.NotFound, "Package no longer available.")));
+        resolver.InstalledPackages[first.Id] = "1.0";
+        var executor = new RecordingOperationExecutor(new([]));
+        var app = CreateApplication(workspaceStore: store, resolver: resolver, executor: executor);
+        await app.LoadWorkspaceAsync(CancellationToken.None);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        Assert.False((await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None)).Succeeded);
+        Assert.Equal(2, app.State.LastOperationResults.Count);
+        Assert.True(app.State.LastOperationResults[0].Succeeded);
+        Assert.Contains("no longer available", app.State.LastOperationResults[1].Error?.Message);
+        Assert.Null(executor.LastPlan);
+    }
+
     private static OnlyWingetApplication CreateApplication(
         SystemCapabilities? capabilities = null,
-        StubPackageSearch? search = null,
+        IPackageSearchService? search = null,
         StubPackageResolver? resolver = null,
         StubUpdateLoader? updates = null,
         StubWindowsUpdateService? windowsUpdates = null,
         IWingetSourceService? sources = null,
-        RecordingOperationExecutor? executor = null,
+        IOperationExecutor? executor = null,
         ISourcePreferenceStore? sourcePreferences = null,
         ISystemCapabilityService? capabilityService = null,
         IWorkspaceStore? workspaceStore = null,
@@ -1607,6 +1875,8 @@ public sealed class OnlyWingetApplicationTests
     {
         public List<PackageIdentity> Requests { get; } = [];
         public Dictionary<string, string> InstalledPackages { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public string? BlockingInstalledPackageId { get; init; }
+        public TaskCompletionSource InstalledCheckStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<PackageResolution> ResolveAsync(PackageIdentity package, CancellationToken cancellationToken)
         {
@@ -1618,13 +1888,18 @@ public sealed class OnlyWingetApplicationTests
             return Task.FromResult(resolution ?? new PackageResolution(package, null, null, null, true, null));
         }
 
-        public Task<PackageInstalledStatus> CheckInstalledStatusAsync(PackageIdentity package, CancellationToken cancellationToken)
+        public async Task<PackageInstalledStatus> CheckInstalledStatusAsync(PackageIdentity package, CancellationToken cancellationToken)
         {
+            if (package.Id == BlockingInstalledPackageId)
+            {
+                InstalledCheckStarted.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
             if (InstalledPackages.TryGetValue(package.Id, out var version))
             {
-                return Task.FromResult(new PackageInstalledStatus(true, version));
+                return new PackageInstalledStatus(true, version);
             }
-            return Task.FromResult(new PackageInstalledStatus(false, null));
+            return new PackageInstalledStatus(false, null);
         }
     }
 

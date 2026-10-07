@@ -52,6 +52,7 @@ public static class PresentationStateMapper
         var hasPackages = active?.Packages.Count > 0;
         var hasSelectedPackages = state.SelectedPresetPackages.Count > 0;
         var isExecuting = state.BusyState is ApplicationBusyState.ExecutingOperation or ApplicationBusyState.ValidatingPackages;
+        var isIdle = state.BusyState == ApplicationBusyState.Idle;
         var canUseWinget = state.Capabilities.CanUseWinget;
         var operationResults = CreateOperationResultRows(state);
 
@@ -77,17 +78,17 @@ public static class PresentationStateMapper
             state.PresetInstallHeader,
             operationResults,
             [
-                new(UiCommandId.AddPreset, "Command_Preset_Add", !isExecuting, UiCommandKind.Primary, Icon: "Add"),
-                new(UiCommandId.RenamePreset, "Command_Preset_Rename", hasPreset && !isExecuting, Icon: "Edit"),
-                new(UiCommandId.RemovePreset, "Command_Preset_Remove", hasPreset && !isExecuting, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_RemovePreset_Message"),
-                new(UiCommandId.AddPresetPackage, "Command_PresetPackage_Add", hasPreset && !isExecuting, UiCommandKind.Primary, Icon: "Add"),
-                new(UiCommandId.EditPresetPackage, "Command_PresetPackage_Edit", state.SelectedPresetPackages.Count == 1 && !isExecuting, Icon: "Edit"),
-                new(UiCommandId.RemovePresetPackages, "Command_PresetPackage_Remove", hasSelectedPackages && !isExecuting, UiCommandKind.Destructive),
-                new(UiCommandId.ImportPreset, "Command_Preset_Import", !isExecuting, Placement: UiCommandPlacement.Overflow),
+                new(UiCommandId.AddPreset, "Command_Preset_Add", isIdle, UiCommandKind.Primary, Icon: "Add"),
+                new(UiCommandId.RenamePreset, "Command_Preset_Rename", hasPreset && isIdle, Icon: "Edit"),
+                new(UiCommandId.RemovePreset, "Command_Preset_Remove", hasPreset && isIdle, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_RemovePreset_Message"),
+                new(UiCommandId.AddPresetPackage, "Command_PresetPackage_Add", hasPreset && isIdle, UiCommandKind.Primary, Icon: "Add"),
+                new(UiCommandId.EditPresetPackage, "Command_PresetPackage_Edit", state.SelectedPresetPackages.Count == 1 && isIdle, Icon: "Edit"),
+                new(UiCommandId.RemovePresetPackages, "Command_PresetPackage_Remove", hasSelectedPackages && isIdle, UiCommandKind.Destructive),
+                new(UiCommandId.ImportPreset, "Command_Preset_Import", isIdle, Placement: UiCommandPlacement.Overflow),
                 new(UiCommandId.ExportPreset, "Command_Preset_Export", hasPreset && !isExecuting, Placement: UiCommandPlacement.Overflow),
-                new(UiCommandId.SaveWorkspace, "Command_Workspace_Save", !isExecuting, Icon: "Save"),
-                new(UiCommandId.InstallPreset, "Command_Preset_ApplyInstall", hasPackages && canUseWinget && !isExecuting, UiCommandKind.Primary, Icon: "Download"),
-                new(UiCommandId.UninstallPreset, "Command_Preset_ApplyUninstall", hasPackages && canUseWinget && !isExecuting, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_UninstallPreset_Message"),
+                new(UiCommandId.SaveWorkspace, "Command_Workspace_Save", isIdle, Icon: "Save"),
+                new(UiCommandId.InstallPreset, "Command_Preset_ApplyInstall", hasPackages && canUseWinget && isIdle, UiCommandKind.Primary, Icon: "Download"),
+                new(UiCommandId.UninstallPreset, "Command_Preset_ApplyUninstall", hasPackages && canUseWinget && isIdle, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_UninstallPreset_Message"),
                 new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isExecuting, UiCommandKind.Cancel, Icon: "Cancel")
             ],
             isExecuting,
@@ -301,7 +302,8 @@ public static class PresentationStateMapper
                     result.Selection.Action,
                     result.Succeeded,
                     isWarning,
-                    isWarning ? "Operation_Status_Warning" : (result.Succeeded ? "Operation_Status_Succeeded" : "Operation_Status_Failed"),
+                    isWarning ? "Operation_Status_Warning" : result.Error?.Kind == WingetErrorKind.Cancelled
+                        ? "Operation_Status_Cancelled" : (result.Succeeded ? "Operation_Status_Succeeded" : "Operation_Status_Failed"),
                     errorDetails,
                     EmptyToNull(result.CommandResult.StandardOutput));
             })

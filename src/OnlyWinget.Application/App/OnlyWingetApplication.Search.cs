@@ -22,48 +22,39 @@ public sealed partial class OnlyWingetApplication
                         throw new InvalidOperationException("Enable at least one winget source before searching.");
                     }
 
-                    searchResults.Clear();
-                    var sourceErrors = new List<string>();
-                    var searchTasks = enabledSources.Select(async source =>
+                    var outcomes = await Task.WhenAll(enabledSources.Select(async source =>
                     {
                         var outcome = await packageSearch.SearchAsync(new PackageSearchRequest(query, source), cancellationToken)
                             .ConfigureAwait(false);
-                        if (!outcome.Succeeded)
-                        {
-                            lock (sourceErrors)
-                            {
-                                sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget search failed."}");
-                            }
-                        }
-                        else
-                        {
-                            lock (searchResults)
-                            {
-                                searchResults.AddRange(outcome.Rows);
-                            }
-                        }
-                    }).ToArray();
-                    await Task.WhenAll(searchTasks).ConfigureAwait(false);
-
-                    if (searchResults.Count == 0 && sourceErrors.Count > 0)
-                    {
-                        throw new InvalidOperationException(string.Join(Environment.NewLine, sourceErrors));
-                    }
-
-                    var distinctResults = searchResults
+                        return (Source: source, Outcome: outcome);
+                    })).ConfigureAwait(false);
+                    var sourceErrors = outcomes.Where(item => !item.Outcome.Succeeded)
+                        .Select(item => $"{item.Source}: {item.Outcome.Error?.Message ?? "winget search failed."}")
+                        .ToArray();
+                    var distinctResults = outcomes.Where(item => item.Outcome.Succeeded)
+                        .SelectMany(item => item.Outcome.Rows)
                         .DistinctBy(result => result.Package)
                         .OrderBy(result => result.Name, StringComparer.OrdinalIgnoreCase)
                         .ThenBy(result => result.Package.Id, StringComparer.OrdinalIgnoreCase)
                         .ToArray();
-                    searchResults.Clear();
-                    searchResults.AddRange(distinctResults);
+
+                    if (distinctResults.Length == 0 && sourceErrors.Length > 0)
+                    {
+                        throw new InvalidOperationException(string.Join(Environment.NewLine, sourceErrors));
+                    }
+
                     var metadataFailureCount = await RefreshPackageMetadataAsync(
-                            searchResults.Select(result => result.Package),
+                            distinctResults.Select(result => result.Package),
                             cancellationToken)
                         .ConfigureAwait(false);
-                    searchSelection.ReplaceAvailable(searchResults.Select(result => result.Package));
-                    AddActivity(ActivitySeverity.Information, "Search completed", $"{searchResults.Count} result(s).");
-                    if (sourceErrors.Count > 0)
+                    UpdateState(() =>
+                    {
+                        searchResults.Clear();
+                        searchResults.AddRange(distinctResults);
+                        searchSelection.ReplaceAvailable(distinctResults.Select(result => result.Package));
+                    });
+                    AddActivity(ActivitySeverity.Information, "Search completed", $"{distinctResults.Length} result(s).");
+                    if (sourceErrors.Length > 0)
                     {
                         AddActivity(
                             ActivitySeverity.Warning,
@@ -101,7 +92,7 @@ public sealed partial class OnlyWingetApplication
                     var active = EnsureActivePreset();
                     var packages = active.Packages.ToList();
                     var added = 0;
-                    foreach (var selected in searchSelection.Selected)
+                    foreach (var selected in ReadState(() => searchSelection.Selected.ToArray()))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
@@ -128,7 +119,7 @@ public sealed partial class OnlyWingetApplication
         IProgress<OperationProgress>? progress = null)
     {
         RequireWinget();
-        var selected = searchSelection.Selected.ToArray();
+        var selected = ReadState(() => searchSelection.Selected.ToArray());
         if (selected.Length == 0)
         {
             return ApplicationActionResult.Failure("Select at least one package to install.");
@@ -147,14 +138,14 @@ public sealed partial class OnlyWingetApplication
                 async cancellationToken =>
                 {
                     RequireWinget();
-                    var packages = workspace.Presets
+                    var packages = ReadState(() => workspace.Presets
                         .SelectMany(preset => preset.Packages)
                         .Distinct()
-                        .ToArray();
+                        .ToArray());
                     await RefreshPackageMetadataAsync(packages, cancellationToken).ConfigureAwait(false);
 
                     int count;
-                    lock (packageMetadata)
+                    lock (stateLock)
                     {
                         count = packageMetadata.Count;
                     }
@@ -166,7 +157,7 @@ public sealed partial class OnlyWingetApplication
 
     public PackageResolution? GetPackageMetadata(PackageIdentity package)
     {
-        lock (packageMetadata)
+        lock (stateLock)
         {
             return packageMetadata.TryGetValue(package, out var cached) ? cached.Resolution : null;
         }
@@ -174,7 +165,7 @@ public sealed partial class OnlyWingetApplication
 
     private Dictionary<PackageIdentity, PackageResolution> SnapshotPackageMetadata()
     {
-        lock (packageMetadata)
+        lock (stateLock)
         {
             return packageMetadata.ToDictionary(pair => pair.Key, pair => pair.Value.Resolution);
         }
@@ -203,10 +194,10 @@ public sealed partial class OnlyWingetApplication
                 throw new InvalidOperationException(resolution.Error?.Message ?? $"Package '{package.Id}' was not found in source '{requestedSource}'.");
             }
 
-            lock (packageMetadata)
+            UpdateState(() =>
             {
                 packageMetadata[resolution.Package] = new CachedPackageResolution(resolution, clock.GetUtcNow());
-            }
+            });
             return resolution;
         }
 
@@ -247,10 +238,10 @@ public sealed partial class OnlyWingetApplication
         }
 
         var match = matches[0];
-        lock (packageMetadata)
+        UpdateState(() =>
         {
             packageMetadata[match.Package] = new CachedPackageResolution(match, clock.GetUtcNow());
-        }
+        });
         return match;
     }
 
@@ -263,7 +254,7 @@ public sealed partial class OnlyWingetApplication
             .Distinct()
             .Where(package =>
             {
-                lock (packageMetadata)
+                lock (stateLock)
                 {
                     return !packageMetadata.TryGetValue(package, out var cached) ||
                         clock.GetUtcNow() - cached.ResolvedAt >= PackageMetadataCacheDuration;
@@ -281,11 +272,11 @@ public sealed partial class OnlyWingetApplication
                 if (resolution.IsResolved)
                 {
                     var cached = new CachedPackageResolution(resolution, clock.GetUtcNow());
-                    lock (packageMetadata)
+                    UpdateState(() =>
                     {
                         packageMetadata[package] = cached;
                         packageMetadata[resolution.Package] = cached;
-                    }
+                    });
                 }
                 else
                 {

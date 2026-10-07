@@ -9,6 +9,26 @@ public sealed class PresentationStateMapperTests
 {
     private static OnlyWingetApplication CreateApp() => OnlyWingetApplicationTests.CreateDefaultApplication();
 
+    [Theory]
+    [InlineData(ApplicationBusyState.LoadingWorkspace)]
+    [InlineData(ApplicationBusyState.Searching)]
+    [InlineData(ApplicationBusyState.RefreshingUpdates)]
+    [InlineData(ApplicationBusyState.ManagingSources)]
+    [InlineData(ApplicationBusyState.SavingWorkspace)]
+    [InlineData(ApplicationBusyState.CheckingCapabilities)]
+    [InlineData(ApplicationBusyState.ScanningWindowsUpdates)]
+    [InlineData(ApplicationBusyState.InstallingWindowsUpdates)]
+    public void PresetMutationCommandsAreDisabledDuringEveryBusyWorkflow(ApplicationBusyState busyState)
+    {
+        var app = CreateApp();
+        app.AddPreset("Dev");
+        var state = PresentationStateMapper.ToPresetsState(app.State with { BusyState = busyState });
+        UiCommandId[] mutations = [UiCommandId.AddPreset, UiCommandId.RenamePreset, UiCommandId.RemovePreset,
+            UiCommandId.AddPresetPackage, UiCommandId.EditPresetPackage, UiCommandId.RemovePresetPackages,
+            UiCommandId.ImportPreset, UiCommandId.SaveWorkspace, UiCommandId.InstallPreset, UiCommandId.UninstallPreset];
+        Assert.All(state.Commands.Where(command => mutations.Contains(command.Id)), command => Assert.False(command.IsEnabled));
+    }
+
     [Fact]
     public void FromApplicationStateThrowsOnNull()
     {

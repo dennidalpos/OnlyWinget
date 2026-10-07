@@ -8,7 +8,6 @@ using OnlyWinget.Application.Winget;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Domain.Operations;
 using OnlyWinget.Domain.Packages;
-using OnlyWinget.Domain.Presets;
 using OnlyWinget.Domain.Selection;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("OnlyWinget.Tests")]
@@ -60,7 +59,7 @@ public sealed partial class OnlyWingetApplication(
     private ClassifiedWingetError? sourceError;
     private string? userVisibleError;
     private OperationProgress? operationProgress;
-    private int operationInProgress;
+    private readonly SemaphoreSlim operationGate = new(1, 1);
     private OnlyWingetState? cachedState;
     private bool isStateDirty = true;
 
@@ -130,60 +129,61 @@ public sealed partial class OnlyWingetApplication(
         ApplicationBusyState state,
         CancellationToken cancellationToken,
         Func<CancellationToken, Task> action,
-        string fallbackError)
+        string fallbackError,
+        bool waitForTurn = false)
     {
-        if (Interlocked.CompareExchange(ref operationInProgress, 1, 0) != 0)
+        if (waitForTurn)
+        {
+            try
+            {
+                await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return ApplicationActionResult.Failure("Workspace save cancelled while waiting for another operation.");
+            }
+        }
+        else if (!operationGate.Wait(0))
         {
             return ApplicationActionResult.Failure("Another operation is already in progress.");
         }
 
-        // Linked so that either the caller's own token (e.g. a page-level Cancel button)
-        // or CancelCurrentOperation() (the global tracker's Cancel button) can stop this operation.
-        lock (stateLock)
-        {
-            currentOperationCts?.Dispose();
-            currentOperationCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        }
-
-        busyState = state;
-        userVisibleError = null;
-        operationProgress = null;
-        NotifyStateChanged();
-        Logger?.Invoke(AppLogLevel.Verbose, $"Starting operation {state}...", "RunAsync");
-        appLogger?.LogDebug("Starting operation {State}...", state);
         try
         {
-            await action(currentOperationCts.Token).ConfigureAwait(false);
+            // Both caller and tracker cancellation stop the guarded operation.
+            var operationCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            UpdateState(() =>
+            {
+                currentOperationCts = operationCts;
+                busyState = state;
+                userVisibleError = null;
+                operationProgress = null;
+            });
+            NotifyStateChanged();
+            Logger?.Invoke(AppLogLevel.Verbose, $"Starting operation {state}...", "RunAsync");
+            appLogger?.LogDebug("Starting operation {State}...", state);
+            await action(operationCts.Token).ConfigureAwait(false);
             Logger?.Invoke(AppLogLevel.Verbose, $"Operation {state} completed successfully.", "RunAsync");
             appLogger?.LogDebug("Operation {State} completed successfully.", state);
             return ApplicationActionResult.Success;
         }
         catch (OperationCanceledException)
         {
-            if (operationProgress != null)
-            {
-                operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
-            }
+            MarkProgressFailed();
             Logger?.Invoke(AppLogLevel.Information, $"Operation {state} was cancelled.", "RunAsync");
             appLogger?.LogInformation("Operation {State} was cancelled.", state);
             return Fail("Operation cancelled.", state);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
         {
-            if (operationProgress != null)
-            {
-                operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
-            }
+            MarkProgressFailed();
             Logger?.Invoke(AppLogLevel.Warning, $"Operation {state} failed with user error: {exception.Message}", "RunAsync");
             appLogger?.LogWarning(exception, "Operation {State} failed with user error: {Message}", state, exception.Message);
             return Fail(exception.Message, state);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            if (operationProgress != null)
-            {
-                operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
-            }
+            MarkProgressFailed();
             ExceptionLogger?.Invoke("OnlyWingetApplication.RunAsync", exception);
             Logger?.Invoke(AppLogLevel.Error, $"Operation {state} failed: {exception}", "RunAsync");
             appLogger?.LogError(exception, "Operation {State} failed.", state);
@@ -191,26 +191,30 @@ public sealed partial class OnlyWingetApplication(
         }
         finally
         {
-            busyState = ApplicationBusyState.Idle;
-            lock (stateLock)
+            UpdateState(() =>
             {
+                busyState = ApplicationBusyState.Idle;
                 currentOperationCts?.Dispose();
                 currentOperationCts = null;
-            }
-            Interlocked.Exchange(ref operationInProgress, 0);
+            });
+            operationGate.Release();
             NotifyStateChanged();
         }
     }
 
-    private ApplicationActionResult Run(Action action)
+    private ApplicationActionResult Run(Action action, bool requiresIdle = false)
     {
-        userVisibleError = null;
+        if (requiresIdle && !operationGate.Wait(0))
+        {
+            return ApplicationActionResult.Failure("Another operation is already in progress.");
+        }
         try
         {
-            lock (stateLock)
+            UpdateState(() =>
             {
+                if (requiresIdle) userVisibleError = null;
                 action();
-            }
+            });
             return ApplicationActionResult.Success;
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
@@ -219,9 +223,36 @@ public sealed partial class OnlyWingetApplication(
         }
         finally
         {
+            if (requiresIdle) operationGate.Release();
             NotifyStateChanged();
         }
     }
+
+    private T ReadState<T>(Func<T> read)
+    {
+        lock (stateLock)
+        {
+            return read();
+        }
+    }
+
+    private void UpdateState(Action update)
+    {
+        lock (stateLock)
+        {
+            // Invalidate before callbacks can read the changed state.
+            isStateDirty = true;
+            update();
+        }
+    }
+
+    private void MarkProgressFailed() => UpdateState(() =>
+    {
+        if (operationProgress is not null)
+        {
+            operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
+        }
+    });
 
     private void NotifyStateChanged()
     {
@@ -238,17 +269,19 @@ public sealed partial class OnlyWingetApplication(
 
     private void RequireWinget()
     {
-        if (!capabilities.CanUseWinget)
+        var current = ReadState(() => capabilities);
+        if (!current.CanUseWinget)
         {
-            throw new NotSupportedException(capabilities.WingetUnavailableMessage);
+            throw new NotSupportedException(current.WingetUnavailableMessage);
         }
     }
 
     private void RequireWindowsUpdate()
     {
-        if (!capabilities.CanUseWindowsUpdate)
+        var current = ReadState(() => capabilities);
+        if (!current.CanUseWindowsUpdate)
         {
-            throw new NotSupportedException(capabilities.WindowsUpdateUnavailableMessage);
+            throw new NotSupportedException(current.WindowsUpdateUnavailableMessage);
         }
     }
 
@@ -256,7 +289,7 @@ public sealed partial class OnlyWingetApplication(
     {
         if (state != ApplicationBusyState.ExecutingOperation)
         {
-            userVisibleError = error;
+            UpdateState(() => userVisibleError = error);
         }
         AddActivity(ActivitySeverity.Error, "Action failed", error);
         return ApplicationActionResult.Failure(error);

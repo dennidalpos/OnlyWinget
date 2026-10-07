@@ -62,9 +62,9 @@ Infrastructure      ──> Application ──> Domain
 ## 2. Concurrency & Synchronization Guidelines
 
 - **Asynchronous Serialization**:
-  Only one major operation (search, update check, installer run) can execute at a time. The `OnlyWingetApplication` class protects this using `Interlocked.CompareExchange` on the `ApplicationBusyState` field. Manual UI command disabling is used only as a secondary UX safety; the application layer is the definitive concurrency guard.
+  Only one major operation (search, update check, installer run) can execute at a time. `OnlyWingetApplication` uses one `SemaphoreSlim` for async workflows and persistent synchronous edits. Busy edits are rejected; requested workspace saves wait asynchronously with cancellation. UI command disabling is secondary protection.
 - **In-Memory Thread Safety**:
-  Modifications to shared caches and dictionaries (e.g., `packageMetadata`) must be wrapped in standard C# `lock` synchronization statements.
+  Snapshots, selections, metadata and all workflow state publication share one dedicated `stateLock`. Async discovery collects local outcomes before publishing rows and selection together. No lock spans an await.
 - **File Persistence Safety**:
   Write/read operations in JSON stores (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`) and app settings writes must be synchronized using instance-scoped `SemaphoreSlim(1,1)` locks.
 

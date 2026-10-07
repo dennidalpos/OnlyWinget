@@ -88,6 +88,24 @@ The global tracker Cancel button and the caller token both cancel source update/
 
 Capability and installed-status probes propagate cancellation instead of reporting unavailable/not installed. See [Microsoft's cancellation guidance](https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads).
 
+## Workspace edits and saving
+
+Persistent preset edits and active-preset changes are rejected while another workflow is running. Wait for the operation to finish before editing; the rejected action leaves workspace state unchanged. Search/update rows and their available selections are published together, so snapshots remain coherent during background discovery.
+
+An already requested workspace save waits for the current operation rather than failing with a busy error. Its caller can cancel the wait without cancelling that operation. Once admitted, save uses the same caller/global cancellation as other workflows. Save errors remain visible; pending-edit retention and navigation after a failed save are tracked separately under AUDIT-19.
+
+Synchronization follows Microsoft's [lock guidance](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/lock) and [cancellable semaphore wait](https://learn.microsoft.com/en-us/dotnet/api/system.threading.semaphoreslim.waitasync?view=net-10.0).
+
+The preset selector still ignores a rejected active-preset change and does not request autosave for an accepted change (AUDIT-35). Until corrected, select the preset while idle and explicitly save the workspace to retain that choice across restart.
+
+## WinGet batch results and cancellation
+
+Only a successful apply triggers an automatic rescan. Failed or cancelled batches retain results, diagnostics and pending rows. Manual successful/failed rescans also retain the batch results; a failed scan preserves the previous update rows, and changing their selection does not clear its diagnostic.
+
+Cancellation keeps completed successes/failures, records the active package as unconfirmed and marks packages that never started with zero attempts. During preflight validation, already installed packages and validation failures are recorded immediately. Cancelled rows have EN/IT status labels. Cancellation during retry waiting preserves the last command's output and error without starting another attempt. Cancellation does not undo a package change already completed; check installed status before explicitly retrying an unconfirmed package.
+
+The executor continues to throw a cancellation exception: `OperationExecutionCanceledException` inherits `OperationCanceledException`, preserves its token, and exposes `Summary.Results`. Consumers should retain the summary before handling cancellation. The Application retry method selects failed/cancelled results, while exposing or retiring its disconnected UI path remains AUDIT-28. See [Microsoft cooperative cancellation](https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads) and [Task cancellation](https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/task-cancellation).
+
 ## WinGet certificate failures
 
 Certificate failures return the original exit code/output and an actionable diagnostic. Search, discovery and package execution do not automatically reset sources or retry the failed command. Inspect `winget source list` and the affected endpoint/certificate before retrying. An explicit global reset removes custom sources and requires administrative privileges; use it only after reviewing the configuration. See [Microsoft's source-command contract](https://learn.microsoft.com/en-us/windows/package-manager/winget/source).

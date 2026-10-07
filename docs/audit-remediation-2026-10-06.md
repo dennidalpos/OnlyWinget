@@ -3,6 +3,8 @@
 Date: 2026-10-06. Original findings: [audit-2026-10-05.md](audit-2026-10-05.md).
 The [tracker](../PROJECT_STATUS.json) contains only pending work; completed findings remain documented here and in the original audit.
 
+Continuation: [2026-10-07 remediation](audit-remediation-2026-10-07.md) closes AUDIT-16/17 and records AUDIT-35.
+
 ## AUDIT-14 — Closed
 
 Default source initialization runs once and retains the flag across enable/disable saves. Refresh/startup preserve disabled choices, deliberately removed defaults and existing URLs. Removed automatic endpoint replacement, including its remove-then-add failure path. Missing defaults are added only with confirmed elevation; ordinary users can still list/update sources and save local preferences, while Activity explains deferred initialization. Add/remove/reset are guarded in Application and disabled in presentation without elevation, with EN/IT tooltips and accessibility help.

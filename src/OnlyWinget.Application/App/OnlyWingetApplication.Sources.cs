@@ -17,7 +17,7 @@ public sealed partial class OnlyWingetApplication
                     await EnsureOfficialSourcesConfiguredAsync(cancellationToken).ConfigureAwait(false);
                     var outcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
                     ApplySourceOutcome(outcome, updateRows: true);
-                    AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{sources.Count} source(s).");
+                    AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{ReadState(() => sources.Count)} source(s).");
                 },
                 "Unable to refresh winget sources.")
             .ConfigureAwait(false);
@@ -81,12 +81,12 @@ public sealed partial class OnlyWingetApplication
                 async cancellationToken =>
                 {
                     RequireWinget();
-                    if (!sources.Any(source => string.Equals(source.Name, name, StringComparison.OrdinalIgnoreCase)))
+                    if (!ReadState(() => sources.Any(source => string.Equals(source.Name, name, StringComparison.OrdinalIgnoreCase))))
                     {
                         throw new InvalidOperationException("The winget source was not found.");
                     }
 
-                    var updatedDisabledSources = new HashSet<string>(disabledSources, StringComparer.OrdinalIgnoreCase);
+                    var updatedDisabledSources = ReadState(() => new HashSet<string>(disabledSources, StringComparer.OrdinalIgnoreCase));
                     if (isEnabled)
                     {
                         updatedDisabledSources.Remove(name);
@@ -97,12 +97,15 @@ public sealed partial class OnlyWingetApplication
                     }
 
                     await sourcePreferences.SaveAsync(
-                            new SourcePreferences(updatedDisabledSources.ToArray(), defaultSourcesConfigured),
+                            new SourcePreferences(updatedDisabledSources.ToArray(), ReadState(() => defaultSourcesConfigured)),
                             cancellationToken)
                         .ConfigureAwait(false);
-                    disabledSources.Clear();
-                    disabledSources.UnionWith(updatedDisabledSources);
-                    ApplySourcePreferences();
+                    UpdateState(() =>
+                    {
+                        disabledSources.Clear();
+                        disabledSources.UnionWith(updatedDisabledSources);
+                        ApplySourcePreferences();
+                    });
                     AddActivity(ActivitySeverity.Information, "Source preference changed", $"{name}: {(isEnabled ? "enabled" : "disabled")}");
                 },
                 "Unable to save the source preference.")
@@ -133,7 +136,7 @@ public sealed partial class OnlyWingetApplication
                     ApplySourceOutcome(refresh, updateRows: true);
                     var preferences = resetPreferences
                         ? new SourcePreferences([], DefaultSourcesConfigured: true)
-                        : new SourcePreferences(disabledSources.ToArray(), defaultSourcesConfigured);
+                        : ReadState(() => new SourcePreferences(disabledSources.ToArray(), defaultSourcesConfigured));
                     try
                     {
                         await sourcePreferences.SaveAsync(preferences, cancellationToken).ConfigureAwait(false);
@@ -142,10 +145,13 @@ public sealed partial class OnlyWingetApplication
                     {
                         throw new InvalidOperationException($"Sources changed, but preferences could not be saved. {exception.Message}", exception);
                     }
-                    disabledSources.Clear();
-                    disabledSources.UnionWith(preferences.DisabledSources);
-                    defaultSourcesConfigured = preferences.DefaultSourcesConfigured;
-                    ApplySourcePreferences();
+                    UpdateState(() =>
+                    {
+                        disabledSources.Clear();
+                        disabledSources.UnionWith(preferences.DisabledSources);
+                        defaultSourcesConfigured = preferences.DefaultSourcesConfigured;
+                        ApplySourcePreferences();
+                    });
                     AddActivity(ActivitySeverity.Success, title, message);
                 },
                 "Unable to manage winget sources.")
@@ -156,29 +162,32 @@ public sealed partial class OnlyWingetApplication
     {
         if (!outcome.Succeeded)
         {
-            sourceError = outcome.Error;
+            UpdateState(() => sourceError = outcome.Error);
             throw new InvalidOperationException(outcome.Error?.Message ?? "winget source failed.");
         }
 
-        sourceError = null;
-        if (updateRows)
+        UpdateState(() =>
         {
-            sources.Clear();
-            sources.AddRange(outcome.Rows);
-            ApplySourcePreferences();
-        }
+            sourceError = null;
+            if (updateRows)
+            {
+                sources.Clear();
+                sources.AddRange(outcome.Rows);
+                ApplySourcePreferences();
+            }
+        });
     }
 
-    private IReadOnlyList<string> GetEnabledSourceNames() =>
+    private IReadOnlyList<string> GetEnabledSourceNames() => ReadState<IReadOnlyList<string>>(() =>
         sources.Where(source => source.IsEnabled)
             .Select(source => source.Name)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+            .ToArray());
 
     private void RequireSourceElevation()
     {
-        if (capabilities.IsElevated != true)
+        if (ReadState(() => capabilities.IsElevated) != true)
         {
             throw new InvalidOperationException("Restart OnlyWinget as administrator to add, remove or reset winget sources.");
         }
@@ -195,16 +204,17 @@ public sealed partial class OnlyWingetApplication
 
     private async Task EnsureOfficialSourcesConfiguredAsync(CancellationToken cancellationToken)
     {
-        if (defaultSourcesConfigured) return;
+        if (ReadState(() => defaultSourcesConfigured)) return;
         var listOutcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
         ApplySourceOutcome(listOutcome, updateRows: true);
 
         var currentSources = listOutcome.Rows;
-        var isOlderOs = capabilities.WindowsBuildNumber.HasValue && capabilities.WindowsBuildNumber.Value < 19041;
+        var currentCapabilities = ReadState(() => capabilities);
+        var isOlderOs = currentCapabilities.WindowsBuildNumber.HasValue && currentCapabilities.WindowsBuildNumber.Value < 19041;
         var isOlderWinget = false;
-        if (!string.IsNullOrWhiteSpace(capabilities.WingetVersion))
+        if (!string.IsNullOrWhiteSpace(currentCapabilities.WingetVersion))
         {
-            var verStr = capabilities.WingetVersion.TrimStart('v').Split('-')[0];
+            var verStr = currentCapabilities.WingetVersion.TrimStart('v').Split('-')[0];
             if (Version.TryParse(verStr, out var wingetVer) && wingetVer < new Version(1, 4))
             {
                 isOlderWinget = true;
@@ -219,7 +229,7 @@ public sealed partial class OnlyWingetApplication
         var defaults = new[] { (Name: "winget", Url: targetWingetUrl), (Name: "msstore", Url: TargetMsStoreUrl) };
         var missing = defaults.Where(source => !currentSources.Any(existing =>
             string.Equals(existing.Name, source.Name, StringComparison.OrdinalIgnoreCase))).ToArray();
-        if (missing.Length > 0 && capabilities.IsElevated != true)
+        if (missing.Length > 0 && currentCapabilities.IsElevated != true)
         {
             AddActivity(ActivitySeverity.Warning, "Default source configuration requires administrator privileges",
                 "Restart OnlyWinget as administrator to add missing default sources. Existing sources remain available.");
@@ -232,8 +242,8 @@ public sealed partial class OnlyWingetApplication
             AddActivity(ActivitySeverity.Information, "Source added", $"{source.Name}: {source.Url}");
         }
         await sourcePreferences.SaveAsync(
-            new SourcePreferences(disabledSources.ToArray(), DefaultSourcesConfigured: true),
+            ReadState(() => new SourcePreferences(disabledSources.ToArray(), DefaultSourcesConfigured: true)),
             cancellationToken).ConfigureAwait(false);
-        defaultSourcesConfigured = true;
+        UpdateState(() => defaultSourcesConfigured = true);
     }
 }

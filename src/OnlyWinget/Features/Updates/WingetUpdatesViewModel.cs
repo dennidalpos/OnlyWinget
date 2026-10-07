@@ -63,8 +63,8 @@ public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch, Only
     public Task RefreshAsync() => RunAsync(token => Workflow.RefreshUpdatesAsync(token));
     public Task ApplyAsync() => RunAsync(async token =>
     {
-        await Workflow.ApplySelectedUpdatesAsync(token);
-        if (!token.IsCancellationRequested)
+        var result = await Workflow.ApplySelectedUpdatesAsync(token);
+        if (result.Succeeded && !token.IsCancellationRequested)
         {
             await Workflow.RefreshUpdatesAsync(token);
         }

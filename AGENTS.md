@@ -1,6 +1,6 @@
 # AGENTS.md
 
-`v1.2 · 2026-10-06` — Non-derivable repository facts only. Cap ~2500 characters.
+`v1.2 · 2026-10-07` — Non-derivable repository facts only. Cap ~2500 characters.
 
 ## 1. Identity & Scope
 - **Purpose**: C#/.NET 10 WinUI 3 client for winget and Windows Update scans.
@@ -11,9 +11,9 @@
 ## 2. Verified Commands
 | Workflow | Command | Shell / Cwd | Verified on | Notes / Examples |
 | :--- | :--- | :--- | :--- | :--- |
-| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-06 | 296 pass (5 inactive smoke methods) |
-| **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-06 | 28 scripts OK |
-| **Typecheck** | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-06 | Zero warnings/errors |
+| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-07 | 319 pass (5 inactive smoke methods) |
+| **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-07 | 28 scripts OK |
+| **Typecheck** | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-07 | Zero warnings/errors |
 | **Packaging** | `.\scripts\package.ps1 -NoRestore -Fast -NonInteractive` | pwsh / repo root | 2026-10-06 | NSIS EXE & portable ZIP only |
 | **Lifecycle Validation** | `powershell -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -Scope CurrentUser -SkipPackage` | pwsh / repo root | 2026-09-03 | Silent per-user install/launch/uninstall |
 

@@ -23,50 +23,40 @@ public sealed partial class OnlyWingetApplication
                         throw new InvalidOperationException("Enable at least one winget source before refreshing updates.");
                     }
 
-                    updates.Clear();
-                    lastOperationResults.Clear();
-                    var sourceErrors = new List<string>();
-                    var loadTasks = enabledSources.Select(async source =>
+                    var outcomes = await Task.WhenAll(enabledSources.Select(async source =>
                     {
                         var outcome = await updateLoader.LoadUpdatesAsync(source, cancellationToken).ConfigureAwait(false);
-                        if (!outcome.Succeeded && outcome.Error?.Kind != WingetErrorKind.NoUpdates)
-                        {
-                            lock (sourceErrors)
-                            {
-                                sourceErrors.Add($"{source}: {outcome.Error?.Message ?? "winget upgrade failed."}");
-                            }
-                        }
-                        else
-                        {
-                            lock (updates)
-                            {
-                                updates.AddRange(outcome.Rows);
-                            }
-                        }
-                    }).ToArray();
-                    await Task.WhenAll(loadTasks).ConfigureAwait(false);
+                        return (Source: source, Outcome: outcome);
+                    })).ConfigureAwait(false);
+                    var sourceErrors = outcomes
+                        .Where(item => !item.Outcome.Succeeded && item.Outcome.Error?.Kind != WingetErrorKind.NoUpdates)
+                        .Select(item => $"{item.Source}: {item.Outcome.Error?.Message ?? "winget upgrade failed."}")
+                        .ToArray();
+                    var distinctUpdates = outcomes.Where(item => item.Outcome.Succeeded)
+                        .SelectMany(item => item.Outcome.Rows)
+                        .DistinctBy(update => update.Package)
+                        .OrderBy(update => update.Name, StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
 
-                    if (updates.Count == 0 && sourceErrors.Count > 0)
+                    if (distinctUpdates.Length == 0 && sourceErrors.Length > 0)
                     {
                         throw new InvalidOperationException(string.Join(Environment.NewLine, sourceErrors));
                     }
 
-                    var distinctUpdates = updates
-                        .DistinctBy(update => update.Package)
-                        .OrderBy(update => update.Name, StringComparer.OrdinalIgnoreCase)
-                        .ToArray();
-                    updates.Clear();
-                    updates.AddRange(distinctUpdates);
-
                     await RefreshPackageMetadataAsync(
-                            updates.Select(update => update.Package),
+                            distinctUpdates.Select(update => update.Package),
                             cancellationToken)
                         .ConfigureAwait(false);
 
-                    updateSelection.ReplaceAvailable(updates.Select(update => update.Package));
-                    AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{updates.Count} update(s).");
+                    UpdateState(() =>
+                    {
+                        updates.Clear();
+                        updates.AddRange(distinctUpdates);
+                        updateSelection.ReplaceAvailable(distinctUpdates.Select(update => update.Package));
+                    });
+                    AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{distinctUpdates.Length} update(s).");
 
-                    if (sourceErrors.Count > 0)
+                    if (sourceErrors.Length > 0)
                     {
                         AddActivity(
                             ActivitySeverity.Warning,
@@ -89,9 +79,9 @@ public sealed partial class OnlyWingetApplication
         CancellationToken cancellationToken,
         IProgress<OperationProgress>? progress = null)
     {
-        var selections = updateSelection.Selected
+        var selections = ReadState(() => updateSelection.Selected
             .Select(package => new PackageSelection(package, PackageAction.Upgrade))
-            .ToArray();
+            .ToArray());
         return await ExecutePlanAsync(new OperationPlan("Selected updates", selections), cancellationToken, progress)
             .ConfigureAwait(false);
     }
@@ -112,13 +102,16 @@ public sealed partial class OnlyWingetApplication
                         throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update scan failed.");
                     }
 
-                    windowsUpdates.Clear();
-                    windowsUpdates.AddRange(outcome.Rows
+                    UpdateState(() =>
+                    {
+                        windowsUpdates.Clear();
+                        windowsUpdates.AddRange(outcome.Rows
                         .DistinctBy(update => WindowsUpdateFingerprint(update.Identity))
                         .OrderBy(update => update.Title, StringComparer.OrdinalIgnoreCase)
                         .ThenBy(update => update.Identity.UpdateId, StringComparer.OrdinalIgnoreCase));
-                    windowsUpdateSelection.ReplaceAvailable(windowsUpdates.Select(update => update.Identity));
-                    AddActivity(ActivitySeverity.Information, "Windows Update scan completed", $"{windowsUpdates.Count} update(s).");
+                        windowsUpdateSelection.ReplaceAvailable(windowsUpdates.Select(update => update.Identity));
+                    });
+                    AddActivity(ActivitySeverity.Information, "Windows Update scan completed", $"{ReadState(() => windowsUpdates.Count)} update(s).");
                 },
                 "Unable to scan Windows Update.")
             .ConfigureAwait(false);
@@ -137,7 +130,7 @@ public sealed partial class OnlyWingetApplication
         CancellationToken callerCancellationToken,
         IProgress<OperationProgress>? progress = null)
     {
-        var selected = windowsUpdateSelection.Selected.ToArray();
+        var selected = ReadState(() => windowsUpdateSelection.Selected.ToArray());
         return await RunAsync(
                 ApplicationBusyState.InstallingWindowsUpdates,
                 callerCancellationToken,
@@ -149,12 +142,12 @@ public sealed partial class OnlyWingetApplication
                         throw new InvalidOperationException("Select at least one Windows update before installing.");
                     }
 
-                    lastWindowsUpdateResults.Clear();
+                    UpdateState(lastWindowsUpdateResults.Clear);
                     AddActivity(ActivitySeverity.Information, "Windows Update install started", $"{selected.Length} update(s).");
-                    operationProgress = new OperationProgress("WindowsUpdate", WingetProgressPhase.Starting, 0, 0, selected.Length);
+                    UpdateState(() => operationProgress = new OperationProgress("WindowsUpdate", WingetProgressPhase.Starting, 0, 0, selected.Length));
                     var forwardingProgress = new InlineProgress<OperationProgress>(update =>
                     {
-                        operationProgress = update;
+                        UpdateState(() => operationProgress = update);
                         progress?.Report(update);
                         NotifyStateChanged();
                     });
@@ -167,7 +160,7 @@ public sealed partial class OnlyWingetApplication
                         throw new InvalidOperationException(errorMsg);
                     }
 
-                    lastWindowsUpdateResults.AddRange(outcome.Rows);
+                    UpdateState(() => lastWindowsUpdateResults.AddRange(outcome.Rows));
                     var selectedKeys = selected.Select(WindowsUpdateFingerprint).ToHashSet(StringComparer.Ordinal);
                     var resultKeys = outcome.Rows.Select(result => WindowsUpdateFingerprint(result.Identity)).ToArray();
                     if (resultKeys.Length != selectedKeys.Count ||
@@ -196,8 +189,8 @@ public sealed partial class OnlyWingetApplication
                         throw new InvalidOperationException($"One or more Windows updates failed: {failedTitles}");
                     }
 
-                    operationProgress = operationProgress with { Phase = WingetProgressPhase.Completed, Percentage = 100, PackagePercentage = 100, CompletedPackages = selected.Length };
-                    progress?.Report(operationProgress);
+                    UpdateState(() => operationProgress = operationProgress! with { Phase = WingetProgressPhase.Completed, Percentage = 100, PackagePercentage = 100, CompletedPackages = selected.Length });
+                    progress?.Report(ReadState(() => operationProgress!));
 
                     if (outcome.Rows.Any(result => result.RebootRequired))
                     {
