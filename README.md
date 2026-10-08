@@ -22,8 +22,8 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | Search | Search local `winget` sources via the supported CLI with in-memory caching (`IMemoryCache`), resolve package identity, and add selected results in batches. |
 | Updates | Review available `winget` upgrades and Windows Update results via Windows COM automation, select all or specific rows, and apply selected updates with cancellable asynchronous COM jobs. |
 | Sources | Inspect `winget` sources, update/reset source metadata, and add/remove sources. |
-| Architecture | Clean Architecture Onion boundaries, `Microsoft.Extensions.Hosting` DI, Serilog structured logging, `CommunityToolkit.Mvvm` source generators, and embedded SQLite relateral storage (`EF Core 10`). |
-| Safety & Storage | Embedded transactional SQLite database (`onlywinget.db`) with automatic JSON migration, cancellable operation design, and DPAPI encrypted secret storage. |
+| Architecture | Clean Architecture Onion boundaries, `Microsoft.Extensions.Hosting` DI, Serilog structured logging, `CommunityToolkit.Mvvm` source generators, and embedded SQLite relational storage (`EF Core 10`). |
+| Safety & Storage | Embedded transactional SQLite database (`onlywinget.db`) with legacy JSON import and cancellable operations. Existing legacy workspace and secret files are preserved. |
 | Installer | Unified x64 NSIS setup EXE and self-contained portable ZIP. |
 
 ## Metrics
@@ -34,7 +34,7 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | Host & DI | `Microsoft.Extensions.Hosting` (`Host.CreateDefaultBuilder()`) |
 | Storage engine | Embedded **SQLite** via **Entity Framework Core 10** (`onlywinget.db`) |
 | Interop | WinGet CLI and Windows Update COM automation with PowerShell fallback |
-| Logging | Serilog events and UI diagnostics share one daily file writer and a bounded viewer buffer; enable/level settings apply to both. |
+| Logging | Serilog events and UI diagnostics share one writer with 10 MiB rolling files, retention of at most 14 files (140 MiB), and a bounded viewer buffer; enable/level settings apply to both. |
 | Test suite | xUnit tests under `tests/OnlyWinget.Tests` |
 | UI languages | English, Italian |
 | Release artifacts | 1 x64 NSIS setup EXE and 1 x64 self-contained portable ZIP |

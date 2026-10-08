@@ -11,7 +11,7 @@
 ## 2. Verified Commands
 | Workflow | Command | Shell / Cwd | Verified on | Notes / Examples |
 | :--- | :--- | :--- | :--- | :--- |
-| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | 364 executed results; live Smoke excluded |
+| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | 380 executed results; live Smoke excluded |
 | **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-08 | 39 scripts OK |
 | **Typecheck** | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | Zero warnings/errors |
 | **Packaging** | `.\scripts\package.ps1 -NoRestore -Fast -NonInteractive` | pwsh / repo root | 2026-10-08 | Staged NSIS EXE & portable ZIP |
@@ -22,6 +22,7 @@
 - **Conventions**: Localization in `TextResources.cs`, no RESW/RESX; use `ArgumentList`. URL protocol retired; legacy HKCU cleanup requires matching ownership.
 
 ## 4. Sensitive Areas & Gotchas
+- **SQLite**: Schema v1 retains pre-schema-v1 backups; close all clients before restoring.
 - **NU1004 Lockfiles**: If project RIDs change or restore fails NU1004, run `.\scripts\fix-lockfiles.ps1`.
 - **Installer Validation**: `-Scope CurrentUser` runs unprivileged; `-Scope AllUsers` requires elevated PowerShell. Upgrade requires a genuine `PreviousSetupPath`; default lifecycle validates clean install/uninstall.
 - **Installer ownership**: Packaging generates `InstalledFiles.nsh`; uninstall removes only its listed files and empty directories.

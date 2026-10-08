@@ -8,7 +8,7 @@ Application serializes asynchronous workflows and persistent edits with one oper
 
 SQLite is the primary workspace. Preserve legacy workspace JSON during migration and retained load-failure diagnostics. A failed SQLite load blocks later saves until a successful reload. Source-preference malformed/schema-invalid files fail loading and are revalidated before saving, including on a fresh store instance; restore/repair the preserved file to recover.
 
-The full JSON workspace writer and dormant DPAPI services are retired; SQLite retains the legacy JSON reader. Do not delete retained legacy/secret files. Unconsumed SQLite columns remain for existing-schema compatibility until a reviewed migration has backup/rollback coverage.
+The full JSON workspace writer and dormant DPAPI services are retired; SQLite retains the legacy JSON reader. Do not delete retained legacy/secret files. WorkspaceSchemaMigration owns SQLite user_version=1: legacy metadata columns are retired after a verified native backup, with transactional rollback. Preserve pre-schema-v1 backups and failed partial snapshots; restore only with all database clients closed. Future/unrecognized schemas fail before mutation.
 
 Package identity includes both case-insensitive ID and source. An edit captures the original identity once. Apply succeeds after mutation and persistence; failed saving after accepted mutation retries only saving and keeps fields locked. Accepted idle selector changes autosave; rejected busy choices do not mutate/save. Actual draft/navigation interaction remains AUDIT-19.
 

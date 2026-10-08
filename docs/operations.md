@@ -106,13 +106,29 @@ Preset editors retain drafts after failed validation, rejected edits or saving f
 
 Synchronization follows Microsoft's [lock guidance](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/lock) and [cancellable semaphore wait](https://learn.microsoft.com/en-us/dotnet/api/system.threading.semaphoreslim.waitasync?view=net-10.0).
 
-The preset selector restores the actual active preset after a rejected/cancelled switch. It still does not request autosave for an accepted change (remaining AUDIT-35). Until corrected, select the preset while idle and explicitly save the workspace to retain that choice across restart.
+The preset selector restores the actual active preset after a rejected/cancelled switch. Accepted idle changes trigger workspace autosave. Rejected busy selections retain the active preset and do not save. A failed save keeps the accepted in-memory choice and the visible workspace-save error; retry Save Workspace to persist it. Selector navigation still uses the pending-edit guard; actual flyout/navigation interaction is tracked under AUDIT-19.
+
+## Workspace schema migration and recovery
+
+Workspace SQLite schema version 1 removes the unused Description, CreatedAt, UpdatedAt and PackageName columns. Migration runs during the first workspace load/save after updating the app. A recognized unversioned database is inspected under an immediate write transaction, then backed up through SQLite's native `BackupDatabase` API, including committed WAL data. Backup integrity and foreign keys are verified before changing the original schema. All four column removals and `user_version=1` commit in one transaction with full synchronization; errors or observed cancellation before commit roll back the changes. Empty databases are created directly at version 1 without a backup.
+
+Completed snapshots remain next to the database as `onlywinget.db.pre-schema-v1-<unique-id>.bak`. They contain the whole previous database, including retired metadata and unrelated tables. Backups are not overwritten or automatically pruned; a retry after failed migration can retain more than one snapshot. Files ending in `.bak.partial` are unfinished evidence, not verified restore points. Backup I/O failure blocks migration before column removal. Schema/version/integrity errors remain visible and block workspace saving until a successful reload.
+
+To downgrade after a completed migration:
+
+1. Close OnlyWinget and every other database client. Preserve the current database and any matching `-wal`/`-shm` sidecars together in a separate recovery directory, retaining edits made since migration.
+2. Restore the chosen verified `.bak` snapshot as `onlywinget.db`, with no sidecars from the migrated database left beside it. Restoring an older snapshot also restores its older workspace state.
+3. Open a compatible previous build. Reopening the current build migrates the restored version-0 database again and retains another backup.
+
+Native backup restoration, including retired values, is verified on isolated databases. No personal database was migrated or restored during development. Physical power-loss behavior and real-profile downgrade are not verified. SQLite documents the [online backup API](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/backup), [transaction rollback](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/transactions) and why the [WAL belongs to the database's persistent state](https://www.sqlite.org/wal.html#the_wal_file).
 
 ## Diagnostic logs
 
 Diagnostic enable/level settings apply to both files and the in-memory viewer, including startup events and Verbose logging. Serilog and direct UI diagnostics share one writer. Daily UTF-8 files use `onlywinget-yyyyMMdd.log` with UTC dates under `%LOCALAPPDATA%/OnlyWinget/logs`; memory retains the latest 1000 accepted events.
 
-Clear in the log viewer deletes recognized app daily logs and clears memory only after successful file cleanup. A write or clear failure is shown with its error; original memory entries remain available for copy/export. Activity clear and Undo affect only Activity. Export reports successful writing, picker cancellation or failure separately. Daily file size/retention remains open under AUDIT-36.
+Diagnostic disk logs roll at 10 MiB and retain at most 14 recognized files (140 MiB aggregate) after successful writes. Daily files remain supported; full files continue as `onlywinget-yyyyMMdd-NNNNNN.log`. Retention removes oldest owned logs, preserves the active file/unrelated filenames/reparse points, and also brings oversized legacy logs under the aggregate budget. Oversized entries stay in the memory buffer and report disk-write failure. Retention failures are visible and may temporarily leave disk usage above policy until a successful retry.
+
+Clear in the log viewer deletes recognized daily and rolled app logs and clears memory only after successful file cleanup. A write or clear failure is shown with its error; original memory entries remain available for copy/export. Activity clear and Undo affect only Activity. Export reports successful writing, picker cancellation or failure separately.
 
 The viewer labels, level badges, filters and action outcomes are localized in English/Italian. Clear opens an inline confirmation inside the existing dialog; cancel leaves logs unchanged. Badges use theme resources and explicit level text. Runtime confirmation/picker behavior and High Contrast appearance remain pending under AUDIT-22.
 
@@ -120,13 +136,11 @@ The viewer labels, level badges, filters and action outcomes are localized in En
 
 Windows Update rows show the update's MSRC severity when available and the actual current `RebootRequired` state. Potential reboot behavior during a future installation is not reported as an already required restart. KB article IDs are displayed with one KB prefix for both native COM and PowerShell results. See Microsoft's [severity](https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdate-get_msrcseverity) and [reboot-state](https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdate2-get_rebootrequired) contracts.
 
-## WinGet batch results and cancellation
-
-Diagnostic disk logs roll at 10 MiB and retain at most 14 recognized files (140 MiB aggregate) after successful writes. Daily files remain supported; full files continue as `onlywinget-yyyyMMdd-NNNNNN.log`. Retention removes oldest owned logs, preserves the active file/unrelated filenames/reparse points, and also brings oversized legacy logs under the aggregate budget. Oversized entries stay in the memory buffer and report disk-write failure. Retention failures are visible and may temporarily leave disk usage above policy until a successful retry; clear recognizes daily and rolled files.
-
-Accepted idle preset-selector changes trigger workspace autosave. Rejected busy selections retain the active preset and do not save. A failed save keeps the accepted in-memory choice and the visible workspace-save error; retry Save Workspace to persist it. Selector navigation still uses the pending-edit guard; actual flyout/navigation interaction is tracked under AUDIT-19.
+## Source-preference recovery
 
 Malformed or unsupported `source-preferences-v1.json` blocks loading and saving with an actionable file diagnostic. The unreadable file is preserved, including when a fresh store attempts to save without loading. Restore or repair it before retrying. A missing file still permits first-run initialization; the default-sources flag and disabled-source choices are round-tripped.
+
+## WinGet batch results and cancellation
 
 Installed-package preflight reports absence only for WinGet's native no-match result. Source, permission, process, I/O and timeout failures propagate as failed validation with diagnostics and zero package attempts. A successful but unreadable/ambiguous table is also rejected; it cannot trigger an installation based on assumed absence. The existing result contract uses `IsInstalled=false` for confirmed absence and exceptions for failed probes. See [Microsoft list](https://learn.microsoft.com/en-us/windows/package-manager/winget/list).
 

@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace OnlyWinget.Infrastructure.Storage.Sqlite;
@@ -31,7 +32,7 @@ public sealed class WorkspaceDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured && !string.IsNullOrEmpty(dbPath))
         {
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+            optionsBuilder.UseSqlite(new SqliteConnectionStringBuilder { DataSource = dbPath }.ToString());
         }
     }
 

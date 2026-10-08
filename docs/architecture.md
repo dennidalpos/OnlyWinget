@@ -44,7 +44,7 @@ Upon application startup, `SqliteWorkspaceStore` automatically detects and migra
 
 Preset exchange supports only `onlywinget.preset.v1`.
 
-The legacy JSON writer and dormant DPAPI services have been retired. Existing legacy workspace and secure-secret files are retained; SQLite keeps its legacy import reader. SQLite entity metadata remains for existing-schema compatibility pending an explicit migration with rollback.
+The legacy JSON writer and dormant DPAPI services have been retired. Existing legacy workspace and secure-secret files are retained; SQLite keeps its legacy import reader. `WorkspaceSchemaMigration` replaces `EnsureCreated` with native SQLite `user_version` schema initialization and migration. Empty databases receive the current EF-generated schema at version 1. Recognized unversioned databases are backed up before removing unused Description, CreatedAt, UpdatedAt and PackageName columns; native DDL and the version marker commit together. Preset/package identities, source values, active-preset metadata and unrelated tables remain intact. Unsupported versions, unknown table shapes/constraints or failed integrity checks block initialization and saving. Recovery and retained backups are documented in [operations](operations.md#workspace-schema-migration-and-recovery).
 
 A failed workspace load is reported to the UI and blocks SQLite saves until a successful reload. Startup stops after a load failure to preserve the diagnostic. Bulk preset paste validates the full batch before changing the preset.
 

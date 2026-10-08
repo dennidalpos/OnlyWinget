@@ -87,7 +87,7 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
             loadFailed = true;
             logger?.Invoke("SqliteWorkspaceStore.LoadAsync", exception);
             storeLogger?.LogError(exception, "Failed to load workspace state from SQLite database at '{DbPath}'", dbPath);
-            throw new InvalidOperationException("Unable to load the workspace. Existing data has been preserved; reload successfully before saving.", exception);
+            throw new InvalidOperationException($"Unable to load the workspace. Existing data has been preserved; reload successfully before saving. {exception.Message}", exception);
         }
         finally
         {
@@ -117,14 +117,11 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
             var existingPresets = await context.Presets.ToListAsync(cancellationToken).ConfigureAwait(false);
             context.Presets.RemoveRange(existingPresets);
 
-            var now = DateTimeOffset.UtcNow;
             foreach (var preset in state.Presets)
             {
                 var presetEntity = new PresetEntity
                 {
-                    Name = preset.Name,
-                    CreatedAt = now,
-                    UpdatedAt = now
+                    Name = preset.Name
                 };
 
                 foreach (var package in preset.Packages)
@@ -133,7 +130,6 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
                     {
                         PresetId = presetEntity.Id,
                         PackageId = package.Id,
-                        PackageName = package.Id,
                         Source = package.Source ?? string.Empty
                     });
                 }
@@ -182,9 +178,14 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
             Directory.CreateDirectory(directory);
         }
 
+        var backupPath = await WorkspaceSchemaMigration.InitializeAsync(dbPath, cancellationToken).ConfigureAwait(false);
+        if (backupPath is not null)
+        {
+            storeLogger?.LogInformation("Migrated workspace schema to version 1; previous database backup retained at '{BackupPath}'", backupPath);
+        }
+
         await using (var context = new WorkspaceDbContext(dbPath))
         {
-            await context.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
             await context.InitializeWalModeAsync(cancellationToken).ConfigureAwait(false);
 
             var hasPresets = await context.Presets.AnyAsync(cancellationToken).ConfigureAwait(false);
@@ -217,14 +218,11 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
                 return;
             }
 
-            var now = DateTimeOffset.UtcNow;
             foreach (var preset in legacyDocument.Presets)
             {
                 var presetEntity = new PresetEntity
                 {
-                    Name = preset.Name,
-                    CreatedAt = now,
-                    UpdatedAt = now
+                    Name = preset.Name
                 };
 
                 foreach (var package in preset.Packages)
@@ -233,7 +231,6 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
                     {
                         PresetId = presetEntity.Id,
                         PackageId = package.Id,
-                        PackageName = package.Id,
                         Source = package.Source ?? string.Empty
                     });
                 }
