@@ -22,7 +22,9 @@ From a clean working tree:
 .\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
 ```
 
-The packaging task permits only one run per worktree. It currently writes final NSIS/portable outputs directly; atomic promotion remains pending under AUDIT-24.
+The packaging task permits only one run per worktree. Setup and portable outputs are built under unique staging directories on the destination volume, then validated before promotion. The setup must be a nonempty MZ executable; every ZIP file is checked against the published payload by path, length and SHA-256, including hidden files. Each final file is replaced individually with `File.Replace` (or moved on first publication), while a flushed journal and verified backups retain the previous pair for rollback.
+
+A failed promotion restores the prior pair; the next packaging invocation recovers an interrupted promotion before rebuilding. Corrupt journals/backups fail closed and remain for inspection. The two filenames do not form one atomic filesystem transaction: readers can briefly observe different generations between replacements, so consume artifacts after packaging exits successfully. Process interruption is covered by the regression; hardware/power-loss behavior is not qualified. Interrupted staging directories can remain as generated evidence; ordinary successful/failed runs remove their own staging files.
 
 The release workflow checks out the explicit tag, validates all four project version properties against it and runs the full `Check` gate on that commit before publication. Immediately before publication it verifies HEAD still matches the resolved SHA, the remote tag still resolves to that SHA, and both exact-version supported assets exist and are nonempty. Missing asset patterns also fail the release action.
 
@@ -39,6 +41,8 @@ Local release-contract regression:
 ```
 
 This uses isolated local clones and sentinel assets, accepts lightweight/annotated tags, and rejects wrong checkout refs, versions, expected SHAs, missing/empty assets and remote tag drift. It creates no commits or release and runs in the full gate. The full hosted dispatch/publication flow still requires validation before shipping.
+
+`scripts/test-package-artifacts.ps1` runs the production artifact helpers against isolated sentinels and a minimal real NSIS fixture. It covers compiler/compression/validation/promotion failures, child-process interruption and recovery, corrupt journals/backups, hidden payload files and first publication. The full `Check` gate includes this regression.
 
 ## Artifact
 

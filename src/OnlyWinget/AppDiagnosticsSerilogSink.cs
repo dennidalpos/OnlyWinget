@@ -10,7 +10,7 @@ internal sealed class AppDiagnosticsSerilogSink : ILogEventSink
     {
         var level = logEvent.Level switch
         {
-            LogEventLevel.Verbose or LogEventLevel.Debug => AppLogLevel.Information,
+            LogEventLevel.Verbose or LogEventLevel.Debug => AppLogLevel.Verbose,
             LogEventLevel.Information => AppLogLevel.Information,
             LogEventLevel.Warning => AppLogLevel.Warning,
             LogEventLevel.Error or LogEventLevel.Fatal => AppLogLevel.Error,
@@ -34,6 +34,6 @@ internal sealed class AppDiagnosticsSerilogSink : ILogEventSink
             message = $"{message}{Environment.NewLine}{logEvent.Exception}";
         }
 
-        AppDiagnostics.Write(level, message, caller);
+        AppDiagnostics.Accept(new AppLogEntry(logEvent.Timestamp, level, caller, message));
     }
 }

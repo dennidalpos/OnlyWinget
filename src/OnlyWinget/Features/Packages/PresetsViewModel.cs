@@ -28,6 +28,17 @@ public sealed partial class PresetsViewModel : FeatureViewModel
     private CancellationTokenSource? cancellation;
     private readonly IConfirmationService? confirmationService;
     private readonly IFilePickerService? filePickerService;
+    private PackageIdentity? editingPackage;
+    private bool isRenamingPreset;
+
+    [ObservableProperty]
+    private bool hasUnsavedEdit;
+
+    [ObservableProperty]
+    private bool isApplyingEdit;
+
+    [ObservableProperty]
+    private string packageSource = string.Empty;
 
     public PresetsViewModel(Action<Action> dispatch) : this(dispatch, null, null, null) { }
 
@@ -85,49 +96,15 @@ public sealed partial class PresetsViewModel : FeatureViewModel
         switch (command.Id)
         {
             case UiCommandId.AddPreset:
-                if (Validate(PresetName))
-                {
-                    if (Workflow.AddPreset(PresetName.Value.Trim()).Succeeded)
-                    {
-                        await AutoSaveWorkspaceAsync();
-                    }
-                    PresetName.Clear();
-                }
-                break;
             case UiCommandId.RenamePreset:
-                if (Validate(PresetName))
-                {
-                    if (Workflow.RenameActivePreset(PresetName.Value.Trim()).Succeeded)
-                    {
-                        await AutoSaveWorkspaceAsync();
-                    }
-                    PresetName.Clear();
-                }
+            case UiCommandId.AddPresetPackage:
+            case UiCommandId.EditPresetPackage:
+                await ExecuteEditAsync(command.Id, source);
                 break;
             case UiCommandId.RemovePreset:
                 if (Workflow.RemoveActivePreset().Succeeded)
                 {
                     await AutoSaveWorkspaceAsync();
-                }
-                break;
-            case UiCommandId.AddPresetPackage:
-                if (Validate(PackageId))
-                {
-                    if (await RunResultAsync(token => Workflow.AddPackageToActivePresetAsync(Package(source), token)))
-                    {
-                        await AutoSaveWorkspaceAsync();
-                    }
-                    PackageId.Clear();
-                }
-                break;
-            case UiCommandId.EditPresetPackage when Workflow.State.SelectedPresetPackages.SingleOrDefault() is { } selected:
-                if (Validate(PackageId))
-                {
-                    if (await RunResultAsync(token => Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), token)))
-                    {
-                        await AutoSaveWorkspaceAsync();
-                    }
-                    PackageId.Clear();
                 }
                 break;
             case UiCommandId.RemovePresetPackages:
@@ -143,6 +120,44 @@ public sealed partial class PresetsViewModel : FeatureViewModel
             case UiCommandId.UninstallPreset: await ApplyAsync(PackageAction.Uninstall); break;
             case UiCommandId.CancelOperation: Cancel(); break;
         }
+    }
+
+    public async Task<bool> ExecuteEditAsync(UiCommandId id, string source)
+    {
+        if (cancellation is not null || IsApplyingEdit) return false;
+        IsApplyingEdit = true;
+        try { return await ApplyAndSaveEditAsync(id, source); }
+        finally { IsApplyingEdit = false; }
+    }
+
+    private async Task<bool> ApplyAndSaveEditAsync(UiCommandId id, string source)
+    {
+        if (!HasUnsavedEdit)
+        {
+            var applied = id switch
+            {
+                UiCommandId.AddPreset => Validate(PresetName) && Workflow.AddPreset(PresetName.Value.Trim()).Succeeded,
+                UiCommandId.RenamePreset => Validate(PresetName) && Workflow.RenameActivePreset(PresetName.Value.Trim()).Succeeded,
+                UiCommandId.AddPresetPackage => Validate(PackageId) && await RunResultAsync(token => Workflow.AddPackageToActivePresetAsync(Package(source), token)),
+                UiCommandId.EditPresetPackage => editingPackage is { } selected && Validate(PackageId) &&
+                    await RunResultAsync(token => Workflow.ReplacePackageInActivePresetAsync(selected, Package(source), token)),
+                _ => false
+            };
+            if (!applied) return false;
+            HasUnsavedEdit = true;
+        }
+
+        // Retry persistence without repeating an already accepted mutation.
+        if (!await RunResultAsync(token => Workflow.SaveWorkspaceAsync(token))) return false;
+        HasUnsavedEdit = false;
+        return true;
+    }
+
+    public void PreparePresetName(bool rename)
+    {
+        isRenamingPreset = rename;
+        PresetName.Value = rename ? ActivePresetName ?? string.Empty : string.Empty;
+        PresetName.Validate();
     }
 
     private PackageIdentity Package(string source) => new(PackageId.Value.Trim(), source.Trim());
@@ -214,15 +229,27 @@ public sealed partial class PresetsViewModel : FeatureViewModel
         catch (Exception exception) when (exception is not OperationCanceledException) { Workflow.ReportExternalFailure(TextResources.Get("Error_PresetExportWrite")); }
     }
 
-    public void PrepareEditFields(Action<string> setSourceText)
+    public bool PrepareEditFields()
     {
         var selected = Workflow.State.SelectedPresetPackages.SingleOrDefault();
         if (selected is not null)
         {
+            editingPackage = selected;
+            PackageSource = selected.Source ?? string.Empty;
             PackageId.Value = selected.Id;
-            setSourceText(selected.Source ?? string.Empty);
+            return true;
         }
+        return false;
     }
+
+    public void PrepareAddPackage()
+    {
+        editingPackage = null;
+        PackageId.Clear();
+        PackageSource = string.Empty;
+    }
+
+    partial void OnPackageSourceChanged(string value) => PackageId.Validate();
 
     protected override void Refresh()
     {
@@ -258,14 +285,16 @@ public sealed partial class PresetsViewModel : FeatureViewModel
     private string? ValidatePresetName(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return TextResources.Get("Validation_Required");
-        return PresetNames.Any(name => string.Equals(name, value, StringComparison.OrdinalIgnoreCase))
+        return PresetNames.Any(name => string.Equals(name, value, StringComparison.OrdinalIgnoreCase) &&
+            !(isRenamingPreset && string.Equals(name, ActivePresetName, StringComparison.OrdinalIgnoreCase)))
             ? TextResources.Get("Validation_DuplicatePreset") : null;
     }
 
     private string? ValidatePackageId(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return TextResources.Get("Validation_Required");
-        return Packages.Any(package => string.Equals(package.PackageId, value, StringComparison.OrdinalIgnoreCase))
+        var candidate = new PackageIdentity(value, PackageSource);
+        return Workflow.State.ActivePreset?.Packages.Any(package => package != editingPackage && package == candidate) == true
             ? TextResources.Get("Validation_DuplicatePackage") : null;
     }
 

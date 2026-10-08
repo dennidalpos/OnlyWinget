@@ -199,7 +199,11 @@ public static class PresentationStateMapper
                         update.Description,
                         update.Severity,
                         string.Join(", ", update.Categories),
-                        string.Join(", ", update.KnowledgeBaseArticles.Select(article => $"KB{article}")),
+                        string.Join(", ", update.KnowledgeBaseArticles
+                            .Select(article => article.Trim())
+                            .Where(article => article.Length > 0)
+                            .Select(article => article.StartsWith("KB", StringComparison.OrdinalIgnoreCase) ? $"KB{article[2..]}" : $"KB{article}")
+                            .Distinct(StringComparer.OrdinalIgnoreCase)),
                         update.MaxDownloadSize,
                         update.IsDownloaded,
                         update.RebootRequired,

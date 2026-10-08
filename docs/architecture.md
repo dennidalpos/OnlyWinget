@@ -21,11 +21,11 @@ WinUI Presentation -> Application -> Domain
 Infrastructure -----> Application -> Domain
 ```
 
-The presentation layer references infrastructure strictly for composition via `AppComposition.cs` (`IHostBuilder` DI). No feature page, control, or ViewModel may reference infrastructure directly. Protocol registration is mediated by `IUrlProtocolService` and input validation by `WingetInputValidator`. Domain does not reference application, infrastructure, or UI code.
+The presentation layer references infrastructure strictly for composition via `AppComposition.cs` (`IHostBuilder` DI). No feature page, control, or ViewModel may reference infrastructure directly. The unused URL protocol is retired; composition performs ownership-checked legacy HKCU cleanup. Package input validation uses `WingetInputValidator`. Domain does not reference application, infrastructure, or UI code.
 
 ## Bootstrapping & Composition
 
-Application lifecycle and Dependency Injection are managed in `AppComposition.cs` using `Microsoft.Extensions.Hosting` (`IHost` / `IServiceCollection`). All UI services (`IAppSettingsService`, `IConfirmationService`, `IFilePickerService`, `IClipboardService`, `INavigationRegistry`, `IUrlProtocolService`) and orchestrators (`ApplicationStartupOrchestrator`) are registered by interface/type in DI. Structured logging is handled via **Serilog** configured with rolling file outputs in `%LOCALAPPDATA%\OnlyWinget\logs\` and an in-memory debug sink `AppDiagnosticsSerilogSink`.
+Application lifecycle and Dependency Injection are managed in `AppComposition.cs` using `Microsoft.Extensions.Hosting` (`IHost` / `IServiceCollection`). All UI services (`IAppSettingsService`, `IConfirmationService`, `IFilePickerService`, `IClipboardService`, `INavigationRegistry`) and orchestrators (`ApplicationStartupOrchestrator`) are registered by interface/type in DI. Serilog forwards structured events through `AppDiagnosticsSerilogSink` to the internal Infrastructure `DiagnosticLogStore`, shared with direct UI diagnostics. It applies diagnostic settings before writing one daily UTF-8 file in `%LOCALAPPDATA%\OnlyWinget\logs\` and retains a separate bounded memory queue. File failures are exposed to the viewer; file size/retention is pending AUDIT-36.
 
 ## Local State & Persistence
 

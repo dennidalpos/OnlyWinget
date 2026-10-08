@@ -164,6 +164,10 @@ Invoke-Step 'installer file ownership regression' {
     & (Join-Path $PSScriptRoot 'test-installer-owned-files.ps1')
 }
 
+Invoke-Step 'package artifact preservation regression' {
+    & (Join-Path $PSScriptRoot 'test-package-artifacts.ps1')
+}
+
 Invoke-Step 'artifact analysis' {
     New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
     $artifact = Get-Item (Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe")

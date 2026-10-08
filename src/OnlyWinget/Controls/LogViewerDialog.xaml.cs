@@ -3,45 +3,33 @@ using System.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OnlyWinget.Application.System;
-using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage.Pickers;
-using WinRT.Interop;
 
 namespace OnlyWinget.Controls;
 
 public sealed partial class LogViewerDialog : ContentDialog
 {
     private readonly ObservableCollection<AppLogEntry> logEntries = new();
+    private CancellationTokenSource? exportCancellation;
+    private bool isInitialized;
 
     public LogViewerDialog()
     {
         InitializeComponent();
+        isInitialized = true;
         if (App.XamlRoot is not null)
         {
             XamlRoot = App.XamlRoot;
         }
         LogListView.ItemsSource = logEntries;
+        Closed += (_, _) => exportCancellation?.Cancel();
         RefreshLogs();
     }
 
-    public static Microsoft.UI.Xaml.Media.Brush GetBadgeBackground(AppLogLevel level) => level switch
-    {
-        AppLogLevel.Error => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 216, 59, 1)),
-        AppLogLevel.Warning => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 200, 140, 0)),
-        AppLogLevel.Information => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(40, 0, 120, 212)),
-        _ => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(30, 128, 128, 128))
-    };
-
-    public static Microsoft.UI.Xaml.Media.Brush GetBadgeForeground(AppLogLevel level) => level switch
-    {
-        AppLogLevel.Error => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 216, 59, 1)),
-        AppLogLevel.Warning => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 180, 125, 0)),
-        AppLogLevel.Information => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 120, 212)),
-        _ => new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(230, 140, 140, 140))
-    };
+    public static string GetLevelLabel(AppLogLevel level) => TextResources.Get($"Logs_Level_{level}");
 
     private void RefreshLogs()
     {
+        if (!isInitialized) return;
         logEntries.Clear();
         AppLogLevel? minLevel = LevelFilterCombo.SelectedIndex switch
         {
@@ -58,7 +46,9 @@ public sealed partial class LogViewerDialog : ContentDialog
             logEntries.Add(entry);
         }
 
-        StatusFooter.Text = $"Showing {logEntries.Count} log entries";
+        StatusFooter.Text = AppDiagnostics.LastError is { } error
+            ? string.Format(TextResources.Get("Logs_StorageError"), error)
+            : string.Format(TextResources.Get("Logs_Count"), logEntries.Count);
     }
 
     private void OnFilterChanged(object sender, object e)
@@ -66,68 +56,60 @@ public sealed partial class LogViewerDialog : ContentDialog
         RefreshLogs();
     }
 
-    private async void OnClearClicked(object sender, RoutedEventArgs e)
-    {
-        var confirmDialog = new ContentDialog
-        {
-            Title = TextResources.Get("Logs_ClearConfirm_Title") ?? "Clear Logs",
-            Content = TextResources.Get("Logs_ClearConfirm_Message") ?? "Are you sure you want to permanently delete all local log files?",
-            PrimaryButtonText = TextResources.Get("Command_Clear") ?? "Clear",
-            CloseButtonText = TextResources.Get("Command_Cancel") ?? "Cancel",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = XamlRoot
-        };
+    private void OnClearClicked(object sender, RoutedEventArgs e) => ClearConfirmation.IsOpen = true;
 
-        var result = await confirmDialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
-        {
-            AppDiagnostics.ClearLogs();
-            RefreshLogs();
-        }
+    private void OnCancelClearClicked(object sender, RoutedEventArgs e) => ClearConfirmation.IsOpen = false;
+
+    private void OnConfirmClearClicked(object sender, RoutedEventArgs e)
+    {
+        var cleared = AppDiagnostics.ClearLogs();
+        ClearConfirmation.IsOpen = !cleared;
+        RefreshLogs();
+        if (cleared) StatusFooter.Text = TextResources.Get("Logs_Cleared");
     }
 
     private void OnCopyClicked(object sender, RoutedEventArgs e)
     {
-        var sb = new StringBuilder();
-        foreach (var entry in logEntries)
+        try
         {
-            sb.AppendLine($"{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{entry.Level}] [{entry.Caller}] {entry.Message}");
+            App.UiServices.Clipboard.CopyText(FormatDisplayedLogs());
+            StatusFooter.Text = TextResources.Get("Logs_Copied");
         }
-
-        var package = new DataPackage();
-        package.SetText(sb.ToString());
-        Clipboard.SetContent(package);
+        catch (Exception exception) when (exception is System.Runtime.InteropServices.COMException or InvalidOperationException)
+        {
+            AppDiagnostics.WriteException("LogViewerDialog.OnCopyClicked", exception);
+            StatusFooter.Text = string.Format(TextResources.Get("Logs_CopyFailed"), exception.Message);
+        }
     }
 
     private async void OnExportClicked(object sender, RoutedEventArgs e)
     {
+        if (exportCancellation is not null) return;
+        using var cancellation = new CancellationTokenSource();
+        exportCancellation = cancellation;
         try
         {
-            var savePicker = new FileSavePicker();
-            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            savePicker.FileTypeChoices.Add("Log File", new List<string> { ".log", ".txt" });
-            savePicker.SuggestedFileName = $"OnlyWinget-Logs-{DateTime.Now:yyyyMMdd-HHmmss}";
-
-            var windowHandle = App.WindowHandle;
-            if (windowHandle != 0)
-            {
-                InitializeWithWindow.Initialize(savePicker, windowHandle);
-            }
-
-            var file = await savePicker.PickSaveFileAsync();
-            if (file != null)
-            {
-                var sb = new StringBuilder();
-                foreach (var entry in logEntries)
-                {
-                    sb.AppendLine($"{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{entry.Level}] [{entry.Caller}] {entry.Message}");
-                }
-                await Windows.Storage.FileIO.WriteTextAsync(file, sb.ToString());
-            }
+            var saved = await App.UiServices.FilePicker.PickAndWriteTextAsync(App.WindowId,
+                $"OnlyWinget-Logs-{DateTime.Now:yyyyMMdd-HHmmss}", ".log", "FileType_Log", FormatDisplayedLogs(), cancellation.Token);
+            StatusFooter.Text = TextResources.Get(saved ? "Logs_Exported" : "Logs_ExportCancelled");
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) { StatusFooter.Text = TextResources.Get("Logs_ExportCancelled"); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or
+            System.Runtime.InteropServices.COMException or System.ComponentModel.Win32Exception)
         {
             AppDiagnostics.WriteException("LogViewerDialog.OnExportClicked", ex);
+            StatusFooter.Text = string.Format(TextResources.Get("Logs_ExportFailed"), ex.Message);
         }
+        finally { exportCancellation = null; }
+    }
+
+    private string FormatDisplayedLogs()
+    {
+        var text = new StringBuilder();
+        foreach (var entry in logEntries)
+        {
+            text.AppendLine($"{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{entry.Level}] [{entry.Caller}] {entry.Message}");
+        }
+        return text.ToString();
     }
 }

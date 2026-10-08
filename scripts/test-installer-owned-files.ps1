@@ -25,31 +25,55 @@ $includePath = Join-Path $testRoot 'InstalledFiles.nsh'
 Write-InstallerFileInclude -PublishDirectory $publishDirectory -OutputPath $includePath
 $setupPath = Join-Path $testRoot 'fixture.exe'
 $scriptPath = Join-Path $testRoot 'fixture.nsi'
+$protocolIncludePath = Join-Path $repoRoot 'src/OnlyWinget.Setup/LegacyProtocolCleanup.nsh'
+$fixtureRegistryPath = 'Software\OnlyWingetTests\' + [Guid]::NewGuid().ToString('N')
 @'
 Unicode true
 RequestExecutionLevel user
 Name "OnlyWinget ownership regression"
 OutFile "${TEST_SETUP}"
 !include "${TEST_INCLUDE}"
+!include "${PROTOCOL_INCLUDE}"
 Section
+  SetRegView 64
   !insertmacro OnlyWingetInstallFiles
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 SectionEnd
 Section "Uninstall"
+  SetRegView 64
   SetOutPath "$TEMP"
+  !insertmacro OnlyWingetRemoveLegacyProtocol "${TEST_REGKEY}\onlywinget" "$INSTDIR\OnlyWinget.exe"
   !insertmacro OnlyWingetUninstallFiles
   RMDir "$INSTDIR"
 SectionEnd
 '@ | Set-Content -LiteralPath $scriptPath -Encoding utf8
 
 try {
-    & $makensis "/DPUBLISH_DIR=$publishDirectory" "/DTEST_INCLUDE=$includePath" "/DTEST_SETUP=$setupPath" $scriptPath > $null
+    & $makensis "/DPUBLISH_DIR=$publishDirectory" "/DTEST_INCLUDE=$includePath" "/DTEST_SETUP=$setupPath" "/DPROTOCOL_INCLUDE=$protocolIncludePath" "/DTEST_REGKEY=$fixtureRegistryPath" $scriptPath > $null
     if ($LASTEXITCODE -ne 0) { throw 'NSIS ownership fixture compilation failed.' }
     $installProcess = Start-Process -FilePath $setupPath -ArgumentList '/S', "/D=$installDirectory" -WindowStyle Hidden -Wait -PassThru
     if ($installProcess.ExitCode -ne 0) { throw 'NSIS ownership fixture installation failed.' }
     $uninstallerPath = Join-Path $installDirectory 'Uninstall.exe'
-    $uninstallProcess = Start-Process -FilePath $uninstallerPath -ArgumentList '/S', "_?=$installDirectory" -WindowStyle Hidden -Wait -PassThru
-    if ($uninstallProcess.ExitCode -ne 0) { throw 'NSIS ownership fixture uninstallation failed.' }
+    foreach ($case in @('owned', 'other-copy', 'other-label', 'no-marker')) {
+        $protocolKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey("$fixtureRegistryPath\onlywinget")
+        try {
+            $label = if ($case -eq 'other-label') { 'Other handler' } else { 'URL:OnlyWinget Protocol' }
+            $protocolKey.SetValue('', $label)
+            if ($case -eq 'no-marker') { $protocolKey.DeleteValue('URL Protocol', $false) }
+            else { $protocolKey.SetValue('URL Protocol', '') }
+            $commandKey = $protocolKey.CreateSubKey('shell\open\command')
+            try {
+                $ownerPath = if ($case -eq 'other-copy') { Join-Path $testRoot 'other-copy/OnlyWinget.exe' } else { Join-Path $installDirectory 'OnlyWinget.exe' }
+                $commandKey.SetValue('', ('"' + $ownerPath + '" "%1"'))
+            } finally { $commandKey.Dispose() }
+        } finally { $protocolKey.Dispose() }
+        $uninstallProcess = Start-Process -FilePath $uninstallerPath -ArgumentList '/S', "_?=$installDirectory" -WindowStyle Hidden -Wait -PassThru
+        if ($uninstallProcess.ExitCode -ne 0) { throw 'NSIS ownership fixture uninstallation failed.' }
+        $remaining = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("$fixtureRegistryPath\onlywinget")
+        try {
+            if (($null -eq $remaining) -ne ($case -eq 'owned')) { throw "NSIS legacy protocol ownership check failed: $case" }
+        } finally { if ($null -ne $remaining) { $remaining.Dispose() } }
+    }
     foreach ($installedFile in @((Join-Path $installDirectory 'owned.txt'), (Join-Path $installedNestedDirectory 'owned $literal.txt'))) {
         if (Test-Path -LiteralPath $installedFile) { throw "Installer-owned file was not removed: $installedFile" }
     }
@@ -57,9 +81,10 @@ try {
         (Get-Content -LiteralPath $unrelatedNestedFile -Raw).Trim() -ne 'preserve nested') {
         throw 'Unrelated files were modified or deleted.'
     }
-    Write-Host 'PASS: NSIS removes owned files and preserves unrelated root/nested files.'
+    Write-Host 'PASS: NSIS removes owned files/protocol and preserves unrelated files and protocol owners.'
 }
 finally {
+    [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($fixtureRegistryPath, $false)
     # Remove only the exact fixture files created by this test, then empty directories.
     foreach ($file in @($ownedRootFile, $ownedNestedFile, $unrelatedRootFile, $unrelatedNestedFile, $includePath, $setupPath, $scriptPath, (Join-Path $installDirectory 'Uninstall.exe'))) {
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force -ErrorAction Stop }

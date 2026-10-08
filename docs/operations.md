@@ -1,5 +1,11 @@
 # Operations
 
+## Retired URL protocol
+
+`onlywinget://` is no longer supported. The app does not register or dispatch URL actions. At startup and NSIS uninstall, legacy HKCU cleanup requires the old OnlyWinget label, URL marker and exact quoted command for that executable. Another installed/portable copy's handler is preserved. Cleanup failures are logged at startup or produce a nonzero uninstall exit code.
+
+Already removed portable copies and other user profiles can retain legacy handlers (AUDIT-37). Review `HKCU\Software\Classes\onlywinget\shell\open\command` under the affected profile before manual removal; no automatic cross-profile or unrelated-handler deletion is performed.
+
 Run commands from the repository root in PowerShell 7+.
 
 ## Runner Task Entrypoint
@@ -90,13 +96,29 @@ Capability and installed-status probes propagate cancellation instead of reporti
 
 ## Workspace edits and saving
 
+Preset package identity includes both ID and source, ignoring case. The same ID from another source is allowed. Editing keeps the original identity as its target, permits source-only changes and rejects an identity already used by another row.
+
 Persistent preset edits and active-preset changes are rejected while another workflow is running. Wait for the operation to finish before editing; the rejected action leaves workspace state unchanged. Search/update rows and their available selections are published together, so snapshots remain coherent during background discovery.
 
-An already requested workspace save waits for the current operation rather than failing with a busy error. Its caller can cancel the wait without cancelling that operation. Once admitted, save uses the same caller/global cancellation as other workflows. Save errors remain visible; pending-edit retention and navigation after a failed save are tracked separately under AUDIT-19.
+An already requested workspace save waits for the current operation rather than failing with a busy error. Its caller can cancel the wait without cancelling that operation. Once admitted, save uses the same caller/global cancellation as other workflows. Save errors remain visible.
+
+Preset editors retain drafts after failed validation, rejected edits or saving failures. Apply must succeed and persist before navigating, switching preset/mode or closing the window. If the mutation succeeded but saving failed, fields remain visible and locked; Apply retries only saving. An unapplied draft can be discarded. Dirty drafts remain guarded after the flyout is dismissed; unchanged edits do not prompt. AUDIT-19 retains the interactive validation of these paths.
 
 Synchronization follows Microsoft's [lock guidance](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/lock) and [cancellable semaphore wait](https://learn.microsoft.com/en-us/dotnet/api/system.threading.semaphoreslim.waitasync?view=net-10.0).
 
-The preset selector still ignores a rejected active-preset change and does not request autosave for an accepted change (AUDIT-35). Until corrected, select the preset while idle and explicitly save the workspace to retain that choice across restart.
+The preset selector restores the actual active preset after a rejected/cancelled switch. It still does not request autosave for an accepted change (remaining AUDIT-35). Until corrected, select the preset while idle and explicitly save the workspace to retain that choice across restart.
+
+## Diagnostic logs
+
+Diagnostic enable/level settings apply to both files and the in-memory viewer, including startup events and Verbose logging. Serilog and direct UI diagnostics share one writer. Daily UTF-8 files use `onlywinget-yyyyMMdd.log` with UTC dates under `%LOCALAPPDATA%/OnlyWinget/logs`; memory retains the latest 1000 accepted events.
+
+Clear in the log viewer deletes recognized app daily logs and clears memory only after successful file cleanup. A write or clear failure is shown with its error; original memory entries remain available for copy/export. Activity clear and Undo affect only Activity. Export reports successful writing, picker cancellation or failure separately. Daily file size/retention remains open under AUDIT-36.
+
+The viewer labels, level badges, filters and action outcomes are localized in English/Italian. Clear opens an inline confirmation inside the existing dialog; cancel leaves logs unchanged. Badges use theme resources and explicit level text. Runtime confirmation/picker behavior and High Contrast appearance remain pending under AUDIT-22.
+
+## Windows Update metadata
+
+Windows Update rows show the update's MSRC severity when available and the actual current `RebootRequired` state. Potential reboot behavior during a future installation is not reported as an already required restart. KB article IDs are displayed with one KB prefix for both native COM and PowerShell results. See Microsoft's [severity](https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdate-get_msrcseverity) and [reboot-state](https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdate2-get_rebootrequired) contracts.
 
 ## WinGet batch results and cancellation
 
@@ -118,3 +140,4 @@ Certificate failures return the original exit code/output and an actionable diag
 - The scripts install missing build prerequisites where practical: .NET SDK from `global.json`, PSScriptAnalyzer, and NSIS 3.x for setup creation.
 - Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to disable automatic installation.
 - Run only one packaging task per worktree. A concurrent invocation fails immediately with the path of `artifacts/.package.lock`; an interrupted process releases the operating-system lock automatically.
+- Packaging stages and validates both artifacts before replacing final filenames. On promotion failure it restores the previous pair; after interruption, the next invocation recovers it before building. Preserve `.package-recovery` if recovery fails: the error identifies invalid/missing data rather than deleting evidence. Only consume the pair after packaging succeeds; see [release details](release.md).

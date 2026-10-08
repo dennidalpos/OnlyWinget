@@ -55,7 +55,6 @@ public sealed partial class ActivityPage : Page
             await App.UiServices.Confirmation.ConfirmAsync(XamlRoot, "Command_Activity_Clear", args.Command.ConfirmationResourceKey ?? "Dialog_ClearActivity_Message"))
         {
             clearedEntries = viewModel.ClearActivity();
-            AppDiagnostics.ClearLogs();
             PageState.ShowUndo(TextResources.Get("Activity_Cleared"), TextResources.Get("Command_Undo"));
         }
     }

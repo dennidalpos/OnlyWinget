@@ -45,6 +45,7 @@ SetCompressor /SOLID lzma
 !include "MultiUser.nsh"
 !include "MUI2.nsh"
 !include "x64.nsh"
+!include "LegacyProtocolCleanup.nsh"
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "${OUT_FILE}"
@@ -119,6 +120,7 @@ Section "Uninstall"
     SetRegView 64
   ${EndIf}
   nsExec::Exec 'taskkill /F /IM OnlyWinget.exe'
+  !insertmacro OnlyWingetRemoveLegacyProtocol "Software\Classes\onlywinget" "$INSTDIR\OnlyWinget.exe"
 
   Delete "$DESKTOP\OnlyWinget.lnk"
   Delete "$SMPROGRAMS\OnlyWinget\OnlyWinget.lnk"

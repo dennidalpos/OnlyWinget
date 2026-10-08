@@ -1,12 +1,12 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using OnlyWinget.Application.Presentation;
 using OnlyWinget.DesignSystem.Commands;
 using OnlyWinget.Controls;
 using OnlyWinget.Presentation;
 using System.ComponentModel;
-using System.Linq;
 using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Features.Packages;
@@ -15,6 +15,12 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 {
     private bool isRefreshing;
     private Flyout? pendingFlyout;
+    private string originalName = string.Empty;
+    private string originalPackageId = string.Empty;
+    private string originalPackageSource = string.Empty;
+    private bool isConfirmingNavigation;
+    private bool isOpeningEditor;
+    private bool isSwitchingPreset;
     public PresetsViewModel ViewModel { get; }
 
     public PresetsPage()
@@ -26,9 +32,6 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         ViewModel.PropertyChanged += OnViewModelChanged;
         PresetSelector.ItemsSource = ViewModel.PresetNames;
         PageState.CancelRequested += OnOperationCancelRequested;
-
-        // Wire events for flyouts opening
-        EditPackageFlyout.Opened += OnEditPackageFlyoutOpened;
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -57,7 +60,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         {
             isRefreshing = true;
             PresetSelector.SelectedItem = ViewModel.ActivePresetName;
-            ViewModel.PresetName.Value = ViewModel.ActivePresetName ?? string.Empty;
+            if (pendingFlyout is null) ViewModel.PresetName.Value = ViewModel.ActivePresetName ?? string.Empty;
             isRefreshing = false;
         }
 
@@ -66,7 +69,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
             PageState.Present(ViewModel.PageState);
         }
 
-        if (args.PropertyName == nameof(PresetsViewModel.Commands))
+        if (args.PropertyName is nameof(PresetsViewModel.Commands) or nameof(PresetsViewModel.HasUnsavedEdit) or nameof(PresetsViewModel.IsApplyingEdit))
         {
             ApplyValidationToCommands();
         }
@@ -76,7 +79,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
     {
         isRefreshing = true;
         PresetSelector.SelectedItem = ViewModel.ActivePresetName;
-        ViewModel.PresetName.Value = ViewModel.ActivePresetName ?? string.Empty;
+        if (pendingFlyout is null) ViewModel.PresetName.Value = ViewModel.ActivePresetName ?? string.Empty;
         PageState.Present(ViewModel.PageState);
 
         ApplyValidationToCommands();
@@ -87,17 +90,36 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        await ViewModel.ExecuteAsync(args.Command, string.Empty);
+        if (args.Command.Id == UiCommandId.SaveWorkspace && HasPendingEdit()) await ApplyPendingEditAsync();
+        else await ViewModel.ExecuteAsync(args.Command, string.Empty);
     }
 
-    private void OnPresetChanged(object sender, SelectionChangedEventArgs args)
+    private async void OnPresetChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (isRefreshing || PresetSelector.SelectedItem is not string presetName)
+        if (isRefreshing || isSwitchingPreset || PresetSelector.SelectedItem is not string presetName)
         {
             return;
         }
 
-        ViewModel.SetActivePreset(presetName);
+        isSwitchingPreset = true;
+        try
+        {
+            RestorePresetSelection();
+            if (await ConfirmNavigationAsync()) ViewModel.SetActivePreset(presetName);
+        }
+        catch (Exception exception) { AppDiagnostics.WriteException("PresetsPage.OnPresetChanged", exception); }
+        finally
+        {
+            RestorePresetSelection();
+            isSwitchingPreset = false;
+        }
+    }
+
+    private void RestorePresetSelection()
+    {
+        isRefreshing = true;
+        try { PresetSelector.SelectedItem = ViewModel.ActivePresetName; }
+        finally { isRefreshing = false; }
     }
 
     private void OnToggleAllPackages(object? sender, EventArgs args)
@@ -194,38 +216,44 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
             .Where(c => topLevelCommandIds.Contains(c.Id)));
 
         AddPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPreset);
-        SavePresetBtn.IsEnabled = ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
+        SavePresetBtn.IsEnabled = CanSaveEdit(UiCommandId.AddPreset, ViewModel.PresetName);
 
         RenamePresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RenamePreset);
-        SaveRenamePresetBtn.IsEnabled = ViewModel.PresetName.IsValid && ViewModel.PresetName.Value.Trim().Length > 0;
+        SaveRenamePresetBtn.IsEnabled = CanSaveEdit(UiCommandId.RenamePreset, ViewModel.PresetName);
 
         RemovePresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RemovePreset);
         ImportPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.ImportPreset);
         ExportPresetBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.ExportPreset);
 
         AddPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.AddPresetPackage);
-        SavePackageBtn.IsEnabled = ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
+        SavePackageBtn.IsEnabled = CanSaveEdit(UiCommandId.AddPresetPackage, ViewModel.PackageId);
 
         EditPackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.EditPresetPackage);
-        SaveEditPackageBtn.IsEnabled = ViewModel.PackageId.IsValid && ViewModel.PackageId.Value.Trim().Length > 0;
+        SaveEditPackageBtn.IsEnabled = CanSaveEdit(UiCommandId.EditPresetPackage, ViewModel.PackageId);
 
         RemovePackageBtn.IsEnabled = ViewModel.IsEnabled(UiCommandId.RemovePresetPackages);
+        foreach (var field in new[] { PresetNameBox, RenamePresetNameBox, PackageIdBox, PackageSourceBox, EditPackageIdBox, EditPackageSourceBox })
+        {
+            field.IsEnabled = !ViewModel.HasUnsavedEdit && !ViewModel.IsApplyingEdit;
+        }
     }
+
+    private bool CanSaveEdit(UiCommandId id, ValidatedField field) =>
+        !ViewModel.IsApplyingEdit && !ViewModel.IsExecuting && (ViewModel.HasUnsavedEdit || ViewModel.IsEnabled(id) && field.IsValid && field.Value.Trim().Length > 0);
 
     private void OnOperationCancelRequested(object? sender, EventArgs args) => ViewModel.Cancel();
 
     public async Task<bool> ConfirmNavigationAsync()
     {
+        if (ViewModel.IsApplyingEdit || isConfirmingNavigation) return false;
         if (!HasPendingEdit())
         {
             return true;
         }
 
-        if (XamlRoot is null)
-        {
-            return true;
-        }
+        if (XamlRoot is null) return false;
 
+        isConfirmingNavigation = true;
         try
         {
             var isEditValid = IsPendingEditValid();
@@ -233,10 +261,10 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
             var dialog = new ContentDialog
             {
                 Title = TextResources.Get("Dialog_UnsavedChanges_Title"),
-                Content = TextResources.Get("Dialog_UnsavedChanges_Message"),
+                Content = TextResources.Get(ViewModel.HasUnsavedEdit ? "Dialog_UnsavedChanges_SaveFailed" : "Dialog_UnsavedChanges_Message"),
                 PrimaryButtonText = TextResources.Get("Dialog_UnsavedChanges_Apply"),
                 IsPrimaryButtonEnabled = isEditValid,
-                SecondaryButtonText = TextResources.Get("Dialog_UnsavedChanges_Discard"),
+                SecondaryButtonText = ViewModel.HasUnsavedEdit ? string.Empty : TextResources.Get("Dialog_UnsavedChanges_Discard"),
                 CloseButtonText = TextResources.Get("Dialog_Cancel"),
                 DefaultButton = isEditValid ? ContentDialogButton.Primary : ContentDialogButton.Close,
                 XamlRoot = XamlRoot
@@ -250,8 +278,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 
             if (result == ContentDialogResult.Secondary)
             {
-                pendingFlyout?.Hide();
-                ClearPendingFields();
+                CompletePendingEdit();
                 return true;
             }
 
@@ -260,85 +287,74 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         catch (Exception exception)
         {
             AppDiagnostics.WriteException("PresetsPage.ConfirmNavigationAsync", exception);
-            return true;
+            return false;
         }
+        finally { isConfirmingNavigation = false; }
     }
 
     private bool IsPendingEditValid()
     {
+        if (ViewModel.HasUnsavedEdit) return true;
         if (pendingFlyout == AddPresetFlyout)
         {
-            var text = PresetNameBox.Text.Trim();
-            return !string.IsNullOrWhiteSpace(text) &&
-                   !ViewModel.PresetNames.Any(name => string.Equals(name, text, StringComparison.OrdinalIgnoreCase));
+            ViewModel.PresetName.Validate();
+            return ViewModel.PresetName.IsValid;
         }
 
         if (pendingFlyout == RenamePresetFlyout)
         {
-            var text = RenamePresetNameBox.Text.Trim();
-            return !string.IsNullOrWhiteSpace(text) &&
-                   !ViewModel.PresetNames.Any(name => string.Equals(name, text, StringComparison.OrdinalIgnoreCase));
+            ViewModel.PresetName.Validate();
+            return ViewModel.PresetName.IsValid;
         }
 
         if (pendingFlyout == AddPackageFlyout)
         {
-            var id = PackageIdBox.Text.Trim();
-            return !string.IsNullOrWhiteSpace(id) &&
-                   !ViewModel.Packages.Any(p => string.Equals(p.PackageId, id, StringComparison.OrdinalIgnoreCase));
+            ViewModel.PackageId.Validate();
+            return ViewModel.PackageId.IsValid;
         }
 
         if (pendingFlyout == EditPackageFlyout)
         {
-            var id = EditPackageIdBox.Text.Trim();
-            var selected = ViewModel.Workflow.State.SelectedPresetPackages.SingleOrDefault();
-            if (selected != null && string.Equals(selected.Id, id, StringComparison.OrdinalIgnoreCase))
-            {
-                return !string.IsNullOrWhiteSpace(id);
-            }
-            return !string.IsNullOrWhiteSpace(id) &&
-                   !ViewModel.Packages.Any(p => string.Equals(p.PackageId, id, StringComparison.OrdinalIgnoreCase));
+            ViewModel.PackageId.Validate();
+            return ViewModel.PackageId.IsValid;
         }
 
         return false;
     }
 
-    private bool HasPendingEdit() =>
-        pendingFlyout == AddPresetFlyout && !string.IsNullOrWhiteSpace(PresetNameBox.Text) ||
-        pendingFlyout == RenamePresetFlyout && !string.Equals(RenamePresetNameBox.Text.Trim(), ViewModel.ActivePresetName ?? string.Empty, StringComparison.Ordinal) ||
-        pendingFlyout == AddPackageFlyout && (!string.IsNullOrWhiteSpace(PackageIdBox.Text) || !string.IsNullOrWhiteSpace(PackageSourceBox.Text)) ||
-        pendingFlyout == EditPackageFlyout && (!string.IsNullOrWhiteSpace(EditPackageIdBox.Text) || !string.IsNullOrWhiteSpace(EditPackageSourceBox.Text));
+    private bool HasPendingEdit() => ViewModel.HasUnsavedEdit || pendingFlyout is not null &&
+        (pendingFlyout == AddPresetFlyout || pendingFlyout == RenamePresetFlyout
+            ? !string.Equals(ViewModel.PresetName.Value.Trim(), originalName, StringComparison.Ordinal)
+            : !string.Equals(ViewModel.PackageId.Value.Trim(), originalPackageId, StringComparison.Ordinal) ||
+              !string.Equals(ViewModel.PackageSource.Trim(), originalPackageSource, StringComparison.Ordinal));
 
     private async Task<bool> ApplyPendingEditAsync()
     {
-        if (pendingFlyout == AddPresetFlyout)
+        var id = pendingFlyout == AddPresetFlyout ? UiCommandId.AddPreset
+            : pendingFlyout == RenamePresetFlyout ? UiCommandId.RenamePreset
+            : pendingFlyout == AddPackageFlyout ? UiCommandId.AddPresetPackage
+            : pendingFlyout == EditPackageFlyout ? UiCommandId.EditPresetPackage
+            : (UiCommandId?)null;
+        try
         {
-            await ExecuteCommandAsync(UiCommandId.AddPreset, PresetNameBox.Text);
-            AddPresetFlyout.Hide();
+            if (id is null || !await ViewModel.ExecuteEditAsync(id.Value, ViewModel.PackageSource)) return false;
+            CompletePendingEdit();
             return true;
         }
-
-        if (pendingFlyout == RenamePresetFlyout)
+        catch (OperationCanceledException) { return false; }
+        catch (Exception exception)
         {
-            await ExecuteCommandAsync(UiCommandId.RenamePreset, RenamePresetNameBox.Text);
-            RenamePresetFlyout.Hide();
-            return true;
+            AppDiagnostics.WriteException("PresetsPage.ApplyPendingEditAsync", exception);
+            return false;
         }
+    }
 
-        if (pendingFlyout == AddPackageFlyout)
-        {
-            await ExecuteCommandAsync(UiCommandId.AddPresetPackage, PackageSourceBox.Text);
-            AddPackageFlyout.Hide();
-            return true;
-        }
-
-        if (pendingFlyout == EditPackageFlyout)
-        {
-            await ExecuteCommandAsync(UiCommandId.EditPresetPackage, EditPackageSourceBox.Text);
-            EditPackageFlyout.Hide();
-            return true;
-        }
-
-        return true;
+    private void CompletePendingEdit()
+    {
+        var flyout = pendingFlyout;
+        pendingFlyout = null;
+        flyout?.Hide();
+        ClearPendingFields();
     }
 
     private void ClearPendingFields()
@@ -350,6 +366,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         EditPackageSourceBox.Text = string.Empty;
         ViewModel.PresetName.Clear();
         ViewModel.PackageId.Clear();
+        ViewModel.PackageSource = string.Empty;
     }
 
     private void OnPendingFlyoutOpened(object? sender, object e)
@@ -362,46 +379,59 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
 
     private void OnPendingFlyoutClosed(object? sender, object e)
     {
-        if (ReferenceEquals(sender, pendingFlyout))
+        if (ReferenceEquals(sender, pendingFlyout) && !ViewModel.IsApplyingEdit && !ViewModel.IsExecuting && !HasPendingEdit())
         {
             pendingFlyout = null;
         }
     }
 
-    private async void OnAddPresetClick(object sender, RoutedEventArgs e)
-    {
-        await ExecuteCommandAsync(UiCommandId.AddPreset, PresetNameBox.Text);
-        AddPresetFlyout.Hide();
-    }
+    private async void OnAddPresetClick(object sender, RoutedEventArgs e) => await ApplyPendingEditAsync();
+    private async void OnRenamePresetClick(object sender, RoutedEventArgs e) => await ApplyPendingEditAsync();
 
-    private async void OnRenamePresetClick(object sender, RoutedEventArgs e)
+    private async void OnRemovePresetClick(object sender, RoutedEventArgs e)
     {
-        await ExecuteCommandAsync(UiCommandId.RenamePreset, RenamePresetNameBox.Text);
-        RenamePresetFlyout.Hide();
+        if (await ConfirmNavigationAsync()) await ExecuteCommandAsync(UiCommandId.RemovePreset, string.Empty);
     }
-
-    private async void OnRemovePresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePreset, string.Empty);
-    private async void OnImportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ImportPreset, string.Empty);
+    private async void OnImportPresetClick(object sender, RoutedEventArgs e)
+    {
+        if (await ConfirmNavigationAsync()) await ExecuteCommandAsync(UiCommandId.ImportPreset, string.Empty);
+    }
     private async void OnExportPresetClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.ExportPreset, string.Empty);
 
-    private async void OnAddPackageClick(object sender, RoutedEventArgs e)
-    {
-        await ExecuteCommandAsync(UiCommandId.AddPresetPackage, PackageSourceBox.Text);
-        AddPackageFlyout.Hide();
-    }
-
-    private async void OnEditPackageClick(object sender, RoutedEventArgs e)
-    {
-        await ExecuteCommandAsync(UiCommandId.EditPresetPackage, EditPackageSourceBox.Text);
-        EditPackageFlyout.Hide();
-    }
+    private async void OnAddPackageClick(object sender, RoutedEventArgs e) => await ApplyPendingEditAsync();
+    private async void OnEditPackageClick(object sender, RoutedEventArgs e) => await ApplyPendingEditAsync();
 
     private async void OnRemovePackageClick(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(UiCommandId.RemovePresetPackages, string.Empty);
 
-    private void OnEditPackageFlyoutOpened(object? sender, object e)
+    private async void OnOpenEditorClick(object sender, RoutedEventArgs e)
     {
-        OnPendingFlyoutOpened(sender, e);
-        ViewModel.PrepareEditFields(source => EditPackageSourceBox.Text = source);
+        if (isOpeningEditor || isConfirmingNavigation || sender is not FrameworkElement button ||
+            FlyoutBase.GetAttachedFlyout(button) is not Flyout flyout) return;
+        isOpeningEditor = true;
+        try
+        {
+            if (pendingFlyout != flyout)
+            {
+                if (!await ConfirmNavigationAsync()) return;
+                pendingFlyout = flyout;
+                if (flyout == AddPackageFlyout) ViewModel.PrepareAddPackage();
+                else if (flyout == EditPackageFlyout)
+                {
+                    if (!ViewModel.PrepareEditFields())
+                    {
+                        pendingFlyout = null;
+                        return;
+                    }
+                }
+                else ViewModel.PreparePresetName(flyout == RenamePresetFlyout);
+                originalName = ViewModel.PresetName.Value.Trim();
+                originalPackageId = ViewModel.PackageId.Value.Trim();
+                originalPackageSource = ViewModel.PackageSource.Trim();
+            }
+            flyout.ShowAt(button);
+        }
+        catch (Exception exception) { AppDiagnostics.WriteException("PresetsPage.OnOpenEditorClick", exception); }
+        finally { isOpeningEditor = false; }
     }
 
     private async System.Threading.Tasks.Task ExecuteCommandAsync(UiCommandId id, string source)

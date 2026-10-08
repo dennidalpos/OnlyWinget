@@ -34,7 +34,7 @@ OnlyWinget is a Windows desktop app for managing local update workflows from a W
 | Host & DI | `Microsoft.Extensions.Hosting` (`Host.CreateDefaultBuilder()`) |
 | Storage engine | Embedded **SQLite** via **Entity Framework Core 10** (`onlywinget.db`) |
 | Interop | WinGet CLI and Windows Update COM automation with PowerShell fallback |
-| Logging | Structured logging via **Serilog** (file rolling & UI debug sink) |
+| Logging | Serilog events and UI diagnostics share one daily file writer and a bounded viewer buffer; enable/level settings apply to both. |
 | Test suite | xUnit tests under `tests/OnlyWinget.Tests` |
 | UI languages | English, Italian |
 | Release artifacts | 1 x64 NSIS setup EXE and 1 x64 self-contained portable ZIP |

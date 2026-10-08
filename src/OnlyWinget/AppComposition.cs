@@ -27,24 +27,21 @@ internal static class AppComposition
 
     public static IHost CreateHost()
     {
-        var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var logDirectory = Path.Combine(root, "OnlyWinget", "logs");
-        Directory.CreateDirectory(logDirectory);
-        var logFilePath = Path.Combine(logDirectory, "onlywinget-.log");
+        var settings = new JsonAppSettingsService(JsonAppSettingsService.DefaultFilePath);
+        AppDiagnostics.Configure(settings.Current.DiagnosticLogging,
+            Enum.TryParse<AppLogLevel>(settings.Current.LogLevel, out var level) ? level : AppLogLevel.Information);
 
         var builder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
             .UseSerilog((_, loggerConfiguration) =>
             {
                 loggerConfiguration
-                    .MinimumLevel.Information()
-                    .WriteTo.Debug()
-                    .WriteTo.File(logFilePath, rollingInterval: RollingInterval.Day)
+                    .MinimumLevel.Verbose()
                     .WriteTo.Sink(new AppDiagnosticsSerilogSink());
             })
             .ConfigureServices((_, services) =>
             {
                 // UI Services
-                services.AddSingleton(sp => new JsonAppSettingsService(JsonAppSettingsService.DefaultFilePath));
+                services.AddSingleton(settings);
                 services.AddSingleton<IAppSettingsService>(sp => sp.GetRequiredService<JsonAppSettingsService>());
                 services.AddSingleton(sp => new ConfirmationService(sp.GetRequiredService<JsonAppSettingsService>()));
                 services.AddSingleton<IConfirmationService>(sp => sp.GetRequiredService<ConfirmationService>());
@@ -62,7 +59,6 @@ internal static class AppComposition
                     sp.GetRequiredService<INavigationRegistry>()));
 
                 // Infrastructure & Application Services
-                services.AddSingleton<IUrlProtocolService, UrlProtocolRegistrationService>();
                 services.AddSingleton<IExternalProcessRunner, ProcessExternalProcessRunner>();
                 services.AddSingleton<WingetProgressParser>();
                 services.AddSingleton<WingetTableParser>();
@@ -80,19 +76,19 @@ internal static class AppComposition
                 services.AddSingleton<IWorkspaceStore>(sp => new SqliteWorkspaceStore(
                     SqliteWorkspaceStore.DefaultFilePath,
                     JsonWorkspaceStore.DefaultFilePath,
-                    AppDiagnostics.WriteException,
+                    null,
                     sp.GetService<ILogger<SqliteWorkspaceStore>>()));
 
                 services.AddSingleton<ISourcePreferenceStore>(sp => new JsonSourcePreferenceStore(
                     JsonSourcePreferenceStore.DefaultFilePath,
-                    AppDiagnostics.WriteException,
+                    null,
                     sp.GetService<ILogger<JsonSourcePreferenceStore>>()));
 
                 services.AddSingleton<ISecureDataProtectionService, DpapiDataProtectionService>();
                 services.AddSingleton<ISecureSecretStore>(sp => new DpapiSecretStore(
                     DpapiSecretStore.DefaultFilePath,
                     sp.GetRequiredService<ISecureDataProtectionService>(),
-                    AppDiagnostics.WriteException,
+                    null,
                     sp.GetService<ILogger<DpapiSecretStore>>()));
 
                 services.AddMemoryCache();
@@ -116,7 +112,7 @@ internal static class AppComposition
                 // OnlyWinget Workflow App
                 services.AddSingleton<OnlyWingetApplication>(sp =>
                 {
-                    var app = new OnlyWingetApplication(
+                    return new OnlyWingetApplication(
                         sp.GetRequiredService<IWorkspaceStore>(),
                         sp.GetRequiredService<ISystemCapabilityService>(),
                         sp.GetRequiredService<IPackageSearchService>(),
@@ -127,16 +123,26 @@ internal static class AppComposition
                         sp.GetRequiredService<IOperationExecutor>(),
                         sourcePreferenceStore: sp.GetRequiredService<ISourcePreferenceStore>(),
                         appLogger: sp.GetService<ILogger<OnlyWingetApplication>>());
-
-                    app.ExceptionLogger = AppDiagnostics.WriteException;
-                    app.Logger = AppDiagnostics.Write;
-                    return app;
                 });
 
                 services.AddSingleton<ApplicationStartupOrchestrator>();
             });
 
         return builder.Build();
+    }
+
+    internal static void CleanupLegacyProtocol()
+    {
+        if (!OperatingSystem.IsWindows() || Environment.ProcessPath is not { } executablePath) return;
+        try
+        {
+            using var classes = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Classes", writable: true);
+            if (classes is not null) LegacyProtocolCleanup.RemoveOwnedRegistration(classes, executablePath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            AppDiagnostics.WriteException("LegacyProtocolCleanup", exception);
+        }
     }
 
     public static UiServiceCollection CreateUiServices() => Host.Services.GetRequiredService<UiServiceCollection>();

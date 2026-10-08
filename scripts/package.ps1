@@ -13,6 +13,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 . (Join-Path $PSScriptRoot 'support/InstallerFiles.ps1')
+. (Join-Path $PSScriptRoot 'support/PackageArtifacts.ps1')
 
 $isFastMode = -not $Full
 
@@ -197,32 +198,21 @@ function Invoke-PublishAndPackage {
     $installerFileInclude = Join-Path $nsisStagingRoot 'InstalledFiles.nsh'
     Write-InstallerFileInclude -PublishDirectory $publishDir -OutputPath $installerFileInclude
 
-    # 1. NSIS Installer Setup EXE
     $makensisExe = Resolve-MakensisExe
-    $nsisArgs = @(
-        "-DPRODUCT_VERSION=$installerVersion",
-        "-DPUBLISH_DIR=$publishDir",
-        "-DINSTALLER_FILE_INCLUDE=$installerFileInclude",
-        "-DOUT_FILE=$setupFilePath",
-        $nsisScriptPath
-    )
-
-    if ($isFastMode) {
-        & $makensisExe @nsisArgs > $null
-    } else {
-        & $makensisExe @nsisArgs
+    New-PackageArtifactPair -OutputDirectory $setupOutputDir -PublishDirectory $publishDir -Version $installerVersion -BuildSetup {
+        param($stagedSetupPath)
+        $nsisArgs = @(
+            "-DPRODUCT_VERSION=$installerVersion",
+            "-DPUBLISH_DIR=$publishDir",
+            "-DINSTALLER_FILE_INCLUDE=$installerFileInclude",
+            "-DOUT_FILE=$stagedSetupPath",
+            $nsisScriptPath
+        )
+        if ($isFastMode) { & $makensisExe @nsisArgs > $null }
+        else { & $makensisExe @nsisArgs }
+        if ($LASTEXITCODE -ne 0) { throw 'Compilazione NSIS setup fallita.' }
+        Assert-Path -Path $stagedSetupPath -Description 'Staged NSIS setup executable'
     }
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Compilazione NSIS setup fallita.'
-    }
-    Assert-Path -Path $setupFilePath -Description 'NSIS setup executable'
-
-    # 2. Portable ZIP
-    if (Test-Path -LiteralPath $portableFilePath) {
-        Remove-Item -LiteralPath $portableFilePath -Force -ErrorAction Stop
-    }
-    Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $portableFilePath -CompressionLevel Optimal
-    Assert-Path -Path $portableFilePath -Description 'Portable x64 archive'
 
     if ($isFastMode) {
         Write-Host "PASS: Setup NSIS and Portable ZIP generated ($Configuration)." -ForegroundColor Green
@@ -255,6 +245,8 @@ catch [System.IO.IOException] {
 }
 
 try {
+    New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
+    Repair-PackagePromotion -OutputDirectory $setupOutputDir
     & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -Fast:$Fast -Full:$Full -NonInteractive:$NonInteractive
     if ($LASTEXITCODE -ne 0) {
         throw 'Preparazione build fallita prima del packaging.'

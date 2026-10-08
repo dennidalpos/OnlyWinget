@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\src\OnlyWinget\TextResources.cs" Link="Presentation\TextResources.cs" />
     <ProjectReference Include="..\..\src\OnlyWinget.Application\OnlyWinget.Application.csproj" />
     <ProjectReference Include="..\..\src\OnlyWinget.Domain\OnlyWinget.Domain.csproj" />
     <ProjectReference Include="..\..\src\OnlyWinget.Infrastructure\OnlyWinget.Infrastructure.csproj" />

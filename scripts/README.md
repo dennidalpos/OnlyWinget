@@ -33,6 +33,7 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `dev.ps1` | Direct app launch action. |
 | `package.ps1` | Direct x64 NSIS setup executable and self-contained portable ZIP packaging action. |
 | `test-installer-owned-files.ps1` | Compiles and runs an isolated NSIS fixture; verifies removal of distributed files and preservation of unrelated root/nested files. Requires NSIS. |
+| `test-package-artifacts.ps1` | Isolated real-NSIS artifact regression: preserves previous outputs on failures, recovers interrupted promotion and rejects corrupt journals/backups. |
 | `check.ps1` | Full gate including the installer file ownership regression. Supports `-Fast` (default) and `-Full`. |
 | `clean.ps1` | Guarded generated-output cleanup; `-All` also clears NuGet caches, never application data. |
 | `test-clean-preserves-data.ps1` | Isolated cleanup regression preserving workspace/settings/preferences/log sentinels; no real cache clearing. |
@@ -47,4 +48,4 @@ Support files live under `scripts/support/` and are not standalone entrypoints.
 
 Only NSIS setup EXE and self-contained portable ZIP distribution are supported. The unused `PackageMsix` task/script/manifest have been removed; use `run.ps1 -Task Package` for both supported assets.
 
-Packaging is serialized per worktree through `artifacts/.package.lock`. Final NSIS/portable files are currently written directly into `artifacts/dist/`; preserving prior artifacts through atomic staging/promotion remains tracked under AUDIT-24.
+Packaging is serialized per worktree through `artifacts/.package.lock`. Setup/portable files are staged on the output volume, validated and individually promoted with retained rollback copies and a recovery journal. The next invocation restores interrupted promotions before building; corrupt recovery data is preserved and fails closed. Consume the pair only after successful packaging completion; two file replacements are not one atomic transaction. See [release details](../docs/release.md).

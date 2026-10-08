@@ -58,6 +58,7 @@ public sealed partial class MainWindow : Window
         Closed += OnClosed;
         SizeChanged += OnWindowSizeChanged;
         AppWindow.Changed += OnAppWindowChanged;
+        AppWindow.Closing += OnWindowClosing;
         RootNavigation.Loaded += OnLoaded;
         UpdateTitleBarPadding();
         ApplyTheme();
@@ -71,11 +72,25 @@ public sealed partial class MainWindow : Window
         Activated -= OnWindowActivated;
         SizeChanged -= OnWindowSizeChanged;
         AppWindow.Changed -= OnAppWindowChanged;
+        AppWindow.Closing -= OnWindowClosing;
         App.UiServices.Settings.Changed -= OnSettingsChanged;
         App.Workflow.StateChanged -= OnWorkflowStateChanged;
         Closed -= OnClosed;
         windowLifetime.Cancel();
         windowLifetime.Dispose();
+    }
+
+    private async void OnWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        args.Cancel = true;
+        if (isNavigating) return;
+        isNavigating = true;
+        try
+        {
+            if (await ConfirmCurrentNavigationAsync()) Close();
+        }
+        catch (Exception exception) { AppDiagnostics.WriteException("MainWindow.OnWindowClosing", exception); }
+        finally { isNavigating = false; }
     }
 
     private void OnSettingsChanged(object? sender, EventArgs args)
@@ -340,6 +355,9 @@ public sealed partial class MainWindow : Window
         catch (Exception exception)
         {
             AppDiagnostics.WriteException("MainWindow.OnSelectionChanged", exception);
+            isRestoringNavigation = true;
+            SelectRoute(currentRouteId);
+            isRestoringNavigation = false;
         }
         finally
         {
@@ -374,15 +392,14 @@ public sealed partial class MainWindow : Window
         catch (Exception exception)
         {
             AppDiagnostics.WriteException("MainWindow.ConfirmCurrentNavigationAsync", exception);
-            return true;
+            return false;
         }
     }
 
     internal void Navigate(string routeId)
     {
-        if (!routes.ContainsKey(routeId)) return;
+        if (isNavigating || !routes.ContainsKey(routeId) || routeId == currentRouteId) return;
         SelectRoute(routeId);
-        ShowPage(routeId);
     }
 
     private void BuildNavigation()

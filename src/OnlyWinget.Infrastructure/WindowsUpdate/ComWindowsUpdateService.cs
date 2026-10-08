@@ -130,6 +130,7 @@ public sealed class ComWindowsUpdateService(
         object? sessionObj = null;
         object? searcherObj = null;
         object? searchResultObj = null;
+        object? updateCollectionObject = null;
 
         try
         {
@@ -150,6 +151,7 @@ public sealed class ComWindowsUpdateService(
             }
 
             dynamic updateCollection = searchResult.Updates;
+            updateCollectionObject = (object)updateCollection;
 
             var items = new List<WindowsUpdateItem>();
             int count = updateCollection.Count;
@@ -158,76 +160,73 @@ public sealed class ComWindowsUpdateService(
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 dynamic update = updateCollection.Item(i);
-                dynamic identity = update.Identity;
-
-                string updateId = identity.UpdateID?.ToString() ?? Guid.NewGuid().ToString();
-                int revisionNumber = (int)(identity.RevisionNumber ?? 1);
-                string title = update.Title?.ToString() ?? "Windows Update";
-                string? description = update.Description?.ToString();
-
-                var categories = new List<string>();
-                try
-                {
-                    dynamic categoryColl = update.Categories;
-                    int catCount = categoryColl.Count;
-                    for (int c = 0; c < catCount; c++)
-                    {
-                        string? catName = categoryColl.Item(c).Name?.ToString();
-                        if (!string.IsNullOrWhiteSpace(catName)) categories.Add(catName);
-                    }
-                    TryReleaseCom((object)categoryColl);
-                }
-                catch { }
-
-                var kbArticles = new List<string>();
-                try
-                {
-                    dynamic kbColl = update.KBArticleIDs;
-                    int kbCount = kbColl.Count;
-                    for (int k = 0; k < kbCount; k++)
-                    {
-                        string? kb = kbColl.Item(k)?.ToString();
-                        if (!string.IsNullOrWhiteSpace(kb)) kbArticles.Add($"KB{kb}");
-                    }
-                    TryReleaseCom((object)kbColl);
-                }
-                catch { }
-
-                ulong maxDownloadSize = 0;
-                try { maxDownloadSize = Convert.ToUInt64(update.MaxDownloadSize); } catch { }
-
-                bool isDownloaded = false;
-                try { isDownloaded = Convert.ToBoolean(update.IsDownloaded); } catch { }
-
-                bool rebootRequired = false;
-                try
-                {
-                    int behavior = Convert.ToInt32(update.InstallationBehavior.RebootBehavior);
-                    rebootRequired = behavior != 0;
-                }
-                catch { }
-
-                items.Add(new WindowsUpdateItem(
-                    new WindowsUpdateIdentity(updateId, revisionNumber),
-                    title,
-                    description,
-                    "Important",
-                    categories,
-                    kbArticles,
-                    maxDownloadSize,
-                    isDownloaded,
-                    rebootRequired));
-
-                TryReleaseCom((object)update);
+                try { items.Add(MapNativeUpdate((object)update)); }
+                finally { TryReleaseCom((object)update); }
             }
 
             return WindowsUpdateOperationOutcome<WindowsUpdateItem>.Success(items, "COM Native Search Completed");
         }
         finally
         {
+            TryReleaseCom(updateCollectionObject);
             TryReleaseCom(searchResultObj);
             TryReleaseCom(searcherObj);
             TryReleaseCom(sessionObj);
+        }
+    }
+
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WUA automation metadata is supplied by the operating system.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WUA automation requires the runtime binder.")]
+    internal static WindowsUpdateItem MapNativeUpdate(object nativeUpdate)
+    {
+        dynamic update = nativeUpdate;
+        object? identityObject = null;
+        object? categoriesObject = null;
+        object? articlesObject = null;
+        try
+        {
+            dynamic identity = update.Identity;
+            identityObject = (object)identity;
+            dynamic categoryCollection = update.Categories;
+            categoriesObject = (object)categoryCollection;
+            var categories = new List<string>();
+            for (var index = 0; index < (int)categoryCollection.Count; index++)
+            {
+                object category = categoryCollection.Item(index);
+                try
+                {
+                    string? name = ((dynamic)category).Name;
+                    if (!string.IsNullOrWhiteSpace(name)) categories.Add(name);
+                }
+                finally { TryReleaseCom(category); }
+            }
+
+            dynamic articleCollection = update.KBArticleIDs;
+            articlesObject = (object)articleCollection;
+            var articles = new List<string>();
+            for (var index = 0; index < (int)articleCollection.Count; index++)
+            {
+                string? article = articleCollection.Item(index);
+                if (!string.IsNullOrWhiteSpace(article)) articles.Add(article.Trim());
+            }
+
+            string? severity = update.MsrcSeverity;
+            return new WindowsUpdateItem(
+                new WindowsUpdateIdentity((string)identity.UpdateID, (int)identity.RevisionNumber),
+                (string)update.Title,
+                (string?)update.Description,
+                string.IsNullOrWhiteSpace(severity) ? null : severity,
+                categories,
+                articles,
+                Convert.ToUInt64(update.MaxDownloadSize),
+                Convert.ToBoolean(update.IsDownloaded),
+                Convert.ToBoolean(update.RebootRequired));
+        }
+        finally
+        {
+            TryReleaseCom(articlesObject);
+            TryReleaseCom(categoriesObject);
+            TryReleaseCom(identityObject);
         }
     }
 

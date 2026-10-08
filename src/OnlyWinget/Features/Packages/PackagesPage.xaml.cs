@@ -7,6 +7,7 @@ public sealed partial class PackagesPage : Page, IPendingNavigationGuard
 {
     private SelectorBarItem? lastSelectedItem;
     private bool isRestoringSelection;
+    private bool isChangingMode;
 
     public PackagesPage()
     {
@@ -18,11 +19,12 @@ public sealed partial class PackagesPage : Page, IPendingNavigationGuard
 
     private async void OnModeSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
-        if (isRestoringSelection)
+        if (isRestoringSelection || isChangingMode)
         {
             return;
         }
 
+        isChangingMode = true;
         try
         {
             if (lastSelectedItem == PresetMode && sender.SelectedItem == SearchMode &&
@@ -38,10 +40,13 @@ public sealed partial class PackagesPage : Page, IPendingNavigationGuard
         catch (Exception exception)
         {
             AppDiagnostics.WriteException("PackagesPage.OnModeSelectionChanged", exception);
+            isRestoringSelection = true;
+            sender.SelectedItem = lastSelectedItem;
         }
         finally
         {
             isRestoringSelection = false;
+            isChangingMode = false;
         }
     }
 }

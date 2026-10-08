@@ -1247,6 +1247,63 @@ public sealed class OnlyWingetApplicationTests
     internal static OnlyWingetApplication CreateDefaultApplication() => CreateApplication();
 
     [Fact]
+    public async Task FailedPresetSave_PreservesAcceptedEditAndRetryPersistsWithoutDuplicatingIt()
+    {
+        var store = new MemoryWorkspaceStore { FailSave = true };
+        var app = CreateApplication(workspaceStore: store);
+        Assert.True(app.AddPreset("Draft").Succeeded);
+        Assert.False((await app.SaveWorkspaceAsync(CancellationToken.None)).Succeeded);
+        Assert.Equal("Draft", Assert.Single(app.State.Workspace.Presets).Name);
+        Assert.NotNull(app.State.UserVisibleError);
+        Assert.Empty((await store.LoadAsync(CancellationToken.None)).Presets);
+        store.FailSave = false;
+        Assert.True((await app.SaveWorkspaceAsync(CancellationToken.None)).Succeeded);
+        var restarted = CreateApplication(workspaceStore: store);
+        Assert.True((await restarted.LoadWorkspaceAsync(CancellationToken.None)).Succeeded);
+        Assert.Equal("Draft", Assert.Single(restarted.State.Workspace.Presets).Name);
+        Assert.Equal("Draft", restarted.State.ActivePreset!.Name);
+        Assert.Equal(1, store.SaveCount);
+    }
+
+    [Fact]
+    public async Task PresetPackages_AllowSameIdFromDifferentSourcesAndRejectExactDuplicate()
+    {
+        var app = CreateApplication(sources: new StubSourceService(
+            new WingetSource("winget", "https://example.test/winget", false, WingetSourceStatus.Available),
+            new WingetSource("custom", "https://example.test/custom", false, WingetSourceStatus.Available)));
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        var first = new PackageIdentity("Example.App", "winget");
+        var other = new PackageIdentity("Example.App", "custom");
+        Assert.True((await app.AddPackageToActivePresetAsync(first, CancellationToken.None)).Succeeded);
+        Assert.True((await app.AddPackageToActivePresetAsync(other, CancellationToken.None)).Succeeded);
+        Assert.False((await app.AddPackageToActivePresetAsync(new("example.app", "WINGET"), CancellationToken.None)).Succeeded);
+        Assert.Equal(2, app.State.ActivePreset!.Packages.Count);
+        Assert.Contains(first, app.State.ActivePreset.Packages);
+        Assert.Contains(other, app.State.ActivePreset.Packages);
+    }
+
+    [Fact]
+    public async Task ReplacePresetPackage_AllowsSourceOnlyEditAndRejectsAnotherExistingIdentity()
+    {
+        var app = CreateApplication(sources: new StubSourceService(
+            new WingetSource("winget", "https://example.test/winget", false, WingetSourceStatus.Available),
+            new WingetSource("custom", "https://example.test/custom", false, WingetSourceStatus.Available)));
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        var first = new PackageIdentity("Example.App", "winget");
+        var existing = new PackageIdentity("Other.App", "winget");
+        var replacement = new PackageIdentity("Example.App", "custom");
+        await app.AddPackageToActivePresetAsync(first, CancellationToken.None);
+        await app.AddPackageToActivePresetAsync(existing, CancellationToken.None);
+        Assert.True((await app.ReplacePackageInActivePresetAsync(first, replacement, CancellationToken.None)).Succeeded);
+        Assert.False((await app.ReplacePackageInActivePresetAsync(replacement, existing, CancellationToken.None)).Succeeded);
+        Assert.Equal(new[] { replacement, existing }, app.State.ActivePreset!.Packages);
+    }
+
+    [Fact]
     public async Task DisabledSourceSurvivesRefreshAndRestart()
     {
         var sources = new StubSourceService(
@@ -1782,11 +1839,13 @@ public sealed class OnlyWingetApplicationTests
     {
         private WorkspaceState state = WorkspaceState.Empty;
         public int SaveCount { get; set; }
+        public bool FailSave { get; set; }
 
         public Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(state);
 
         public Task SaveAsync(WorkspaceState state, CancellationToken cancellationToken)
         {
+            if (FailSave) throw new IOException("Workspace is not writable.");
             SaveCount++;
             this.state = state;
             return Task.CompletedTask;
