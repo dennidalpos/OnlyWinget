@@ -11,11 +11,10 @@
 ## 2. Verified Commands
 | Workflow | Command | Shell / Cwd | Verified on | Notes / Examples |
 | :--- | :--- | :--- | :--- | :--- |
-| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | 329 pass (5 inactive smoke methods) |
-| **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-08 | 30 scripts OK |
+| **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | 364 executed results; live Smoke excluded |
+| **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-08 | 39 scripts OK |
 | **Typecheck** | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | Zero warnings/errors |
 | **Packaging** | `.\scripts\package.ps1 -NoRestore -Fast -NonInteractive` | pwsh / repo root | 2026-10-08 | Staged NSIS EXE & portable ZIP |
-| **Lifecycle Validation** | `powershell -ExecutionPolicy Bypass -File .\scripts\validate-installer-lifecycle.ps1 -Scope CurrentUser -SkipPackage` | pwsh / repo root | 2026-09-03 | Silent per-user install/launch/uninstall |
 
 ## 3. Architecture & Boundaries
 - **Structure**: `src/OnlyWinget*`; NSIS setup via `MultiUser.nsh`.
@@ -24,6 +23,6 @@
 
 ## 4. Sensitive Areas & Gotchas
 - **NU1004 Lockfiles**: If project RIDs change or restore fails NU1004, run `.\scripts\fix-lockfiles.ps1`.
-- **Installer Validation**: `-Scope CurrentUser` runs unprivileged; `-Scope AllUsers` requires elevated PowerShell.
+- **Installer Validation**: `-Scope CurrentUser` runs unprivileged; `-Scope AllUsers` requires elevated PowerShell. Upgrade requires a genuine `PreviousSetupPath`; default lifecycle validates clean install/uninstall.
 - **Installer ownership**: Packaging generates `InstalledFiles.nsh`; uninstall removes only its listed files and empty directories.
 - **Cleanup**: `Clean -All` preserves application data; isolated data/window/release regressions run in `Check`. `PackageMsix` is retired.

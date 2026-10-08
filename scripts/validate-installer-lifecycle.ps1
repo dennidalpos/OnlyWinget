@@ -18,6 +18,9 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path $PSScriptRoot -Parent
 
 if (-not [string]::IsNullOrWhiteSpace($PreviousVersion)) {
+    if ([string]::IsNullOrWhiteSpace($PreviousSetupPath)) {
+        throw 'PreviousVersion requires a genuine PreviousSetupPath. Relabeling the current payload cannot validate upgrade.'
+    }
     $sanitizedPrevious = $PreviousVersion.Split('-', 2)[0]
     try {
         $parsedPrevious = [Version]$sanitizedPrevious
@@ -131,15 +134,6 @@ function Get-ProjectVersion {
     return $trimmed
 }
 
-function Get-DefaultPreviousVersion {
-    $current = [Version](Get-ProjectVersion)
-    if ($current.Build -le 0) {
-        throw 'Impossibile calcolare una versione precedente automatica. Passa -PreviousVersion o -PreviousSetupPath.'
-    }
-
-    return "$($current.Major).$($current.Minor).$($current.Build - 1)"
-}
-
 function Invoke-NsisInstall {
     param(
         [string]$SetupPath
@@ -170,30 +164,16 @@ function Invoke-NsisUninstall {
     return "NSIS silent uninstall OK"
 }
 
-function Resolve-LatestSetup {
-    $setup = Get-ChildItem -LiteralPath $distPath -Filter '*-setup.exe' |
-        Sort-Object LastWriteTimeUtc -Descending |
-        Select-Object -First 1
-
-    if ($null -eq $setup) {
-        throw "Setup corrente non trovato in '$distPath'."
-    }
-
-    return $setup.FullName
+function Resolve-CurrentSetup {
+    $setup = Join-Path $distPath ('OnlyWinget-' + (Get-ProjectVersion) + '-setup.exe')
+    Assert-Path -Path $setup -Description 'Exact current-version setup'
+    return $setup
 }
 
 function New-SetupArtifact {
-    param(
-        [string]$Version
-    )
-
     $packageParameters = @{
         Configuration = $Configuration
         NoRestore = $NoRestore
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($Version)) {
-        $packageParameters.Version = $Version
     }
 
     $packageOutput = & $packageScriptPath @packageParameters
@@ -202,11 +182,7 @@ function New-SetupArtifact {
         Write-Host $line
     }
 
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Packaging setup fallito.'
-    }
-
-    return Resolve-LatestSetup
+    return Resolve-CurrentSetup
 }
 
 function Assert-SingleInstalledProduct {
@@ -267,14 +243,11 @@ function Assert-DesktopShortcut {
 function Assert-AppLaunch {
     $exePath = Join-Path $installFolder 'OnlyWinget.exe'
     $process = Start-Process -FilePath $exePath -PassThru -WindowStyle Minimized
-    Start-Sleep -Seconds 3
-
-    if ($process.HasExited -and $process.ExitCode -ne 0) {
-        throw "OnlyWinget si e' chiuso con exit code $($process.ExitCode) dopo il lancio."
-    }
-
-    if (-not $process.HasExited) {
-        Stop-Process -Id $process.Id -Force
+    . (Join-Path $PSScriptRoot 'support/VerificationHelpers.ps1')
+    try { Assert-ResponsiveStartup -Process $process -WaitSeconds 3 }
+    finally {
+        if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+        $process.Dispose()
     }
 }
 
@@ -287,21 +260,10 @@ New-Item -ItemType Directory -Path $validationPath -Force | Out-Null
 Assert-CleanInstallState
 
 if (-not $SkipPackage -and [string]::IsNullOrWhiteSpace($CurrentSetupPath)) {
-    if ([string]::IsNullOrWhiteSpace($PreviousSetupPath)) {
-        $effectivePreviousVersion = if ([string]::IsNullOrWhiteSpace($PreviousVersion)) {
-            Get-DefaultPreviousVersion
-        }
-        else {
-            $PreviousVersion
-        }
-
-        $PreviousSetupPath = New-SetupArtifact -Version $effectivePreviousVersion
-    }
-
-    $CurrentSetupPath = New-SetupArtifact -Version ''
+    $CurrentSetupPath = New-SetupArtifact
 }
 elseif ([string]::IsNullOrWhiteSpace($CurrentSetupPath)) {
-    $CurrentSetupPath = Resolve-LatestSetup
+    $CurrentSetupPath = Resolve-CurrentSetup
 }
 
 $currentVersion = Get-ProjectVersion
@@ -310,6 +272,7 @@ $reportLines.Add("ValidationStartedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 $reportLines.Add("Scope: $Scope")
 $reportLines.Add("CurrentSetup: $CurrentSetupPath")
 $reportLines.Add("PreviousSetup: $PreviousSetupPath")
+$reportLines.Add('UpgradeValidation: ' + $(if ([string]::IsNullOrWhiteSpace($PreviousSetupPath)) { 'not_run (no genuine previous installer supplied)' } else { 'requested' }))
 
 $localAppDataPath = Join-Path $env:LOCALAPPDATA $productName
 $sentinelPath = Join-Path $localAppDataPath 'installer-validation-sentinel.txt'
@@ -322,7 +285,7 @@ try {
     if (-not [string]::IsNullOrWhiteSpace($PreviousSetupPath)) {
         $reportLines.Add("PreviousInstallLog: $(Invoke-NsisInstall -SetupPath $PreviousSetupPath)")
         $wasInstalled = $true
-        Assert-SingleInstalledProduct -ExpectedVersion ''
+        Assert-SingleInstalledProduct -ExpectedVersion $PreviousVersion
         $reportLines.Add('PreviousInstall: OK')
     }
 

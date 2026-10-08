@@ -1,90 +1,30 @@
-# OnlyWinget Development Commands Reference
+# Repository commands
 
-All workspace build, lint, format, test, launch, validation, and packaging tasks are routed through PowerShell scripts located in the [scripts/](file:///d:/GITHUB/OnlyWinget/scripts) directory. Prefer the wrapper scripts over raw `dotnet` or manual MSBuild parameters.
+Run PowerShell 7 from the repository root. [AGENTS.md](../../../../AGENTS.md) records executed command evidence; [scripts/README.md](../../../../scripts/README.md) and [run.ps1](../../../../scripts/run.ps1) define options.
 
----
+## Choose relevant verification
 
-## 1. Core Workflow Commands
+- Compile: scripts/run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive
+- Offline tests: scripts/run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
+- Format check: scripts/run.ps1 -Task Format -NoRestore -NonInteractive
+- Script lint: scripts/run.ps1 -Task Lint -NonInteractive
+- Artifacts: scripts/package.ps1 -NoRestore -Fast -NonInteractive
+- Installer ownership/protocol fixture: scripts/test-installer-owned-files.ps1
+- Artifact preservation/interruption fixture: scripts/test-package-artifacts.ps1
+- Skill inventory: scripts/install-skills.ps1
 
-### Project Initialization and Restore
-Run setup to restore NuGet packages with lock validation. Run this whenever dependencies, targets, or RID configurations change:
-```powershell
-# Standard setup
-.\scripts\run.ps1 -Task Setup -NonInteractive
+These are not a mandatory sequence for every edit. Documentation/skill edits need metadata, links and script checks; do not reinstall packages or run live operations for them. Tests are warranted for demonstrated behavior problems and relevant invariants.
 
-# Force re-evaluation of lock files
-.\scripts\run.ps1 -Task Setup -ForceEvaluate -NonInteractive
-```
+Setup restores dependencies. Use it when targets/dependencies changed or restore fails; NU1004 RID changes may require scripts/fix-lockfiles.ps1. Regenerate lockfiles through the toolchain. Format validates by default; -Fix is the explicit mutation.
 
-### Code Quality and Linting
-Enforce style guidelines, standard formatting, and powershell script quality rules:
-```powershell
-# Auto-format C# source files using dotnet format
-.\scripts\run.ps1 -Task Format -NoRestore -NonInteractive
+## Distinguish qualification
 
-# Run PSScriptAnalyzer on scripts
-.\scripts\run.ps1 -Task Lint -NonInteractive
-```
+Offline tests exclude four live smoke tests. Direct invocation reports those skipped unless explicitly enabled. Fast/Full diagnostics are retained under artifacts/test-results; missing TRX/no executed tests fail. scripts/test-verification-invariants.ps1 covers native/pre-TRX/startup failures. Real UI assertions remain pending under AUDIT-27.
 
-### Build and Compilation
-Build without executing or packaging, or execute type checking:
-```powershell
-# Compile check in Release configuration
-.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive
+Check is the release gate: restore, cleanup, format, lint, deterministic/native fixtures, compile/tests, packaging and artifact analysis. Its cleanup removes ignored repository outputs; preserve retained evidence before running it. It is not the default skill-edit check.
 
-# Full build in Release configuration
-.\scripts\run.ps1 -Task Build -Configuration Release -NonInteractive
-```
+UI automation uses scripts/ui-test.ps1 -AppPid with a verified fixture PID. Normal Dev launch uses the real personal store; use an isolated profile for destructive/persistence validation. StopRunningInstance is opt-in and requests graceful closure only for generated executable paths in this checkout, failing on refused closure. scripts/test-process-ownership.ps1 validates script/NSIS ownership without launching the real app.
 
-### Automated Testing
-Execute C# unit tests and integration tests in synthetic Fast mode (default for AI agents):
-```powershell
-# Run standard offline unit tests (concise PASS/FAIL output)
-.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive
+Lifecycle validation changes installation state. CurrentUser is unprivileged; AllUsers needs elevation. Use the direct script for explicit Scope/SkipPackage options because run.ps1 does not forward those parameters. Default validation is clean install/uninstall; genuine PreviousSetupPath is required for upgrade, not a relabeled current payload. Installed-startup validation targets a supplied executable path; verify it before launching.
 
-# Run with verbose developer logging for debugging
-.\scripts\run.ps1 -Task Test -Configuration Release -Full -NonInteractive
-
-# Run unit tests including live Winget commands (requires winget installation)
-.\scripts\run.ps1 -Task Test -Configuration Release -RunWingetSmoke -NonInteractive
-```
-
-### Complete Integration Checks
-Runs format verification, script linting, compilation checks, unit tests, and packages release installers in a single run. Uses quiet Fast mode by default for minimal log output:
-```powershell
-.\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
-```
-
----
-
-## 2. Packaging and Release
-
-OnlyWinget targets the `win-x64` platform. Release packages include a self-contained NSIS setup EXE and a self-contained portable ZIP. Both are `WindowsAppSDKSelfContained` — no separate runtime redistribution required.
-```powershell
-.\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive
-```
-*Note: Staged installer assets and outputs are written inside [artifacts/](file:///d:/GITHUB/OnlyWinget/artifacts). The NSIS script lives at `src/OnlyWinget.Setup/OnlyWinget.nsi`.*
-
----
-
-## 3. Advanced and Environment-Dependent Verification
-
-### Installer Lifecycle Validation
-Validates the NSIS setup EXE install, upgrade path from previous versions, and clean uninstall on the current system (requires an elevated clean x64 Windows environment):
-```powershell
-.\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
-```
-
-### Installed Startup Validation
-Verifies that an installed executable starts and remains responsive:
-```powershell
-.\scripts\run.ps1 -Task ValidateInstalledStartup -NonInteractive
-```
-
-### Graphical UI Automation Tests
-Executes visual flow, page routing, element values, and list scroll checks using the `winapp` CLI and Windows UIAutomation interfaces:
-```powershell
-# Requires a running app instance and the winapp CLI tool installed
-.\scripts\ui-test.ps1 -AppPid <PID> -NonInteractive
-```
-*Note: For scroll/mouse wheel assertions, the automated pointer will be repositioned directly over the UI element before verifying state changes.*
+Live WinGet smoke, real Windows Update install/download, hosted publication and power-loss qualification need their actual environments. List them as unverified when not executed. Do not commit/push or publish from these command examples without the corresponding user request.

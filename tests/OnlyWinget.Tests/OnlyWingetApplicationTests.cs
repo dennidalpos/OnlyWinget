@@ -16,6 +16,56 @@ namespace OnlyWinget.Tests;
 public sealed class OnlyWingetApplicationTests
 {
     [Fact]
+    public async Task AcceptedPresetChoiceSurvivesRestartAndSaveFailureKeepsDiagnostic()
+    {
+        var store = new MemoryWorkspaceStore();
+        var app = CreateApplication(workspaceStore: store);
+        app.AddPreset("First");
+        app.AddPreset("Second");
+        Assert.True(app.SetActivePreset("First").Succeeded);
+        Assert.True((await app.SaveWorkspaceAsync(CancellationToken.None)).Succeeded);
+        Assert.True(app.SetActivePreset("Second").Succeeded);
+        store.FailSave = true;
+        Assert.False((await app.SaveWorkspaceAsync(CancellationToken.None)).Succeeded);
+        Assert.Equal("Unable to save workspace.", app.State.UserVisibleError);
+        Assert.Equal("Second", app.State.ActivePreset!.Name);
+        var failedRestart = CreateApplication(workspaceStore: store);
+        await failedRestart.LoadWorkspaceAsync(CancellationToken.None);
+        Assert.Equal("First", failedRestart.State.ActivePreset!.Name);
+        store.FailSave = false;
+        Assert.True((await app.SaveWorkspaceAsync(CancellationToken.None)).Succeeded);
+        var restarted = CreateApplication(workspaceStore: store);
+        await restarted.LoadWorkspaceAsync(CancellationToken.None);
+        Assert.Equal("Second", restarted.State.ActivePreset!.Name);
+    }
+
+    [Fact]
+    public async Task BusyPresetChoiceDoesNotMutateOrPersistSelection()
+    {
+        var store = new MemoryWorkspaceStore();
+        var capabilities = new BlockingSystemCapabilityService();
+        var app = CreateApplication(workspaceStore: store, capabilityService: capabilities);
+        app.AddPreset("First");
+        app.AddPreset("Second");
+        app.SetActivePreset("First");
+        await app.SaveWorkspaceAsync(CancellationToken.None);
+        var pending = app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await capabilities.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        try
+        {
+            var result = app.SetActivePreset("Second");
+            if (result.Succeeded) await app.SaveWorkspaceAsync(CancellationToken.None);
+            Assert.False(result.Succeeded);
+            Assert.Equal("First", app.State.ActivePreset!.Name);
+            Assert.Equal(1, store.SaveCount);
+        }
+        finally { capabilities.Complete(); await pending; }
+        var restarted = CreateApplication(workspaceStore: store);
+        await restarted.LoadWorkspaceAsync(CancellationToken.None);
+        Assert.Equal("First", restarted.State.ActivePreset!.Name);
+    }
+
+    [Fact]
     public async Task PasteWithInvalidPackageDoesNotPartiallyMutateThePreset()
     {
         var resolver = new StubPackageResolver(
@@ -112,8 +162,8 @@ public sealed class OnlyWingetApplicationTests
         await app.RefreshCapabilitiesAsync(CancellationToken.None);
         await app.RefreshSourcesAsync(CancellationToken.None);
         Assert.True((await app.AddPackageToActivePresetAsync(new PackageIdentity("Git.Git", "winget"), CancellationToken.None)).Succeeded);
-        Assert.True(app.TogglePresetPackage(new PackageIdentity("Git.Git", "winget")).Succeeded);
-        Assert.True(app.TogglePresetPackage(new PackageIdentity("Git.Git", "winget")).Succeeded);
+        Assert.True(app.TogglePresetPackageInclusion(new PackageIdentity("Git.Git", "winget")).Succeeded);
+        Assert.True(app.TogglePresetPackageInclusion(new PackageIdentity("Git.Git", "winget")).Succeeded);
         Assert.True(app.RemoveSelectedPackagesFromActivePreset().Succeeded);
         await app.SaveWorkspaceAsync(CancellationToken.None);
 
@@ -968,6 +1018,74 @@ public sealed class OnlyWingetApplicationTests
         Assert.Contains("already present", opResult.CommandResult.StandardOutput);
     }
 
+    [Theory]
+    [InlineData("disabled")]
+    [InlineData("missing-source")]
+    [InlineData("removed-manifest")]
+    public async Task UninstallPreservesIdentityWithoutRemoteResolution(string scenario)
+    {
+        var package = new PackageIdentity("Pkg.A", "winget");
+        var resolver = new StubPackageResolver();
+        var selection = new PackageSelection(package, PackageAction.Uninstall);
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([
+            new OperationExecutionResult(selection, new WingetCommandResult(0, "Removed", ""), null)
+        ]));
+        var app = CreateApplication(resolver: resolver, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        await app.AddPackageToActivePresetAsync(package, CancellationToken.None);
+        resolver.ResolveCalls.Clear();
+        if (scenario == "disabled") await app.SetSourceEnabledAsync("winget", false, CancellationToken.None);
+        else if (scenario == "missing-source") await app.RemoveSourceAsync("winget", CancellationToken.None);
+        else resolver.FailResolution = true;
+
+        var result = await app.ApplyActivePresetAsync(PackageAction.Uninstall, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(resolver.ResolveCalls);
+        Assert.Equal(selection, Assert.Single(executor.LastPlan!.Selections));
+        Assert.Equal(new[] { "uninstall", "--id", "Pkg.A", "--exact", "--accept-source-agreements", "--disable-interactivity", "--source", "winget" },
+            new WingetCommandBuilder().Build(selection));
+    }
+
+    [Fact]
+    public async Task InstalledProbeFailureBlocksMutationAndRetainsDiagnostic()
+    {
+        var resolver = new StubPackageResolver();
+        var executor = new RecordingOperationExecutor(new([]));
+        var app = CreateApplication(resolver: resolver, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        await app.AddPackageToActivePresetAsync(new("Pkg.A", "winget"), CancellationToken.None);
+        resolver.InstalledProbeFailure = new TimeoutException("Installed probe timeout");
+
+        Assert.False((await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None)).Succeeded);
+        Assert.Null(executor.LastPlan);
+        var failure = Assert.Single(app.State.LastOperationResults);
+        Assert.False(failure.Succeeded);
+        Assert.Equal(0, failure.AttemptCount);
+        Assert.Contains("Installed probe timeout", failure.Error!.Message);
+    }
+
+    [Fact]
+    public async Task UninstallRetainsNativeInstalledMatchFailure()
+    {
+        var package = new PackageIdentity("Pkg.A", "winget");
+        var selection = new PackageSelection(package, PackageAction.Uninstall);
+        var failure = new OperationExecutionResult(selection, new WingetCommandResult(1, "", "Multiple installed matches"),
+            new ClassifiedWingetError(WingetErrorKind.Unknown, "Multiple installed matches"));
+        var app = CreateApplication(executor: new RecordingOperationExecutor(new OperationExecutionSummary([failure])));
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        app.AddPreset("Default");
+        await app.AddPackageToActivePresetAsync(package, CancellationToken.None);
+
+        Assert.False((await app.ApplyActivePresetAsync(PackageAction.Uninstall, CancellationToken.None)).Succeeded);
+        Assert.Equal(failure, Assert.Single(app.State.LastOperationResults));
+    }
+
     [Fact]
     public async Task ExecutePlanDoesNotSkipIfNeedsUpdate()
     {
@@ -1675,7 +1793,7 @@ public sealed class OnlyWingetApplicationTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task RescanPreservesMixedOperationResultsAndRetryContext(bool scanSucceeds)
+    public async Task RescanPreservesMixedOperationResultsAndFailedSelections(bool scanSucceeds)
     {
         var successPackage = new PackageIdentity("Success.App", "winget");
         var failedPackage = new PackageIdentity("Failed.App", "winget");
@@ -1707,7 +1825,9 @@ public sealed class OnlyWingetApplicationTests
             app.ToggleAllUpdates();
             Assert.Equal(scanError, app.State.UserVisibleError);
         }
-        await app.RetryFailedOperationsAsync(CancellationToken.None);
+        app.SetUpdatesSelection([successPackage], false);
+        app.SetUpdatesSelection([failedPackage], true);
+        await app.ApplySelectedUpdatesAsync(CancellationToken.None);
         Assert.Equal(failedPackage, Assert.Single(executor.LastPlan!.Selections).Package);
     }
 
@@ -1743,7 +1863,7 @@ public sealed class OnlyWingetApplicationTests
         Assert.Contains(app.State.Activity, entry => entry.Title == first.Id && entry.Severity == ActivitySeverity.Success);
         Assert.Equal(2, runner.Calls.Count);
         Assert.Equal(ApplicationBusyState.Idle, app.State.BusyState);
-        // Refreshing rows preserves the cancellation results used by explicit retry.
+        // Refreshing rows preserves cancellation diagnostics.
         await app.RefreshUpdatesAsync(CancellationToken.None);
         Assert.Equal(3, app.State.LastOperationResults.Count);
     }
@@ -1932,6 +2052,9 @@ public sealed class OnlyWingetApplicationTests
 
     private sealed class StubPackageResolver(params PackageResolution[] resolutions) : IPackageResolver
     {
+        public List<PackageIdentity> ResolveCalls { get; } = [];
+        public bool FailResolution { get; set; }
+        public Exception? InstalledProbeFailure { get; set; }
         public List<PackageIdentity> Requests { get; } = [];
         public Dictionary<string, string> InstalledPackages { get; } = new(StringComparer.OrdinalIgnoreCase);
         public string? BlockingInstalledPackageId { get; init; }
@@ -1939,6 +2062,8 @@ public sealed class OnlyWingetApplicationTests
 
         public Task<PackageResolution> ResolveAsync(PackageIdentity package, CancellationToken cancellationToken)
         {
+            ResolveCalls.Add(package);
+            if (FailResolution) throw new InvalidOperationException("Remote manifest unavailable.");
             Requests.Add(package);
             var resolution = resolutions.FirstOrDefault(candidate =>
                 string.Equals(candidate.Package.Id, package.Id, StringComparison.OrdinalIgnoreCase) &&
@@ -1949,6 +2074,7 @@ public sealed class OnlyWingetApplicationTests
 
         public async Task<PackageInstalledStatus> CheckInstalledStatusAsync(PackageIdentity package, CancellationToken cancellationToken)
         {
+            if (InstalledProbeFailure is not null) throw InstalledProbeFailure;
             if (package.Id == BlockingInstalledPackageId)
             {
                 InstalledCheckStarted.TrySetResult();
@@ -2089,45 +2215,6 @@ public sealed class OnlyWingetApplicationTests
             LastBypassHashValidation = bypassHashValidation;
             return Task.FromResult(summary);
         }
-    }
-
-    [Fact]
-    public async Task RetryFailedOperationsAsync_ReExecutesFailedPackagesOnly()
-    {
-        var selection1 = new PackageSelection(new PackageIdentity("Success.App", "winget"), PackageAction.Install);
-        var selection2 = new PackageSelection(new PackageIdentity("Failed.App", "winget"), PackageAction.Install);
-        var failedResult = new OperationExecutionResult(
-            selection2,
-            new WingetCommandResult(-1, string.Empty, "Network error"),
-            new ClassifiedWingetError(WingetErrorKind.Unknown, "Network error"));
-        var successResult = new OperationExecutionResult(
-            selection1,
-            new WingetCommandResult(0, "Installed", string.Empty),
-            null);
-
-        var executor = new RecordingOperationExecutor(new OperationExecutionSummary([successResult, failedResult]));
-        var resolver = new StubPackageResolver(
-            new PackageResolution(new PackageIdentity("Success.App", "winget"), "Success.App", "1.0", "Pub", true, null),
-            new PackageResolution(new PackageIdentity("Failed.App", "winget"), "Failed.App", "1.0", "Pub", true, null));
-
-        var app = CreateApplication(executor: executor, resolver: resolver);
-        app.ContinueOperationsAfterFailure = true;
-        await app.RefreshCapabilitiesAsync(CancellationToken.None);
-        await app.RefreshSourcesAsync(CancellationToken.None);
-        app.AddPreset("Default");
-        await app.AddPackageToActivePresetAsync(selection1.Package, CancellationToken.None);
-        await app.AddPackageToActivePresetAsync(selection2.Package, CancellationToken.None);
-
-        await app.ApplyActivePresetAsync(PackageAction.Install, CancellationToken.None);
-
-        Assert.Equal(2, app.State.LastOperationResults.Count);
-
-        // Now retry failed operations
-        var retryResult = await app.RetryFailedOperationsAsync(CancellationToken.None);
-
-        Assert.NotNull(executor.LastPlan);
-        var retriedSelection = Assert.Single(executor.LastPlan.Selections);
-        Assert.Equal("Failed.App", retriedSelection.Package.Id);
     }
 
     [Theory]

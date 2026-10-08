@@ -34,7 +34,7 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dbPath);
         this.dbPath = dbPath;
-        this.legacyJsonPath = legacyJsonPath ?? JsonWorkspaceStore.DefaultFilePath;
+        this.legacyJsonPath = legacyJsonPath ?? DefaultLegacyJsonPath;
         this.logger = logger;
         this.storeLogger = storeLogger;
     }
@@ -47,6 +47,11 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
             return Path.Combine(localAppData, StorageConstants.ApplicationFolderName, "onlywinget.db");
         }
     }
+
+    public static string DefaultLegacyJsonPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        StorageConstants.ApplicationFolderName,
+        "workspace-v1.json");
 
     public async Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken)
     {

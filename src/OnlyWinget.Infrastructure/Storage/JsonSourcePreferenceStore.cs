@@ -21,8 +21,6 @@ public sealed class JsonSourcePreferenceStore(
         StorageConstants.ApplicationFolderName,
         "source-preferences-v1.json");
 
-    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "SourcePreferencesDocument DTO is defined statically.")]
-    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "SourcePreferencesDocument DTO is defined statically.")]
     public async Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken)
     {
         await saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -33,21 +31,7 @@ public sealed class JsonSourcePreferenceStore(
                 return SourcePreferences.Empty;
             }
 
-            try
-            {
-                await using var stream = File.OpenRead(filePath);
-                var document = await JsonSerializer.DeserializeAsync<SourcePreferencesDocument>(stream, JsonOptions, cancellationToken)
-                    .ConfigureAwait(false);
-                return document is { SchemaVersion: 1 }
-                    ? Normalize(new SourcePreferences(document.DisabledSources ?? [], document.DefaultSourcesConfigured))
-                    : SourcePreferences.Empty;
-            }
-            catch (JsonException exception)
-            {
-                logger?.Invoke("JsonSourcePreferenceStore.LoadAsync", exception);
-                storeLogger?.LogError(exception, "Failed to deserialize source preferences file at '{FilePath}'", filePath);
-                return SourcePreferences.Empty;
-            }
+            return await ReadExistingAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -64,6 +48,8 @@ public sealed class JsonSourcePreferenceStore(
         await saveGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            // Reject unreadable existing preferences even when this instance never loaded them.
+            if (File.Exists(filePath)) await ReadExistingAsync(cancellationToken).ConfigureAwait(false);
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrWhiteSpace(directory))
             {
@@ -108,6 +94,30 @@ public sealed class JsonSourcePreferenceStore(
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray(),
             preferences.DefaultSourcesConfigured);
+
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "SourcePreferencesDocument DTO is defined statically.")]
+    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "SourcePreferencesDocument DTO is defined statically.")]
+    private async Task<SourcePreferences> ReadExistingAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var stream = File.OpenRead(filePath);
+            var document = await JsonSerializer.DeserializeAsync<SourcePreferencesDocument>(stream, JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+            if (document is not { SchemaVersion: 1, DisabledSources: not null } ||
+                document.DisabledSources.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new InvalidDataException("Unsupported source preferences schema or invalid disabled-source list.");
+            }
+            return Normalize(new SourcePreferences(document.DisabledSources, document.DefaultSourcesConfigured));
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException)
+        {
+            logger?.Invoke("JsonSourcePreferenceStore.ReadExistingAsync", exception);
+            storeLogger?.LogError(exception, "Cannot read source preferences at '{FilePath}'", filePath);
+            throw new InvalidDataException($"Source preferences '{filePath}' are unreadable. Restore or repair the file before saving; it has been preserved.", exception);
+        }
+    }
 
     private sealed record SourcePreferencesDocument(int SchemaVersion, IReadOnlyList<string>? DisabledSources, bool DefaultSourcesConfigured = false);
 }

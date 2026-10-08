@@ -105,7 +105,7 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
         try
         {
             RestorePresetSelection();
-            if (await ConfirmNavigationAsync()) ViewModel.SetActivePreset(presetName);
+            if (await ConfirmNavigationAsync()) await ViewModel.SetActivePresetAsync(presetName);
         }
         catch (Exception exception) { AppDiagnostics.WriteException("PresetsPage.OnPresetChanged", exception); }
         finally

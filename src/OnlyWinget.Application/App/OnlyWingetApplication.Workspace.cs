@@ -173,8 +173,6 @@ public sealed partial class OnlyWingetApplication
             AddActivity(ActivitySeverity.Success, "Packages removed", selected.Length.ToString(global::System.Globalization.CultureInfo.InvariantCulture));
         }, requiresIdle: true);
 
-    public ApplicationActionResult TogglePresetPackage(PackageIdentity package) => ToggleSelection(presetInstallSelection, package);
-
     public ApplicationActionResult TogglePresetPackageInclusion(PackageIdentity package) => ToggleSelection(presetInstallSelection, package);
 
     public ApplicationActionResult ToggleAllPresetPackages() => Run(presetInstallSelection.ToggleAll);

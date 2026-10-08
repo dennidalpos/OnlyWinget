@@ -97,7 +97,7 @@ public sealed class WingetOperationExecutor(
 
                     classifiedError = errorClassifier.Classify(commandResult);
                     var succeeded = commandResult.Succeeded || classifiedError?.Kind == WingetErrorKind.NoUpdates;
-                    if (succeeded || !errorClassifier.IsRetryable(classifiedError) || attempt >= maxAttempts)
+                    if (succeeded || !errorClassifier.IsRetryable(commandResult, classifiedError) || attempt >= maxAttempts)
                     {
                         break;
                     }

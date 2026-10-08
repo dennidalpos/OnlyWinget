@@ -38,4 +38,4 @@ Every collection, fetch, or async-bound surface should explicitly handle:
 - **Offline / permission denied** — separate from generic error if the recovery path differs
 - **Selection** — including keyboard arrow-key behaviour and multi-select where relevant
 
-If any of these aren't represented in the view model, the page isn't done.
+Check states relevant to the requested change against the existing workflow/ViewModel. Do not add unrelated state models to complete this generic checklist.

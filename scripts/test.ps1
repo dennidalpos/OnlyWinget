@@ -1,6 +1,5 @@
 param(
-    [ValidateSet('Debug', 'Release')]
-    [string]$Configuration = 'Release',
+    [ValidateSet('Debug', 'Release')][string]$Configuration = 'Release',
     [switch]$NoRestore,
     [switch]$NoBuild,
     [switch]$RunWingetSmoke,
@@ -16,143 +15,55 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $testProjectPath = Join-Path $repoRoot 'tests/OnlyWinget.Tests/OnlyWinget.Tests.csproj'
 $testResultsPath = Join-Path $repoRoot 'artifacts/test-results'
-
 Assert-Command -Name 'dotnet'
 Assert-Path -Path $testProjectPath -Description 'Test project'
-
 New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
 
-$isFastMode = -not $Full
-
-$testArgs = @('test', $testProjectPath, '-c', $Configuration, '--results-directory', $testResultsPath, '--logger', 'trx;LogFileName=unit-tests.trx', '--maxcpucount:1')
-if (-not $NoRestore) {
-    dotnet restore $testProjectPath --locked-mode > $null
-    if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet restore per i test fallito.'
+function Invoke-TestSuite {
+    param([string[]]$Arguments, [string]$ResultName)
+    $trxPath = Join-Path $testResultsPath "$ResultName.trx"
+    $logPath = Join-Path $testResultsPath "$ResultName.log"
+    if (Test-Path -LiteralPath $trxPath) { Remove-Item -LiteralPath $trxPath -Force }
+    if ($Full) {
+        & dotnet @Arguments 2>&1 | Tee-Object -FilePath $logPath | Out-Host
+    } else {
+        & dotnet @Arguments 2>&1 | Out-File -LiteralPath $logPath -Encoding utf8
     }
-}
-
-$testArgs += '--no-restore'
-if ($NoBuild) {
-    $testArgs += '--no-build'
-}
-
-if ($isFastMode) {
-    $testArgs += '--logger'
-    $testArgs += 'console;verbosity=quiet'
-    $testArgs += '--verbosity'
-    $testArgs += 'quiet'
-}
-
-$trxFile = Join-Path $testResultsPath 'unit-tests.trx'
-if (Test-Path $trxFile) {
-    Remove-Item $trxFile -Force -ErrorAction SilentlyContinue
-}
-
-$exitCode = 0
-try {
-    & dotnet @testArgs > $null 2>&1
     $exitCode = $LASTEXITCODE
-}
-catch {
-    $exitCode = 1
+    if ($exitCode -ne 0 -or -not (Test-Path -LiteralPath $trxPath)) {
+        Get-Content -LiteralPath $logPath -Tail 60 | Out-Host
+        throw "dotnet test failed (exit $exitCode). Diagnostics: $logPath"
+    }
+    [xml]$trx = Get-Content -LiteralPath $trxPath
+    $results = @($trx.TestRun.Results.UnitTestResult)
+    $passed = @($results | Where-Object outcome -eq 'Passed').Count
+    $skipped = @($results | Where-Object outcome -eq 'NotExecuted').Count
+    if ($passed -eq 0 -or $results.Count -ne ($passed + $skipped)) {
+        Get-Content -LiteralPath $logPath -Tail 60 | Out-Host
+        throw "Test suite has failed/unknown outcomes or no executed tests. Diagnostics: $logPath"
+    }
+    Write-Host "PASS: $passed executed tests passed; $skipped skipped." -ForegroundColor Green
 }
 
-if ($isFastMode) {
-    if ($exitCode -eq 0 -and (Test-Path $trxFile)) {
-        [xml]$xml = Get-Content -LiteralPath $trxFile
-        $results = @($xml.TestRun.Results.UnitTestResult)
-        $passed = @($results | Where-Object { $_.outcome -eq 'Passed' }).Count
-        $total = $results.Count
-        Write-Host "PASS: $passed/$total unit tests passed." -ForegroundColor Green
-    }
-    else {
-        Write-Host "FAIL: Unit test suite execution failed." -ForegroundColor Red
-        if (Test-Path $trxFile) {
-            [xml]$xml = Get-Content -LiteralPath $trxFile
-            $results = @($xml.TestRun.Results.UnitTestResult)
-            $failedTests = @($results | Where-Object { $_.outcome -eq 'Failed' })
-            foreach ($failed in $failedTests) {
-                Write-Host "FAIL: $($failed.testName)" -ForegroundColor Red
-                if ($failed.Output -and $failed.Output.ErrorInfo) {
-                    $msg = [string]$failed.Output.ErrorInfo.Message
-                    if (-not [string]::IsNullOrWhiteSpace($msg)) {
-                        Write-Host "  Message: $($msg.Trim())" -ForegroundColor Red
-                    }
-                    $stack = [string]$failed.Output.ErrorInfo.StackTrace
-                    if (-not [string]::IsNullOrWhiteSpace($stack)) {
-                        $shortStack = ($stack.Trim() -split "`r?`n" | Select-Object -First 5) -join "`n"
-                        Write-Host "  Stack Trace:`n$shortStack" -ForegroundColor DarkRed
-                    }
-                }
-            }
-        }
-        throw 'dotnet test fallito.'
-    }
+if (-not $NoRestore) {
+    $restoreLog = Join-Path $testResultsPath 'test-restore.log'
+    & dotnet restore $testProjectPath --locked-mode 2>&1 | Tee-Object -FilePath $restoreLog | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Test restore failed. Diagnostics: $restoreLog" }
 }
-else {
-    if ($exitCode -ne 0) {
-        throw 'dotnet test fallito.'
-    }
-}
+
+$testArgs = @('test', $testProjectPath, '-c', $Configuration, '--no-restore', '--filter', 'Category!=Smoke', '--results-directory', $testResultsPath, '--logger', 'trx;LogFileName=unit-tests.trx', '--maxcpucount:1')
+if ($NoBuild) { $testArgs += '--no-build' }
+Invoke-TestSuite -Arguments $testArgs -ResultName 'unit-tests'
 
 if (-not $RunWingetSmoke) {
-    if (-not $isFastMode) {
-        Write-Host 'Smoke test winget reali: not_run. Usa -RunWingetSmoke per abilitarli.' -ForegroundColor DarkGray
-    }
+    Write-Host 'Live smoke tests: not_run (excluded from offline suite).' -ForegroundColor DarkGray
     return
 }
 
-$env:ONLYWINGET_RUN_WINGET_SMOKE = '1'
-$smokeTrx = Join-Path $testResultsPath 'winget-smoke-tests.trx'
-if (Test-Path $smokeTrx) {
-    Remove-Item $smokeTrx -Force -ErrorAction SilentlyContinue
-}
-
+$previousSmokeSetting = $env:ONLYWINGET_RUN_WINGET_SMOKE
 try {
+    $env:ONLYWINGET_RUN_WINGET_SMOKE = '1'
     $smokeArgs = @('test', $testProjectPath, '-c', $Configuration, '--no-build', '--no-restore', '--filter', 'Category=Smoke', '--results-directory', $testResultsPath, '--logger', 'trx;LogFileName=winget-smoke-tests.trx')
-    if ($isFastMode) {
-        $smokeArgs += '--logger'
-        $smokeArgs += 'console;verbosity=quiet'
-        $smokeArgs += '--verbosity'
-        $smokeArgs += 'quiet'
-    }
-
-    $smokeExit = 0
-    try {
-        & dotnet @smokeArgs > $null 2>&1
-        $smokeExit = $LASTEXITCODE
-    }
-    catch {
-        $smokeExit = 1
-    }
-
-    if ($smokeExit -ne 0) {
-        if ($isFastMode -and (Test-Path $smokeTrx)) {
-            [xml]$xml = Get-Content -LiteralPath $smokeTrx
-            $results = @($xml.TestRun.Results.UnitTestResult)
-            $failedTests = @($results | Where-Object { $_.outcome -eq 'Failed' })
-            foreach ($failed in $failedTests) {
-                Write-Host "FAIL: $($failed.testName)" -ForegroundColor Red
-                if ($failed.Output -and $failed.Output.ErrorInfo) {
-                    $msg = [string]$failed.Output.ErrorInfo.Message
-                    if (-not [string]::IsNullOrWhiteSpace($msg)) {
-                        Write-Host "  Message: $($msg.Trim())" -ForegroundColor Red
-                    }
-                    $stack = [string]$failed.Output.ErrorInfo.StackTrace
-                    if (-not [string]::IsNullOrWhiteSpace($stack)) {
-                        $shortStack = ($stack.Trim() -split "`r?`n" | Select-Object -First 5) -join "`n"
-                        Write-Host "  Stack Trace:`n$shortStack" -ForegroundColor DarkRed
-                    }
-                }
-            }
-        }
-        throw 'dotnet test smoke fallito.'
-    }
-    if ($isFastMode) {
-        Write-Host "PASS: Winget smoke tests passed." -ForegroundColor Green
-    }
+    Invoke-TestSuite -Arguments $smokeArgs -ResultName 'winget-smoke-tests'
 }
-finally {
-    Remove-Item Env:\ONLYWINGET_RUN_WINGET_SMOKE -ErrorAction SilentlyContinue
-}
+finally { $env:ONLYWINGET_RUN_WINGET_SMOKE = $previousSmokeSetting }

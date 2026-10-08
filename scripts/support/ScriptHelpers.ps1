@@ -193,7 +193,14 @@ function Assert-RepositoryPathInAllowedRoot {
 }
 
 function Get-OnlyWingetProcess {
-    Get-Process -Name 'OnlyWinget' -ErrorAction SilentlyContinue
+    . (Join-Path $PSScriptRoot 'CloseOwnedApplication.ps1')
+    $paths = @(foreach ($relativeRoot in @('artifacts/bin/OnlyWinget', 'artifacts/obj/OnlyWinget', 'artifacts/publish/OnlyWinget', 'artifacts/installer/win-x64/publish')) {
+        $outputRoot = Join-Path $script:OnlyWingetRepositoryRoot $relativeRoot
+        if (Test-Path -LiteralPath $outputRoot) {
+            Get-ChildItem -LiteralPath $outputRoot -Filter 'OnlyWinget.exe' -File -Recurse | Select-Object -ExpandProperty FullName
+        }
+    })
+    Get-OwnedApplicationProcess -ExecutablePaths $paths
 }
 
 function Assert-ExecutableNotLocked {
@@ -207,26 +214,15 @@ function Assert-ExecutableNotLocked {
         return
     }
 
-    if ($KillProcess) {
-        foreach ($proc in $running) {
-            try {
-                Stop-Process -Id $proc.Id -Force -ErrorAction Stop
-            }
-            catch {
-                throw "Impossibile terminare il processo OnlyWinget (PID $($proc.Id)). Chiudi l'app manualmente e riprova."
-            }
+    try {
+        if ($KillProcess) {
+            . (Join-Path $PSScriptRoot 'CloseOwnedApplication.ps1')
+            Close-OwnedApplicationProcess -Processes $running
+            return
         }
 
-        Start-Sleep -Milliseconds 300
-        $stillRunning = @(Get-OnlyWingetProcess)
-        if ($stillRunning.Count -gt 0) {
-            $pids = ($stillRunning | ForEach-Object { $_.Id }) -join ', '
-            throw "OnlyWinget e ancora in esecuzione (PID: $pids). Chiudi l'app manualmente e riprova."
-        }
-
-        return
+        $runningPids = ($running | ForEach-Object { $_.Id }) -join ', '
+        throw "$ActionName bloccata: OnlyWinget e in esecuzione nei file di output (PID: $runningPids). Chiudi l'app o rilancia con -StopRunningInstance."
     }
-
-    $runningPids = ($running | ForEach-Object { $_.Id }) -join ', '
-    throw "$ActionName bloccata: OnlyWinget e in esecuzione (PID: $runningPids) e blocca i file di output. Chiudi l'app o rilancia con -StopRunningInstance."
+    finally { foreach ($process in $running) { $process.Dispose() } }
 }

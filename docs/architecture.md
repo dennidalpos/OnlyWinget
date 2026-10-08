@@ -6,7 +6,7 @@ OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows and 
 
 - `src/OnlyWinget.Domain`: package identity, presets, batch selection, operation plans, status, and validation primitives.
 - `src/OnlyWinget.Application`: use-case orchestration, preset import/export, workspace/source-preference storage contracts, capability contracts, and `winget`/Windows Update ports.
-- `src/OnlyWinget.Infrastructure`: SQLite workspace persistence (`EF Core 10`), WinGet CLI execution, Windows Update COM automation, DPAPI secret storage, and capability probing.
+- `src/OnlyWinget.Infrastructure`: SQLite workspace persistence (`EF Core 10`), WinGet CLI execution, Windows Update COM automation and capability probing.
 - `src/OnlyWinget`: WinUI 3 presentation shell targeting `.NET 10` and Windows 10 build `17763`, configured via `Microsoft.Extensions.Hosting` (`Host.CreateDefaultBuilder()`), Serilog structured logging, and `CommunityToolkit.Mvvm` ViewModels.
 - `src/OnlyWinget.Setup`: NSIS setup script and assets, packaged by `scripts/package.ps1`.
 - `tests/OnlyWinget.Tests`: xUnit tests for domain, application, infrastructure, and automated UI Automation accessibility audits.
@@ -25,7 +25,7 @@ The presentation layer references infrastructure strictly for composition via `A
 
 ## Bootstrapping & Composition
 
-Application lifecycle and Dependency Injection are managed in `AppComposition.cs` using `Microsoft.Extensions.Hosting` (`IHost` / `IServiceCollection`). All UI services (`IAppSettingsService`, `IConfirmationService`, `IFilePickerService`, `IClipboardService`, `INavigationRegistry`) and orchestrators (`ApplicationStartupOrchestrator`) are registered by interface/type in DI. Serilog forwards structured events through `AppDiagnosticsSerilogSink` to the internal Infrastructure `DiagnosticLogStore`, shared with direct UI diagnostics. It applies diagnostic settings before writing one daily UTF-8 file in `%LOCALAPPDATA%\OnlyWinget\logs\` and retains a separate bounded memory queue. File failures are exposed to the viewer; file size/retention is pending AUDIT-36.
+Application lifecycle and Dependency Injection are managed in `AppComposition.cs` using `Microsoft.Extensions.Hosting` (`IHost` / `IServiceCollection`). All UI services (`IAppSettingsService`, `IConfirmationService`, `IFilePickerService`, `IClipboardService`, `INavigationRegistry`) and orchestrators (`ApplicationStartupOrchestrator`) are registered by interface/type in DI. Serilog forwards structured events through `AppDiagnosticsSerilogSink` to the internal Infrastructure `DiagnosticLogStore`, shared with direct UI diagnostics. It applies diagnostic settings before writing daily UTF-8 logs with 10 MiB rolling segments in `%LOCALAPPDATA%\OnlyWinget\logs\` and retains a separate bounded memory queue. Retention keeps at most 14 owned files and 140 MiB; file failures are exposed to the viewer.
 
 ## Local State & Persistence
 
@@ -40,10 +40,11 @@ Upon application startup, `SqliteWorkspaceStore` automatically detects and migra
 ```text
 %LOCALAPPDATA%\OnlyWinget\source-preferences-v1.json
 %LOCALAPPDATA%\OnlyWinget\settings.json
-%LOCALAPPDATA%\OnlyWinget\secrets.dpapi
 ```
 
 Preset exchange supports only `onlywinget.preset.v1`.
+
+The legacy JSON writer and dormant DPAPI services have been retired. Existing legacy workspace and secure-secret files are retained; SQLite keeps its legacy import reader. SQLite entity metadata remains for existing-schema compatibility pending an explicit migration with rollback.
 
 A failed workspace load is reported to the UI and blocks SQLite saves until a successful reload. Startup stops after a load failure to preserve the diagnostic. Bulk preset paste validates the full batch before changing the preset.
 
@@ -51,7 +52,7 @@ Application snapshots, selections, metadata, activity and workflow publication s
 
 ## Native Interop & Capabilities
 
-Application startup builds the `IHost`, loads the SQLite workspace, checks OS support, probes Windows edition (Home/Pro/Enterprise/IoT), display version, UI culture/language (`CultureInfo.CurrentUICulture`), UAC elevation privileges, probes `winget` COM and CLI capabilities, checks dual PowerShell availability (PowerShell 7 Core `pwsh.exe` and Windows PowerShell 5.1 `powershell.exe` with dynamic fallback), lists sources, and probes Windows Update COM availability (`WUApiLib`) through `ISystemCapabilityService`.
+Application startup builds the `IHost`, loads the SQLite workspace, checks OS support, Windows edition, display version, UI culture/language (`CultureInfo.CurrentUICulture`) and UAC elevation privileges. `ISystemCapabilityService` probes the `winget` CLI, checks PowerShell 7 Core (`pwsh.exe`) and Windows PowerShell 5.1 (`powershell.exe`) with dynamic fallback, and probes Windows Update COM activation through PowerShell. Startup also lists package sources.
 
 Source defaults are initialized once using the persisted `DefaultSourcesConfigured` flag. Refresh preserves existing URLs and local disabled choices; missing defaults are added only with elevation. Add/remove/reset enforce elevation in Application and presentation. Source mutations and preference saving use the same guarded lifetime and linked cancellation token; saved preferences are published before the final idle notification. Capability and installed-status probes propagate cancellation. See [source operations](operations.md#source-preferences-and-privileges).
 
@@ -62,9 +63,9 @@ Source defaults are initialized once using the persisted `DefaultSourcesConfigur
 
 ## Presentation & MVVM
 
-The WinUI shell is route-driven through `Shell/NavigationRegistry.cs`. User-facing routes are Home, Packages, Updates, Sources, Activity, and Settings. All ViewModels utilize **`CommunityToolkit.Mvvm`** (v8.4+) with `[ObservableProperty]` and `[RelayCommand]` source generators, communicating via `WeakReferenceMessenger`.
+The WinUI shell is route-driven through `Shell/NavigationRegistry.cs`. User-facing routes are Home, Packages, Updates, Sources, Activity, and Settings. ViewModels use **`CommunityToolkit.Mvvm`**, including field-based `[ObservableProperty]` generators and `[RelayCommand]` where applicable. Feature ViewModels receive workflow state-change events and dispatch presentation updates through the UI dispatcher; command bars use typed `UiCommand` definitions.
 
-Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and `OnlyWingetResponsivePanel`/`OnlyWingetWrapPanel` provide adaptive layout. State controls (`StatePresenter`) provide consistent inline status and error transitions. `OnlyWingetTable` owns shared header/row columns, items virtualization (`ItemsRepeater`), horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding.
+Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and `OnlyWingetResponsivePanel`/`OnlyWingetWrapPanel` provide adaptive layout. State controls (`StatePresenter`) provide consistent inline status and error transitions. `OnlyWingetTable` owns shared header/row columns, `ListView` virtualization with `ItemsStackPanel`, horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding.
 
 `Controls/OperationTrackerControl` is a persistent top-of-shell banner that shows operation progress and links to the Activity log. It is always visible in `MainWindow` above the page host, inside the `NavigationView`.
 

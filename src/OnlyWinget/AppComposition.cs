@@ -2,12 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.App;
-using OnlyWinget.Application.Security;
 using OnlyWinget.Application.Storage;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.WindowsUpdate;
 using OnlyWinget.Application.Winget;
-using OnlyWinget.Infrastructure.Security;
 using OnlyWinget.Infrastructure.Storage;
 using OnlyWinget.Infrastructure.Storage.Sqlite;
 using OnlyWinget.Infrastructure.System;
@@ -75,7 +73,7 @@ internal static class AppComposition
 
                 services.AddSingleton<IWorkspaceStore>(sp => new SqliteWorkspaceStore(
                     SqliteWorkspaceStore.DefaultFilePath,
-                    JsonWorkspaceStore.DefaultFilePath,
+                    SqliteWorkspaceStore.DefaultLegacyJsonPath,
                     null,
                     sp.GetService<ILogger<SqliteWorkspaceStore>>()));
 
@@ -83,13 +81,6 @@ internal static class AppComposition
                     JsonSourcePreferenceStore.DefaultFilePath,
                     null,
                     sp.GetService<ILogger<JsonSourcePreferenceStore>>()));
-
-                services.AddSingleton<ISecureDataProtectionService, DpapiDataProtectionService>();
-                services.AddSingleton<ISecureSecretStore>(sp => new DpapiSecretStore(
-                    DpapiSecretStore.DefaultFilePath,
-                    sp.GetRequiredService<ISecureDataProtectionService>(),
-                    null,
-                    sp.GetService<ILogger<DpapiSecretStore>>()));
 
                 services.AddMemoryCache();
 

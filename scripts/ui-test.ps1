@@ -12,6 +12,13 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 . (Join-Path $PSScriptRoot 'support/UiTestWindowHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/UiTestStateHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/VerificationHelpers.ps1')
+
+function Invoke-UiCli {
+    param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
+    Invoke-CheckedNativeCommand -Command 'winapp' -Arguments $Arguments
+}
 
 $isFastMode = -not $Full
 
@@ -35,9 +42,8 @@ function Test-Ui {
 
     try {
         & $Action
-        if ($LASTEXITCODE -ne 0) {
-            throw "Exit code $LASTEXITCODE"
-        }
+        $appProcess = Get-Process -Id $AppPid -ErrorAction Stop
+        if ($appProcess.HasExited) { throw 'Application exited during UI validation.' }
 
         $script:pass++
         $script:results.Add([pscustomobject]@{ name = $Name; status = 'PASS' })
@@ -54,10 +60,6 @@ using System.Runtime.InteropServices;
 public static class OnlyWingetUiTestNative {
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool MoveWindow(IntPtr hWnd, int x, int y, int width, int height, bool repaint);
-    [DllImport("user32.dll")]
-    public static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extraInfo);
-    [DllImport("user32.dll")]
-    public static extern bool SetCursorPos(int x, int y);
 }
 '@
 
@@ -74,7 +76,7 @@ function Get-ScrollElement {
     return $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
 }
 
-$windowsRaw = winapp ui list-windows -a $AppPid --json 2>$null
+$windowsRaw = Invoke-UiCli ui list-windows -a $AppPid --json 2>$null
 $windowsList = if (-not [string]::IsNullOrWhiteSpace($windowsRaw)) { $windowsRaw | ConvertFrom-Json } else { @() }
 $window = @($windowsList) |
     Where-Object { $_ -and $_.PSObject.Properties['processId'] -and $_.processId -eq $AppPid -and $_.className -ne '#32770' } |
@@ -86,28 +88,29 @@ if ($null -eq $window) {
 $hwnd = [IntPtr]::new([int64]$window.hwnd)
 
 Test-Ui 'Navigation shell is accessible' {
-    winapp ui wait-for 'RootNavigation' -a $AppPid -t 5000 -q
+    Invoke-UiCli ui wait-for 'RootNavigation' -a $AppPid -t 5000 -q
     foreach ($navigationId in @('NavHome', 'NavPackages', 'NavUpdates', 'NavSources', 'NavActivity', 'SettingsItem')) {
-        winapp ui wait-for $navigationId -a $AppPid -t 3000 -q
+        Invoke-UiCli ui wait-for $navigationId -a $AppPid -t 3000 -q
     }
 }
 
 Test-Ui 'Keyboard focus moves through navigation' {
-    winapp ui focus 'RootNavigation' -a $AppPid -q
-    try {
-        Add-Type -AssemblyName System.Windows.Forms
-        [System.Windows.Forms.SendKeys]::SendWait('{TAB}')
-    }
-    catch {
-        Write-Verbose "SendWait non-interactive fallback: $($_.Exception.Message)"
-    }
+    Invoke-UiCli ui focus 'RootNavigation' -a $AppPid -q
+    $before = [System.Windows.Automation.AutomationElement]::FocusedElement
+    if ($null -eq $before -or $before.Current.ProcessId -ne $AppPid) { throw 'Focus is outside the test application.' }
+    $beforeId = $before.GetRuntimeId() -join ','
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.SendKeys]::SendWait('{TAB}')
     Start-Sleep -Milliseconds 200
-    winapp ui get-focused -a $AppPid --json | Out-Null
+    $after = [System.Windows.Automation.AutomationElement]::FocusedElement
+    if ($null -eq $after -or $after.Current.ProcessId -ne $AppPid -or ($after.GetRuntimeId() -join ',') -eq $beforeId) {
+        throw 'Tab did not move focus within the test application.'
+    }
 }
 
 Test-Ui 'Preset table exposes a scroll surface' {
-    winapp ui invoke 'NavPackages' -a $AppPid -q
-    winapp ui wait-for 'PresetPackageList' -a $AppPid -t 3000 -q
+    Invoke-UiCli ui invoke 'NavPackages' -a $AppPid -q
+    Invoke-UiCli ui wait-for 'PresetPackageList' -a $AppPid -t 3000 -q
     $scrollElement = Get-ScrollElement -AutomationId 'PresetPackageList'
     if ($null -eq $scrollElement) {
         throw 'Tabella preset non trovata tramite UI Automation.'
@@ -117,31 +120,43 @@ Test-Ui 'Preset table exposes a scroll surface' {
 }
 
 Test-Ui 'Source toggle can be changed and restored' {
-    winapp ui invoke 'NavSources' -a $AppPid -q
-    winapp ui wait-for 'SourceEnabledToggle' -a $AppPid -t 10000 -q
-    winapp ui invoke 'SourceEnabledToggle' -a $AppPid -q
-    winapp ui invoke 'SourceEnabledToggle' -a $AppPid -q
+    Invoke-UiCli ui invoke 'NavSources' -a $AppPid -q
+    Invoke-UiCli ui wait-for 'SourceEnabledToggle' -a $AppPid -t 10000 -q
+    $toggle = Get-ScrollElement -AutomationId 'SourceEnabledToggle'
+    $pattern = $toggle.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+    $original = $pattern.Current.ToggleState
+    try {
+        $pattern.Toggle()
+        Start-Sleep -Milliseconds 500
+        if ($pattern.Current.ToggleState -eq $original) { throw 'Source toggle did not change state.' }
+    }
+    finally {
+        if ($pattern.Current.ToggleState -ne $original) { $pattern.Toggle() }
+        Start-Sleep -Milliseconds 500
+        if ($pattern.Current.ToggleState -ne $original) { throw 'Source toggle was not restored.' }
+    }
 }
 
 Test-Ui 'Import picker can be cancelled without mutation' {
-    winapp ui invoke 'NavPackages' -a $AppPid -q
-    $existingWindowsRaw = winapp ui list-windows --json
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot inventory windows before opening the picker.' }
+    Invoke-UiCli ui invoke 'NavPackages' -a $AppPid -q
+    $presetList = Get-ScrollElement -AutomationId 'PresetPackageList'
+    $beforeRows = Get-UiTestStateSnapshot -Root $presetList
+    $beforePreset = Get-UiTestStateSnapshot -Root (Get-ScrollElement -AutomationId 'PresetSelector')
+    $existingWindowsRaw = Invoke-UiCli ui list-windows --json
     $existingHandles = [System.Collections.Generic.HashSet[long]]::new()
     foreach ($existingWindow in @($existingWindowsRaw | ConvertFrom-Json)) {
         $existingHandles.Add([int64]@($existingWindow.hwnd)[0]) | Out-Null
     }
-    winapp ui invoke 'ImportPresetBtn' -a $AppPid -q
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot open the import picker.' }
+    Invoke-UiCli ui invoke 'ImportPresetBtn' -a $AppPid -q
     Start-Sleep -Seconds 2
-    $pickerWindowsRaw = winapp ui list-windows --json
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot inventory picker windows.' }
+    $pickerWindowsRaw = Invoke-UiCli ui list-windows --json
     $pickers = @($pickerWindowsRaw | ConvertFrom-Json |
         Where-Object {
             $_.title -match 'Open|Apri' -or $_.className -eq '#32770'
         })
 
     $closedPicker = $false
+    $closedHandles = [System.Collections.Generic.HashSet[long]]::new()
     foreach ($p in $pickers) {
         if ($null -ne $p -and $null -ne $p.hwnd) {
             $hVal = [int64]@($p.hwnd)[0]
@@ -149,11 +164,19 @@ Test-Ui 'Import picker can be cancelled without mutation' {
             if (-not $existingHandles.Contains($hVal) -and
                 (Close-UiTestOwnedDialog -WindowHandle $pHwnd -AppWindowHandle $hwnd -AppProcessId $AppPid)) {
                 $closedPicker = $true
+                $closedHandles.Add($hVal) | Out-Null
             }
         }
     }
     if (-not $closedPicker) { throw 'No new picker owned by the test app was found; no unrelated window was closed.' }
     Start-Sleep -Seconds 2
+    $remainingWindows = @(Invoke-UiCli ui list-windows --json | ConvertFrom-Json)
+    if ($remainingWindows | Where-Object { $closedHandles.Contains([int64]@($_.hwnd)[0]) }) { throw 'Cancelled picker is still open.' }
+    $afterRows = Get-UiTestStateSnapshot -Root (Get-ScrollElement -AutomationId 'PresetPackageList')
+    $afterPreset = Get-UiTestStateSnapshot -Root (Get-ScrollElement -AutomationId 'PresetSelector')
+    if ($afterRows -cne $beforeRows -or $afterPreset -cne $beforePreset) {
+        throw 'Preset rows, checkbox states or selected preset changed after cancelling import.'
+    }
 }
 
 Test-Ui 'Shared tables and progress controls expose accessibility metadata' {
@@ -178,22 +201,29 @@ foreach ($layout in @(
     @{ Name = 'medium'; Width = 900; Height = 760 },
     @{ Name = 'wide'; Width = 1280; Height = 800 }
 )) {
-    Test-Ui "Layout $($layout.Name) renders" {
+    Test-Ui "Layout $($layout.Name) exposes bounded navigation" {
         if (-not [OnlyWingetUiTestNative]::MoveWindow($hwnd, 80, 80, $layout.Width, $layout.Height, $true)) {
             throw "MoveWindow fallito per $($layout.Name)."
         }
 
         Start-Sleep -Milliseconds 300
-        winapp ui screenshot -a $AppPid -o (Join-Path $OutputDirectory "$($layout.Name).png") -q
+        $rootBounds = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd).Current.BoundingRectangle
+        $navigationBounds = (Get-ScrollElement -AutomationId 'RootNavigation').Current.BoundingRectangle
+        if ($navigationBounds.IsEmpty -or $navigationBounds.Width -le 0 -or $navigationBounds.Height -le 0 -or
+            $navigationBounds.Left -lt $rootBounds.Left -or $navigationBounds.Right -gt $rootBounds.Right -or
+            $navigationBounds.Top -lt $rootBounds.Top -or $navigationBounds.Bottom -gt $rootBounds.Bottom) {
+            throw 'Navigation bounds exceed the resized application window.'
+        }
+        Invoke-UiCli ui screenshot -a $AppPid -o (Join-Path $OutputDirectory "$($layout.Name).png") -q
     }
 }
 
 Test-Ui 'Interactive controls have AutomationId' {
-    $inspection = winapp ui inspect -w $window.hwnd --interactive --json 2>$null | ConvertFrom-Json
+    $inspection = Invoke-UiCli ui inspect -w $window.hwnd --interactive --json 2>$null | ConvertFrom-Json
     $targetHwndHex = "0x{0:X}" -f [int64]$window.hwnd
     $elements = @($inspection.windows | Where-Object { $_.hwnd -eq $window.hwnd -or $_.hwnd -eq $targetHwndHex } | ForEach-Object { $_.elements })
     if ($elements.Count -eq 0) {
-        $elements = @($inspection.windows | Select-Object -First 1 | ForEach-Object { $_.elements })
+        throw 'No interactive elements were returned for the verified application window.'
     }
     $missing = @($elements | Where-Object {
         $_.type -match 'Button|TextBox|ComboBox|CheckBox|ToggleSwitch|NavigationViewItem' -and
@@ -220,45 +250,45 @@ if ($CaptureAllRoutes) {
     function Save-RouteScreenshot {
         param([string]$Name)
         Start-Sleep -Milliseconds 500
-        winapp ui screenshot -a $AppPid -o (Join-Path $routeDirectory "$Name.png") -q
+        Invoke-UiCli ui screenshot -a $AppPid -o (Join-Path $routeDirectory "$Name.png") -q
     }
 
-    winapp ui invoke 'NavHome' -a $AppPid -q
+    Invoke-UiCli ui invoke 'NavHome' -a $AppPid -q
     Save-RouteScreenshot '01-home'
 
-    winapp ui invoke 'NavPackages' -a $AppPid -q
-    winapp ui invoke 'PackagesPresetTab' -a $AppPid -q
+    Invoke-UiCli ui invoke 'NavPackages' -a $AppPid -q
+    Invoke-UiCli ui invoke 'PackagesPresetTab' -a $AppPid -q
     Save-RouteScreenshot '02-packages-presets'
 
-    winapp ui invoke 'PackagesSearchTab' -a $AppPid -q
-    winapp ui focus 'PackageSearchQuery' -a $AppPid -q
+    Invoke-UiCli ui invoke 'PackagesSearchTab' -a $AppPid -q
+    Invoke-UiCli ui focus 'PackageSearchQuery' -a $AppPid -q
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.SendKeys]::SendWait('^a')
     [System.Windows.Forms.SendKeys]::SendWait('vlc{ENTER}')
     Start-Sleep -Seconds 8
     Save-RouteScreenshot '03-packages-search-populated'
 
-    winapp ui invoke 'NavUpdates' -a $AppPid -q
-    winapp ui invoke 'UpdatesWingetTab' -a $AppPid -q
-    winapp ui click 'CommandRefreshUpdates' -a $AppPid -q
-    winapp ui wait-for 'CommandRefreshUpdates' -a $AppPid -p IsEnabled --value True -t 90000 -q
+    Invoke-UiCli ui invoke 'NavUpdates' -a $AppPid -q
+    Invoke-UiCli ui invoke 'UpdatesWingetTab' -a $AppPid -q
+    Invoke-UiCli ui click 'CommandRefreshUpdates' -a $AppPid -q
+    Invoke-UiCli ui wait-for 'CommandRefreshUpdates' -a $AppPid -p IsEnabled --value True -t 90000 -q
     Save-RouteScreenshot '04-updates-winget-populated'
 
-    winapp ui invoke 'UpdatesWindowsTab' -a $AppPid -q
+    Invoke-UiCli ui invoke 'UpdatesWindowsTab' -a $AppPid -q
     Start-Sleep -Seconds 2
-    winapp ui click 'CommandScanWindowsUpdates' -a $AppPid -q
-    winapp ui wait-for 'CommandScanWindowsUpdates' -a $AppPid -p IsEnabled --value True -t 90000 -q
+    Invoke-UiCli ui click 'CommandScanWindowsUpdates' -a $AppPid -q
+    Invoke-UiCli ui wait-for 'CommandScanWindowsUpdates' -a $AppPid -p IsEnabled --value True -t 90000 -q
     Save-RouteScreenshot '05-updates-windows-populated'
 
-    winapp ui invoke 'NavSources' -a $AppPid -q
+    Invoke-UiCli ui invoke 'NavSources' -a $AppPid -q
     Start-Sleep -Seconds 3
     Save-RouteScreenshot '06-sources'
 
-    winapp ui click 'NavActivity' -a $AppPid -q
+    Invoke-UiCli ui click 'NavActivity' -a $AppPid -q
     Start-Sleep -Seconds 2
     Save-RouteScreenshot '07-activity'
 
-    winapp ui invoke 'SettingsItem' -a $AppPid -q
+    Invoke-UiCli ui invoke 'SettingsItem' -a $AppPid -q
     Save-RouteScreenshot '08-settings'
 }
 

@@ -226,11 +226,6 @@
           "SQLitePCLRaw.core": "2.1.12"
         }
       },
-      "System.Security.Cryptography.ProtectedData": {
-        "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "PNoxCTPb+Tlux+GJyq4c89ddYdpioVSqfGx8pqOF6shCSKwUNNctXhQtRkCICjbJmGrJJsW8NY52kVYO/b8mlQ=="
-      },
       "xunit.abstractions": {
         "type": "Transitive",
         "resolved": "2.0.3",
@@ -289,8 +284,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )",
           "OnlyWinget.Application": "[1.0.0, )",
           "OnlyWinget.Domain": "[1.0.0, )",
-          "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.12, )",
-          "System.Security.Cryptography.ProtectedData": "[10.0.11, )"
+          "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.12, )"
         }
       }
     }

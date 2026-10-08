@@ -1,89 +1,31 @@
-# OnlyWinget Repository Architecture
+# OnlyWinget invariants
 
-OnlyWinget is structured using **Clean Architecture** (also known as Onion Architecture) which enforces a strict one-way dependency direction.
+Read [canonical architecture](../../../../docs/architecture.md) for the component map; inspect callers before changing interfaces.
 
-```
-WinUI Presentation ──> Application ──> Domain
-Infrastructure      ──> Application ──> Domain
-```
+## Ownership and persistence
 
----
+Application serializes asynchronous workflows and persistent edits with one operation gate. Busy edits reject; queued saves wait with cancellation. State snapshots, selections, metadata and publication share stateLock; no lock spans await.
 
-## 1. Architectural Layers
+SQLite is the primary workspace. Preserve legacy workspace JSON during migration and retained load-failure diagnostics. A failed SQLite load blocks later saves until a successful reload. Source-preference malformed/schema-invalid files fail loading and are revalidated before saving, including on a fresh store instance; restore/repair the preserved file to recover.
 
-### Domain Layer (`OnlyWinget.Domain`)
-- **Location**: `src/OnlyWinget.Domain`
-- **Role**: Contains core package, preset, operation, and selection rules.
-- **Dependencies**: **None**. It is pure, platform-agnostic C#.
-- **Key Types**:
-  - `PackageIdentity` (sealed record): Unique key representing a winget package. Binds `Id` (case-insensitive) and an optional `Source`.
-  - `PackageSelection` (sealed record): Pairs a `PackageIdentity` with a `PackageAction` (`Install`, `Uninstall`, `Upgrade`).
-  - `SelectionState<TKey>` (class): Generic batch-selection helper managing available/selected items and tri-state checkbox state headers (`Checked`, `Unchecked`, `Mixed`).
-  - `Preset` (sealed record): A saved list of packages (`PackageIdentity`) identified by a unique name.
-  - `OperationPlan` (sealed record): The planned execution queue containing lists of `PackageSelection`s.
+The full JSON workspace writer and dormant DPAPI services are retired; SQLite retains the legacy JSON reader. Do not delete retained legacy/secret files. Unconsumed SQLite columns remain for existing-schema compatibility until a reviewed migration has backup/rollback coverage.
 
-### Application Layer (`OnlyWinget.Application`)
-- **Location**: `src/OnlyWinget.Application`
-- **Role**: Coordinates use cases, manages application state, defines ports (interfaces), and maps model data for presentation.
-- **Dependencies**: Depends **only** on the Domain layer.
-- **Key Types**:
-  - `OnlyWingetApplication`: The central workflow orchestrator maintaining active state (workspace, presets, sources, updates, selections, capabilities, busy state).
-  - `OnlyWingetState` (sealed record): An immutable snapshot of the entire application state.
-  - **Ports (Interfaces)**: Defines how the application interacts with external services (e.g., `ISystemCapabilityService`, `IWingetCommandRunner`, `IWindowsUpdateService`, `IWorkspaceStore`, `ISourcePreferenceStore`).
-  - **Presentation Mapping**: Maps `OnlyWingetState` to view-model presentation records (e.g., `DashboardPresentationState`, `UpdatesPresentationState`) via the `PresentationStateMapper`.
-  - `UiCommand`: Metadata describing standard UI action commands, including labels, icon keys, and enabled states.
+Package identity includes both case-insensitive ID and source. An edit captures the original identity once. Apply succeeds after mutation and persistence; failed saving after accepted mutation retries only saving and keeps fields locked. Accepted idle selector changes autosave; rejected busy choices do not mutate/save. Actual draft/navigation interaction remains AUDIT-19.
 
-### Infrastructure Layer (`OnlyWinget.Infrastructure`)
-- **Location**: `src/OnlyWinget.Infrastructure`
-- **Role**: Implements the ports defined in the Application layer using concrete libraries and OS APIs.
-- **Dependencies**: Depends on the Application and Domain layers.
-- **Key Implementations**:
-  - `SqliteWorkspaceStore` & `WorkspaceDbContext`: Primary relateral persistence via **SQLite embedded** and **Entity Framework Core 10** (`%LOCALAPPDATA%\OnlyWinget\onlywinget.db`) with automatic legacy JSON data migration.
-  - `WingetPackageSearchService` & `WingetPackageResolver`: WinGet CLI search/resolve engines with source-specific search caching.
-  - `ComWindowsUpdateService`: Windows Update COM automation using asynchronous jobs, completion callbacks, and `RequestAbort` cancellation.
-  - `ProcessWingetCommandRunner`: Canonical WinGet execution runner. `PowerShellWindowsUpdateService`: Windows Update fallback when COM cannot be activated.
-  - `WingetTableParser`: Parses winget's tabular CLI stdout with multi-language column header localization (EN, IT, FR, ES, DE).
-  - `WingetErrorClassifier`: Classifies CLI string outputs to map failures into structured `WingetErrorKind` enums.
-  - `JsonSourcePreferenceStore` & `DpapiSecretStore`: Implements DPAPI-encrypted secret storage and source preference persistence in `%LOCALAPPDATA%\OnlyWinget\`.
+## Native work and processes
 
-### WinUI Presentation Layer (`OnlyWinget`)
-- **Location**: `src/OnlyWinget`
-- **Role**: Entry point of the application and the Graphical User Interface built on WinUI 3.
-- **Dependencies**: Depends on Application, Domain, and Infrastructure layers.
-- **Key Implementations**:
-  - `AppComposition`: Composition root leveraging `Microsoft.Extensions.Hosting` (`Host.CreateDefaultBuilder()`), registering DI services and configuring Serilog structured logging.
-  - ViewModels: Built with **`CommunityToolkit.Mvvm`** (v8.4+) utilizing `[ObservableProperty]`, `[RelayCommand]` source generators, and `WeakReferenceMessenger`.
-  - `MainWindow`: Customs the title bar, configures Mica system backdrop, and hosts the navigation shell (`NavigationView`) with a page factory and page instance cache.
-  - `TextResources`: Internal localization dictionary (no RESW/RESX). Supports English and Italian.
-  - **Custom Controls**: Reusable layouts such as `OnlyWingetTable` (custom list-view grid table with `ItemsRepeater` virtualization and tri-state selection header) and `StatePresenter` (loading/empty/error state visual transitions).
+WinGet uses the existing CLI runner/cache/parser stack. Use ArgumentList and forward cancellation. Keep completed batch outcomes, failures, cancellations and never-started rows distinct.
 
----
+Windows Update uses BeginSearch/BeginDownload/BeginInstall jobs off the UI thread, RequestAbort and CleanUp. Cancellation or failed installation must not trigger an automatic fallback/retry. Match exact update ID/revision and complete selection coverage; preserve actual MsrcSeverity/RebootRequired and canonical KB labels. Real download/install qualification remains pending.
 
-## 2. Concurrency & Synchronization Guidelines
+## Diagnostics and UI
 
-- **Asynchronous Serialization**:
-  Only one major operation (search, update check, installer run) can execute at a time. `OnlyWingetApplication` uses one `SemaphoreSlim` for async workflows and persistent synchronous edits. Busy edits are rejected; requested workspace saves wait asynchronously with cancellation. UI command disabling is secondary protection.
-- **In-Memory Thread Safety**:
-  Snapshots, selections, metadata and all workflow state publication share one dedicated `stateLock`. Async discovery collects local outcomes before publishing rows and selection together. No lock spans an await.
-- **File Persistence Safety**:
-  Write/read operations in JSON stores (`JsonWorkspaceStore`, `JsonSourcePreferenceStore`) and app settings writes must be synchronized using instance-scoped `SemaphoreSlim(1,1)` locks.
+Serilog and direct diagnostics share DiagnosticLogStore: one UTF-8 writer and bounded 1000-entry queue, filtered by the same settings. Daily/numbered files roll at 10 MiB and successful writes retain at most 14 owned files/140 MiB aggregate. I/O/retention errors preserve memory entries and expose LastError. Clear recognizes daily/rolled names; unrelated files/reparse points are preserved. Activity clear/Undo is independent.
 
----
+FeatureViewModel uses the instance workflow StateChanged event and dispatcher. Use the existing field-based generators/typed commands; messenger/RelayCommand use is not universal.
 
-## 3. Asynchronous Execution and Cancellation
+OnlyWingetTable is ListView/ItemsStackPanel. Keep stable collections, theme resources and EN/IT TextResources/Localize. Log clear uses inline confirmation in the existing ContentDialog. Real picker/dialog/High Contrast checks are not proven by compilation.
 
-- **Always Propagate CancellationTokens**:
-  Every asynchronous method that supports cancellation must accept a `CancellationToken` parameter and forward it to all downstream async and process calls.
-- **No CancellationToken.None**:
-  Never pass `CancellationToken.None` into downstream operations within methods that accept a real token.
-- **Process Cancellation**:
-  The `ProcessExternalProcessRunner` must handle cancellation by killing the spawned process and its entire child process tree to prevent orphaned background processes.
+## Deployment
 
----
-
-## 4. COM Interop Guidelines
-
-- **Windows Update COM Interop**:
-  Never invoke Windows Update COM operations from the main WinUI STA. Start asynchronous WUA jobs on background workers, request cancellation with `RequestAbort`, and release callbacks with `CleanUp` outside the callback. Never retry a cancelled or failed installation through the fallback.
-- **Embed Interop Types**:
-  If direct COM references are ever introduced to the C# projects, the assembly property `Embed Interop Types` must be set to `False` on the COM reference (e.g., `WUApiLib`) to avoid runtime `MissingMethodException`s. Alternatively, use late-binding dynamic instantiation (`Type.GetTypeFromProgID("Microsoft.Update.Session")`).
+The app is unpackaged self-contained win-x64/asInvoker. NSIS owns its generated file list and removes only distributed files/empty directories. Protocol activation is retired; composition/uninstall remove only a matching legacy HKCU handler. See [release.md](../../../../docs/release.md) for staged packaging, rollback and recovery.

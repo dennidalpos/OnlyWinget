@@ -4,7 +4,7 @@ Load this when looking up a specific brush key by purpose, deciding between WinU
 
 Sources: [XAML theme resources](https://learn.microsoft.com/en-us/windows/apps/develop/platform/xaml/xaml-theme-resources), [Icons for Windows apps](https://learn.microsoft.com/en-us/windows/apps/design/style/icons), [Segoe Fluent Icons font](https://learn.microsoft.com/en-us/windows/apps/design/style/segoe-fluent-icons-font), `IconElement` / `IconSource` API references on Microsoft Learn.
 
-For runnable samples (full XAML + C# with the right `Glyph` codepoints, brush keys in context, etc.) prefer `winui-search.exe search "<query>"`.
+For runnable samples, inspect the official WinUI Gallery. Use `winui-search.exe` only if actually installed; it is not bundled in this repository.
 
 ---
 
@@ -12,7 +12,7 @@ For runnable samples (full XAML + C# with the right `Glyph` codepoints, brush ke
 
 Every theme brush below is defined in WinUI's `Common_themeresources_any.xaml` and resolves automatically across Light, Dark, and Contrast themes. Reference them with `{ThemeResource <name>}` at usage sites; don't hard-code colors.
 
-There are matching `Color` resources (same name without the `Brush` suffix) — use those only when an API specifically wants a `Color`. For a `Brush` property (`Background`, `Foreground`, `BorderBrush`, `Stroke`), always end the key in `Brush`.
+Use a brush resource for `Background`, `Foreground`, `BorderBrush` or `Stroke`, and a color resource only when the API requires a `Color`. Check the actual resource key and type; do not derive names by removing a suffix.
 
 ### Text
 

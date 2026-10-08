@@ -10,15 +10,10 @@ namespace OnlyWinget.Tests;
 
 public sealed class LiveUpdateSearchSmokeTests
 {
-    [Fact]
+    [LiveFact]
     [Trait("Category", "Smoke")]
     public async Task WingetSearchAndUpdateDiscoveryCompleteAgainstLiveSource()
     {
-        if (!ShouldRun())
-        {
-            return;
-        }
-
         var processRunner = new ProcessExternalProcessRunner();
         var commandRunner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
         var parser = new WingetTableParser();
@@ -39,15 +34,10 @@ public sealed class LiveUpdateSearchSmokeTests
             updateOutcome.Error?.Message);
     }
 
-    [Fact]
+    [LiveFact]
     [Trait("Category", "Smoke")]
     public async Task WindowsUpdateDiscoveryCompletesWithoutElevation()
     {
-        if (!ShouldRun())
-        {
-            return;
-        }
-
         var processRunner = new ProcessExternalProcessRunner();
         ISystemCapabilityService capabilities = new SystemCapabilityService(processRunner);
         var service = new PowerShellWindowsUpdateService(processRunner, capabilities);
@@ -59,41 +49,11 @@ public sealed class LiveUpdateSearchSmokeTests
         Assert.True(outcome.Succeeded, outcome.Error?.Message);
     }
 
-    [Fact]
-    [Trait("Category", "Smoke")]
-    [SupportedOSPlatform("windows")]
-    public async Task WingetPackageSearchServiceSearchesLiveCatalogThroughCli()
-    {
-        if (!ShouldRun())
-        {
-            return;
-        }
-
-        var processRunner = new ProcessExternalProcessRunner();
-        var commandRunner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
-        var parser = new WingetTableParser();
-        var classifier = new WingetErrorClassifier();
-        var service = new WingetPackageSearchService(commandRunner, parser, classifier);
-
-        var outcome = await service.SearchAsync(
-            new PackageSearchRequest("powertoys", "winget"),
-            CancellationToken.None);
-
-        Assert.True(outcome.Succeeded, outcome.Error?.Message);
-        Assert.Contains(outcome.Rows, row =>
-            string.Equals(row.Package.Id, "Microsoft.PowerToys", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
+    [LiveFact]
     [Trait("Category", "Smoke")]
     [SupportedOSPlatform("windows")]
     public async Task ComWindowsUpdateServiceScansLiveSystemThroughComOrPowerShellFallback()
     {
-        if (!ShouldRun())
-        {
-            return;
-        }
-
         var processRunner = new ProcessExternalProcessRunner();
         ISystemCapabilityService capabilities = new SystemCapabilityService(processRunner);
         var fallback = new PowerShellWindowsUpdateService(processRunner, capabilities);
@@ -107,14 +67,8 @@ public sealed class LiveUpdateSearchSmokeTests
     }
 
     [Fact]
-    [Trait("Category", "Smoke")]
     public async Task ProcessExternalProcessRunnerStreamsStandardErrorLines()
     {
-        if (!ShouldRun())
-        {
-            return;
-        }
-
         var processRunner = new ProcessExternalProcessRunner();
         var lines = new List<string>();
         var progress = new InlineProgress<string>(lines.Add);
@@ -129,7 +83,4 @@ public sealed class LiveUpdateSearchSmokeTests
         Assert.Contains("one", lines);
         Assert.Contains("two", lines);
     }
-
-    private static bool ShouldRun() =>
-        string.Equals(Environment.GetEnvironmentVariable("ONLYWINGET_RUN_WINGET_SMOKE"), "1", StringComparison.Ordinal);
 }

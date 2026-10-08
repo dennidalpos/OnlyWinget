@@ -1,15 +1,19 @@
 using OnlyWinget.Application.System;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("OnlyWinget")]
 
 namespace OnlyWinget.Infrastructure.Diagnostics;
 
-internal sealed class DiagnosticLogStore(string directory)
+internal sealed class DiagnosticLogStore(string directory, long maxFileBytes = 10 * 1024 * 1024, int maxFiles = 14)
 {
     private const int BufferCapacity = 1000;
     private static readonly Encoding LogEncoding = new UTF8Encoding(false);
+    private static readonly Regex LogName = new(@"^onlywinget-(?<date>[0-9]{8})(?:-(?<segment>[0-9]{6}))?\.log$", RegexOptions.CultureInvariant);
+    private readonly long fileSizeLimit = maxFileBytes > 0 ? maxFileBytes : throw new ArgumentOutOfRangeException(nameof(maxFileBytes));
+    private readonly int fileCountLimit = maxFiles > 0 ? maxFiles : throw new ArgumentOutOfRangeException(nameof(maxFiles));
     private readonly object sync = new();
     private readonly Queue<AppLogEntry> entries = new();
     private bool enabled = true;
@@ -38,10 +42,14 @@ internal sealed class DiagnosticLogStore(string directory)
             {
                 Directory.CreateDirectory(directory);
                 var date = entry.Timestamp.UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-                var path = Path.Combine(directory, $"onlywinget-{date}.log");
-                File.AppendAllText(path,
-                    $"{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{entry.Level}] [{entry.Caller}] {entry.Message}{Environment.NewLine}",
-                    LogEncoding);
+                var text = $"{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{entry.Level}] [{entry.Caller}] {entry.Message}{Environment.NewLine}";
+                var byteCount = LogEncoding.GetByteCount(text);
+                if (byteCount > fileSizeLimit) throw new IOException("Diagnostic entry exceeds the disk file limit; the memory entry was retained.");
+                var path = GetAppendPath(date, byteCount);
+                if (File.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException("Refusing to append through a diagnostic log reparse point.");
+                File.AppendAllText(path, text, LogEncoding);
+                PruneFiles(path);
                 lastError = null;
                 return true;
             }
@@ -71,12 +79,7 @@ internal sealed class DiagnosticLogStore(string directory)
             {
                 if (Directory.Exists(directory))
                 {
-                    foreach (var path in Directory.EnumerateFiles(directory, "onlywinget-????????.log"))
-                    {
-                        var name = Path.GetFileNameWithoutExtension(path);
-                        if (DateTime.TryParseExact(name["onlywinget-".Length..], "yyyyMMdd", CultureInfo.InvariantCulture,
-                            DateTimeStyles.None, out _)) File.Delete(path);
-                    }
+                    foreach (var file in GetOwnedFiles()) File.Delete(file.FullName);
                 }
                 entries.Clear();
                 lastError = null;
@@ -87,6 +90,47 @@ internal sealed class DiagnosticLogStore(string directory)
                 lastError = exception.Message;
                 return false;
             }
+        }
+    }
+
+    private FileInfo[] GetOwnedFiles() => new DirectoryInfo(directory).EnumerateFiles("onlywinget-*.log")
+        .Where(file =>
+        {
+            var match = LogName.Match(file.Name);
+            return match.Success && DateTime.TryParseExact(match.Groups["date"].Value, "yyyyMMdd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out _) && (file.Attributes & FileAttributes.ReparsePoint) == 0;
+        }).ToArray();
+
+    private string GetAppendPath(string date, int byteCount)
+    {
+        var dailyFiles = GetOwnedFiles().Where(file => LogName.Match(file.Name).Groups["date"].Value == date)
+            .OrderBy(file =>
+            {
+                var segment = LogName.Match(file.Name).Groups["segment"].Value;
+                return segment.Length == 0 ? 0 : int.Parse(segment, CultureInfo.InvariantCulture);
+            }).ToArray();
+        var latest = dailyFiles.LastOrDefault();
+        if (latest is null) return Path.Combine(directory, $"onlywinget-{date}.log");
+        if (latest.Length <= fileSizeLimit - byteCount) return latest.FullName;
+        var segmentText = LogName.Match(latest.Name).Groups["segment"].Value;
+        var segment = segmentText.Length == 0 ? 1 : int.Parse(segmentText, CultureInfo.InvariantCulture) + 1;
+        if (segment > 999999) throw new IOException("Diagnostic rolling segment limit reached.");
+        return Path.Combine(directory, $"onlywinget-{date}-{segment:D6}.log");
+    }
+
+    private void PruneFiles(string activePath)
+    {
+        var files = GetOwnedFiles().OrderBy(file => file.LastWriteTimeUtc).ThenBy(file => file.Name, StringComparer.Ordinal).ToArray();
+        var totalBytes = files.Sum(file => file.Length);
+        var remaining = files.Length;
+        var diskLimit = checked(fileSizeLimit * fileCountLimit);
+        foreach (var file in files)
+        {
+            if (remaining <= fileCountLimit && totalBytes <= diskLimit) break;
+            if (string.Equals(file.FullName, activePath, StringComparison.OrdinalIgnoreCase)) continue;
+            File.Delete(file.FullName);
+            totalBytes -= file.Length;
+            remaining--;
         }
     }
 }

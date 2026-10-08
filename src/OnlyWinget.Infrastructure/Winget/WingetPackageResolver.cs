@@ -75,34 +75,24 @@ public sealed class WingetPackageResolver(
             arguments.Add(package.Source);
         }
 
-        try
+        var result = await commandRunner.RunAsync("winget", arguments, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!result.Succeeded)
         {
-            var result = await commandRunner.RunAsync("winget", arguments, cancellationToken)
-                .ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (!result.Succeeded)
-            {
-                return new PackageInstalledStatus(false, null);
-            }
-
-            var values = tableParser.Parse(result.StandardOutput);
-            var matchingRow = values.FirstOrDefault(row =>
-                WingetOutputHelpers.TryGet(row, "Id", out var id) &&
-                string.Equals(id.Trim(), package.Id, StringComparison.OrdinalIgnoreCase));
-
-            if (matchingRow is not null && WingetOutputHelpers.TryGet(matchingRow, "Version", out var version))
-            {
-                return new PackageInstalledStatus(true, version.Trim());
-            }
-
-            return new PackageInstalledStatus(false, null);
+            // Only WinGet's explicit no-match result proves absence.
+            if (result.ExitCode == unchecked((int)0x8A150014)) return new PackageInstalledStatus(false, null);
+            var error = errorClassifier.Classify(result);
+            throw new InvalidOperationException($"Unable to check installed package '{package.Id}' (0x{result.ExitCode:X8}): {error?.Message}");
         }
-        catch (Exception exception) when (exception is IOException or global::System.ComponentModel.Win32Exception or TimeoutException)
+
+        var matches = tableParser.Parse(result.StandardOutput).Where(row =>
+            WingetOutputHelpers.TryGet(row, "Id", out var id) &&
+            string.Equals(id.Trim(), package.Id, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (matches.Length != 1 || !WingetOutputHelpers.TryGet(matches[0], "Version", out var version) || string.IsNullOrWhiteSpace(version))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            return new PackageInstalledStatus(false, null);
+            throw new InvalidOperationException($"WinGet did not return one readable installed match for '{package.Id}'.");
         }
+        return new PackageInstalledStatus(true, version.Trim());
     }
 
     private static string? ExtractName(string output, string packageId)

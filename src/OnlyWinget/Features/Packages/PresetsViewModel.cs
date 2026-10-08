@@ -66,7 +66,12 @@ public sealed partial class PresetsViewModel : FeatureViewModel
     public OperationProgress? Progress => Workflow.State.OperationProgress;
     public string? Error => Workflow.State.UserVisibleError;
 
-    public void SetActivePreset(string name) => Workflow.SetActivePreset(name);
+    public async Task SetActivePresetAsync(string name)
+    {
+        if (cancellation is not null || IsApplyingEdit ||
+            string.Equals(name, Workflow.State.ActivePreset?.Name, StringComparison.OrdinalIgnoreCase)) return;
+        if (Workflow.SetActivePreset(name).Succeeded) await AutoSaveWorkspaceAsync();
+    }
     public void ToggleAll() => Workflow.ToggleAllPresetPackages();
     public void Toggle(PresetPackageRow row) => Workflow.TogglePresetPackageInclusion(new PackageIdentity(row.PackageId, row.Source));
     public void SetSelected(IEnumerable<PresetPackageRow> rows, bool isSelected) =>

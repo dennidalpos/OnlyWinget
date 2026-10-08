@@ -12,6 +12,28 @@ public sealed class CapabilityCancellationTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
+    public async Task InstalledStatusPreservesProcessIoAndTimeoutFailures(int scenario)
+    {
+        Exception expected = scenario switch
+        {
+            0 => new IOException("Read failed"),
+            1 => new System.ComponentModel.Win32Exception(5),
+            _ => new TimeoutException("Probe timed out")
+        };
+        var resolver = new WingetPackageResolver(new FailingRunner(expected), new(), new());
+        var failure = await Record.ExceptionAsync(() => resolver.CheckInstalledStatusAsync(new("Pkg.A"), CancellationToken.None));
+        Assert.Same(expected, failure);
+    }
+
+    private sealed class FailingRunner(Exception failure) : IWingetCommandRunner
+    {
+        public Task<WingetCommandResult> RunAsync(string command, IReadOnlyList<string> arguments, CancellationToken cancellationToken,
+            IProgress<WingetProgress>? progress = null, TimeSpan? timeout = null) => Task.FromException<WingetCommandResult>(failure);
+    }
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
     [InlineData(3)]
     public async Task CapabilityProbePropagatesCancellationAndStopsFurtherCommands(int blockedCall)
     {

@@ -4,30 +4,27 @@ namespace OnlyWinget.Infrastructure.Winget;
 
 public sealed class WingetErrorClassifier
 {
-    // winget's exit codes are HRESULT-style values baked into the CLI itself, so unlike its message text
-    // they do not change with the system display language. Verified live against winget v1.29.280 (it-IT)
-    // on 2026-08-19 by triggering each scenario directly (see PROJECT_STATUS.json for the exact commands
-    // and captured output). Checked before the text heuristics below so non-EN/IT locales get a correct
-    // classification instead of falling into Unknown; unrecognized codes fall through to text matching.
+    // Native codes take precedence over localized output; see Microsoft's returnCodes.md.
     private static readonly IReadOnlyDictionary<int, WingetErrorKind> KnownExitCodes = new Dictionary<int, WingetErrorKind>
     {
-        // 0x8A150002: WINGET_INST_HASH_MISMATCH
-        [unchecked((int)0x8A150002)] = WingetErrorKind.HashMismatch,
-        // 0x8A150014: WINGET_INST_NO_APPLICABLE_PACKAGE / WINGET_INST_NO_SOURCES_DEFINED
+        [unchecked((int)0x8A150002)] = WingetErrorKind.Unknown, // Invalid CLI arguments.
+        [unchecked((int)0x8A150005)] = WingetErrorKind.Cancelled, // Ctrl signal.
+        [unchecked((int)0x8A15000F)] = WingetErrorKind.SourceUnavailable, // Missing source data.
+        [unchecked((int)0x8A150011)] = WingetErrorKind.HashMismatch,
+        [unchecked((int)0x8A150012)] = WingetErrorKind.SourceUnavailable, // Unknown source name.
         [unchecked((int)0x8A150014)] = WingetErrorKind.NotFound,
-        // 0x8A150015: WINGET_INST_OPERATION_CANCELLED
-        [unchecked((int)0x8A150015)] = WingetErrorKind.Cancelled,
-        // 0x800704C7: ERROR_CANCELLED (user cancelled operation / UAC prompt)
+        [unchecked((int)0x8A150015)] = WingetErrorKind.SourceUnavailable, // No configured sources.
+        [unchecked((int)0x8A150016)] = WingetErrorKind.Unknown, // Ambiguous package matches.
+        [unchecked((int)0x8A150017)] = WingetErrorKind.NotFound, // Missing manifest.
         [unchecked((int)0x800704C7)] = WingetErrorKind.Cancelled,
-        // 0x8A15002B: WINGET_INST_NO_UPGRADE_AVAILABLE
         [unchecked((int)0x8A15002B)] = WingetErrorKind.NoUpdates,
-        // 0x8A15005E: APPINSTALLER_CLI_ERROR_PINNED_CERTIFICATE_MISMATCH
-        [unchecked((int)0x8A15005E)] = WingetErrorKind.SourceUnavailable,
-        // 0x8A150114 - 0x8A150117: WINGET_INST_CANNOT_UPGRADE family
+        [unchecked((int)0x8A150045)] = WingetErrorKind.SourceUnavailable, // Source open failed.
+        [unchecked((int)0x8A15005E)] = WingetErrorKind.SourceUnavailable, // Pinned certificate mismatch.
+        [unchecked((int)0x8A15006A)] = WingetErrorKind.Cancelled, // Shutdown signal.
+        [unchecked((int)0x8A150077)] = WingetErrorKind.Cancelled, // Authentication cancelled.
+        [unchecked((int)0x8A15010C)] = WingetErrorKind.Cancelled, // Installer cancelled.
         [unchecked((int)0x8A150114)] = WingetErrorKind.CannotUpgrade,
-        [unchecked((int)0x8A150115)] = WingetErrorKind.CannotUpgrade,
-        [unchecked((int)0x8A150116)] = WingetErrorKind.CannotUpgrade,
-        [unchecked((int)0x8A150117)] = WingetErrorKind.CannotUpgrade,
+        [unchecked((int)0x8A150115)] = WingetErrorKind.Unknown, // Custom installer error.
     };
 
     public ClassifiedWingetError? Classify(WingetCommandResult result)
@@ -44,23 +41,21 @@ public sealed class WingetErrorClassifier
             result.StandardOutput,
             result.StandardError);
 
-        if (!KnownExitCodes.TryGetValue(result.ExitCode, out var kind))
+        var knownCode = KnownExitCodes.TryGetValue(result.ExitCode, out var kind);
+        if (!knownCode)
         {
             kind = WingetErrorKind.Unknown;
         }
 
-        if (kind == WingetErrorKind.Unknown)
+        if (!knownCode)
         {
             if (ContainsAny(
                 text,
-                "No installed package found matching input criteria",
                 "No applicable update found",
                 "No available upgrade found",
                 "Nessun aggiornamento disponibile",
                 "Nessun aggiornamento applicabile",
                 "Non è stato trovato alcun aggiornamento applicabile",
-                "Non è stato trovato alcun pacchetto installato corrispondente ai criteri di input",
-                "Nessun pacchetto installato corrispondente",
                 "non si applica al sistema o ai requisiti",
                 "does not apply to the system or requirements",
                 "No applicable update was found",
@@ -72,6 +67,8 @@ public sealed class WingetErrorClassifier
                 text,
                 "No package found",
                 "No installed package found",
+                "Non è stato trovato alcun pacchetto installato corrispondente ai criteri di input",
+                "Nessun pacchetto installato corrispondente",
                 "No package found matching input criteria",
                 "Nessun pacchetto trovato con criteri di input corrispondenti",
                 "Nessun pacchetto trovato",
@@ -100,8 +97,6 @@ public sealed class WingetErrorClassifier
             else if (ContainsAny(
                 text,
                 "0x8a150114",
-                "0x8a150115",
-                "0x8a150116",
                 "Non è possibile aggiornare il pacchetto con WinGet",
                 "Package cannot be upgraded with WinGet",
                 "Utilizzare il metodo fornito dall'autore",
@@ -112,8 +107,8 @@ public sealed class WingetErrorClassifier
             }
             else if (ContainsAny(
                 text,
-                "0x8a150002",
-                "-1978335230",
+                "0x8a150011",
+                "-1978335215",
                 "InstallerHashOverride",
                 "InstallerHashMismatch",
                 "ignore-security-hash",
@@ -147,6 +142,11 @@ public sealed class WingetErrorClassifier
             _ => true
         };
     }
+
+    internal bool IsRetryable(WingetCommandResult result, ClassifiedWingetError? error) =>
+        result.ExitCode is not (unchecked((int)0x8A150002) or unchecked((int)0x8A15000F) or
+            unchecked((int)0x8A150012) or unchecked((int)0x8A150015) or unchecked((int)0x8A150016) or
+            unchecked((int)0x8A15005E) or unchecked((int)0x8A150115)) && IsRetryable(error);
 
     private static string CleanWingetOutput(string text)
     {

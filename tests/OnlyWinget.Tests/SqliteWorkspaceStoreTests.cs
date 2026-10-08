@@ -77,11 +77,11 @@ public sealed class SqliteWorkspaceStoreTests
         var jsonPath = Path.Combine(tempFolder, "workspace-v1.json");
         var dbPath = Path.Combine(tempFolder, "onlywinget.db");
 
-        var legacyStore = new JsonWorkspaceStore(jsonPath);
-        var legacyState = new WorkspaceState(
-            [new Preset("MigratedPreset", [new PackageIdentity("Microsoft.PowerToys")])],
-            "MigratedPreset");
-        await legacyStore.SaveAsync(legacyState, CancellationToken.None);
+        Directory.CreateDirectory(tempFolder);
+        const string legacyJson = """
+            {"schemaVersion":1,"presets":[{"name":"MigratedPreset","packages":[{"id":"Microsoft.PowerToys","source":"winget"}]}],"activePresetName":"MigratedPreset"}
+            """;
+        await File.WriteAllTextAsync(jsonPath, legacyJson);
 
         var sqliteStore = new SqliteWorkspaceStore(dbPath, jsonPath);
         var loaded = await sqliteStore.LoadAsync(CancellationToken.None);
@@ -89,7 +89,10 @@ public sealed class SqliteWorkspaceStoreTests
         Assert.Equal("MigratedPreset", loaded.ActivePresetName);
         var loadedPreset = Assert.Single(loaded.Presets);
         Assert.Equal("MigratedPreset", loadedPreset.Name);
-        Assert.Equal([new PackageIdentity("Microsoft.PowerToys")], loadedPreset.Packages);
+        Assert.Equal([new PackageIdentity("Microsoft.PowerToys", "winget")], loadedPreset.Packages);
+        Assert.Equal(legacyJson, await File.ReadAllTextAsync(jsonPath));
+        Assert.Equal("MigratedPreset", (await new SqliteWorkspaceStore(dbPath, jsonPath)
+            .LoadAsync(CancellationToken.None)).ActivePresetName);
     }
 
     [Fact]

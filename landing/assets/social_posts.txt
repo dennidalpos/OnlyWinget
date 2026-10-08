@@ -11,7 +11,7 @@ Below is a set of promotional posts for OnlyWinget, optimized for platforms like
 
 Tired of manually searching, downloading, and running installers for every single tool? OnlyWinget brings a clean, modern GUI to Windows package management, powered by Microsoft's official winget CLI.
 - 📦 **Create app lists (Presets):** Save your dev environments and restore them on any computer with one click.
-- 🔍 **Instant Search:** Find and select the exact versions you need.
+- 🔍 **Instant Search:** Find packages in your enabled sources and add them to presets.
 - 🔄 **Windows Update Integration:** Check local updates and Windows Updates side-by-side.
 
 Clean, open-source, and lightning-fast. Try OnlyWinget today!

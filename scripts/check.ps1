@@ -111,8 +111,28 @@ Invoke-Step 'cleanup data preservation regression' {
     & (Join-Path $scriptsRoot 'test-clean-preserves-data.ps1')
 }
 
+Invoke-Step 'process ownership regression' {
+    & (Join-Path $scriptsRoot 'test-process-ownership.ps1')
+}
+
+Invoke-Step 'verification invariants regression' {
+    & (Join-Path $scriptsRoot 'test-verification-invariants.ps1')
+}
+
+Invoke-Step 'media generation regression' {
+    & (Join-Path $scriptsRoot 'test-media-assets.ps1')
+}
+
+Invoke-Step 'landing artifact regression' {
+    & (Join-Path $scriptsRoot 'test-landing-artifacts.ps1')
+}
+
 Invoke-Step 'UI dialog ownership regression' {
     & (Join-Path $scriptsRoot 'test-ui-dialog-ownership.ps1')
+}
+
+Invoke-Step 'UI state snapshot regression' {
+    & (Join-Path $scriptsRoot 'test-ui-state-snapshot.ps1')
 }
 
 Invoke-Step 'release identity regression' {

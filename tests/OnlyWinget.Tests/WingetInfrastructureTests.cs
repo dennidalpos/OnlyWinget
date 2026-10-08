@@ -15,6 +15,91 @@ namespace OnlyWinget.Tests;
 public sealed class WingetInfrastructureTests
 {
     [Theory]
+    [InlineData(0x8A15000Fu)]
+    [InlineData(0x8A150015u)]
+    [InlineData(0x80070005u)]
+    public async Task InstalledProbeFailuresAreNotReportedAsAbsence(uint code)
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(unchecked((int)code), "", "Probe failed"));
+        var resolver = new WingetPackageResolver(runner, new(), new());
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => resolver.CheckInstalledStatusAsync(new("Pkg.A"), CancellationToken.None));
+        Assert.Contains($"0x{code:X8}", failure.Message);
+        Assert.Contains("Probe failed", failure.Message);
+    }
+
+    [Fact]
+    public async Task InstalledProbeRecognizesNativeNoMatch()
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(unchecked((int)0x8A150014), "Kein Paket", ""));
+        var resolver = new WingetPackageResolver(runner, new(), new());
+        Assert.False((await resolver.CheckInstalledStatusAsync(new("Pkg.A"), CancellationToken.None)).IsInstalled);
+    }
+
+    [Theory]
+    [InlineData("unreadable success output")]
+    [InlineData("Name  Id     Version\n--------------------\nApp   Pkg.A  1\nApp   Pkg.A  2")]
+    public async Task InstalledProbeRejectsUnreadableOrAmbiguousSuccess(string output)
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, ""));
+        var resolver = new WingetPackageResolver(runner, new(), new());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => resolver.CheckInstalledStatusAsync(new("Pkg.A"), CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(0x8A150002u, WingetErrorKind.Unknown)]
+    [InlineData(0x8A150005u, WingetErrorKind.Cancelled)]
+    [InlineData(0x8A15000Fu, WingetErrorKind.SourceUnavailable)]
+    [InlineData(0x8A150011u, WingetErrorKind.HashMismatch)]
+    [InlineData(0x8A150012u, WingetErrorKind.SourceUnavailable)]
+    [InlineData(0x8A150014u, WingetErrorKind.NotFound)]
+    [InlineData(0x8A150015u, WingetErrorKind.SourceUnavailable)]
+    [InlineData(0x8A150016u, WingetErrorKind.Unknown)]
+    [InlineData(0x8A150017u, WingetErrorKind.NotFound)]
+    [InlineData(0x800704C7u, WingetErrorKind.Cancelled)]
+    [InlineData(0x8A15002Bu, WingetErrorKind.NoUpdates)]
+    [InlineData(0x8A150045u, WingetErrorKind.SourceUnavailable)]
+    [InlineData(0x8A15005Eu, WingetErrorKind.SourceUnavailable)]
+    [InlineData(0x8A15006Au, WingetErrorKind.Cancelled)]
+    [InlineData(0x8A150077u, WingetErrorKind.Cancelled)]
+    [InlineData(0x8A15010Cu, WingetErrorKind.Cancelled)]
+    [InlineData(0x8A150114u, WingetErrorKind.CannotUpgrade)]
+    [InlineData(0x8A150115u, WingetErrorKind.Unknown)]
+    public void NativeReturnCodesMatchMicrosoftDefinitions(uint code, WingetErrorKind expected)
+    {
+        var result = new WingetErrorClassifier().Classify(new WingetCommandResult(unchecked((int)code), "", "Ausführung fehlgeschlagen"));
+        Assert.Equal(expected, result!.Kind);
+    }
+
+    [Theory]
+    [InlineData(0x8A150002u)]
+    [InlineData(0x8A15000Fu)]
+    [InlineData(0x8A150012u)]
+    [InlineData(0x8A150015u)]
+    [InlineData(0x8A150016u)]
+    [InlineData(0x8A150011u)]
+    [InlineData(0x8A15005Eu)]
+    [InlineData(0x8A150115u)]
+    public async Task NativeDeterministicFailuresNeverStartAnotherPackageAttempt(uint code)
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(unchecked((int)code), "", "Invalid operation"),
+            new WingetCommandResult(0, "Must not be executed", ""));
+        var executor = new WingetOperationExecutor(runner, new(), new(), retryDelay: TimeSpan.Zero);
+        var plan = new OperationPlanner().CreatePresetPlan(new Preset("Fixture", [new PackageIdentity("Pkg.A")]), PackageAction.Install);
+        var summary = await executor.ExecuteAsync(plan, CancellationToken.None, maxRetries: 2);
+        Assert.False(summary.Succeeded);
+        Assert.Equal(1, Assert.Single(summary.Results).AttemptCount);
+        Assert.Single(runner.Calls);
+    }
+
+    [Fact]
+    public void InvalidArgumentsCannotBeRelabelledByHashOrCancellationText()
+    {
+        var result = new WingetErrorClassifier().Classify(new WingetCommandResult(unchecked((int)0x8A150002),
+            "InstallerHashOverride cancelled", ""));
+        Assert.Equal(WingetErrorKind.Unknown, result!.Kind);
+    }
+
+    [Theory]
     [InlineData("search", unchecked((int)0x8A15005E), "", "")]
     [InlineData("list", 1, "0x8A15005E", "")]
     [InlineData("upgrade", 1, "", "0x8a15005e")]
@@ -250,7 +335,7 @@ public sealed class WingetInfrastructureTests
         var explicitTargetIt = classifier.Classify(new WingetCommandResult(1, "Per i pacchetti seguenti è disponibile un aggiornamento, ma è necessario un targeting esplicito per l'aggiornamento:", string.Empty));
         var cannotUpgradeIt = classifier.Classify(new WingetCommandResult(-1978334956, "Non è possibile aggiornare il pacchetto con WinGet. Utilizzare il metodo fornito dall'autore per aggiornare il pacchetto.", string.Empty));
         var cannotUpgradeEn = classifier.Classify(new WingetCommandResult(1, string.Empty, "Package cannot be upgraded with WinGet. Use provider's method to upgrade package."));
-        var hashMismatchIt = classifier.Classify(new WingetCommandResult(-1978335230, "Questa funzionalità deve essere abilitata dagli amministratori. Per abilitarlo, eseguire 'winget settings --enable InstallerHashOverride' come amministratore.\nutilizzo: winget install...", string.Empty));
+        var hashMismatchIt = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150011), "L'hash del programma di installazione non corrisponde.\nutilizzo: winget install...", string.Empty));
         var source = classifier.Classify(new WingetCommandResult(1, string.Empty, "Failed when searching source: winget"));
 
         Assert.Equal(WingetErrorKind.NotFound, notFound?.Kind);
@@ -258,7 +343,7 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdates?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesIt?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, noUpdatesEngMsg?.Kind);
-        Assert.Equal(WingetErrorKind.NoUpdates, noInstalledIt?.Kind);
+        Assert.Equal(WingetErrorKind.NotFound, noInstalledIt?.Kind);
         Assert.Equal(WingetErrorKind.NoUpdates, explicitTargetIt?.Kind);
         Assert.Equal(WingetErrorKind.CannotUpgrade, cannotUpgradeIt?.Kind);
         Assert.Equal(WingetErrorKind.CannotUpgrade, cannotUpgradeEn?.Kind);
@@ -281,8 +366,8 @@ public sealed class WingetInfrastructureTests
 
         var notFoundByExitCode = classifier.Classify(new WingetCommandResult(-1978335212, string.Empty, "Geen pakket gevonden dat overeenkomt met de invoercriteria."));
         var noUpdatesByExitCode = classifier.Classify(new WingetCommandResult(-1978335189, string.Empty, "Er zijn geen updates gevonden voor dit pakket."));
-        var hashMismatchByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150002), string.Empty, "Hash mismatch error in any language"));
-        var cancelledByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150015), string.Empty, "Operation cancelled in any language"));
+        var hashMismatchByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150011), string.Empty, "Hash mismatch error in any language"));
+        var cancelledByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150005), string.Empty, "Operation cancelled in any language"));
         var errorCancelledByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x800704C7), string.Empty, "UAC prompt dismissed by user"));
         var sourceUnavailableByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A15005E), string.Empty, "Source unavailable error"));
         var cannotUpgradeByExitCode = classifier.Classify(new WingetCommandResult(unchecked((int)0x8A150114), string.Empty, "Cannot upgrade generic"));

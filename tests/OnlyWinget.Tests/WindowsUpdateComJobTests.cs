@@ -6,18 +6,13 @@ namespace OnlyWinget.Tests;
 
 public sealed class WindowsUpdateComJobTests
 {
-    [Fact]
+    [LiveFact]
     [Trait("Category", "Smoke")]
     [SupportedOSPlatform("windows")]
     [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("This live COM smoke test runs in the untrimmed test host and binds to OS-provided automation metadata.")]
     [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("This live COM smoke test uses the Windows automation runtime binder.")]
     public async Task NativeSearchCallbackCompletesOrAbortsWithoutFallback()
     {
-        if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("ONLYWINGET_RUN_WINGET_SMOKE") != "1")
-        {
-            return;
-        }
-
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var aborted = false;
         var cleaned = false;

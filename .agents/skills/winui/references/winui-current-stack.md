@@ -1,42 +1,15 @@
-# WinUI 3 & Windows App SDK Current Stack Reference
+# OnlyWinget stack
 
-Last Updated: July 3, 2026
+Verified against checkout project files on 2026-10-08. These are repository pins, not recommendations to install the globally newest versions.
 
-This document lists the recommended stable versions and dependencies for modern WinUI 3 / Windows App SDK desktop development, aligned with the project targets of **OnlyWinget**.
+- global.json: .NET SDK 10.0.301 with latestFeature roll-forward. Resolve the effective installed SDK with dotnet --version.
+- OnlyWinget.csproj: net10.0-windows10.0.17763.0, minimum build 17763, win-x64 only.
+- Microsoft.WindowsAppSDK 2.3.1; CommunityToolkit.Mvvm 8.4.2; Microsoft.Extensions.Hosting 10.0.11.
+- SelfContained=true, WindowsAppSDKSelfContained=true, WindowsPackageType=None.
+- app.manifest: asInvoker. Distribution: NSIS multi-user EXE and portable ZIP; no MSIX manifest/task.
+- PowerShell 7+ repository scripts; Windows PowerShell is used by specific installer/native fallback paths. NSIS compiles setup artifacts.
+- WinApp CLI supports UI automation. Templates and the optional upstream analyzer are not necessary for ordinary repo compile/offline tests.
 
-## 1. Operating System & Platform Targets
-- **Target OS**: Windows 10, version 1809 (Build 17763) or higher.
-- **Minimum OS version**: `10.0.17763.0`
-- **Target OS version**: `10.0.17763.0`
-- **Architecture**: `x64` (ARM64 supported where needed; `x86` and `AnyCPU` are obsolete/deprecated for this codebase).
+Reinspect [the project](../../../../src/OnlyWinget/OnlyWinget.csproj), [global.json](../../../../global.json), [AGENTS.md](../../../../AGENTS.md) and [commands](../../onlywinget/references/commands.md) before relying on version/verification snapshots.
 
-## 2. Recommended .NET SDK
-- **Runtime**: .NET 10.0 LTS (Current SDK version used in project: `10.0.301` / runtime version: `10.0.9`).
-- **Roll Forward Policy**: `latestFeature` (configured in `global.json`).
-
-## 3. Core SDKs and Build Tools
-- **Microsoft.WindowsAppSDK**: `2.2.0` (Stable)
-  - Provides the WinUI 3 controls, app lifecycle management, windowing APIs, and resource management.
-  - Used in self-contained mode (`<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>`).
-- **Microsoft.Windows.SDK.BuildTools**: `10.0.28000.2270` (Stable)
-  - Provides the MSBuild targets to compile XAML files and generate projections.
-- **Microsoft.Windows.CsWinRT**: Built-in or referenced (used for C#/WinRT interop).
-
-## 4. UI & MVVM Libraries
-- **CommunityToolkit.Mvvm**: `8.4.2` (Stable)
-  - The standard MVVM framework for Windows. Extensively uses C# Source Generators (`[ObservableProperty]`, `[RelayCommand]`, `ObservableObject`).
-- **CommunityToolkit.WinUI Packages**: `8.2.251219` (Stable)
-  - Controls, helpers, and behaviors for WinUI 3. Avoid previews (`8.3.x-preview`) unless explicitly requested.
-
-## 5. Development Environment Workloads
-To build this project, Visual Studio 2022 (v17.10+ / MSBuild 18+) or Visual Studio Build Tools 2022 is required with:
-- **.NET Desktop Development** workload (`Microsoft.VisualStudio.Workload.NetWeb` or `Microsoft.VisualStudio.Workload.ManagedDesktop`).
-- **Universal Windows Platform Development** workload (`Microsoft.VisualStudio.Workload.Universal`) to install the Windows 10 SDK (10.0.17763.0) and packaging tools.
-- **C++ Desktop Development** workload (required for compiling packaging/installer components).
-
-## 6. Official Resources & References
-- [Windows App SDK Release Notes](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/stable-channel)
-- [NuGet Gallery - Microsoft.WindowsAppSDK](https://www.nuget.org/packages/Microsoft.WindowsAppSDK)
-- [GitHub - Microsoft WindowsAppSDK Repository](https://github.com/microsoft/WindowsAppSDK)
-- [Microsoft Learn - WinUI 3 Hub](https://learn.microsoft.com/en-us/windows/apps/winui/winui3/)
-- [Community Toolkit for Windows documentation](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/)
+Sources for a requested version/deployment change: [Windows App SDK stable channel](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/stable-channel), [SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json), [deployment models](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/).

@@ -1,53 +1,24 @@
 ---
 name: onlywinget
-description: Use this skill when developing, testing, packaging, or modifying the OnlyWinget C#/.NET 10 WinUI 3 application, including its clean architecture layers, PowerShell run scripts, winget & Windows Update APIs, and WiX installer.
+description: "Develop, maintain or audit the OnlyWinget .NET 10 WinUI 3 application, its WinGet CLI and Windows Update workflows, and NSIS/portable packaging."
 ---
 
-# OnlyWinget Development Skill
+# OnlyWinget maintenance
 
-This skill is the project-specific developer guide for agents working on [OnlyWinget](file:///d:/GITHUB/OnlyWinget). It keeps changes aligned with the Clean Architecture boundaries, script workflow, WinUI presentation rules, and packaging targets.
+Start with [AGENTS.md](../../../AGENTS.md), [PROJECT_STATUS.json](../../../PROJECT_STATUS.json) and the current diff. They define the checkout, pending work and verification evidence.
 
-## Documentation Map
+## Read only the relevant reference
 
-- **Architecture Details**: Deep-dive on architecture, layers, threading, and interop rules in [architecture.md](file:///d:/GITHUB/OnlyWinget/.agents/skills/onlywinget/references/architecture.md).
-- **Workflow & Testing Commands**: Detailed parameters and execution flags in [commands.md](file:///d:/GITHUB/OnlyWinget/.agents/skills/onlywinget/references/commands.md).
+- [Architecture invariants](references/architecture.md): persistence, workflow ownership, diagnostics and native update behavior.
+- [Commands](references/commands.md): build/test/package tasks and validation boundaries.
+- [Maintained architecture](../../../docs/architecture.md), [operations](../../../docs/operations.md) and [release](../../../docs/release.md) are canonical product documentation.
 
-## Critical Developer Rules
+## Repository decisions
 
-1. **Dependency Direction (Strict Onion)**:
-   - `WinUI Presentation -> Application -> Domain`
-   - `Infrastructure -> Application -> Domain`
-   - **Do NOT** let `Application` depend on `Infrastructure` or `WinUI`.
-   - **Do NOT** let `Domain` depend on *anything* else (keep it pure C#).
-
-2. **Concurrency & Thread Safety**:
-   - Guard shared in-memory updates (like `packageMetadata` additions) with `lock` sync primitives.
-   - **Process Isolation**: All external process execution must use `ProcessExternalProcessRunner`.
-   - **Command Argument Sanitization**: Arguments must always be passed via `ProcessStartInfo.ArgumentList` (never concatenated into a shell command line). The app runs as invoker (`app.manifest` specifies `asInvoker`), supporting both standard non-admin users and elevated execution with runtime privilege detection.
-   - **CancellationToken Propagation**: Every asynchronous operation must accept and honor real `CancellationToken` instances for work designed to support cancellation.
-
-3. **WinUI Presentation & MVVM**:
-   - Use `CommunityToolkit.Mvvm` source generators (`[ObservableProperty]`, `[RelayCommand]`) and `WeakReferenceMessenger`. ViewModels bound via `x:Bind` must be declared `public` (constructors can remain `internal`) for successful compilation.
-   - Do NOT use `XamlReader.Load` to parse inline XAML strings at runtime. Generate grid-row cell layouts programmatically in C# (e.g., using `OnlyWingetTableRow`).
-   - Use page item source collections stably and update them; avoid replacing whole collections unless necessary.
-   - Publish state changes using the instance-scoped `OnlyWingetApplication.StateChanged` event or `WeakReferenceMessenger`.
-
-4. **Localization**:
-   - Only English and Italian strings are supported.
-   - Do NOT create `.resw` or `.resx` files. All string values are stored in [TextResources.cs](file:///d:/GITHUB/OnlyWinget/src/OnlyWinget/TextResources.cs) code dictionaries.
-
-5. **External Processes & COM**:
-   - WinGet search/resolve uses `WingetPackageSearchService` and `WingetPackageResolver` through `ProcessWingetCommandRunner`, with source-specific `IMemoryCache` TTL caching.
-   - Windows Update uses COM automation (`ComWindowsUpdateService`) with asynchronous jobs and `RequestAbort` cancellation. PowerShell fallback is allowed when COM cannot be activated; never retry a cancelled or failed installation automatically.
-   - Centralize OS/winget/PowerShell capability checks in `ISystemCapabilityService`.
-   - Scan Windows Update only on explicit user action; read-only discovery must not require administrative elevation.
-   - Guard all process execution and COM interop with structured failure handling. Return actionable results (`WingetOperationOutcome`, `WindowsUpdateOperationOutcome`).
-
-## Workflow Verification
-
-Before concluding any work, ensure you run the local script verification tasks:
-- Setup: `.\scripts\run.ps1 -Task Setup -NonInteractive`
-- Formatting: `.\scripts\run.ps1 -Task Format -NoRestore -NonInteractive`
-- Linting: `.\scripts\run.ps1 -Task Lint -NonInteractive`
-- Build / Typecheck: `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive`
-- Tests: `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive`
+- Presentation depends inward on Application/Domain; Infrastructure implements Application ports. Infrastructure references in UI belong only in AppComposition.
+- Use ProcessExternalProcessRunner and ArgumentList for external processes. WinGet integration uses the CLI; asynchronous COM jobs are for Windows Update.
+- TextResources.cs and Localize provide EN/IT localization. Keep existing field-based CommunityToolkit generators and typed UiCommand patterns; do not migrate them just to satisfy a generic sample.
+- OnlyWingetTable uses ListView/ItemsStackPanel virtualization. Preserve shared column sizing and selection behavior.
+- Deployment is unpackaged, self-contained win-x64, with asInvoker and NSIS per-user/per-machine scopes. URL activation is retired. Do not introduce MSIX, ARM64 or a protocol handler through generic WinUI guidance.
+- Check relevant native contracts against current primary sources. Do not equate compilation/offline regressions with interactive UI, live package/update operations or hosted release qualification.
+- Update documentation after task completion, remove closed tracker entries and record remaining validation. Do not copy historical counts into current evidence.

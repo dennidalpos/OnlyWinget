@@ -25,24 +25,6 @@ public sealed partial class OnlyWingetApplication
         return await ExecutePlanAsync(plan, cancellationToken, progress).ConfigureAwait(false);
     }
 
-    public async Task<ApplicationActionResult> RetryFailedOperationsAsync(
-        CancellationToken cancellationToken,
-        IProgress<OperationProgress>? progress = null)
-    {
-        var failedSelections = ReadState(() => lastOperationResults
-            .Where(result => !result.Succeeded)
-            .Select(result => result.Selection)
-            .ToArray());
-
-        if (failedSelections.Length == 0)
-        {
-            return ApplicationActionResult.Failure("No failed operations to retry.");
-        }
-
-        var retryPlan = new OperationPlan("Retry failed operations", failedSelections);
-        return await ExecutePlanAsync(retryPlan, cancellationToken, progress).ConfigureAwait(false);
-    }
-
     public ApplicationActionResult ClearActivity() =>
         Run(() =>
         {
@@ -90,6 +72,14 @@ public sealed partial class OnlyWingetApplication
                         {
                             try
                             {
+                                if (selection.Action == PackageAction.Uninstall)
+                                {
+                                    // WinGet validates one installed match; remote show is unnecessary.
+                                    cancellationToken.ThrowIfCancellationRequested();
+                                    validatedSelections.Add(selection);
+                                    continue;
+                                }
+
                                 var validated = await ValidatePackageAsync(selection.Package, cancellationToken).ConfigureAwait(false);
 
                                 // Skip packages whose installed version already satisfies the action.

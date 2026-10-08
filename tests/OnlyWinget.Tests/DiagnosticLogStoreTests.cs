@@ -5,6 +5,62 @@ namespace OnlyWinget.Tests;
 
 public sealed class DiagnosticLogStoreTests
 {
+    [Fact]
+    public async Task RollingAndRetentionBoundConcurrentWritesAndPreserveUnrelatedFiles()
+    {
+        using var fixture = new LogFixture();
+        var unrelated = Path.Combine(fixture.Directory, "onlywinget-20261008-user.log");
+        File.WriteAllText(unrelated, "preserve");
+        var store = new DiagnosticLogStore(fixture.Directory, maxFileBytes: 256, maxFiles: 3);
+        await Task.WhenAll(Enumerable.Range(0, 50).Select(index => Task.Run(() => Assert.True(store.Write(Entry($"message-{index:D2}"))))));
+        var logs = Directory.GetFiles(fixture.Directory).Where(path => path != unrelated).ToArray();
+        Assert.Equal(3, logs.Length);
+        Assert.All(logs, path => Assert.InRange(new FileInfo(path).Length, 1, 256));
+        Assert.Equal(50, store.GetRecentLogs().Count);
+        Assert.Equal("preserve", File.ReadAllText(unrelated));
+        Assert.True(store.Clear());
+        Assert.Equal(new[] { unrelated }, Directory.GetFiles(fixture.Directory));
+        Assert.True(store.Write(Entry("after rolling clear")));
+    }
+
+    [Fact]
+    public void OversizedEntryRetainsMemoryAndExposesFailureWithoutGrowingDisk()
+    {
+        using var fixture = new LogFixture();
+        var store = new DiagnosticLogStore(fixture.Directory, maxFileBytes: 128, maxFiles: 2);
+        Assert.False(store.Write(Entry(new string('x', 256))));
+        Assert.Single(store.GetRecentLogs());
+        Assert.Contains("disk file limit", store.LastError);
+        Assert.Empty(Directory.GetFiles(fixture.Directory));
+        Assert.True(store.Write(Entry("fits")));
+        Assert.Null(store.LastError);
+    }
+
+    [Fact]
+    public void LegacyOversizedLogIsPrunedToTheAggregateBudget()
+    {
+        using var fixture = new LogFixture();
+        File.WriteAllText(fixture.LogPath, new string('x', 1024));
+        var store = new DiagnosticLogStore(fixture.Directory, maxFileBytes: 128, maxFiles: 2);
+        Assert.True(store.Write(Entry("new entry")));
+        Assert.False(File.Exists(fixture.LogPath));
+        var remaining = Assert.Single(Directory.GetFiles(fixture.Directory));
+        Assert.Contains("new entry", File.ReadAllText(remaining));
+    }
+
+    [Fact]
+    public void RetentionFailureKeepsActiveWriteAndExposesTheError()
+    {
+        using var fixture = new LogFixture();
+        var old = Path.Combine(fixture.Directory, "onlywinget-20261007.log");
+        File.WriteAllText(old, "old log");
+        using var locked = File.Open(old, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var store = new DiagnosticLogStore(fixture.Directory, maxFileBytes: 128, maxFiles: 1);
+        Assert.False(store.Write(Entry("active write")));
+        Assert.NotNull(store.LastError);
+        Assert.Contains("active write", File.ReadAllText(fixture.LogPath));
+        Assert.Single(store.GetRecentLogs());
+    }
     private static AppLogEntry Entry(string message, AppLogLevel level = AppLogLevel.Information) =>
         new(new DateTimeOffset(2026, 10, 8, 12, 0, 0, TimeSpan.Zero), level, "Test", message);
 
