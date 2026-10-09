@@ -80,7 +80,9 @@ UI automation against a running app PID:
 .\scripts\ui-test.ps1 -AppPid <PID> -NonInteractive
 ```
 
-Import-picker cancellation targets only newly opened windows whose owner chain reaches the tested main window, with its PID verified. It never terminates `PickerHost` or closes unrelated dialogs. If ownership cannot be established, that check fails without closing the window. The full gate includes `scripts/test-ui-dialog-ownership.ps1`, an isolated native-window ownership regression; real brokered picker compatibility still needs an interactive check.
+Import-picker cancellation targets only newly opened windows whose owner chain reaches the tested main window, with its PID verified. It never terminates `PickerHost` or closes unrelated dialogs. If ownership cannot be established, that check fails without closing the window. The full gate includes `scripts/test-ui-dialog-ownership.ps1`, an isolated native-window ownership regression.
+
+The real WinUI import, focus, source-toggle restoration, selection preservation and three resized layouts passed on 2026-10-09, including import cancellation while a separate picker remained open. See [the current validation evidence](tracker-review-2026-10-09.md). These checks do not install packages or Windows updates.
 
 ## Source preferences and privileges
 
@@ -130,7 +132,9 @@ Diagnostic disk logs roll at 10 MiB and retain at most 14 recognized files (140 
 
 Clear in the log viewer deletes recognized daily and rolled app logs and clears memory only after successful file cleanup. A write or clear failure is shown with its error; original memory entries remain available for copy/export. Activity clear and Undo affect only Activity. Export reports successful writing, picker cancellation or failure separately.
 
-The viewer labels, level badges, filters and action outcomes are localized in English/Italian. Clear opens an inline confirmation inside the existing dialog; cancel leaves logs unchanged. Badges use theme resources and explicit level text. Runtime confirmation/picker behavior and High Contrast appearance remain pending under AUDIT-22.
+The viewer labels, level badges, filters and action outcomes are localized in English/Italian. Clear opens an inline confirmation inside the existing dialog; cancel leaves logs unchanged. Badges use theme resources and explicit level text. The viewer and confirmation dialogs use the host's actual theme. Actual Light/Dark rendering, a High Contrast snapshot, clear cancellation, locked-file failure and successful retry were checked on 2026-10-09. Export success and picker cancellation also passed. Copy and export-failure paths still need interactive qualification under AUDIT-22; see [the validation record](tracker-review-2026-10-09.md).
+
+The native export picker is modal: the main window stays open while the picker is active. Cancel the picker before closing the app. The shared picker service applies cancellation to file I/O; native picker cancellation during window shutdown is not qualified.
 
 ## Windows Update metadata
 

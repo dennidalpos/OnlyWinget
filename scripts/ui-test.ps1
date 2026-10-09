@@ -16,8 +16,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/VerificationHelpers.ps1')
 
 function Invoke-UiCli {
-    param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
-    Invoke-CheckedNativeCommand -Command 'winapp' -Arguments $Arguments
+    Invoke-CheckedNativeCommand -Command 'winapp' -Arguments $args
 }
 
 $isFastMode = -not $Full
@@ -95,7 +94,7 @@ Test-Ui 'Navigation shell is accessible' {
 }
 
 Test-Ui 'Keyboard focus moves through navigation' {
-    Invoke-UiCli ui focus 'RootNavigation' -a $AppPid -q
+    Invoke-UiCli ui focus 'NavHome' -a $AppPid -q
     $before = [System.Windows.Automation.AutomationElement]::FocusedElement
     if ($null -eq $before -or $before.Current.ProcessId -ne $AppPid) { throw 'Focus is outside the test application.' }
     $beforeId = $before.GetRuntimeId() -join ','
@@ -152,7 +151,8 @@ Test-Ui 'Import picker can be cancelled without mutation' {
     $pickerWindowsRaw = Invoke-UiCli ui list-windows --json
     $pickers = @($pickerWindowsRaw | ConvertFrom-Json |
         Where-Object {
-            $_.title -match 'Open|Apri' -or $_.className -eq '#32770'
+            ($_.PSObject.Properties['title'] -and $_.title -match 'Open|Apri') -or
+            ($_.PSObject.Properties['className'] -and $_.className -eq '#32770')
         })
 
     $closedPicker = $false
@@ -177,6 +177,13 @@ Test-Ui 'Import picker can be cancelled without mutation' {
     if ($afterRows -cne $beforeRows -or $afterPreset -cne $beforePreset) {
         throw 'Preset rows, checkbox states or selected preset changed after cancelling import.'
     }
+}
+
+Test-Ui 'Log viewer opens and closes' {
+    Invoke-UiCli ui click 'NavOpenLogs' -a $AppPid -q
+    Invoke-UiCli ui wait-for 'LogViewerListView' -a $AppPid -t 3000 -q
+    Invoke-UiCli ui invoke 'CloseButton' -a $AppPid -q
+    Invoke-UiCli ui wait-for 'LogViewerListView' -a $AppPid --gone -t 3000 -q
 }
 
 Test-Ui 'Shared tables and progress controls expose accessibility metadata' {

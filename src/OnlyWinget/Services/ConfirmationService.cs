@@ -19,7 +19,8 @@ internal sealed class ConfirmationService(IAppSettingsService settings) : IConfi
             PrimaryButtonText = TextResources.Get("Dialog_Confirm"),
             CloseButtonText = TextResources.Get("Dialog_Cancel"),
             DefaultButton = ContentDialogButton.Close,
-            XamlRoot = xamlRoot
+            XamlRoot = xamlRoot,
+            RequestedTheme = (xamlRoot.Content as FrameworkElement)?.ActualTheme ?? ElementTheme.Default
         };
 
         return await dialog.ShowAsync() == ContentDialogResult.Primary;

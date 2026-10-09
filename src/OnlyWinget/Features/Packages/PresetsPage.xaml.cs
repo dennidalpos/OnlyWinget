@@ -267,7 +267,8 @@ public sealed partial class PresetsPage : UserControl, IPendingNavigationGuard
                 SecondaryButtonText = ViewModel.HasUnsavedEdit ? string.Empty : TextResources.Get("Dialog_UnsavedChanges_Discard"),
                 CloseButtonText = TextResources.Get("Dialog_Cancel"),
                 DefaultButton = isEditValid ? ContentDialogButton.Primary : ContentDialogButton.Close,
-                XamlRoot = XamlRoot
+                XamlRoot = XamlRoot,
+                RequestedTheme = (XamlRoot.Content as FrameworkElement)?.ActualTheme ?? ElementTheme.Default
             };
 
             var result = await dialog.ShowAsync();

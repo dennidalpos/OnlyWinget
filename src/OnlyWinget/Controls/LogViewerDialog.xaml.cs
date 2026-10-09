@@ -19,6 +19,7 @@ public sealed partial class LogViewerDialog : ContentDialog
         if (App.XamlRoot is not null)
         {
             XamlRoot = App.XamlRoot;
+            RequestedTheme = (XamlRoot.Content as FrameworkElement)?.ActualTheme ?? ElementTheme.Default;
         }
         LogListView.ItemsSource = logEntries;
         Closed += (_, _) => exportCancellation?.Cancel();

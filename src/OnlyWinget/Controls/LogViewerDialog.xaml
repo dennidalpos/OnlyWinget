@@ -103,7 +103,7 @@
             MinHeight="300"
             MaxHeight="500"
             AutomationProperties.AutomationId="LogViewerListView"
-            Background="{ThemeResource LayerOnCanvasFillColorDefaultBrush}"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1"
             CornerRadius="8">

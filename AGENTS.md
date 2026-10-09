@@ -1,6 +1,6 @@
 # AGENTS.md
 
-`v1.2 · 2026-10-08` — Non-derivable repository facts only. Cap ~2500 characters.
+`v1.2 · 2026-10-09` — Non-derivable repository facts only. Cap ~2500 characters.
 
 ## 1. Identity & Scope
 - **Purpose**: C#/.NET 10 WinUI 3 client for winget and Windows Update scans.
@@ -12,8 +12,8 @@
 | Workflow | Command | Shell / Cwd | Verified on | Notes / Examples |
 | :--- | :--- | :--- | :--- | :--- |
 | **Tests** | `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | 380 executed results; live Smoke excluded |
-| **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-08 | 39 scripts OK |
-| **Typecheck** | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-08 | Zero warnings/errors |
+| **Lint** | `.\scripts\run.ps1 -Task Lint -NonInteractive` | pwsh / repo root | 2026-10-09 | 39 scripts OK |
+| **Typecheck** | `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive` | pwsh / repo root | 2026-10-09 | Zero warnings/errors |
 | **Packaging** | `.\scripts\package.ps1 -NoRestore -Fast -NonInteractive` | pwsh / repo root | 2026-10-08 | Staged NSIS EXE & portable ZIP |
 
 ## 3. Architecture & Boundaries
