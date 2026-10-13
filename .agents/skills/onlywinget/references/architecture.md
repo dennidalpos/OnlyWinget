@@ -24,7 +24,7 @@ Serilog and direct diagnostics share DiagnosticLogStore: one UTF-8 writer and bo
 
 FeatureViewModel uses the instance workflow StateChanged event and dispatcher. Use the existing field-based generators/typed commands; messenger/RelayCommand use is not universal.
 
-OnlyWingetTable is ListView/ItemsStackPanel. Keep stable collections, theme resources and EN/IT TextResources/Localize. Log clear uses inline confirmation in the existing ContentDialog. Real picker/dialog/High Contrast checks are not proven by compilation.
+OnlyWingetTable is ListView/ItemsStackPanel. Keep stable collections, theme resources and EN/IT TextResources/Localize. A ContentDialog opened from the app root must use that root's actual theme; use pinned, verified WinUI theme resources rather than guessing resource keys. Log clear uses inline confirmation in the existing ContentDialog. Real picker/dialog/High Contrast checks are not proven by compilation.
 
 ## Deployment
 
