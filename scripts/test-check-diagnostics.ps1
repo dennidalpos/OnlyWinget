@@ -67,7 +67,58 @@ throw 'intentional failure after restore'
             $process = $null
         }
     }
-    Write-Host 'PASS: Check retains stdout/stderr and failure reports in default/Fast/Full modes, stops on restore failure and reports later failures.'
+
+    # Use a real SDK/NuGet failure too; the command-stub cases above cover both output streams.
+    $realRoot = Join-Path $fixtureRoot 'real-restore'
+    $realScripts = Join-Path $realRoot 'scripts'
+    $realSupport = Join-Path $realScripts 'support'
+    $realProjectRoot = Join-Path $realRoot 'tests/OnlyWinget.Tests'
+    New-Item -ItemType Directory -Path $realSupport, $realProjectRoot -Force | Out-Null
+    foreach ($script in @('check', 'build', 'package', 'lint', 'typecheck', 'test', 'format')) {
+        Copy-Item -LiteralPath (Join-Path $fixtureScripts "$script.ps1") -Destination $realScripts
+    }
+    Copy-Item -LiteralPath (Join-Path $fixtureSupport 'ScriptHelpers.ps1') -Destination $realSupport
+    Copy-Item -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'global.json') -Destination $realRoot
+    $realProject = Join-Path $realProjectRoot 'OnlyWinget.Tests.csproj'
+    [IO.File]::WriteAllText($realProject, '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile></PropertyGroup></Project>')
+    [IO.File]::WriteAllText((Join-Path $realProjectRoot 'packages.lock.json'), '{"version":1,"dependencies":{"net10.0":{},"net10.0/win-x64":{}}}')
+    $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
+    $generation = & $dotnet new sln --format sln --name OnlyWinget --output $realRoot 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Solution fixture generation failed: $generation" }
+    $generation = & $dotnet sln (Join-Path $realRoot 'OnlyWinget.sln') add $realProject 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Solution fixture project addition failed: $generation" }
+
+    $start = [Diagnostics.ProcessStartInfo]::new((Get-Command pwsh -ErrorAction Stop).Source)
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.WorkingDirectory = $realRoot
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    foreach ($argument in @('-NoProfile', '-File', (Join-Path $realScripts 'check.ps1'), '-NonInteractive')) {
+        $start.ArgumentList.Add($argument)
+    }
+    $process = [Diagnostics.Process]::Start($start)
+    $output = $process.StandardOutput.ReadToEndAsync()
+    $errors = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $combinedOutput = $output.Result + $errors.Result
+    $realLog = Join-Path $realRoot 'artifacts/check/restore.log'
+    $realReport = Join-Path $realRoot 'artifacts/build-report.txt'
+    if ($process.ExitCode -eq 0 -or $combinedOutput -notmatch 'NU1004' -or $combinedOutput -notmatch 'Diagnostics:' -or
+        -not (Test-Path -LiteralPath $realLog) -or -not (Test-Path -LiteralPath $realReport)) {
+        throw "Real locked restore failure was not retained: $combinedOutput"
+    }
+    if ([IO.File]::ReadAllText($realLog) -notmatch 'NU1004' -or [IO.File]::ReadAllText($realReport) -notmatch 'FailedStep: restore') {
+        throw 'Real NuGet failure did not identify the restore step and error code.'
+    }
+    $retainedRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'artifacts/check'
+    New-Item -ItemType Directory -Path $retainedRoot -Force | Out-Null
+    Copy-Item -LiteralPath $realLog -Destination (Join-Path $retainedRoot 'restore-failure-fixture.log')
+    Copy-Item -LiteralPath $realReport -Destination (Join-Path $retainedRoot 'restore-failure-fixture-report.log')
+    [IO.File]::WriteAllText((Join-Path $retainedRoot 'restore-failure-fixture-console.log'), $combinedOutput)
+    $process.Dispose()
+    $process = $null
+    Write-Host 'PASS: Check retains default/Fast/Full failure diagnostics and rejects a real NU1004 restore; fixture logs/report are retained for CI upload.'
 }
 finally {
     if ($null -ne $process) {
