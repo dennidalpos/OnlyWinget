@@ -50,7 +50,9 @@ jobs:
           name: onlywinget-build-gate
           path: |
             artifacts/build-report.txt
+            artifacts/check/*.log
             artifacts/dist/OnlyWinget/Release/*-setup.exe
             artifacts/dist/OnlyWinget/Release/*-portable-x64.zip
             artifacts/test-results/**/*.trx
+            artifacts/test-results/**/*.log
           if-no-files-found: error

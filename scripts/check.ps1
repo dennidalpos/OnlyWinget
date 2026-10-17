@@ -41,8 +41,27 @@ function Invoke-Step {
     if (-not $isFastMode) {
         Write-Host "==> $Name" -ForegroundColor Cyan
     }
-    & $Action
-    Assert-LastExitCode "$Name fallito."
+    try {
+        & $Action
+        Assert-LastExitCode "$Name fallito."
+    }
+    catch {
+        $failure = $_
+        try {
+            New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
+            @(
+                'Result: FAILED'
+                "Configuration: $Configuration"
+                "FailedStep: $Name"
+                "Error: $($failure.Exception.Message)"
+                "SmokeTests: $smokeTestStatus"
+                "GeneratedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+                $steps
+            ) | Set-Content -LiteralPath $reportPath -Encoding utf8
+        }
+        catch { Write-Warning "Unable to retain gate failure report: $_" }
+        throw $failure
+    }
     $steps.Add("${Name}: OK")
 }
 
@@ -90,12 +109,18 @@ Invoke-Step 'clean generated outputs' {
 }
 
 Invoke-Step 'restore' {
+    $restoreLogPath = Join-Path $artifactsPath 'check/restore.log'
+    New-Item -ItemType Directory -Path (Split-Path $restoreLogPath -Parent) -Force | Out-Null
     if ($isFastMode) {
-        dotnet restore $solutionPath --locked-mode > $null
+        dotnet restore $solutionPath --locked-mode 2>&1 | Out-File -LiteralPath $restoreLogPath -Encoding utf8
     } else {
-        dotnet restore $solutionPath --locked-mode
+        dotnet restore $solutionPath --locked-mode 2>&1 | Tee-Object -FilePath $restoreLogPath | Out-Host
     }
-    Assert-LastExitCode 'dotnet restore fallito.'
+    $restoreExitCode = $LASTEXITCODE
+    if ($restoreExitCode -ne 0) {
+        if ($isFastMode) { Get-Content -LiteralPath $restoreLogPath -Tail 60 | Out-Host }
+        throw "dotnet restore failed (exit $restoreExitCode). Diagnostics: $restoreLogPath"
+    }
     if ($isFastMode) { Write-Host 'PASS: Restore completed.' -ForegroundColor Green }
 }
 
@@ -117,6 +142,10 @@ Invoke-Step 'process ownership regression' {
 
 Invoke-Step 'verification invariants regression' {
     & (Join-Path $scriptsRoot 'test-verification-invariants.ps1')
+}
+
+Invoke-Step 'check diagnostics regression' {
+    & (Join-Path $scriptsRoot 'test-check-diagnostics.ps1')
 }
 
 Invoke-Step 'media generation regression' {

@@ -34,10 +34,14 @@ function Assert-ReleaseSentinel {
 }
 
 function Assert-Failure {
-    param([scriptblock]$Action, [string]$Message, [string]$ExpectedError)
+    param([scriptblock]$Action, [string]$Message, [string]$ExpectedError, [int[]]$ExpectedWin32Error = @())
     $failed = $false
     try { & $Action } catch {
-        if ($_.Exception.Message -notmatch $ExpectedError) { throw }
+        if ($ExpectedWin32Error.Count -gt 0) {
+            $nativeException = $_.Exception
+            while ($null -ne $nativeException.InnerException) { $nativeException = $nativeException.InnerException }
+            if ($nativeException -isnot [IO.IOException] -or ($nativeException.HResult -band 0xffff) -notin $ExpectedWin32Error) { throw }
+        } elseif ($_.Exception.Message -notmatch $ExpectedError) { throw }
         $failed = $true
     }
     if (-not $failed) { throw $Message }
@@ -91,7 +95,8 @@ try {
     # Fail after the first file was promoted; the unchanged locked ZIP remains readable.
     $lock = [IO.File]::Open($portable, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
     try {
-        Assert-Failure -Message 'Expected promotion sharing violation.' -ExpectedError 'used by another process|being used|utilizzato da un altro processo' -Action {
+        # ReplaceFile can report ERROR_UNABLE_TO_REMOVE_REPLACED (1175) rather than a sharing violation (32).
+        Assert-Failure -Message 'Expected locked-artifact promotion failure.' -ExpectedWin32Error @(32, 1175) -Action {
             New-PackageArtifactPair -OutputDirectory $output -PublishDirectory $publish -Version '1.0.2' -BuildSetup $build
         }
     } finally { $lock.Dispose(); $lock = $null }

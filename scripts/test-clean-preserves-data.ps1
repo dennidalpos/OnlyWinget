@@ -12,6 +12,7 @@ try {
     New-Item -ItemType Directory -Path "$fixtureRepo/scripts/support", "$fixtureRepo/src", "$fixtureRepo/artifacts", "$fixtureData/OnlyWinget/logs" -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'clean.ps1') -Destination "$fixtureRepo/scripts/clean.ps1"
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1') -Destination "$fixtureRepo/scripts/support/ScriptHelpers.ps1"
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'support/CloseOwnedApplication.ps1') -Destination "$fixtureRepo/scripts/support/CloseOwnedApplication.ps1"
     Set-Content -LiteralPath "$fixtureRepo/src/Fixture.csproj" -Value '<Project />' -Encoding utf8
     Set-Content -LiteralPath "$fixtureRepo/artifacts/generated.txt" -Value 'generated' -Encoding utf8
     $sentinels = @('onlywinget.db', 'workspace-v1.json', 'settings.json', 'source-preferences-v1.json', 'logs/sentinel.log')

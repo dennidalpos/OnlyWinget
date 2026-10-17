@@ -1,6 +1,6 @@
 # Repository commands
 
-Run PowerShell 7 from the repository root. [AGENTS.md](../../../../AGENTS.md) records executed command evidence; [scripts/README.md](../../../../scripts/README.md) and [run.ps1](../../../../scripts/run.ps1) define options.
+Run PowerShell 7 from the repository root. [AGENTS.md](../../../../AGENTS.md) defines project constraints; [scripts/README.md](../../../../scripts/README.md) and [run.ps1](../../../../scripts/run.ps1) define options.
 
 ## Choose relevant verification
 
@@ -15,13 +15,13 @@ Run PowerShell 7 from the repository root. [AGENTS.md](../../../../AGENTS.md) re
 
 These are not a mandatory sequence for every edit. Documentation/skill edits need metadata, links and script checks; do not reinstall packages or run live operations for them. Tests are warranted for demonstrated behavior problems and relevant invariants.
 
-Setup restores dependencies. Use it when targets/dependencies changed or restore fails; NU1004 RID changes may require scripts/fix-lockfiles.ps1. Regenerate lockfiles through the toolchain. Format validates by default; -Fix is the explicit mutation.
+Setup restores dependencies. Use it when targets/dependencies changed or restore fails. The exact SDK in global.json and generated lockfiles must be updated together; scripts/fix-lockfiles.ps1 regenerates them through the toolchain and verifies locked restore. Format validates by default; -Fix is the explicit mutation.
 
 ## Distinguish qualification
 
-Offline tests exclude four live smoke tests. Direct invocation reports those skipped unless explicitly enabled. Fast/Full diagnostics are retained under artifacts/test-results; missing TRX/no executed tests fail. scripts/test-verification-invariants.ps1 covers native/pre-TRX/startup failures. Real UI assertions remain pending under AUDIT-27.
+Offline tests exclude four live smoke tests. Direct invocation reports those skipped unless explicitly enabled. Fast/Full diagnostics are retained under artifacts/test-results; missing TRX/no executed tests fail. scripts/test-verification-invariants.ps1 covers native/pre-TRX/startup failures. AUDIT-10/27 are closed in the latest [UI handoff](../../../../docs/tracker-review-2026-10-09.md); AUDIT-19/22 retain the outstanding interactive cases.
 
-Check is the release gate: restore, cleanup, format, lint, deterministic/native fixtures, compile/tests, packaging and artifact analysis. Its cleanup removes ignored repository outputs; preserve retained evidence before running it. It is not the default skill-edit check.
+Check is the release gate: cleanup, locked restore, format, lint, deterministic/native fixtures, compile/tests, packaging and artifact analysis. Restore output is retained in artifacts/check/restore.log; failures also retain artifacts/build-report.txt with the failed step. Both hosted workflows upload verification diagnostics. scripts/test-check-diagnostics.ps1 verifies early restore and later failures in default/Fast/Full modes. Check cleanup removes ignored repository outputs; preserve retained evidence or use an isolated checkout before running it. It is not the default skill-edit check.
 
 UI automation uses scripts/ui-test.ps1 -AppPid with a verified fixture PID. Use an isolated profile for destructive/persistence validation. Direct use of the personal store needs explicit authorization; preserve and restore only the targeted files with counts/hashes, and do not swap the entire application-data directory. The UI runner dismisses only newly opened dialogs whose ownership chain and PID resolve to the app; it must fail rather than close an unrelated picker. Cancel an app-owned native picker before attempting app shutdown. StopRunningInstance is opt-in and requests graceful closure only for generated executable paths in this checkout, failing on refused closure. scripts/test-process-ownership.ps1 validates script/NSIS ownership without launching the real app.
 

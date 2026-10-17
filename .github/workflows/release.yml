@@ -68,3 +68,15 @@ jobs:
           files: |
             artifacts/dist/OnlyWinget/Release/OnlyWinget-${{ steps.release.outputs.version }}-setup.exe
             artifacts/dist/OnlyWinget/Release/OnlyWinget-${{ steps.release.outputs.version }}-portable-x64.zip
+
+      - name: Upload verification diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onlywinget-release-verification
+          path: |
+            artifacts/build-report.txt
+            artifacts/check/*.log
+            artifacts/test-results/**/*.trx
+            artifacts/test-results/**/*.log
+          if-no-files-found: warn
