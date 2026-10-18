@@ -1,36 +1,63 @@
-name: release-automation
+# Branch-only negative fixture. Do not merge this workflow into main.
+name: release-automation (AUDIT-12 qualification fixture)
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
-      tag_name:
-        description: 'Tag name for release (e.g. v1.0.0)'
-        required: false
-        type: string
+      qualification_case:
+        description: 'Runner-only negative case; no remote tags or release writes'
+        required: true
+        type: choice
+        options:
+          - tag-mismatch
+          - gate-failure
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     name: Build & Publish Release
     runs-on: windows-latest
+    env:
+      ONLYWINGET_RELEASE_QUALIFICATION: 'true'
+      QUALIFICATION_CASE: ${{ inputs.qualification_case }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag_name != '' && format('refs/tags/{0}', inputs.tag_name) || github.ref }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Prepare runner-only negative release identity
+        id: fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:ONLYWINGET_RELEASE_QUALIFICATION -ne 'true' -or $env:QUALIFICATION_CASE -notin @('tag-mismatch', 'gate-failure')) {
+            throw 'This is an explicit negative qualification fixture only.'
+          }
+          [xml]$project = Get-Content src/OnlyWinget/OnlyWinget.csproj -Raw
+          $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+          if ($version -notmatch '^1\.0\.[0-9]+$') { throw 'Unexpected release line.' }
+          $tag = if ($env:QUALIFICATION_CASE -eq 'tag-mismatch') { 'v1.0.999997' } else { "v$version" }
+          $head = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve qualification HEAD.' }
+          git -c user.name='OnlyWinget Qualification' -c user.email='fixture@example.invalid' tag -a $tag -m 'Runner-only AUDIT-12 fixture; never push this tag.' $head
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot create runner-only fixture tag.' }
+          $records = Join-Path $env:RUNNER_TEMP 'onlywinget-audit12'
+          New-Item -ItemType Directory -Path $records -Force | Out-Null
+          [ordered]@{ Case=$env:QUALIFICATION_CASE; SourceCommit=$head; ProjectVersion=$version; LocalTag=$tag; PublicationPermission='contents:read'; RemoteTagCreated=$false } |
+            ConvertTo-Json | Set-Content -LiteralPath (Join-Path $records 'identity.json') -Encoding utf8
+          "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Validate Release Tag and Version
         id: release
         shell: pwsh
         env:
-          RELEASE_TAG: ${{ inputs.tag_name || github.ref_name }}
+          RELEASE_TAG: ${{ steps.fixture.outputs.tag }}
         run: |
           $release = ./scripts/validate-release.ps1 -TagName $env:RELEASE_TAG
           "sha=$($release.CommitSha)" >> $env:GITHUB_OUTPUT
@@ -50,6 +77,23 @@ jobs:
           $nsisVersion = & (Join-Path ${env:ProgramFiles(x86)} 'NSIS/makensis.exe') /VERSION
           if ($LASTEXITCODE -ne 0 -or $nsisVersion -ne 'v3.13') { throw "Unexpected NSIS compiler: $nsisVersion" }
           Write-Host "NSIS compiler: $nsisVersion"
+
+      - name: Inject runner-only locked restore failure
+        if: inputs.qualification_case == 'gate-failure'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:ONLYWINGET_RELEASE_QUALIFICATION -ne 'true' -or $env:QUALIFICATION_CASE -ne 'gate-failure') {
+            throw 'Locked restore injection requires the explicit qualification case.'
+          }
+          $path = 'src/OnlyWinget.Domain/packages.lock.json'
+          $before = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+          $lock = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable
+          if ($lock.dependencies.ContainsKey('net10.0/win-x64')) { throw 'Fixture RID target already exists.' }
+          $lock.dependencies['net10.0/win-x64'] = @{}
+          $lock | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $path -Encoding utf8
+          [ordered]@{ Lockfile=$path; OriginalHash=$before; InjectedHash=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash; ExpectedFailure='NU1004'; ExpectedGateStep='restore' } |
+            ConvertTo-Json | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'onlywinget-audit12/injection.json') -Encoding utf8
 
       - name: Verify and Package Release Commit
         shell: pwsh
@@ -84,6 +128,7 @@ jobs:
         with:
           name: onlywinget-release-verification
           path: |
+            ${{ runner.temp }}/onlywinget-audit12/*.json
             artifacts/build-report.txt
             artifacts/check/*.log
             artifacts/test-results/**/*.trx
