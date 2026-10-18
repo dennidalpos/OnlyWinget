@@ -12,12 +12,12 @@ Inspect scripts/ui-test.ps1 and scripts/test-ui-dialog-ownership.ps1 before driv
 - Scope actions to the verified application PID and HWND. PickerHost windows require ownership checks; PID alone is insufficient. Never use global Escape/WM_CLOSE or terminate an unrelated picker.
 - Test relevant flows in a batch with concrete assertions. Preserve earlier native failures and check process liveness; a zero early exit is not startup success.
 - TextBox updates must reach the ViewModel: use the actual TwoWay/PropertyChanged binding, or move focus when the binding requires it.
-- The normal app has no test data-path override and uses a personal SQLite workspace/settings/log directory. Use an isolated profile for destructive/persistence fixtures. Do not treat a .db as JSON.
+- The normal app uses a personal SQLite workspace/settings/log directory. For persistence fixtures, launch with the process-scoped ONLYWINGET_DATA_ROOT set to a fully qualified isolated directory; it also contains source preferences and legacy import. Verify the fixture PID/root and preserve personal-file hashes. Do not treat a .db as JSON.
 - Persisted behavior needs a save/restart or equivalent stored-state check, not a screenshot alone. Keep accepted-unsaved edits and failed-save retry distinct from unapplied drafts.
 - Import cancellation compares row identities, checkbox states and selected preset through UIA patterns, including collapsed selection containers. scripts/test-ui-state-snapshot.ps1 verifies these comparisons on an isolated window; it does not qualify the real WinUI picker.
 - For logs, validate inline confirm/cancel, I/O failure, copy/export outcomes, close during export and theme changes. Shared picker cancellation currently observes the token during file I/O, not native picker lifetime.
 - Capture artifacts under ignored artifacts/tmp, remove owned scratch after use, and stop only processes started for the fixture.
 
-AUDIT-10/19/22/27 identify pending validations. Record actual execution separately from compiled XAML and deterministic regressions.
+AUDIT-10/27 are closed in the 2026-10-09 handoff and AUDIT-19/22 in the 2026-10-18 handoff. AUDIT-22 qualifies normal owned-picker cancellation and direct WM_CLOSE to the owner with exit code zero; it does not establish token-driven cancellation of the native picker API. Record actual execution separately from compiled XAML and deterministic regressions.
 
 Source: [UI Automation](https://learn.microsoft.com/en-us/windows/win32/winauto/entry-uiauto-win32).

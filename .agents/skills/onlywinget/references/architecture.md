@@ -10,13 +10,13 @@ SQLite is the primary workspace. Preserve legacy workspace JSON during migration
 
 The full JSON workspace writer and dormant DPAPI services are retired; SQLite retains the legacy JSON reader. Do not delete retained legacy/secret files. WorkspaceSchemaMigration owns SQLite user_version=1: legacy metadata columns are retired after a verified native backup, with transactional rollback. Preserve pre-schema-v1 backups and failed partial snapshots; restore only with all database clients closed. Future/unrecognized schemas fail before mutation.
 
-Package identity includes both case-insensitive ID and source. An edit captures the original identity once. Apply succeeds after mutation and persistence; failed saving after accepted mutation retries only saving and keeps fields locked. Accepted idle selector changes autosave; rejected busy choices do not mutate/save. Actual draft/navigation interaction remains AUDIT-19.
+Package identity includes both case-insensitive ID and source. An edit captures the original identity once. Apply succeeds after mutation and persistence; failed saving after accepted mutation retries only saving and keeps fields locked. Accepted idle selector changes autosave; rejected busy choices do not mutate/save. Actual draft/navigation qualification is recorded in [the AUDIT-19 closure](../../../../docs/tracker-review-2026-10-18.md).
 
 ## Native work and processes
 
 WinGet uses the existing CLI runner/cache/parser stack. Use ArgumentList and forward cancellation. Keep completed batch outcomes, failures, cancellations and never-started rows distinct.
 
-Windows Update uses BeginSearch/BeginDownload/BeginInstall jobs off the UI thread, RequestAbort and CleanUp. Cancellation or failed installation must not trigger an automatic fallback/retry. Match exact update ID/revision and complete selection coverage; preserve actual MsrcSeverity/RebootRequired and canonical KB labels. Real download/install qualification remains pending.
+Windows Update uses BeginSearch/BeginDownload/BeginInstall jobs off the UI thread, RequestAbort and CleanUp. Cancellation or failed installation must not trigger an automatic fallback/retry. Match exact update ID/revision and complete selection coverage; preserve actual MsrcSeverity/RebootRequired and canonical KB labels. Real download/install qualification was not executed; the user cancelled those tracker tasks because no Windows test environment is available. See [the recorded decision](../../../../docs/tracker-review-2026-10-18.md#decision--windows-test-environment-tasks-cancelled).
 
 ## Diagnostics and UI
 

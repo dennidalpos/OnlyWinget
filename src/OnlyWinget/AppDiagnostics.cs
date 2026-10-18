@@ -1,13 +1,14 @@
 using OnlyWinget.Infrastructure.Diagnostics;
 using System.Runtime.CompilerServices;
 using OnlyWinget.Application.System;
+using OnlyWinget.Application.Storage;
 
 namespace OnlyWinget;
 
 internal static class AppDiagnostics
 {
     private static readonly string LogDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OnlyWinget", "logs");
+        AppDataPaths.Root, "logs");
     private static readonly DiagnosticLogStore Store = new(LogDirectory);
 
     public static string? LastError => Store.LastError;

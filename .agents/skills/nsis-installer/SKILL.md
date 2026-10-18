@@ -14,7 +14,7 @@ Read [release.md](../../../docs/release.md) and the real [OnlyWinget.nsi](../../
 - Installation and uninstall share that generated ownership list. Delete distributed files and then empty directories; never recursively delete the installation or shared shortcuts directory.
 - Legacy protocol cleanup requires the expected label, marker and exact owned executable command. Preserve other copies and other users' registrations.
 - scripts/support/PackageArtifacts.ps1 owns same-volume staging, payload verification, rollback and interrupted-promotion recovery. Consume the artifact pair only after successful packaging; it is not one atomic two-file transaction.
-- Uninstall embeds the exact-path graceful-close helper through 64-bit Windows PowerShell; failures stop before deletion. scripts/test-process-ownership.ps1 covers another copy and refused closure. The true previous-release upgrade fixture remains open under AUDIT-31.
+- Uninstall embeds the exact-path graceful-close helper through 64-bit Windows PowerShell; failures stop before deletion. scripts/test-process-ownership.ps1 covers another copy and refused closure. AUDIT-31 retains obsolete-file reconciliation source work; the user cancelled its Windows test-environment upgrade qualification. Actual previous-release upgrade remains unqualified; see [the decision](../../../docs/tracker-review-2026-10-18.md#decision--windows-test-environment-tasks-cancelled).
 
 Use scripts/test-installer-owned-files.ps1 for isolated ownership/protocol regression and scripts/test-package-artifacts.ps1 for artifact preservation. Real lifecycle validation changes a machine: choose the intended scope and a controlled profile; AllUsers needs elevation. No broad process termination.
 

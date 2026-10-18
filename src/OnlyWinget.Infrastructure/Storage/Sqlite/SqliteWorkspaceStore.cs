@@ -39,18 +39,10 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
         this.storeLogger = storeLogger;
     }
 
-    public static string DefaultFilePath
-    {
-        get
-        {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            return Path.Combine(localAppData, StorageConstants.ApplicationFolderName, "onlywinget.db");
-        }
-    }
+    public static string DefaultFilePath => Path.Combine(AppDataPaths.Root, "onlywinget.db");
 
     public static string DefaultLegacyJsonPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        StorageConstants.ApplicationFolderName,
+        AppDataPaths.Root,
         "workspace-v1.json");
 
     public async Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken)

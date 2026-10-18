@@ -104,21 +104,59 @@ public sealed class PowerShellWindowsUpdateService(
                 result.StandardOutput);
     }
 
-    private async Task<ExternalProcessResult> RunPowerShellAsync(
+    internal async Task<ExternalProcessResult> RunPowerShellAsync(
         string script,
         CancellationToken cancellationToken,
         global::System.TimeSpan? timeout = null,
         IProgress<string>? standardErrorLines = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var eventName = @"Local\OnlyWinget-WUA-" + Guid.NewGuid().ToString("N");
+        using var cancellationEvent = OperatingSystem.IsWindows()
+            ? new EventWaitHandle(false, EventResetMode.ManualReset, eventName)
+            : new EventWaitHandle(false, EventResetMode.ManualReset);
+        using var timeoutCancellation = new CancellationTokenSource(timeout ?? global::System.TimeSpan.FromMinutes(10));
+        using var requestedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCancellation.Token);
+        using var stopProcess = new CancellationTokenSource();
+        using var registration = requestedCancellation.Token.Register(() =>
+        {
+            cancellationEvent.Set();
+            stopProcess.CancelAfter(global::System.TimeSpan.FromSeconds(30));
+        });
+        requestedCancellation.Token.ThrowIfCancellationRequested();
         var executable = OnlyWinget.Infrastructure.System.PowerShellExecutableProvider.GetPreferredExecutable();
-        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-        return await commandRunner.RunAsync(
+        var wrappedScript = PowerShellWindowsUpdateJob.Script.Replace("__CANCELLATION_EVENT__", eventName, StringComparison.Ordinal)
+            + "\ntry {\n" + script + "\n} finally { $cancellationEvent.Dispose() }";
+        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(wrappedScript));
+        ExternalProcessResult result;
+        try
+        {
+            result = await commandRunner.RunAsync(
                 executable,
                 ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
-                cancellationToken,
-                timeout: timeout,
+                stopProcess.Token,
+                timeout: Timeout.InfiniteTimeSpan,
                 standardErrorLines: standardErrorLines)
-            .ConfigureAwait(false);
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (stopProcess.IsCancellationRequested)
+        {
+            throw new TimeoutException("Windows Update did not finish cancellation within 30 seconds. Its native operation may still be running; do not retry automatically.");
+        }
+
+        if (result.StandardError.Contains("##OWU-ABORT-FAILED##", StringComparison.Ordinal)
+            || result.StandardError.Contains("##OWU-CLEANUP-FAILED##", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Windows Update native cancellation or cleanup failed. Its operation state is uncertain; do not retry automatically. " + result.StandardError);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (timeoutCancellation.IsCancellationRequested)
+        {
+            throw new TimeoutException("Windows Update timed out; cancellation was requested and the worker exited.");
+        }
+
+        return result;
     }
 
     private async Task<string?> GetUnavailableReasonAsync(CancellationToken cancellationToken)
@@ -190,7 +228,8 @@ __OPTIONS_JSON__
             # Continue with the default Windows Update service. Optional service discovery must not block scanning.
         }
     }
-    $search = $searcher.Search([string]$options.criteria)
+    $search = Invoke-OnlyWingetUpdateJob -Begin { param($callback) $searcher.BeginSearch([string]$options.criteria, $callback, $null) } -End { param($job) $searcher.EndSearch($job) }
+    if ([int]$search.ResultCode -ne 2) { throw 'Windows Update search did not complete successfully.' }
     $rows = @()
     foreach ($update in $search.Updates) {
         $categories = @()
@@ -262,16 +301,14 @@ __SELECTED_JSON__
             # Continue with the default Windows Update service. Optional service discovery must not block scanning.
         }
     }
-    $search = $searcher.Search([string]$options.criteria)
+    $search = Invoke-OnlyWingetUpdateJob -Begin { param($callback) $searcher.BeginSearch([string]$options.criteria, $callback, $null) } -End { param($job) $searcher.EndSearch($job) }
+    if ([int]$search.ResultCode -ne 2) { throw 'Windows Update search did not complete successfully. Installation was not started.' }
     $collection = New-Object -ComObject Microsoft.Update.UpdateColl
     $metadata = @()
 
     foreach ($wanted in $selected) {
         foreach ($update in $search.Updates) {
             if ($update.Identity.UpdateID -ieq [string]$wanted.updateId -and [int]$update.Identity.RevisionNumber -eq [int]$wanted.revisionNumber) {
-                if (-not $update.EulaAccepted) {
-                    $update.AcceptEula()
-                }
                 [void]$collection.Add($update)
                 $metadata += [pscustomobject]@{
                     updateId = [string]$update.Identity.UpdateID
@@ -292,10 +329,14 @@ __SELECTED_JSON__
         exit 0
     }
 
+    foreach ($update in $collection) {
+        if (-not $update.EulaAccepted) { $update.AcceptEula() }
+    }
+
     [Console]::Error.WriteLine("##OWU-PROGRESS##Downloading##0")
     $downloader = $session.CreateUpdateDownloader()
     $downloader.Updates = $collection
-    $downloadResult = $downloader.Download()
+    $downloadResult = Invoke-OnlyWingetUpdateJob -Begin { param($callback, $progressCallback) $downloader.BeginDownload($progressCallback, $callback, $null) } -End { param($job) $downloader.EndDownload($job) }
     if ([int]$downloadResult.ResultCode -ne 2) {
         throw 'Windows Update download did not complete successfully. Installation was not started.'
     }
@@ -304,7 +345,7 @@ __SELECTED_JSON__
     [Console]::Error.WriteLine("##OWU-PROGRESS##Installing##0")
     $installer = $session.CreateUpdateInstaller()
     $installer.Updates = $collection
-    $install = $installer.Install()
+    $install = Invoke-OnlyWingetUpdateJob -Begin { param($callback, $progressCallback) $installer.BeginInstall($progressCallback, $callback, $null) } -End { param($job) $installer.EndInstall($job) }
     [Console]::Error.WriteLine("##OWU-PROGRESS##Installing##100")
     $rows = @()
     for ($index = 0; $index -lt $collection.Count; $index++) {

@@ -22,8 +22,7 @@ internal sealed class JsonAppSettingsService : IAppSettingsService
     }
 
     public static string DefaultFilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        StorageConstants.ApplicationFolderName,
+        AppDataPaths.Root,
         "settings.json");
 
     public event EventHandler? Changed;

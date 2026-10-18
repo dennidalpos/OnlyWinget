@@ -11,7 +11,7 @@ Use [verified repository commands](../onlywinget/references/commands.md). Build/
 
 - Diagnose the actual compiler/XAML/restore error before changing versions. Do not automatically upgrade NuGet packages or generate another project.
 - For launch, scripts/run.ps1 -Task Dev uses the repository executable path. The app is unpackaged and self-contained; a direct owned executable launch is supported.
-- A launch uses the real LocalApplicationData store. For persistence edits, destructive log cleanup or install/update validation, use an isolated profile instead of a personal store.
+- A normal launch uses the real LocalApplicationData store. For persistence edits or destructive log cleanup, launch with process-scoped ONLYWINGET_DATA_ROOT pointing to a fully qualified isolated directory. This isolates app data, not machine-wide WinGet/Windows Update operations; those still require a controlled environment.
 - Do not close existing instances merely to build. StopRunningInstance requests graceful closure only for this checkout's generated executable paths; refused closure fails rather than forcing termination.
 - The bundled BuildAndRun.ps1 is an optional upstream helper, not the OnlyWinget build contract. Its analyzer is conditional on a DLL actually being available; do not claim analysis ran because a targets file exists.
 - Missing WinApp UI tooling does not block compilation/offline tests. Use the setup skill when the requested workflow actually needs an unavailable prerequisite.

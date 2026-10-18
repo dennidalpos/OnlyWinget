@@ -17,8 +17,7 @@ public sealed class JsonSourcePreferenceStore(
     };
 
     public static string DefaultFilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        StorageConstants.ApplicationFolderName,
+        AppDataPaths.Root,
         "source-preferences-v1.json");
 
     public async Task<SourcePreferences> LoadAsync(CancellationToken cancellationToken)

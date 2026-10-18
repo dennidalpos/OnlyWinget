@@ -286,13 +286,6 @@ public sealed class ComWindowsUpdateService(
 
                 if (targetMap.TryGetValue($"{updateId}|{revisionNumber}", out var targetIdent))
                 {
-                    bool eulaAccepted = false;
-                    try { eulaAccepted = Convert.ToBoolean(update.EulaAccepted); } catch { }
-                    if (!eulaAccepted)
-                    {
-                        try { update.AcceptEula(); } catch { }
-                    }
-
                     installCollection.Add(update);
                     matchedItems.Add((update.Title?.ToString() ?? updateId, targetIdent));
                 }
@@ -302,6 +295,15 @@ public sealed class ComWindowsUpdateService(
             {
                 return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(
                     new WindowsUpdateError("Some selected Windows updates or revisions were not found. Scan again before installing."), string.Empty);
+            }
+
+            for (int i = 0; i < matchedItems.Count; i++)
+            {
+                dynamic update = installCollection.Item(i);
+                if (!Convert.ToBoolean(update.EulaAccepted))
+                {
+                    update.AcceptEula();
+                }
             }
 
             progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Downloading, 0, 0, targetUpdates.Count));
