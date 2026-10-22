@@ -134,10 +134,10 @@
 
             <!-- Gallery Tabs -->
             <div class="gallery-tabs">
-                <button class="tab-btn active" onclick="switchTab('presets', this)" data-i18n="tabPresets">App Lists</button>
+                <button class="tab-btn active" onclick="switchTab('home', this)" data-i18n="tabHome">Overview</button>
+                <button class="tab-btn" onclick="switchTab('presets', this)" data-i18n="tabPresets">App Lists</button>
                 <button class="tab-btn" onclick="switchTab('search', this)" data-i18n="tabSearch">App Search</button>
-                <button class="tab-btn" onclick="switchTab('install', this)" data-i18n="tabInstall">Batch Install</button>
-                <button class="tab-btn" onclick="switchTab('updates', this)" data-i18n="tabUpdates">Windows Update</button>
+                <button class="tab-btn" onclick="switchTab('updates', this)" data-i18n="tabUpdates">Updates</button>
             </div>
 
             <!-- Two-Column Interactive Layout -->
@@ -164,22 +164,21 @@
                             <div class="mockup-title">OnlyWinget</div>
                         </div>
                         <div class="mockup-body">
+                            <!-- Overview / Home Images -->
+                            <img id="img-home-1" class="gallery-img" src="assets/gallery/01-home.png" alt="Home Dashboard Overview">
+                            <img id="img-home-2" class="gallery-img" src="assets/gallery/07-activity.png" alt="Activity History">
+                            <img id="img-home-3" class="gallery-img" src="assets/gallery/08-settings.png" alt="Application Settings">
+
                             <!-- Presets Images -->
-                            <img id="img-presets-1" class="gallery-img" src="assets/gallery/create_preset/01_presets_empty.png" alt="Empty Preset">
-                            <img id="img-presets-2" class="gallery-img" src="assets/gallery/create_preset/02_preset_created.png" alt="Preset Created">
-                            <img id="img-presets-3" class="gallery-img" src="assets/gallery/create_preset/03_package_added.png" alt="Package Added">
+                            <img id="img-presets-1" class="gallery-img" src="assets/gallery/02-packages-presets.png" alt="App Lists and Presets">
+                            <img id="img-presets-2" class="gallery-img" src="assets/gallery/06-sources.png" alt="Software Sources">
                             
                             <!-- Search Images -->
-                            <img id="img-search-1" class="gallery-img" src="assets/gallery/search_apps/01_search_results.png" alt="Search Results">
-                            <img id="img-search-2" class="gallery-img" src="assets/gallery/search_apps/02_search_added.png" alt="Search Added">
-                            
-                            <!-- Install Images -->
-                            <img id="img-install-1" class="gallery-img" src="assets/gallery/install_apps/01_preset_ready.png" alt="Preset Ready">
-                            <img id="img-install-2" class="gallery-img" src="assets/gallery/install_apps/02_install_progress.png" alt="Install Progress">
+                            <img id="img-search-1" class="gallery-img" src="assets/gallery/03-packages-search.png" alt="Official App Search">
                             
                             <!-- Updates Images -->
-                            <img id="img-updates-1" class="gallery-img" src="assets/gallery/windows_update/01_windows_update_tab.png" alt="Windows Update Tab">
-                            <img id="img-updates-2" class="gallery-img" src="assets/gallery/windows_update/02_scan_in_progress.png" alt="Scan in Progress">
+                            <img id="img-updates-1" class="gallery-img" src="assets/gallery/04-updates-winget.png" alt="Application Updates">
+                            <img id="img-updates-2" class="gallery-img" src="assets/gallery/05-updates-windows.png" alt="Windows Update">
                         </div>
                     </div>
                 </div>
@@ -198,7 +197,7 @@
     <!-- Interactive script for Language Switch & Gallery workflow -->
     <script>
         let currentLang = 'en';
-        let activeTab = 'presets';
+        let activeTab = 'home';
         let activeStep = 1;
 
         const translations = {
@@ -245,29 +244,28 @@
                 // Gallery
                 galleryTitle: "See It In Action",
                 gallerySubtitle: "Explore how easy it is to manage software and system updates.",
+                tabHome: "Overview",
                 tabPresets: "App Lists",
                 tabSearch: "App Search",
-                tabInstall: "Batch Install",
-                tabUpdates: "Windows Update",
+                tabUpdates: "Updates",
                 
                 // Steps
                 steps: {
+                    home: [
+                        "Start from the Home dashboard: check PC status, active app list, and live hardware metrics at a glance.",
+                        "Review every action in the Activity History with clear status indicators and quick filters.",
+                        "Customize language (English / Italian), visual theme, and safety prompts in Settings."
+                    ],
                     presets: [
-                        "Open the application and click the '+' button to start a new list.",
-                        "Give your list a simple name (like 'HomeApps' or 'Work') and save it.",
-                        "Add programs to this list so you can install them whenever you want."
+                        "Manage custom lists of your favorite programs and install or remove them in batch with one click.",
+                        "Enable or refresh official download sources (Microsoft Winget & Store) without administrative hassle."
                     ],
                     search: [
-                        "Go to the Search tab and type the name of the app you need (e.g., VLC, Spotify).",
-                        "Check the box next to the apps you want, and click 'Add Selected' to save them to your list."
-                    ],
-                    install: [
-                        "All your selected apps will appear in your customized list.",
-                        "Click 'Apply Install'. OnlyWinget will install everything automatically without asking you any questions."
+                        "Type the name of any program to find verified official versions and install them immediately or add them to your list."
                     ],
                     updates: [
-                        "Go to the Updates tab to check if your Windows system is up to date.",
-                        "Click 'Scan Windows Updates' to search and install security patches in one click."
+                        "Scan all installed programs on your PC to see available updates and apply them in bulk.",
+                        "Check and install official Windows security patches and optional drivers from the same clean window."
                     ]
                 },
                 
@@ -317,29 +315,28 @@
                 // Gallery
                 galleryTitle: "Guardalo in Azione",
                 gallerySubtitle: "Esplora come sia facile gestire software e aggiornamenti di sistema.",
+                tabHome: "Panoramica",
                 tabPresets: "Liste App",
                 tabSearch: "Ricerca App",
-                tabInstall: "Installazione",
                 tabUpdates: "Aggiornamenti",
                 
                 // Steps
                 steps: {
+                    home: [
+                        "Parti dalla schermata Home: controlla a colpo d'occhio lo stato del PC, la lista attiva e i parametri del computer.",
+                        "Consulta lo storico completo nella sezione Attività per sapere sempre cosa è stato installato o aggiornato.",
+                        "Personalizza lingua (Italiano / Inglese), tema chiaro o scuro e conferme di sicurezza nelle Impostazioni."
+                    ],
                     presets: [
-                        "Apri l'applicazione e clicca sul pulsante '+' per iniziare una nuova lista.",
-                        "Assegna alla lista un nome semplice (come 'ProgrammiBase' o 'Ufficio') e salvala.",
-                        "Aggiungi i programmi a questa lista per poterli installare quando vuoi."
+                        "Raggruppa i tuoi programmi preferiti in liste pronte all'uso e installali tutti insieme con un solo clic.",
+                        "Scegli e aggiorna i cataloghi ufficiali verificati da cui scaricare i programmi in totale sicurezza."
                     ],
                     search: [
-                        "Vai alla scheda Ricerca e scrivi il nome del programma che ti serve (es. VLC, Chrome).",
-                        "Spunta la casella accanto alle app desiderate e clicca 'Aggiungi Selezionati' per salvarle nella lista."
-                    ],
-                    install: [
-                        "Tutti i programmi scelti appariranno riepilogati nella tua lista personalizzata.",
-                        "Clicca su 'Applica Installazione'. OnlyWinget farà tutto da solo, senza interromperti."
+                        "Scrivi il nome del programma che cerchi per trovarlo subito nel catalogo ufficiale, installarlo al volo o aggiungerlo alla tua lista."
                     ],
                     updates: [
-                        "Vai alla sezione Aggiornamenti per controllare se il tuo sistema Windows è aggiornato.",
-                        "Clicca su 'Scansiona Windows Updates' per cercare e installare le patch di sicurezza in un click."
+                        "Verifica in un attimo quali programmi del tuo PC hanno una nuova versione disponibile e aggiornali tutti insieme.",
+                        "Controlla e installa anche gli aggiornamenti ufficiali di Windows e i driver dalla stessa finestra pulita."
                     ]
                 },
                 

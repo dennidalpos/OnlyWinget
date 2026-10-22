@@ -1,57 +1,104 @@
-# OnlyWinget — Social Media Posts & Catchy Hooks
+# OnlyWinget — Social Media Posts & Practical Feature Guide
 
-Below is a set of promotional posts for OnlyWinget, optimized for platforms like LinkedIn, X (Twitter), and Reddit, in both English and Italian.
+Below is a set of promotional posts and a practical, non-technical feature overview for OnlyWinget, ready for publication on LinkedIn, Facebook, Instagram, X (Twitter), and Reddit, in both Italian and English.
 
 ---
 
-## English Posts
+## Guida Pratica per l'Utente Finale (Pronta per la Pubblicazione Social)
 
-### Post 1: The Hook for Developers (LinkedIn / Twitter)
-**Hook:** Stop spending hours setting up fresh Windows machines. 🕒
+**Cos'è OnlyWinget?**
+È l'applicazione gratuita e sicura per Windows 10 e 11 che ti permette di installare e mantenere aggiornati tutti i tuoi programmi preferiti con un solo clic, senza dover cercare file di installazione su internet, senza cliccare "Avanti" decine di volte e senza il rischio di pubblicità o programmi indesiderati.
 
-Tired of manually searching, downloading, and running installers for every single tool? OnlyWinget brings a clean, modern GUI to Windows package management, powered by Microsoft's official winget CLI.
-- 📦 **Create app lists (Presets):** Save your dev environments and restore them on any computer with one click.
-- 🔍 **Instant Search:** Find packages in your enabled sources and add them to presets.
-- 🔄 **Windows Update Integration:** Check local updates and Windows Updates side-by-side.
+### 🖥️ Prima Pagina — Home (Panoramica del tuo PC)
+Appena apri **OnlyWinget**, la schermata **Home** ti mostra subito tutto ciò che ti serve sapere, in modo semplice e ordinato:
+- **Stato di salute immediato:** vedi a colpo d'occhio se il programma è pronto all'uso o se il computer richiede un riavvio dopo un aggiornamento.
+- **Lista attiva e scorciatoie rapide:** visualizzi quale lista di programmi è attiva e puoi passare direttamente ai tuoi **Pacchetti** o agli **Aggiornamenti** con due pulsanti ben visibili.
+- **Parametri del computer in tempo reale:** sei riquadri chiari mostrano l'utilizzo di processore (CPU), memoria (RAM), spazio libero sul disco, tempo di accensione del PC, versione di Windows e stato della connessione internet.
 
-Clean, open-source, and lightning-fast. Try OnlyWinget today!
+### ✨ Le Funzioni Chiave
+
+1. **📦 Liste di App Personalizzate (Pacchetti → Preset)**
+   Crea le tue liste di programmi preferiti (ad esempio *"PC Casa"*, *"Ufficio"* o *"Nuovo Computer"*). Spunta le app che ti servono e clicca su **Installa preset**: OnlyWinget le scarica e le installa tutte da solo, in silenzio e senza interromperti con finestre di configurazione. Puoi anche salvare la tua lista su un file per riutilizzarla su qualsiasi altro PC.
+
+2. **🔍 Ricerca Sicura nel Catalogo Ufficiale (Pacchetti → Cerca)**
+   Ti serve un programma come VLC, Firefox o 7-Zip? Scrivi il nome nella barra di ricerca per trovarlo subito nei cataloghi ufficiali verificati da Microsoft. Basta selezionarlo per installarlo immediatamente sul PC oppure aggiungerlo alla tua lista personale.
+
+3. **🔄 Aggiornamenti delle App in un Clic (Aggiornamenti → App)**
+   Non serve più aprire i programmi uno per uno per verificare se sono aggiornati: OnlyWinget controlla tutto il computer, ti mostra quali app hanno una versione più recente disponibile e le aggiorna tutte insieme con un solo clic.
+
+4. **🛡️ Windows Update Integrato (Aggiornamenti → Windows Update)**
+   Dalla stessa finestra puoi controllare e installare anche gli aggiornamenti ufficiali di sicurezza di Windows (e, se lo desideri, i driver e gli aggiornamenti facoltativi), tenendo programmi e sistema operativo sempre protetti in un unico posto.
+
+5. **🌐 Sorgenti Software Verificate (Sorgenti)**
+   Scegli in totale libertà da quali cataloghi ufficiali (come il catalogo *WinGet* e il *Microsoft Store*) scaricare le tue applicazioni, attivandoli o disattivandoli con un semplice interruttore.
+
+6. **📋 Cronologia Attività e Impostazioni (Attività & Impostazioni)**
+   Ogni operazione viene registrata in modo trasparente nella scheda **Attività**, così sai sempre cosa è stato installato o aggiornato. Nelle **Impostazioni** puoi passare all'istante tra **Italiano** e **Inglese** e scegliere il tema visivo **Scuro**, **Chiaro** o automatico.
+
+---
+
+## Post Social in Italiano
+
+### Post 1: Presentazione Completa (LinkedIn / Facebook / Instagram)
+**Hook:** Configurare un PC Windows o aggiornare tutti i tuoi programmi non deve essere uno stress! 💻✨
+
+Quante volte hai perso ore a cercare programmi su Google, schivando pulsanti di download ingannevoli e cliccando *"Avanti → Accetto → Avanti"* decine di volte?
+
+Con **OnlyWinget** gestisci tutto da un'unica applicazione pulita, sicura e senza pubblicità:
+- 🏠 **Prima pagina chiara (Home):** controlli subito lo stato del PC, lo spazio su disco, la memoria e la connessione a colpo d'occhio.
+- 📦 **Liste di app pronte all'uso (Preset):** salva i tuoi programmi preferiti in una lista e installali tutti insieme con un solo clic — perfetto anche quando cambi computer!
+- 🔍 **Ricerca sicura:** trova migliaia di programmi ufficiali e verificati senza passare da siti web sospetti.
+- 🔄 **Tutto aggiornato in un unico posto:** aggiorna sia le tue applicazioni sia Windows Update dalla stessa schermata.
+- 🔒 **100% privato:** nessuna registrazione, nessun tracciamento, i tuoi dati restano solo sul tuo PC.
+
+Provalo gratis su Windows 10 e 11:
 👉 https://github.com/dennidalpos/OnlyWinget
 
-#Windows10 #Windows11 #Developers #DevOps #Productivity #OpenSource #Winget
+#Windows11 #Windows10 #Produttivita #PCWindows #SicurezzaInformatica #SoftwareLibero #OnlyWinget
 
-### Post 2: Short & Catchy (X / Twitter)
-**Hook:** Windows setups shouldn't be a chore. 💻✨
+### Post 2: Breve e Diretto (X / Threads)
+**Hook:** Un solo clic per installare e aggiornare tutte le tue app su Windows. 🚀
 
-Meet OnlyWinget, the sleek WinUI 3 dashboard that turns winget into a visual powerhouse. Manage your apps, create reusable setups, and scan Windows Updates all in one beautiful dark-mode interface. 
+Scopri **OnlyWinget**:
+🏠 Dashboard iniziale con stato del PC in tempo reale
+📦 Liste personalizzate per installare i tuoi programmi in blocco
+🔍 Ricerca immediata da cataloghi ufficiali verificati
+🔄 Aggiornamenti app + Windows Update insieme
 
-Zero bloat. Zero tracking. Just speed.
-Try it now: https://github.com/dennidalpos/OnlyWinget
+Zero pubblicità, zero account, 100% gratuito in Italiano e Inglese:
+👉 https://github.com/dennidalpos/OnlyWinget
 
-#productivity #winui3 #opensource #sysadmin
+#Windows #TechTips #PCSetup #OnlyWinget
 
 ---
 
-## Italian Posts
+## English Social Posts
 
-### Post 1: Per Sviluppatori e Professionisti (LinkedIn / Facebook)
-**Hook:** Smetti di perdere tempo configurando PC da zero! 🕒💻
+### Post 1: Complete Showcase (LinkedIn / Facebook / Reddit)
+**Hook:** Setting up a Windows PC or updating your everyday apps shouldn't be a chore. 💻✨
 
-Ogni volta che cambi computer devi riscaricare decine di installer manualmente? Con OnlyWinget gestisci i pacchetti Windows in una frazione del tempo tramite una splendida interfaccia grafica nativa WinUI 3 per winget.
-- 📦 **Liste personalizzate (Preset):** Crea la tua lista di app preferite e installala su qualsiasi PC in un click.
-- 🔍 **Ricerca immediata:** Cerca migliaia di app stabili e pronte per l'installazione.
-- 🔄 **Windows Update integrato:** Controlla e installa gli aggiornamenti di sistema e delle app in un solo posto.
+Stop searching sketchy websites for installers and clicking *"Next"* a hundred times. **OnlyWinget** brings all your software and system updates into one clean, safe, ad-free desktop app:
+- 🏠 **At-a-glance Home Dashboard:** check PC readiness, active app list, CPU, RAM, disk space, and network status as soon as you open the app.
+- 📦 **Custom App Lists (Presets):** group your favorite programs and install them all at once with a single click — or save your list for your next PC.
+- 🔍 **Safe Official Search:** find thousands of verified apps directly from official catalogs without browser pop-ups or bundled junkware.
+- 🔄 **All-in-One Updates:** scan and install both application updates and Windows Updates side by side.
+- 🔒 **100% Local & Private:** no sign-up, no ads, and zero tracking.
 
-Nessun bloatware, open-source e super leggero.
-Scaricalo qui: https://github.com/dennidalpos/OnlyWinget
+Try OnlyWinget for Windows 10 & 11:
+👉 https://github.com/dennidalpos/OnlyWinget
 
-#Windows11 #SviluppoSoftware #Produttivita #OpenSource #SysAdmin #OnlyWinget
+#Windows10 #Windows11 #Productivity #PCSetup #OpenSource #TechTools #OnlyWinget
 
-### Post 2: Veloce e Diretto (X / Twitter)
-**Hook:** Il gestore di pacchetti definitivo per Windows. 🚀
+### Post 2: Short & Catchy (X / Threads)
+**Hook:** Your entire Windows setup and update routine, in one click. 🚀
 
-OnlyWinget unisce la potenza del comando winget a un'interfaccia Fluent e moderna. Salva i tuoi software preferiti in un file Preset ed esportali ovunque per configurare nuovi computer all'istante.
+Meet **OnlyWinget**:
+🏠 Live PC overview on the Home screen
+📦 Reusable App Lists for hands-free batch installs
+🔍 Instant search across verified official catalogs
+🔄 App updates + Windows Update in one clean window
 
-Interamente localizzato in Italiano e Inglese.
-Provalo subito: https://github.com/dennidalpos/OnlyWinget
+Zero bloat. Zero tracking. Just speed:
+👉 https://github.com/dennidalpos/OnlyWinget
 
-#Windows #Productivity #Developer #OpenSource #FluentDesign
+#Windows11 #Productivity #PCSetup #OnlyWinget

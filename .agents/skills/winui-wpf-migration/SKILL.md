@@ -5,17 +5,16 @@ description: "Use only for explicitly requested WPF-to-WinUI migration work in O
 
 # Migration work in OnlyWinget
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md) only when the user explicitly requests importing or migrating WPF views/components into OnlyWinget.
 
-OnlyWinget is already WinUI 3. Do not start a WPF migration, regenerate the app or add another UI framework during ordinary maintenance.
+OnlyWinget is already a `.NET 10` WinUI 3 application (`src/OnlyWinget/OnlyWinget.csproj`). Do not initiate a framework migration, regenerate the project or add WPF/MSIX project references during normal work.
 
-For an explicitly requested migration/import:
+For an explicitly requested WPF-to-WinUI import:
 
-- Inspect source controls, bindings, commands, resources and public behavior before selecting replacements.
-- Map System.Windows UI types to Microsoft.UI.Xaml, with DispatcherQueue and native window ownership.
-- Reuse OnlyWingetTable/ListView, existing feature ViewModels and Application ports. Keep external execution/persistence outside the imported view.
-- Translate resources into TextResources.cs/Localize EN/IT. Do not introduce RESW/RESX or ResourceLoader from a generic migration recipe.
-- Preserve WindowsPackageType=None, app.manifest, self-contained win-x64 and NSIS/portable outputs. There is no required Package.appxmanifest in this checkout.
-- Migrate in reviewable changes and run the relevant compile/invariant check; interactive behavior needs separate validation.
+- Inspect source controls, bindings, commands, resources and behavior before selecting replacements.
+- Map `System.Windows` types to `Microsoft.UI.Xaml`, `DispatcherQueue` and explicit Win32 HWND ownership (`WinRT.Interop.WindowNative` / `InitializeWithWindow`).
+- Reuse `Controls/OnlyWingetTable` (`ListView` + `ItemsStackPanel`), `DesignSystem/Controls/PageScaffold`, `DesignSystem/Commands/OnlyWingetCommandBar`, `Presentation/FeatureViewModel` and `OnlyWinget.Application` ports. Keep process execution and SQLite/JSON persistence out of presentation views.
+- Add bilingual EN/IT strings to `src/OnlyWinget/TextResources.cs` and bind via `Services/LocalizeExtension.cs` (`Localize`). Do not introduce `.resw`/`.resx` or `ResourceLoader`.
+- Preserve `WindowsPackageType=None`, `src/OnlyWinget/app.manifest` (`asInvoker`), self-contained `win-x64` and NSIS/portable packaging (`src/OnlyWinget.Setup/OnlyWinget.nsi`).
 
 Source: [Windows app migration guidance](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/).

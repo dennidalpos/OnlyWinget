@@ -5,17 +5,18 @@ description: "Design or adjust OnlyWinget WinUI pages and controls while preserv
 
 # OnlyWinget UI design
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md). Inspect neighboring views under `src/OnlyWinget/Features/` and shared resources under `src/OnlyWinget/DesignSystem/` and `src/OnlyWinget/Controls/` before introducing controls or styles.
 
-Read existing neighboring views and DesignSystem resources before introducing controls or styling.
+- Preserve `Shell/NavigationRegistry.cs` routes (`Home`, `Packages`, `Updates`, `Sources`, `Activity`, `Settings`), the persistent top banner `Controls/OperationTrackerControl`, `DesignSystem/Controls/PageScaffold` and `Controls/OnlyWingetTable` (`ListView` + `ItemsStackPanel`) selection/column behavior.
+- Reuse existing styles in `src/OnlyWinget/DesignSystem/Resources/` (`Buttons.xaml`, `Cards.xaml`, `Forms.xaml`, `Spacing.xaml`, `Tables.xaml`, `Typography.xaml`) and adaptive panels (`OnlyWingetResponsivePanel`, `OnlyWingetWrapPanel`, `StatePresenter`). Use `{ThemeResource ...}` brushes and explicit status text (`Controls/StatusBadgeControl`).
+- Use `src/OnlyWinget/TextResources.cs` and `Services/LocalizeExtension.cs` (`Localize`) for visible and accessible EN/IT text. Keep `AutomationProperties.AutomationId` stable and set `AutomationProperties.Name` on icon-only controls.
+- Editor fields use `TwoWay` bindings with `UpdateSourceTrigger=PropertyChanged`. Opening another editor or leaving a dirty draft must honor `IPendingNavigationGuard`.
+- Confirm log deletion inline via the `InfoBar` inside `Controls/LogViewerDialog`; never open a nested `ContentDialog` on the same window.
+- Branding and NSIS installer media assets are generated from `assets/logos/logo.png` via `.\scripts\align-logos.ps1` and `.\scripts\update-media-assets.ps1` (verified by `.\scripts\test-media-assets.ps1`).
 
-- Preserve NavigationView routes, the persistent OperationTrackerControl and the shared OnlyWingetTable/ListView selection and column behavior.
-- Prefer built-in semantic controls and existing styles. Use ThemeResource brushes and explicit text for meaningful status; inspect Light/Dark/High Contrast when the change affects rendering.
-- Use TextResources.cs/Localize for visible and accessible EN/IT text. Keep AutomationId stable and label icon-only controls.
-- Editors use TwoWay/PropertyChanged bindings. Opening another editor or leaving a dirty draft must follow the pending-navigation guard.
-- Confirm log deletion inline inside the current ContentDialog; do not nest a second dialog for that window.
-- Check compact widths, scaling and keyboard focus with real controls rather than adding fixed layout assumptions.
+## References and optional helpers
 
-Read [brushes/icons](references/brushes-and-icons.md), [layout review](references/layout-review.md) or [theme/accessibility](references/theme-accessibility.md) only as needed. A gallery search helper may be used if actually installed; this repository does not bundle winui-search.exe. Missing optional search tooling is not a reason to stop source work.
+- [Brushes and icons](references/brushes-and-icons.md), [layout review](references/layout-review.md) and [theme/accessibility](references/theme-accessibility.md).
+- `.agents/skills/winui-design/winui-search.exe` is an optional git-ignored upstream WinUI Gallery search helper (preserved in local checkouts when present, not tracked in Git). Use `.agents/skills/winui-design/winui-search.exe search "<query>"` when present locally; do not block design or source work if absent in a fresh clone.
 
 Sources: [WinUI Gallery](https://github.com/microsoft/WinUI-Gallery), [dialog contract](https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/dialogs-and-flyouts/dialogs).

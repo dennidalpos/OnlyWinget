@@ -5,18 +5,16 @@ description: "Review edited OnlyWinget WinUI XAML and C# for binding, MVVM, acce
 
 # OnlyWinget UI review
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md). Review the edited scope under `src/OnlyWinget/` and its callers after compilation; report concrete findings with file/line location, severity and user impact.
 
-Review the edited scope and its callers after compilation; list concrete findings with location, severity and user impact. Do not refactor working code solely to match a generic style.
+- Accept existing field-based `[ObservableProperty]` generators (`MVVMTK0045` suppressed in `OnlyWinget.csproj`) and typed `UiCommand` metadata (`src/OnlyWinget.Application/Presentation/UiCommand.cs`). Business and persistence operations remain in `OnlyWinget.Application` and `OnlyWinget.Infrastructure`.
+- Check explicit `x:Bind` modes (`OneWay`/`TwoWay`) for mutable properties, nullable paths, editor `UpdateSourceTrigger=PropertyChanged` updates (`ValidatedField`), stable `ObservableCollection<T>` instances and single event subscription/disposal across navigation.
+- Preset apply/save failures must retain user drafts (`IPendingNavigationGuard`). After an accepted in-memory mutation, if SQLite persistence fails, keep editor fields locked, block competing edits/navigation and retry only saving.
+- Every `ContentDialog` requires a valid `XamlRoot`, inherited `RequestedTheme`, single-dialog-per-window coordination and unavailable-root fallback handling (`Services/ConfirmationService.cs`, `Controls/LogViewerDialog.xaml.cs`).
+- Check `AutomationProperties.AutomationId`/`Name`, keyboard navigation, explicit status text (`Controls/StatusBadgeControl.xaml`), `ThemeResource` brushes and High Contrast readability. Severity must never rely on color alone.
+- Verify EN/IT localization in `src/OnlyWinget/TextResources.cs` and `Services/LocalizeExtension.cs` (`Localize`); do not introduce `.resw`/`.resx` or `ResourceLoader`.
+- `async void` is permitted only on UI event handlers. Avoid synchronous blocking (`.Result`/`.Wait()`) and heavy UI-thread work; review `CancellationTokenSource` disposal and `DispatcherQueue` callbacks after window closure.
+- Verify `ProcessStartInfo.ArgumentList` usage, `WingetInputValidator` enforcement at CLI/import boundaries (see `PROJECT_STATUS.json` `AUDIT-42`), and exact executable/PID/HWND ownership before process, window or registry mutations (`AUDIT-41`).
+- Standard `.\scripts\run.ps1 -Task Typecheck` runs `dotnet build -warnaserror` with `.NET 10` analyzers (`Directory.Build.props`); it does not load the optional git-ignored `.agents/skills/winui-dev-workflow/analyzer/Microsoft.WindowsAppSDK.Analyzers.dll`.
 
-- Accept the existing field-based ObservableProperty generators and UiCommand metadata. Use RelayCommand where already appropriate; business operations remain in Application.
-- Check explicit changing-data binding modes, nullable paths, editor PropertyChanged updates, stable collections and single event wiring. Compiled templates need compatible types.
-- Apply/save failures must retain drafts. After an accepted mutation, retry persistence only; block competing edits and navigation until saving succeeds.
-- Every dialog needs a valid XamlRoot. Review reentrancy, close/light-dismiss behavior and unavailable-root failure paths; compilation does not verify those interactions.
-- Check accessible IDs/names, keyboard behavior, explicit status text, theme resources and High Contrast. Severity must not rely only on color.
-- Localize in EN/IT TextResources.cs with Localize; do not add RESW/RESX or ResourceLoader for this app.
-- Async void belongs only to event handlers. Avoid blocking waits and heavy UI-thread work; review cancellation/disposal and dispatcher lifetimes.
-- Check ArgumentList use, validated inputs and ownership before file/process/registry changes.
-- OnlyWinget's typecheck does not automatically load the optional upstream WinUI analyzer. Report the tool actually executed.
-
-[Detailed quality topics](references/quality-rules.md) are optional background. Apply the project conventions above to its generic examples. Keep unresolved interactive checks in the tracker.
+See [detailed review topics](references/quality-rules.md) for checklist details.

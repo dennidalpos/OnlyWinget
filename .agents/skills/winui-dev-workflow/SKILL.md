@@ -5,15 +5,11 @@ description: "Build, launch or diagnose OnlyWinget WinUI 3 using the repository 
 
 # OnlyWinget build and run
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md) and [verified repository commands](../onlywinget/references/commands.md).
 
-Use [verified repository commands](../onlywinget/references/commands.md). Build/typecheck does not launch the application. Restore only when dependencies/targets changed or restore errors require it; preserve lockfiles through the toolchain.
-
-- Diagnose the actual compiler/XAML/restore error before changing versions. Do not automatically upgrade NuGet packages or generate another project.
-- For launch, scripts/run.ps1 -Task Dev uses the repository executable path. The app is unpackaged and self-contained; a direct owned executable launch is supported.
-- A normal launch uses the real LocalApplicationData store. For persistence edits or destructive log cleanup, launch with process-scoped ONLYWINGET_DATA_ROOT pointing to a fully qualified isolated directory. This isolates app data, not machine-wide WinGet/Windows Update operations; those still require a controlled environment.
-- Do not close existing instances merely to build. StopRunningInstance requests graceful closure only for this checkout's generated executable paths; refused closure fails rather than forcing termination.
-- The bundled BuildAndRun.ps1 is an optional upstream helper, not the OnlyWinget build contract. Its analyzer is conditional on a DLL actually being available; do not claim analysis ran because a targets file exists.
-- Missing WinApp UI tooling does not block compilation/offline tests. Use the setup skill when the requested workflow actually needs an unavailable prerequisite.
-
-Report executed commands and outputs, with interactive/live checks explicitly pending when not performed.
+- Run tasks through `.\scripts\run.ps1 -Task <Task>` from the repository root in PowerShell 7 (`pwsh`). `Build` and `Typecheck` compile into `artifacts/bin/OnlyWinget/<Configuration>/net10.0-windows10.0.17763.0/win-x64/OnlyWinget.exe` without launching the app.
+- Restore (`.\scripts\run.ps1 -Task Setup -NonInteractive`) uses NuGet `--locked-mode` against `global.json` (`.NET SDK 10.0.402`, `rollForward: disable`). Diagnose compiler/XAML/restore errors before changing versions; regenerate lockfiles only via `.\scripts\fix-lockfiles.ps1`.
+- Launch the unpackaged self-contained app via `.\scripts\run.ps1 -Task Dev -Configuration Release -NoRestore -NonInteractive` (or launch the built `OnlyWinget.exe` directly).
+- Normal execution uses `%LOCALAPPDATA%\OnlyWinget`. For isolated persistence or log-cleanup testing, set `ONLYWINGET_DATA_ROOT` only in the launched process's environment to a fully qualified temporary directory. This isolates SQLite, legacy JSON migration, source preferences, settings and logs, but does not isolate machine-wide WinGet or Windows Update state.
+- Do not close running instances merely to inspect code. `-StopRunningInstance` (`scripts/support/CloseOwnedApplication.ps1`) requests graceful `CloseMainWindow` only for executables under this checkout's `artifacts/bin`, `artifacts/obj` and `artifacts/publish`, and fails closed if closure is refused (note open tracker item `AUDIT-41` in `PROJECT_STATUS.json` for inaccessible or elevated `OnlyWinget` processes).
+- `.agents/skills/winui-dev-workflow/BuildAndRun.ps1` and `analyzer/Microsoft.WindowsAppSDK.Analyzers.targets` (plus the git-ignored `analyzer/Microsoft.WindowsAppSDK.Analyzers.dll`) are preserved upstream helpers, not the OnlyWinget build contract: `BuildAndRun.ps1` requires Windows Developer Mode, looks under `bin\<Platform>\<Config>` rather than `artifacts/bin/`, and skips injecting its analyzer whenever root `Directory.Build.props` exists. Always use `scripts/run.ps1` for OnlyWinget builds and typechecks.

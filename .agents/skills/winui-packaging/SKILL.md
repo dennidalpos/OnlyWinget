@@ -5,19 +5,23 @@ description: "Prepare or validate OnlyWinget self-contained NSIS setup and porta
 
 # OnlyWinget packaging and release
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md), [docs/release.md](../../../docs/release.md), [docs/operations.md](../../../docs/operations.md) and [the NSIS skill](../nsis-installer/SKILL.md).
 
-OnlyWinget supports NSIS setup EXE plus portable ZIP. MSIX tasks, certificates and Store submission are not part of this repository workflow.
+- OnlyWinget distributes two `win-x64` self-contained artifacts under `artifacts/dist/OnlyWinget/<Configuration>/`: `OnlyWinget-1.0.PATCH-setup.exe` (NSIS multi-user installer) and `OnlyWinget-1.0.PATCH-portable-x64.zip`. MSIX packaging, signing certificates and Store submission are not used.
+- Preserve the `1.0.x` version policy across `Version`, `AssemblyVersion`, `FileVersion` and `InformationalVersion` in `src/OnlyWinget/OnlyWinget.csproj` and annotated tags `v1.0.PATCH`.
+- `.\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive` acquires the per-worktree mutex `artifacts/.package.lock`, publishes self-contained `win-x64`, generates `InstalledFiles.nsh` (`scripts/support/InstallerFiles.ps1`), stages both artifacts on the destination volume (`scripts/support/PackageArtifacts.ps1`), verifies the setup MZ header and every ZIP entry (including hidden files) against the publish directory by path, length and SHA-256, and promotes each file with `File.Replace`, rollback backups and `.package-recovery` journaling.
+- Interrupted promotions are recovered automatically at the start of the next `Package` run; corrupt recovery journals or backups fail closed and must be preserved for inspection. Consume the artifact pair only after `Package` exits with code 0.
+- Landing page downloads (`landing/build/`) and links are aligned from built Release artifacts via `.\scripts\run.ps1 -Task GenerateLandingSetup -Configuration Release -NoRestore -NonInteractive` (`scripts/support/LandingArtifacts.ps1`). Branding icons and NSIS bitmaps (`HeaderBanner.bmp` 150x57, `WelcomeDialog.bmp` 164x314, 24-bit) are generated from `assets/logos/logo.png` via `.\scripts\update-media-assets.ps1` and `.\scripts\align-logos.ps1`.
+- `.github/workflows/build-gate.yml` and `.github/workflows/release.yml` provision Chocolatey `nsis` `3.13.0` (`makensis.exe /VERSION` -> `v3.13`), run `.\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive`, and (`release.yml`) verify tag/commit/version/asset invariants via `.\scripts\validate-release.ps1` before and after the gate.
 
-Follow [release.md](../../../docs/release.md), [operations](../../../docs/operations.md) and [the NSIS skill](../nsis-installer/SKILL.md).
+## Verification
 
-- Preserve the 1.0.x version policy and exact tag/project/SHA matching. Packaging alone is not authorization to create/push a tag or publish a release.
-- Keep the per-worktree packaging lock. Build both artifacts in destination-volume staging; validate before individual promotion.
-- Preserve recovery journals/backups when validation or restoration fails. The next package invocation recovers an interrupted promotion before building.
-- Check all portable payload files, including hidden files, against the published output. Never replace a valid artifact with partially generated output.
-- Release CI gates and exact assets must pass for the selected tag. AUDIT-12's hosted mismatch/full-gate failure prevention is qualified in the [2026-10-18 handoff](../../../docs/tracker-review-2026-10-18.md#continuation--audit-12-hosted-negative-qualification-completed), using unchanged production commands in a read-only branch fixture; do not merge that fixture or treat it as positive publication qualification. Isolated regressions alone do not establish hosted behavior.
-- Ownership and true older-payload upgrade validation remain separate from successful artifact creation.
+- Package artifacts: `.\scripts\run.ps1 -Task Package -Configuration Release -NoRestore -NonInteractive`
+- Isolated staging/rollback/recovery regression: `.\scripts\test-package-artifacts.ps1`
+- Isolated NSIS ownership & protocol regression: `.\scripts\test-installer-owned-files.ps1`
+- Isolated release tag/SHA/asset regression: `.\scripts\test-release-validation.ps1`
+- Isolated landing & media regressions: `.\scripts\test-landing-artifacts.ps1` and `.\scripts\test-media-assets.ps1`
 
-Read [source-generator patterns](references/sourcegen-patterns.md) only if the task actually changes the related code-generation/interop path; it is not a packaging prerequisite.
+Read [source-generator patterns](references/sourcegen-patterns.md) only when modifying code-generation or interop paths (`IsTrimmable=true` / analyzer compatibility).
 
 Sources: [Microsoft deployment models](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/), [NSIS manual](https://nsis.sourceforge.io/Docs/).

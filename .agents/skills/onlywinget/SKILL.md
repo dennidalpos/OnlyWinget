@@ -5,22 +5,20 @@ description: "Develop, maintain or audit the OnlyWinget .NET 10 WinUI 3 applicat
 
 # OnlyWinget maintenance
 
-Start with [AGENTS.md](../../../AGENTS.md), [PROJECT_STATUS.json](../../../PROJECT_STATUS.json) and the current diff. They define the checkout, pending work and verification evidence. For an open validation item, also read the newest tracker-review handoff named by the tracker before treating an older result as current.
+Start with [AGENTS.md](../../../AGENTS.md) and [PROJECT_STATUS.json](../../../PROJECT_STATUS.json) for project constraints and active backlog items.
 
-## Read only the relevant reference
+## References
 
-- [Architecture invariants](references/architecture.md): persistence, workflow ownership, diagnostics and native update behavior.
-- [Commands](references/commands.md): build/test/package tasks and validation boundaries.
-- [Maintained architecture](../../../docs/architecture.md), [operations](../../../docs/operations.md) and [release](../../../docs/release.md) are canonical product documentation.
+- [Architecture invariants](references/architecture.md): layer boundaries, SQLite persistence, concurrency, diagnostics, WinGet CLI and Windows Update execution.
+- [Commands](references/commands.md): task runner entrypoints, offline regressions and verification boundaries.
+- Canonical documentation: [docs/README.md](../../../docs/README.md), [architecture.md](../../../docs/architecture.md), [operations.md](../../../docs/operations.md), [release.md](../../../docs/release.md) and [user-guide.md](../../../docs/user-guide.md).
 
 ## Repository decisions
 
-- Presentation depends inward on Application/Domain; Infrastructure implements Application ports. Infrastructure references in UI belong only in AppComposition.
-- Use ProcessExternalProcessRunner and ArgumentList for external processes. WinGet integration uses the CLI; asynchronous COM jobs are for Windows Update.
-- TextResources.cs and Localize provide EN/IT localization. Keep existing field-based CommunityToolkit generators and typed UiCommand patterns; do not migrate them just to satisfy a generic sample.
-- OnlyWingetTable uses ListView/ItemsStackPanel virtualization. Preserve shared column sizing and selection behavior.
-- Deployment is unpackaged, self-contained win-x64, with asInvoker and NSIS per-user/per-machine scopes. URL activation is retired. Do not introduce MSIX, ARM64 or a protocol handler through generic WinUI guidance.
-- Check relevant native contracts against current primary sources. Do not equate compilation/offline regressions with interactive UI, live package/update operations or hosted release qualification.
-- For UI validation that can change persisted state, use an isolated fixture or profile by default. Direct validation against personal data needs explicit authorization, narrowly scoped backups/restoration evidence, and no broad profile-directory swaps. UI automation may close only a dialog whose ownership chain and process identity are verified.
-- Dialogs opened from a themed root must honor that root's actual theme. Keep log-viewer actions accessible with explicit localized level text; a successful build is not evidence for picker, modal-lifetime or High Contrast behavior.
-- Update documentation after task completion, remove closed tracker entries and record remaining validation. Do not copy historical counts into current evidence.
+- Presentation (`src/OnlyWinget`) depends inward on Application (`src/OnlyWinget.Application`) and Domain (`src/OnlyWinget.Domain`); Infrastructure (`src/OnlyWinget.Infrastructure`) implements Application ports. Infrastructure references in UI belong only in `src/OnlyWinget/AppComposition.cs`.
+- External processes run through `ProcessExternalProcessRunner` with discrete `ProcessStartInfo.ArgumentList` parameters (never shell concatenation). WinGet uses the CLI runner stack; Windows Update uses asynchronous COM jobs (`ComWindowsUpdateService`) with an asynchronous PowerShell fallback (`PowerShellWindowsUpdateService`) when COM cannot be activated.
+- `src/OnlyWinget/TextResources.cs` and `Services/LocalizeExtension.cs` (`Localize`) provide EN/IT localization. Keep existing field-based `CommunityToolkit.Mvvm` `[ObservableProperty]` generators and typed `UiCommand` patterns.
+- `Controls/OnlyWingetTable` uses `ListView`/`ItemsStackPanel` virtualization. Preserve shared column sizing, stable observable collections and selection behavior.
+- Deployment is unpackaged, self-contained `win-x64` (`WindowsPackageType=None`, `asInvoker`) distributed via NSIS multi-user setup (`src/OnlyWinget.Setup/OnlyWinget.nsi`) and portable ZIP. The legacy `onlywinget://` URL protocol is retired; startup and uninstall perform only ownership-verified legacy HKCU cleanup.
+- For interactive UI validation that mutates persisted state, launch with process-scoped `ONLYWINGET_DATA_ROOT` set to a fully qualified isolated directory. UI automation (`scripts/ui-test.ps1`) may close only dialogs whose native owner chain and PID match the tested instance.
+- Dialogs opened from a themed root must honor that root's actual theme. Keep log-viewer actions accessible with explicit localized level text and inline clear confirmation inside `Controls/LogViewerDialog`.

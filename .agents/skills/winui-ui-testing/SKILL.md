@@ -5,19 +5,22 @@ description: "Validate OnlyWinget interactive views, dialogs, picker ownership, 
 
 # OnlyWinget interactive verification
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md). Inspect [scripts/ui-test.ps1](../../../scripts/ui-test.ps1), `scripts/support/UiTestWindowHelpers.ps1` and `scripts/support/UiTestStateHelpers.ps1` before driving a running instance. Query `winapp --help` when checking CLI flags.
 
-Inspect scripts/ui-test.ps1 and scripts/test-ui-dialog-ownership.ps1 before driving the running app. Query the installed winapp help/schema for supported syntax instead of assuming commands from another version.
+- Scope every UI Automation action to the verified application PID and main HWND (`.\scripts\ui-test.ps1 -AppPid <PID> -NonInteractive`). Native `PickerHost` / modal dialogs require verifying that the Win32 owner chain reaches the tested main window and PID (`UiTestWindowHelpers.ps1`); never send global `Escape`/`WM_CLOSE` or close an unowned picker.
+- Check each `winapp` command exit code immediately and verify process liveness; an early exit (including code 0) or unresponsive window is a failure (`scripts/support/VerificationHelpers.ps1`).
+- Ensure `TextBox` edits reach the `FeatureViewModel` via `UpdateSourceTrigger=PropertyChanged` (`ValidatedField`) or explicit focus movement.
+- Normal launches use `%LOCALAPPDATA%\OnlyWinget`. For persistence or destructive log-viewer fixtures, launch the target process with `ONLYWINGET_DATA_ROOT` set in that process's environment to a fully qualified temporary directory (redirects `onlywinget.db`, `workspace-v1.json` migration, `source-preferences-v1.json`, `settings.json` and `logs\`). Verify the fixture PID/root and never treat `onlywinget.db` (SQLite) as JSON.
+- Persisted behavior requires checking stored SQLite/JSON state or restarting the app against the same `ONLYWINGET_DATA_ROOT`, not screenshots alone. Keep accepted-unsaved edits (locked fields retrying save) distinct from unapplied dirty drafts (`IPendingNavigationGuard`).
+- Import-picker cancellation compares row identities, `ToggleState`, `IsSelected` and the selection container's selected item (including collapsed `ComboBox` preset selectors) via `UiTestStateHelpers.ps1`.
+- In `Controls/LogViewerDialog`, verify inline `InfoBar` clear confirm/cancel, I/O error surfacing (`DiagnosticLogStore.LastError`), clipboard/export outcomes and Light/Dark/High Contrast themes. Note that `CancellationToken` in `FilePickerService` governs file I/O after picker return, not native modal picker lifetime; cancel or close an owned modal picker before shutting down the app, or send `WM_CLOSE` to the verified owner HWND.
+- Store temporary screenshots/logs under ignored `artifacts/tmp/`, clean up fixture scratch files and stop only processes started for the fixture.
 
-- Scope actions to the verified application PID and HWND. PickerHost windows require ownership checks; PID alone is insufficient. Never use global Escape/WM_CLOSE or terminate an unrelated picker.
-- Test relevant flows in a batch with concrete assertions. Preserve earlier native failures and check process liveness; a zero early exit is not startup success.
-- TextBox updates must reach the ViewModel: use the actual TwoWay/PropertyChanged binding, or move focus when the binding requires it.
-- The normal app uses a personal SQLite workspace/settings/log directory. For persistence fixtures, launch with the process-scoped ONLYWINGET_DATA_ROOT set to a fully qualified isolated directory; it also contains source preferences and legacy import. Verify the fixture PID/root and preserve personal-file hashes. Do not treat a .db as JSON.
-- Persisted behavior needs a save/restart or equivalent stored-state check, not a screenshot alone. Keep accepted-unsaved edits and failed-save retry distinct from unapplied drafts.
-- Import cancellation compares row identities, checkbox states and selected preset through UIA patterns, including collapsed selection containers. scripts/test-ui-state-snapshot.ps1 verifies these comparisons on an isolated window; it does not qualify the real WinUI picker.
-- For logs, validate inline confirm/cancel, I/O failure, copy/export outcomes, close during export and theme changes. Shared picker cancellation currently observes the token during file I/O, not native picker lifetime.
-- Capture artifacts under ignored artifacts/tmp, remove owned scratch after use, and stop only processes started for the fixture.
+## Deterministic UI & ownership regressions (no `winapp` required)
 
-AUDIT-10/27 are closed in the 2026-10-09 handoff and AUDIT-19/22 in the 2026-10-18 handoff. AUDIT-22 qualifies normal owned-picker cancellation and direct WM_CLOSE to the owner with exit code zero; it does not establish token-driven cancellation of the native picker API. Record actual execution separately from compiled XAML and deterministic regressions.
+- Native dialog/picker owner-chain regression: `.\scripts\test-ui-dialog-ownership.ps1`
+- UIA checkbox/list/collapsed-selector snapshot regression: `.\scripts\test-ui-state-snapshot.ps1`
+- Startup responsiveness & TRX verification invariants: `.\scripts\test-verification-invariants.ps1`
+- Installed executable startup check: `.\scripts\validate-installed-startup.ps1 -ExePath <path>`
 
 Source: [UI Automation](https://learn.microsoft.com/en-us/windows/win32/winauto/entry-uiauto-win32).

@@ -5,15 +5,11 @@ description: "Analyze an explicitly requested OnlyWinget agent session and repor
 
 # OnlyWinget session analysis
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md) only when the user explicitly requests a session report (`agents/openai.yaml` sets `allow_implicit_invocation: false`).
 
-Identify the requested session and format before reading logs. The bundled Analyze-Session.ps1 supports Copilot/Claude formats; inspect its parameters first. Do not claim it parses Codex logs or select another conversation as an automatic fallback.
-
-- For the current session, prefer the actual conversation, current tracker and audit/remediation evidence. Use tool outputs and executed commands, not intended actions, for pass/fail claims.
-- Distinguish implementation, deterministic regressions, interactive/live/hosted validation and publication. Disabled smoke methods counted as Passed are not real smoke coverage.
-- Report concrete failures, their resolution and remaining blockers; keep recommendations within the user's requested scope.
-- Create the report only in the intended output directory and summarize without embedding an unredacted transcript, environment values or secrets.
-- If the bundled parser would include raw transcript content, inspect and redact the report before displaying/sharing it. No external sharing is implied by report creation.
-- Preserve existing logs and personal data. Do not modify memories, cleanup unrelated sessions or message another chat as part of analysis.
-
-Record report artifacts and pending follow-up in repository documentation when the request calls for it.
+- Identify the target session and transcript format first:
+  - The bundled `.agents/skills/winui-session-report/Analyze-Session.ps1` (`-SessionId`, `-EventsFile`, `-OutputFile`, `-Format Copilot|ClaudeCode`, `-SkipSubagents`) parses only GitHub Copilot CLI (`~/.copilot/session-state/<id>/events.jsonl`) and Claude Code (`~/.claude/projects/<encoded-cwd>/<id>.jsonl`) transcripts.
+  - Do not claim `Analyze-Session.ps1` parses Codex or Antigravity transcripts, and never fall back to an unrelated session ID automatically.
+- For the active session or repository handoffs, inspect actual executed commands, tool outputs, [PROJECT_STATUS.json](../../../PROJECT_STATUS.json) and `docs/` evidence rather than planned commands.
+- Distinguish static/offline verification (e.g., 392 offline xUnit tests vs 4 skipped `[LiveFact]` smoke tests, `Typecheck`, `Lint`, isolated PowerShell fixtures) from interactive WinUI automation, live host WinGet/Windows Update mutations, installer lifecycle runs and hosted GitHub Actions runs.
+- Summarize concrete changes, failures, resolutions and remaining blockers within the requested scope. Redact secrets, tokens or raw personal environment dumps before writing or displaying any report output.

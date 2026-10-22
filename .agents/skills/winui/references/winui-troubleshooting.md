@@ -1,14 +1,14 @@
 # OnlyWinget troubleshooting
 
-Read the actual command output and affected source before applying a generic fix.
+Read the actual command output and affected source before applying a fix.
 
-- NU1004 after RID changes: use the repository lockfile toolchain, not manual lockfile edits or disabling locked restore.
-- XAML compiler/type errors: inspect generated diagnostics, namespace/type accessibility and referenced package versions; do not upgrade blindly or add a second UI framework.
-- Stale view content: inspect binding modes, collection identity, dispatcher refresh and handler lifetime. OneTime is valid for fixed command/log-entry data.
-- Editor failure: retain the draft, distinguish mutation from save failure and retry persistence only after an accepted mutation. Do not discard fields to hide an error.
-- Dialog/picker errors: validate XamlRoot, reentrancy and native HWND ownership. A dialog root/build success is not interactive proof.
-- Launch failure: resolve the real self-contained output path through repository scripts and check actual process lifetime. This app has WindowsPackageType=None; introducing MSIX identity is not a repair.
-- WinApp/tool absence: it blocks only the requested tool-dependent workflow. Compilation and deterministic tests remain available.
-- Log I/O failure: inspect surfaced LastError and settings filters without deleting personal logs or clearing Activity history.
+- **`NU1004` lockfile mismatch**: `global.json` pins `.NET SDK 10.0.402` (`rollForward: disable`) and `Directory.Build.props` enforces `RestorePackagesWithLockFile=true`. Regenerate all five `packages.lock.json` files with `.\scripts\fix-lockfiles.ps1`; never hand-edit lockfiles or disable `--locked-mode`.
+- **XAML compiler / typecheck errors**: run `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -Full -NonInteractive` to inspect generated XAML/C# diagnostics, `x:Bind` path types and namespace visibility.
+- **Locked executable during build/typecheck/clean**: another `OnlyWinget.exe` from this checkout may be running. Close it gracefully or pass `-StopRunningInstance` (note open tracker item `AUDIT-41` in `PROJECT_STATUS.json` when an inaccessible or elevated `OnlyWinget` process exists on the host).
+- **Stale UI content**: verify `Mode=OneWay`/`TwoWay` on `x:Bind`, `ObservableCollection<T>` instance stability, `DispatcherQueue` marshaling in `FeatureViewModel` and `StateChanged` subscription lifetime.
+- **Preset editor / save failure**: retain the user's draft; distinguish validation/mutation failure from post-mutation SQLite save failure (where fields stay locked and Apply retries only persistence).
+- **Dialog or file-picker errors**: verify `ContentDialog.XamlRoot` (and inherited `RequestedTheme`), single-dialog-per-window guard, and native owner HWND (`WinRT.Interop.WindowNative.GetWindowHandle` / `InitializeWithWindow.Initialize`).
+- **Launch failure**: `scripts/dev.ps1` launches `artifacts/bin/OnlyWinget/<Configuration>/net10.0-windows10.0.17763.0/win-x64/OnlyWinget.exe`. Ensure `Build` completed for that configuration; never add MSIX package identity (`WindowsPackageType` must remain `None`).
+- **Diagnostic log I/O failure**: inspect `DiagnosticLogStore.LastError` and `AppSettings` log-level filters without deleting personal logs under `%LOCALAPPDATA%\OnlyWinget\logs` or clearing `Activity` history.
 
-Use [commands](../../onlywinget/references/commands.md) for relevant probes. Preserve original output and report validation limits.
+See [commands](../../onlywinget/references/commands.md) for verification commands.

@@ -5,18 +5,20 @@ description: "Develop OnlyWinget WinGet CLI invocation, source-aware package ide
 
 # OnlyWinget WinGet integration
 
-Read [AGENTS.md](../../../AGENTS.md) and the [project skill](../onlywinget/SKILL.md) for repository constraints and verified workflows.
+Use with [the project skill](../onlywinget/SKILL.md) and [docs/operations.md](../../../docs/operations.md). Trace callers through `src/OnlyWinget.Infrastructure/Winget/ProcessWingetCommandRunner.cs` and `src/OnlyWinget.Infrastructure/System/ProcessExternalProcessRunner.cs` before changing invocation or parsing behavior.
 
-Trace Application callers through ProcessWingetCommandRunner and ProcessExternalProcessRunner before changing invocation or result behavior.
+- Pass discrete CLI parameters via `ProcessStartInfo.ArgumentList` in `WingetCommandBuilder` with exact package ID/source selection (`--id`, `--exact`, `--source`) and `WingetInputValidator` (`src/OnlyWinget.Application/Winget/WingetInputValidator.cs`). Never concatenate shell commands or assume unsupported JSON output flags. Check `PROJECT_STATUS.json` (`AUDIT-42`) for open input-validation boundary work in `PresetDocumentService`, `WingetPackageSearchService` and `WingetPackageResolver`.
+- `PackageIdentity` (`src/OnlyWinget.Domain/Packages/PackageIdentity.cs`) equality includes case-insensitive `Id` and `Source`. `WingetPackageSearchService` (5-minute cache per query/source) and `WingetPackageResolver` must preserve that composite identity.
+- `OnlyWingetApplication` serializes workflows through a single operation gate; do not introduce parallel WinGet CLI execution pools.
+- Read-only discovery (`search`, `list`, `upgrade`, `source list`) runs without elevation. Source `add`, `remove` and `reset` require administrator elevation; `reset` is an explicit destructive action, never an automatic certificate-failure workaround.
+- `WingetOperationExecutor` preserves completed, failed, cancelled (`OperationExecutionCanceledException` carrying `Summary.Results`) and never-started batch rows. Only a fully successful apply triggers an automatic rescan; cancellation does not prove an in-flight package mutation was rolled back.
+- `WingetErrorClassifier` maps native Microsoft HRESULT exit codes (signed and unsigned) ahead of localized text heuristics, even when the native code maps to `Unknown`. Deterministic failures (invalid arguments `0x8A150002`, missing/unconfigured sources `0x8A15000F`/`0x8A150015`, ambiguity, hash mismatch `0x8A150011`, certificate errors, custom installer errors `0x8A150115`) do not retry automatically.
+- Preset uninstall delegates installed-package matching directly to `winget uninstall` with the original exact ID and optional source, without requiring an enabled OnlyWinget source or remote `show` lookup. For install/upgrade preflight, `IsInstalled=false` requires WinGet's native no-match result; process, source, permission, timeout or unreadable/ambiguous table outputs fail preflight with diagnostics.
 
-- Use ArgumentList with exact package ID/source selection and the existing validators/parsers. Do not concatenate shell commands or invent unsupported JSON output flags.
-- PackageIdentity equality includes case-insensitive ID and source. Source-specific search/resolve caches must preserve that identity.
-- The Application workflow owns operation serialization; do not add an arbitrary parallel CLI pool.
-- Read-only discovery does not require elevation. Source reset is a separate explicit destructive operation, not an automatic certificate-error workaround.
-- Preserve completed, failed, cancelled and never-started batch outcomes. Cancellation does not prove a package operation was undone.
-- HRESULT mappings follow Microsoft's return codes, including signed/unsigned representations. Native codes override localized heuristics, even when classified Unknown. Deterministic invalid-argument/source/ambiguity/hash/certificate/custom-installer failures do not start another package attempt.
-- Uninstall delegates installed-match validation to WinGet with the original exact ID/source, without remote show or application source-enable checks. Installed-status absence requires native no-match; process/source/permission/timeout and unreadable/ambiguous success results fail preflight with diagnostics.
+## Verification
 
-Use [commands](../onlywinget/references/commands.md) for offline verification. Live install/uninstall/source mutations require the intended packages and environment; they are not a documentation check.
+- Targeted unit tests: `dotnet test --filter "FullyQualifiedName~Winget" --nologo`
+- Offline test suite: `.\scripts\run.ps1 -Task Test -Configuration Release -NoRestore -NonInteractive`
+- Opt-in live read-only smoke tests (requires working host `winget`): `.\scripts\run.ps1 -Task Test -Configuration Release -RunWingetSmoke -NonInteractive`
 
 Sources: [WinGet command documentation](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [troubleshooting](https://learn.microsoft.com/en-us/windows/package-manager/winget/troubleshooting), [official return codes](https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md), [manifest schemas](https://github.com/microsoft/winget-pkgs/tree/master/doc/manifest/schema).

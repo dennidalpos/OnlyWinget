@@ -1,31 +1,26 @@
 # OnlyWinget invariants
 
-Read [canonical architecture](../../../../docs/architecture.md) for the component map; inspect callers before changing interfaces.
+Read [docs/architecture.md](../../../../docs/architecture.md) and [docs/operations.md](../../../../docs/operations.md) for the full system map; inspect callers before changing interfaces.
 
 ## Ownership and persistence
 
-Application serializes asynchronous workflows and persistent edits with one operation gate. Busy edits reject; queued saves wait with cancellation. State snapshots, selections, metadata and publication share stateLock; no lock spans await.
-
-SQLite is the primary workspace. Preserve legacy workspace JSON during migration and retained load-failure diagnostics. A failed SQLite load blocks later saves until a successful reload. Source-preference malformed/schema-invalid files fail loading and are revalidated before saving, including on a fresh store instance; restore/repair the preserved file to recover.
-
-The full JSON workspace writer and dormant DPAPI services are retired; SQLite retains the legacy JSON reader. Do not delete retained legacy/secret files. WorkspaceSchemaMigration owns SQLite user_version=1: legacy metadata columns are retired after a verified native backup, with transactional rollback. Preserve pre-schema-v1 backups and failed partial snapshots; restore only with all database clients closed. Future/unrecognized schemas fail before mutation.
-
-Package identity includes both case-insensitive ID and source. An edit captures the original identity once. Apply succeeds after mutation and persistence; failed saving after accepted mutation retries only saving and keeps fields locked. Accepted idle selector changes autosave; rejected busy choices do not mutate/save. Actual draft/navigation qualification is recorded in [the AUDIT-19 closure](../../../../docs/tracker-review-2026-10-18.md).
+- `OnlyWingetApplication` (`src/OnlyWinget.Application/App/`) serializes asynchronous workflows and persistent preset edits with one operation semaphore (`operationGate`). Overlapping workflows and busy preset mutations are rejected; queued workspace saves wait asynchronously on the semaphore and honor caller cancellation. State snapshots, selections, metadata and publication share `stateLock`; no lock spans an `await`.
+- `SqliteWorkspaceStore` (`src/OnlyWinget.Infrastructure/Storage/Sqlite/`) is the primary workspace store (`%LOCALAPPDATA%\OnlyWinget\onlywinget.db`, overridable per process via `ONLYWINGET_DATA_ROOT` in `AppDataPaths`). It retains the read-only migration reader for legacy `workspace-v1.json`; the legacy JSON writer and DPAPI services are retired. A failed SQLite load blocks later saves until a successful reload.
+- `JsonSourcePreferenceStore` validates `source-preferences-v1.json` on load and before saving, including on fresh store instances; malformed files fail closed and remain untouched for repair/recovery.
+- `WorkspaceSchemaMigration` manages SQLite `user_version=1`: unversioned databases are backed up via SQLite's native `BackupDatabase` API (`onlywinget.db.pre-schema-v1-<unique-id>.bak`; incomplete `.bak.partial` files are not valid restore points) before removing retired columns (`Description`, `CreatedAt`, `UpdatedAt`, `PackageName`) in a single transaction. Unrecognized or future schema versions fail before mutation.
+- `PackageIdentity` (`src/OnlyWinget.Domain/Packages/PackageIdentity.cs`) compares both ID and source case-insensitively. Preset edits capture the original identity once. Apply succeeds only after mutation and persistence; if saving fails after an accepted mutation, fields remain locked and Apply retries only persistence. Accepted idle preset-selector changes autosave; rejected busy selections do not mutate or save.
 
 ## Native work and processes
 
-WinGet uses the existing CLI runner/cache/parser stack. Use ArgumentList and forward cancellation. Keep completed batch outcomes, failures, cancellations and never-started rows distinct.
-
-Windows Update uses BeginSearch/BeginDownload/BeginInstall jobs off the UI thread, RequestAbort and CleanUp. Cancellation or failed installation must not trigger an automatic fallback/retry. Match exact update ID/revision and complete selection coverage; preserve actual MsrcSeverity/RebootRequired and canonical KB labels. Real download/install qualification was not executed; the user cancelled those tracker tasks because no Windows test environment is available. See [the recorded decision](../../../../docs/tracker-review-2026-10-18.md#decision--windows-test-environment-tasks-cancelled).
+- WinGet integration (`src/OnlyWinget.Infrastructure/Winget/`) runs via `ProcessWingetCommandRunner` and `ProcessExternalProcessRunner` using `ArgumentList` and `WingetInputValidator` (see `PROJECT_STATUS.json` for open boundary validation item `AUDIT-42`). Keep completed, failed, cancelled (`OperationExecutionCanceledException`) and never-started batch rows distinct.
+- Windows Update (`src/OnlyWinget.Infrastructure/WindowsUpdate/`) uses `ComWindowsUpdateService` (`WindowsUpdateComJob`) with `BeginSearch`, `BeginDownload` and `BeginInstall` off the UI thread, `RequestAbort` and `CleanUp`. `PowerShellWindowsUpdateService` (`PowerShellWindowsUpdateJob`) is an activation fallback only—failed or cancelled COM operations never retry through PowerShell. The PowerShell fallback uses the same asynchronous job lifecycle and signals a process-scoped named event before stopping the worker; if abort/cleanup fails or the 30-second grace expires, native state is reported as uncertain. Both paths require a successful search and complete ID/revision selection coverage before accepting EULAs, and preserve `MsrcSeverity`, actual `RebootRequired` and single-prefix `KB` labels.
 
 ## Diagnostics and UI
 
-Serilog and direct diagnostics share DiagnosticLogStore: one UTF-8 writer and bounded 1000-entry queue, filtered by the same settings. Daily/numbered files roll at 10 MiB and successful writes retain at most 14 owned files/140 MiB aggregate. I/O/retention errors preserve memory entries and expose LastError. Clear recognizes daily/rolled names; unrelated files/reparse points are preserved. Activity clear/Undo is independent.
-
-FeatureViewModel uses the instance workflow StateChanged event and dispatcher. Use the existing field-based generators/typed commands; messenger/RelayCommand use is not universal.
-
-OnlyWingetTable is ListView/ItemsStackPanel. Keep stable collections, theme resources and EN/IT TextResources/Localize. A ContentDialog opened from the app root must use that root's actual theme; use pinned, verified WinUI theme resources rather than guessing resource keys. Log clear uses inline confirmation in the existing ContentDialog. Real picker/dialog/High Contrast checks are not proven by compilation.
+- Serilog (`AppDiagnosticsSerilogSink`) and direct diagnostics share `DiagnosticLogStore` (`src/OnlyWinget.Infrastructure/Diagnostics/DiagnosticLogStore.cs`): one UTF-8 writer and a bounded 1000-entry memory queue filtered by `AppSettings`. Daily/numbered files (`onlywinget-yyyyMMdd.log`, `onlywinget-yyyyMMdd-NNNNNN.log`) roll at 10 MiB and retain at most 14 owned files / 140 MiB aggregate after successful writes. Unrelated files and reparse points are preserved; I/O or retention errors expose `LastError` while keeping memory entries available. Activity history clear/Undo is independent of diagnostic log clear.
+- `FeatureViewModel` (`src/OnlyWinget/Presentation/FeatureViewModel.cs`) subscribes to `OnlyWingetApplication.StateChanged` and marshals updates through `DispatcherQueue`.
+- `Controls/OnlyWingetTable` uses `ListView` + `ItemsStackPanel`. Dialogs opened from the app root must inherit the root's actual `ElementTheme`; `Controls/LogViewerDialog` confirms log deletion inline via `InfoBar` rather than nesting a second `ContentDialog`.
 
 ## Deployment
 
-The app is unpackaged self-contained win-x64/asInvoker. NSIS owns its generated file list and removes only distributed files/empty directories. Protocol activation is retired; composition/uninstall remove only a matching legacy HKCU handler. See [release.md](../../../../docs/release.md) for staged packaging, rollback and recovery.
+- The application is unpackaged self-contained `win-x64` (`WindowsPackageType=None`, `asInvoker`). NSIS (`src/OnlyWinget.Setup/OnlyWinget.nsi`) uses the generated `InstalledFiles.nsh` manifest to extract and remove only owned files and empty directories, and invokes `CloseOwnedApplication.nsh` / `LegacyProtocolCleanup.nsh`. See [docs/release.md](../../../../docs/release.md) for staged packaging, rollback and recovery.
