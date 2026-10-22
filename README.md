@@ -74,6 +74,8 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Check -Configuration 
 
 ## Project Links
 
+- [Documentation Index](docs/README.md)
+- [User Visual Guide](docs/user-guide.md)
 - [Architecture](docs/architecture.md)
 - [Operations](docs/operations.md)
 - [Release](docs/release.md)

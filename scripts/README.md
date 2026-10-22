@@ -49,6 +49,8 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `test-landing-artifacts.ps1` | Isolated sentinel regression for exact project-version selection, missing current artifacts and preserved unrelated landing files. |
 | `install-skills.ps1` | Read-only verification of all canonical `.agents/skills` entrypoints; does not create duplicate copies. |
 | `sync-win-dev-skills.ps1` | Resolves the maintained Microsoft WinUI upstream HEAD and verifies local entrypoints; updates require manual review and are never imported automatically. |
+| `update-media-assets.ps1` | Generates application/landing PNG/ICO assets and consumed NSIS HeaderBanner/WelcomeDialog bitmaps from the master logo. |
+| `fix-lockfiles.ps1` | Regenerates NuGet packages.lock.json files with the pinned .NET SDK from global.json and verifies locked restore. |
 
 Support files live under `scripts/support/` and are not standalone entrypoints.
 
