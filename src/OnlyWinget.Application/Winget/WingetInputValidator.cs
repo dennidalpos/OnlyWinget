@@ -11,7 +11,8 @@ public static class WingetInputValidator
             return false;
         }
 
-        return !input.Any(c => char.IsControl(c) || DisallowedCharacters.Contains(c));
+        return !input.TrimStart().StartsWith('-') &&
+            !input.Any(c => char.IsControl(c) || DisallowedCharacters.Contains(c));
     }
 
     public static void Validate(string input, string paramName)

@@ -1,6 +1,77 @@
+param([switch]$DiscoveryOnly)
+
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/CloseOwnedApplication.ps1')
+
+# MainModule failures cannot be reproduced reliably through elevation on every host.
+# Model the native access failures and null module explicitly, under both PS runtimes.
+Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+public sealed class OwnershipProcessModule {
+    public string FileName { get; set; }
+}
+public sealed class OwnershipProcessCandidate : IDisposable {
+    private readonly string scenario;
+    private readonly string path;
+    public bool Disposed { get; private set; }
+    public OwnershipProcessCandidate(string scenario, string path) { this.scenario = scenario; this.path = path; }
+    public bool HasExited {
+        get {
+            if (scenario == "status-denied") throw new Win32Exception(5);
+            return scenario == "exited";
+        }
+    }
+    public object MainModule {
+        get {
+            switch (scenario) {
+                case "null": return null;
+                case "missing-property": return new object();
+                case "denied": throw new Win32Exception(5);
+                case "unauthorized": throw new UnauthorizedAccessException();
+                case "exit-race": throw new InvalidOperationException();
+                case "unexpected": throw new NotSupportedException("Unexpected fixture failure");
+                default: return new OwnershipProcessModule { FileName = path };
+            }
+        }
+    }
+    public void Dispose() { Disposed = true; }
+}
+'@
+
+$discoveryPath = Join-Path $PSScriptRoot 'OnlyWinget.exe'
+$ownedCandidate = [OwnershipProcessCandidate]::new('owned', $discoveryPath)
+$ignoredCandidates = @(
+    foreach ($scenario in @('null', 'missing-property', 'denied', 'unauthorized', 'exit-race', 'status-denied', 'exited')) {
+        [OwnershipProcessCandidate]::new($scenario, $discoveryPath)
+    }
+    [OwnershipProcessCandidate]::new('empty', '')
+    [OwnershipProcessCandidate]::new('unrelated', (Join-Path $PSScriptRoot 'portable/OnlyWinget.exe'))
+)
+try {
+    $found = @(Get-OwnedApplicationProcess -ExecutablePaths @($discoveryPath) -CandidateProcesses ($ignoredCandidates + $ownedCandidate))
+    if ($found.Count -ne 1 -or -not [object]::ReferenceEquals($found[0], $ownedCandidate)) {
+        throw 'Discovery did not retain exactly the verified owned process.'
+    }
+    if ($ownedCandidate.Disposed -or @($ignoredCandidates | Where-Object { -not $_.Disposed }).Count -ne 0) {
+        throw 'Discovery did not dispose ignored candidates or disposed the returned process.'
+    }
+    $unexpected = [OwnershipProcessCandidate]::new('unexpected', $discoveryPath)
+    $failed = $false
+    try { Get-OwnedApplicationProcess -ExecutablePaths @($discoveryPath) -CandidateProcesses @($unexpected) } catch {
+        if ($_.Exception.ToString() -notmatch 'Unexpected fixture failure') { throw }
+        $failed = $true
+    }
+    if (-not $failed -or -not $unexpected.Disposed) { throw 'Unexpected failures must propagate and dispose the candidate.' }
+} finally { $ownedCandidate.Dispose() }
+Write-Host 'PASS: inaccessible/null/exited candidates ignored and disposed; exact ownership retained; unexpected failures propagate.'
+if ($DiscoveryOnly) { return }
+
+$windowsPowerShell = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+& $windowsPowerShell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $PSCommandPath -DiscoveryOnly
+if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell discovery regression failed.' }
 
 $repositoryRoot = $script:OnlyWingetRepositoryRoot
 $fixtureRoot = Join-Path $repositoryRoot ('artifacts/process-tests/' + [Guid]::NewGuid().ToString('N'))

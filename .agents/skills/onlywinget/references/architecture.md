@@ -12,7 +12,7 @@ Read [docs/architecture.md](../../../../docs/architecture.md) and [docs/operatio
 
 ## Native work and processes
 
-- WinGet integration (`src/OnlyWinget.Infrastructure/Winget/`) runs via `ProcessWingetCommandRunner` and `ProcessExternalProcessRunner` using `ArgumentList` and `WingetInputValidator` (see `PROJECT_STATUS.json` for open boundary validation item `AUDIT-42`). Keep completed, failed, cancelled (`OperationExecutionCanceledException`) and never-started batch rows distinct.
+- WinGet integration (`src/OnlyWinget.Infrastructure/Winget/`) runs via `ProcessWingetCommandRunner` and `ProcessExternalProcessRunner` using `ArgumentList`. `WingetInputValidator` guards preset import and search/show/list/package command boundaries before execution. Keep completed, failed, cancelled (`OperationExecutionCanceledException`) and never-started batch rows distinct.
 - Windows Update (`src/OnlyWinget.Infrastructure/WindowsUpdate/`) uses `ComWindowsUpdateService` (`WindowsUpdateComJob`) with `BeginSearch`, `BeginDownload` and `BeginInstall` off the UI thread, `RequestAbort` and `CleanUp`. `PowerShellWindowsUpdateService` (`PowerShellWindowsUpdateJob`) is an activation fallback only—failed or cancelled COM operations never retry through PowerShell. The PowerShell fallback uses the same asynchronous job lifecycle and signals a process-scoped named event before stopping the worker; if abort/cleanup fails or the 30-second grace expires, native state is reported as uncertain. Both paths require a successful search and complete ID/revision selection coverage before accepting EULAs, and preserve `MsrcSeverity`, actual `RebootRequired` and single-prefix `KB` labels.
 
 ## Diagnostics and UI

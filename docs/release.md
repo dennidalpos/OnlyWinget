@@ -52,7 +52,7 @@ This uses isolated local clones and sentinel assets, accepts lightweight/annotat
 
 ## Artifact
 
-Uninstall requests graceful closure only for `$INSTDIR\OnlyWinget.exe`, using the embedded PowerShell helper. It waits up to five seconds per owned process; a refused close or ownership-query error exits nonzero before file/registry removal. Other executable copies are preserved. The 32-bit NSIS bootstrap invokes 64-bit Windows PowerShell through `Sysnative`; no process-name kill or forced termination is used. `scripts/test-process-ownership.ps1` validates the production macro on isolated windows, including another running portable copy and a refused close.
+Uninstall requests graceful closure only for `$INSTDIR\OnlyWinget.exe`, using the embedded PowerShell helper. It waits up to five seconds per verified owned process; a refused close exits nonzero before file/registry removal. Exited processes, null modules and expected access errors are ignored without closing the process; unexpected query errors still stop the operation. Other executable copies are preserved. An unreadable path provides no ownership evidence and does not prove the installation is unlocked. The 32-bit NSIS bootstrap invokes 64-bit Windows PowerShell through `Sysnative`; no process-name kill or forced termination is used. `scripts/test-process-ownership.ps1` covers deterministic inaccessible/null-module candidates in PowerShell 7 and Windows PowerShell 5.1, plus the production macro on isolated windows, another running portable copy and a refused close.
 
 Publish the unified setup EXE and portable ZIP:
 

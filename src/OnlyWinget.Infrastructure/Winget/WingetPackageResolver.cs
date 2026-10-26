@@ -13,6 +13,8 @@ public sealed class WingetPackageResolver(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(package);
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidatePackage(package);
 
         var arguments = new List<string>
         {
@@ -58,6 +60,7 @@ public sealed class WingetPackageResolver(
     {
         ArgumentNullException.ThrowIfNull(package);
         cancellationToken.ThrowIfCancellationRequested();
+        ValidatePackage(package);
 
         var arguments = new List<string>
         {
@@ -93,6 +96,15 @@ public sealed class WingetPackageResolver(
             throw new InvalidOperationException($"WinGet did not return one readable installed match for '{package.Id}'.");
         }
         return new PackageInstalledStatus(true, version.Trim());
+    }
+
+    private static void ValidatePackage(PackageIdentity package)
+    {
+        WingetInputValidator.Validate(package.Id, nameof(package.Id));
+        if (package.Source is not null)
+        {
+            WingetInputValidator.Validate(package.Source, nameof(package.Source));
+        }
     }
 
     private static string? ExtractName(string output, string packageId)

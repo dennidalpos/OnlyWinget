@@ -25,6 +25,8 @@ public sealed class WingetInputValidatorTests
     [InlineData("name'quote'")]
     [InlineData("name<redirect>")]
     [InlineData("name>redirect")]
+    [InlineData("--help")]
+    [InlineData("  -q")]
     public void IsValidReturnsFalseForInvalidInputs(string? value)
     {
         Assert.False(WingetInputValidator.IsValid(value));

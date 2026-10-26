@@ -84,6 +84,12 @@ Import-picker cancellation targets only newly opened windows whose owner chain r
 
 The real WinUI import, focus, source-toggle restoration, selection preservation and three resized layouts passed on 2026-10-09, including import cancellation while a separate picker remained open. See [the current validation evidence](tracker-review-2026-10-09.md). These checks do not install packages or Windows updates.
 
+## WinGet input validation
+
+Preset import and WinGet search, show and installed-status list validate package IDs, queries and optional sources with the same `WingetInputValidator` used by package commands. Control characters, quotes, backticks, `; | & < >` and values starting with `-` (after leading whitespace) are rejected before cache lookup or CLI execution. Multiword/Unicode searches and source names remain supported; CLI arguments remain discrete `ArgumentList` entries. A null package in an imported preset is rejected before duplicate detection or workspace mutation.
+
+Search results are cached for five minutes using a typed query/source key. Underscores in either value cannot merge different requests, and an omitted source remains distinct from an explicit source. Identical query/source pairs reuse their result; validation and cancellation checks precede cache access.
+
 ## Source preferences and privileges
 
 Source refresh and startup preserve disabled sources, existing URLs and intentionally removed defaults. Initial configuration adds missing `winget`/`msstore` sources once; it never removes an existing source to replace its endpoint. Without elevation, missing defaults are reported in Activity and existing sources remain usable. A failed add or preference save leaves initialization incomplete so a later refresh can retry.

@@ -4,23 +4,36 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 function Get-OwnedApplicationProcess {
-    param([string[]]$ExecutablePaths)
+    param(
+        [string[]]$ExecutablePaths,
+        # Injectable candidates allow deterministic coverage of inaccessible processes.
+        [object[]]$CandidateProcesses = [Diagnostics.Process]::GetProcessesByName('OnlyWinget')
+    )
 
     $paths = @($ExecutablePaths | ForEach-Object { [IO.Path]::GetFullPath($_) })
-    foreach ($process in [Diagnostics.Process]::GetProcessesByName('OnlyWinget')) {
+    foreach ($process in $CandidateProcesses) {
         try {
-            if ($process.HasExited) { continue }
-            $imagePath = $process.MainModule.FileName
+            # Explicit getters preserve native exceptions that PowerShell property
+            # access can otherwise turn into a null result.
+            if ($process.get_HasExited()) { continue }
+            $module = $process.get_MainModule()
+            if ($null -eq $module) { continue }
+            $imagePath = $module.FileName
             if ([string]::IsNullOrWhiteSpace($imagePath)) {
-                throw "Cannot verify executable ownership for PID $($process.Id)."
+                continue
             }
             if ($paths -contains [IO.Path]::GetFullPath($imagePath)) {
                 $process
                 $process = $null
             }
         }
-        catch [System.InvalidOperationException] {
-            if (-not $process.HasExited) { throw }
+        catch [System.ComponentModel.Win32Exception],
+              [System.InvalidOperationException],
+              [System.UnauthorizedAccessException],
+              [System.Management.Automation.PropertyNotFoundException] {
+            # No verified path means no authority to close this process.
+            # Do not probe HasExited again: that property may itself be inaccessible.
+            continue
         }
         finally {
             if ($null -ne $process) { $process.Dispose() }

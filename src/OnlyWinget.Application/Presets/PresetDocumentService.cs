@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OnlyWinget.Application.Winget;
 using OnlyWinget.Domain.Presets;
 
 namespace OnlyWinget.Application.Presets;
@@ -47,6 +48,20 @@ public sealed class PresetDocumentService
         if (document.Preset is null)
         {
             throw new InvalidOperationException("Preset document does not contain a preset.");
+        }
+
+        foreach (var package in document.Preset.Packages)
+        {
+            if (package is null)
+            {
+                throw new InvalidOperationException("Preset contains a null package.");
+            }
+
+            WingetInputValidator.Validate(package.Id, nameof(package.Id));
+            if (package.Source is not null)
+            {
+                WingetInputValidator.Validate(package.Source, nameof(package.Source));
+            }
         }
 
         var duplicate = document.Preset.Packages

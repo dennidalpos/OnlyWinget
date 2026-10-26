@@ -80,7 +80,7 @@ pwsh -ExecutionPolicy Bypass -File .\scripts\run.ps1 -Task Check -Configuration 
 - [Operations](docs/operations.md)
 - [Release](docs/release.md)
 - [Scripts](scripts/README.md)
-- [Open todos](PROJECT_STATUS.json)
+- Open todos (SecondBrain: `02-areas/products/OnlyWinget/tracker.json`)
 
 ## License
 

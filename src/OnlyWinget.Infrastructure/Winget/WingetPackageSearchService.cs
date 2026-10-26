@@ -11,6 +11,7 @@ public sealed class WingetPackageSearchService(
     IMemoryCache? cache = null) : IPackageSearchService
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private readonly record struct SearchCacheKey(string Query, string? Source);
 
     public async Task<WingetOperationOutcome<PackageSearchResult>> SearchAsync(
         PackageSearchRequest request,
@@ -19,7 +20,13 @@ public sealed class WingetPackageSearchService(
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var cacheKey = $"winget_search_{request.Query}_{request.Source}";
+        WingetInputValidator.Validate(request.Query, nameof(request.Query));
+        if (request.Source is not null)
+        {
+            WingetInputValidator.Validate(request.Source, nameof(request.Source));
+        }
+
+        var cacheKey = new SearchCacheKey(request.Query, request.Source);
         if (cache is not null && cache.TryGetValue(cacheKey, out WingetOperationOutcome<PackageSearchResult>? cachedOutcome) && cachedOutcome is not null)
         {
             return cachedOutcome;

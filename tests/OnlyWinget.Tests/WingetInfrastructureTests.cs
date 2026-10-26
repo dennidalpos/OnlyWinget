@@ -812,21 +812,24 @@ public sealed class WingetInfrastructureTests
 
     [Fact]
     [SupportedOSPlatform("windows")]
-    public async Task WingetSearchReturnsCachedResultWithoutRunningACommand()
+    public async Task WingetSearchReusesPopulatedCacheWithoutAnotherCommand()
     {
-        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, "should not run", string.Empty));
+        const string output = """
+            Name Id      Version
+            --------------------
+            Git  Git.Git 2.0.0
+            """;
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var request = new PackageSearchRequest("git", "winget");
-        var cachedOutcome = WingetOperationOutcome<PackageSearchResult>.Success(
-            [new PackageSearchResult(new PackageIdentity("Git.Git", "winget"), "Git", "2.0.0", null)],
-            "cached");
-        cache.Set($"winget_search_{request.Query}_{request.Source}", cachedOutcome, TimeSpan.FromMinutes(5));
         var service = new WingetPackageSearchService(runner, new WingetTableParser(), new WingetErrorClassifier(), cache);
+        var cachedOutcome = await service.SearchAsync(request, CancellationToken.None);
+        Assert.Equal(new PackageIdentity("Git.Git", "winget"), Assert.Single(cachedOutcome.Rows).Package);
 
         var outcome = await service.SearchAsync(request, CancellationToken.None);
 
         Assert.Same(cachedOutcome, outcome);
-        Assert.Empty(runner.Calls);
+        Assert.Single(runner.Calls);
     }
 
     [Fact]

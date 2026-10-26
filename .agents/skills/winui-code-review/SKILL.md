@@ -14,7 +14,7 @@ Use with [the project skill](../onlywinget/SKILL.md). Review the edited scope un
 - Check `AutomationProperties.AutomationId`/`Name`, keyboard navigation, explicit status text (`Controls/StatusBadgeControl.xaml`), `ThemeResource` brushes and High Contrast readability. Severity must never rely on color alone.
 - Verify EN/IT localization in `src/OnlyWinget/TextResources.cs` and `Services/LocalizeExtension.cs` (`Localize`); do not introduce `.resw`/`.resx` or `ResourceLoader`.
 - `async void` is permitted only on UI event handlers. Avoid synchronous blocking (`.Result`/`.Wait()`) and heavy UI-thread work; review `CancellationTokenSource` disposal and `DispatcherQueue` callbacks after window closure.
-- Verify `ProcessStartInfo.ArgumentList` usage, `WingetInputValidator` enforcement at CLI/import boundaries (see `PROJECT_STATUS.json` `AUDIT-42`), and exact executable/PID/HWND ownership before process, window or registry mutations (`AUDIT-41`).
+- Verify `ProcessStartInfo.ArgumentList` usage, `WingetInputValidator` enforcement at CLI/import boundaries before cache lookup or execution, and exact executable/PID/HWND ownership before process, window or registry mutations. Inaccessible/null-module processes must never be treated as owned or closed.
 - Standard `.\scripts\run.ps1 -Task Typecheck` runs `dotnet build -warnaserror` with `.NET 10` analyzers (`Directory.Build.props`); it does not load the optional git-ignored `.agents/skills/winui-dev-workflow/analyzer/Microsoft.WindowsAppSDK.Analyzers.dll`.
 
 See [detailed review topics](references/quality-rules.md) for checklist details.
