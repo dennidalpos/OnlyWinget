@@ -83,19 +83,19 @@ public sealed partial class DashboardViewModel : FeatureViewModel
         Metrics[0].Value = $"{pcMetrics.CpuUsagePercent:F1}%";
 
         Metrics[1].Label = TextResources.Get("Dashboard_Ram");
-        Metrics[1].Value = pcMetrics.RamUsageText;
+        Metrics[1].Value = TextResources.FormatRam(pcMetrics);
 
         Metrics[2].Label = TextResources.Get("Dashboard_Disk");
-        Metrics[2].Value = pcMetrics.DiskUsageText;
+        Metrics[2].Value = TextResources.FormatDisk(pcMetrics);
 
         Metrics[3].Label = TextResources.Get("Dashboard_Uptime");
-        Metrics[3].Value = pcMetrics.UptimeText;
+        Metrics[3].Value = TextResources.FormatUptime(pcMetrics.Uptime);
 
         Metrics[4].Label = TextResources.Get("Dashboard_OsVersion");
         Metrics[4].Value = pcMetrics.OsVersionText;
 
         Metrics[5].Label = TextResources.Get("Dashboard_Network");
-        Metrics[5].Value = pcMetrics.NetworkStatusText;
+        Metrics[5].Value = TextResources.FormatNetworkStatus(pcMetrics.NetworkStatus);
     }
 }
 

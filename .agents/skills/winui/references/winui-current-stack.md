@@ -2,7 +2,7 @@
 
 Repository toolchain and package pins verified against [global.json](../../../../global.json), [Directory.Build.props](../../../../Directory.Build.props) and `.csproj` manifests. Preserve these pins and lockfiles (`packages.lock.json`) unless an explicit upgrade is requested.
 
-- **SDK (`global.json`)**: `.NET SDK 10.0.402` with `"rollForward": "disable"`. Locked NuGet restore (`RestorePackagesWithLockFile=true`) requires this exact SDK; regenerate lockfiles via `.\scripts\fix-lockfiles.ps1` when changing dependencies or the SDK pin.
+- **SDK (`global.json`)**: `.NET SDK 10.0.403` with `"rollForward": "disable"`. Locked NuGet restore (`RestorePackagesWithLockFile=true`) requires this exact SDK; regenerate lockfiles via `.\scripts\fix-lockfiles.ps1` when changing dependencies or the SDK pin.
 - **Build policy (`Directory.Build.props`)**: `Deterministic=true`, `Nullable=enable`, `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`, `AnalysisLevel=10.0`, `EnableTrimAnalyzer=true`, `EnableSingleFileAnalyzer=true`, `EnableAotAnalyzer=true`. Outputs go to `artifacts/bin/`, `artifacts/obj/` and `artifacts/publish/`.
 - **UI project (`src/OnlyWinget/OnlyWinget.csproj`)**: `net10.0-windows10.0.17763.0`, `TargetPlatformMinVersion=10.0.17763.0`, `RuntimeIdentifier=win-x64`, `SelfContained=true`, `WindowsAppSDKSelfContained=true`, `WindowsPackageType=None`, `UseWinUI=true`, `IsTrimmable=true`, `Version=1.0.2`.
 - **Core packages**:

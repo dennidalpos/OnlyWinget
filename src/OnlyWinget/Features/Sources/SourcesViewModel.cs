@@ -182,7 +182,9 @@ public sealed partial class SourcesViewModel : FeatureViewModel
             return TextResources.Get("Validation_Required");
         }
 
-        return Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"
+        return WingetInputValidator.IsValid(value) &&
+            Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+            uri.Scheme is "http" or "https"
             ? null
             : TextResources.Get("Validation_SourceArgument");
     }

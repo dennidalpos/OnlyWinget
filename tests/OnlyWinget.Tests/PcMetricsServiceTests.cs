@@ -15,12 +15,16 @@ public class PcMetricsServiceTests
         Assert.NotNull(metrics);
         Assert.InRange(metrics.CpuUsagePercent, 0.0, 100.0);
         Assert.True(metrics.RamUsagePercent >= 0.0);
-        Assert.False(string.IsNullOrWhiteSpace(metrics.RamUsageText));
+        Assert.NotNull(metrics.RamUsedGb);
+        Assert.NotNull(metrics.RamTotalGb);
+        Assert.True(metrics.RamTotalGb > 0.0);
         Assert.True(metrics.DiskUsagePercent >= 0.0);
-        Assert.False(string.IsNullOrWhiteSpace(metrics.DiskUsageText));
-        Assert.False(string.IsNullOrWhiteSpace(metrics.UptimeText));
+        Assert.NotNull(metrics.DiskFreeGb);
+        Assert.NotNull(metrics.DiskTotalGb);
+        Assert.True(metrics.DiskTotalGb > 0.0);
+        Assert.True(metrics.Uptime >= TimeSpan.Zero);
         Assert.False(string.IsNullOrWhiteSpace(metrics.OsVersionText));
-        Assert.False(string.IsNullOrWhiteSpace(metrics.NetworkStatusText));
+        Assert.True(Enum.IsDefined(metrics.NetworkStatus));
     }
 
     // Regression test: the CPU-delta bookkeeping fields (lastIdleTime/lastTotalTime) used to be

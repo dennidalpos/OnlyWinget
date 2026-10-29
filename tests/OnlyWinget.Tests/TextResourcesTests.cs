@@ -35,7 +35,29 @@ public sealed class TextResourcesTests
                 var key = $"Logs_Level_{level}";
                 Assert.NotEqual(key, TextResources.Get(key));
             }
+            foreach (var status in Enum.GetValues<PcNetworkStatus>())
+            {
+                var key = $"Dashboard_Network_{status}";
+                Assert.NotEqual(key, TextResources.Get(key));
+            }
             Assert.Contains("42", string.Format(TextResources.Get("Logs_Count"), 42));
+
+            var sampleMetrics = new PcMetrics(12.5, 50.0, 8.0, 16.0, 40.0, 120.5, 200.0, new TimeSpan(2, 3, 4, 5), "Windows 11", PcNetworkStatus.ConnectedWifi);
+            var diskFormatted = TextResources.FormatDisk(sampleMetrics);
+            var uptimeFormatted = TextResources.FormatUptime(sampleMetrics.Uptime);
+            var networkFormatted = TextResources.FormatNetworkStatus(sampleMetrics.NetworkStatus);
+            if (language == "it")
+            {
+                Assert.Contains("GB liberi", diskFormatted);
+                Assert.Equal("2g 3h 4m", uptimeFormatted);
+                Assert.Equal("Connesso (Wi-Fi)", networkFormatted);
+            }
+            else
+            {
+                Assert.Contains("GB free", diskFormatted);
+                Assert.Equal("2d 3h 4m", uptimeFormatted);
+                Assert.Equal("Connected (Wi-Fi)", networkFormatted);
+            }
         }
         finally { TextResources.OverrideCulture = originalCulture; }
     }

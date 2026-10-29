@@ -1,3 +1,4 @@
+using OnlyWinget.Application.System;
 using System.Globalization;
 
 namespace OnlyWinget;
@@ -46,6 +47,16 @@ public static class TextResources
         ["Dashboard_Uptime"] = "System Uptime",
         ["Dashboard_OsVersion"] = "OS Version",
         ["Dashboard_Network"] = "Network Status",
+        ["Dashboard_MetricUnavailable"] = "N/A",
+        ["Dashboard_RamFormat"] = "{0:F1} GB / {1:F1} GB ({2:F0}%)",
+        ["Dashboard_DiskFormat"] = "{0:F1} GB free / {1:F1} GB",
+        ["Dashboard_UptimeDaysFormat"] = "{0}d {1}h {2}m",
+        ["Dashboard_UptimeHoursFormat"] = "{0}h {1}m {2}s",
+        ["Dashboard_Network_ConnectedWifi"] = "Connected (Wi-Fi)",
+        ["Dashboard_Network_ConnectedEthernet"] = "Connected (Ethernet)",
+        ["Dashboard_Network_Connected"] = "Connected",
+        ["Dashboard_Network_Disconnected"] = "Disconnected",
+        ["Dashboard_Network_Unknown"] = "Unknown",
         ["Presets_Title"] = "Presets",
         ["Preset_Name"] = "Preset name",
         ["Package_Id"] = "Package id",
@@ -310,6 +321,16 @@ public static class TextResources
         ["Dashboard_Uptime"] = "Tempo di Attività",
         ["Dashboard_OsVersion"] = "Versione OS",
         ["Dashboard_Network"] = "Stato Rete",
+        ["Dashboard_MetricUnavailable"] = "N/D",
+        ["Dashboard_RamFormat"] = "{0:F1} GB / {1:F1} GB ({2:F0}%)",
+        ["Dashboard_DiskFormat"] = "{0:F1} GB liberi / {1:F1} GB",
+        ["Dashboard_UptimeDaysFormat"] = "{0}g {1}h {2}m",
+        ["Dashboard_UptimeHoursFormat"] = "{0}h {1}m {2}s",
+        ["Dashboard_Network_ConnectedWifi"] = "Connesso (Wi-Fi)",
+        ["Dashboard_Network_ConnectedEthernet"] = "Connesso (Ethernet)",
+        ["Dashboard_Network_Connected"] = "Connesso",
+        ["Dashboard_Network_Disconnected"] = "Disconnesso",
+        ["Dashboard_Network_Unknown"] = "Sconosciuto",
         ["Presets_Title"] = "Preset",
         ["Preset_Name"] = "Nome preset",
         ["Package_Id"] = "ID pacchetto",
@@ -540,5 +561,25 @@ public static class TextResources
             ? Italian
             : English;
         return resources.TryGetValue(key, out var value) ? value : key;
+    }
+
+    public static string FormatRam(PcMetrics pcMetrics) =>
+        pcMetrics.RamUsedGb is { } usedGb && pcMetrics.RamTotalGb is { } totalGb
+            ? string.Format(OverrideCulture ?? CultureInfo.CurrentCulture, TextResources.Get("Dashboard_RamFormat"), usedGb, totalGb, pcMetrics.RamUsagePercent)
+            : TextResources.Get("Dashboard_MetricUnavailable");
+
+    public static string FormatDisk(PcMetrics pcMetrics) =>
+        pcMetrics.DiskFreeGb is { } freeGb && pcMetrics.DiskTotalGb is { } totalGb
+            ? string.Format(OverrideCulture ?? CultureInfo.CurrentCulture, TextResources.Get("Dashboard_DiskFormat"), freeGb, totalGb)
+            : TextResources.Get("Dashboard_MetricUnavailable");
+
+    public static string FormatUptime(TimeSpan uptime) =>
+        uptime.Days > 0
+            ? string.Format(OverrideCulture ?? CultureInfo.CurrentCulture, TextResources.Get("Dashboard_UptimeDaysFormat"), uptime.Days, uptime.Hours, uptime.Minutes)
+            : string.Format(OverrideCulture ?? CultureInfo.CurrentCulture, TextResources.Get("Dashboard_UptimeHoursFormat"), uptime.Hours, uptime.Minutes, uptime.Seconds);
+
+    public static string FormatNetworkStatus(PcNetworkStatus status)
+    {
+        return TextResources.Get($"Dashboard_Network_{status}");
     }
 }

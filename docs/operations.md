@@ -86,7 +86,7 @@ The real WinUI import, focus, source-toggle restoration, selection preservation 
 
 ## WinGet input validation
 
-Preset import and WinGet search, show and installed-status list validate package IDs, queries and optional sources with the same `WingetInputValidator` used by package commands. Control characters, quotes, backticks, `; | & < >` and values starting with `-` (after leading whitespace) are rejected before cache lookup or CLI execution. Multiword/Unicode searches and source names remain supported; CLI arguments remain discrete `ArgumentList` entries. A null package in an imported preset is rejected before duplicate detection or workspace mutation.
+Preset import and WinGet search, show, installed-status list and source management (`add`/`remove`) validate package IDs, queries, optional sources, source names and source arguments with the same `WingetInputValidator` used by package commands. Control characters, quotes, backticks, `; | & < >` and values starting with `-` (after leading whitespace) are rejected before cache lookup or CLI execution. Multiword/Unicode searches and source names remain supported; CLI arguments remain discrete `ArgumentList` entries. A null package in an imported preset is rejected before duplicate detection or workspace mutation.
 
 Search results are cached for five minutes using a typed query/source key. Underscores in either value cannot merge different requests, and an omitted source remains distinct from an explicit source. Identical query/source pairs reuse their result; validation and cancellation checks precede cache access.
 

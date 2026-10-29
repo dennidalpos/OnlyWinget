@@ -1,14 +1,25 @@
 namespace OnlyWinget.Application.System;
 
+public enum PcNetworkStatus
+{
+    Unknown,
+    Disconnected,
+    Connected,
+    ConnectedWifi,
+    ConnectedEthernet
+}
+
 public sealed record PcMetrics(
     double CpuUsagePercent,
     double RamUsagePercent,
-    string RamUsageText,
+    double? RamUsedGb,
+    double? RamTotalGb,
     double DiskUsagePercent,
-    string DiskUsageText,
-    string UptimeText,
+    double? DiskFreeGb,
+    double? DiskTotalGb,
+    TimeSpan Uptime,
     string OsVersionText,
-    string NetworkStatusText
+    PcNetworkStatus NetworkStatus
 );
 
 public interface IPcMetricsService

@@ -2,7 +2,7 @@
 
 Read the actual command output and affected source before applying a fix.
 
-- **`NU1004` lockfile mismatch**: `global.json` pins `.NET SDK 10.0.402` (`rollForward: disable`) and `Directory.Build.props` enforces `RestorePackagesWithLockFile=true`. Regenerate all five `packages.lock.json` files with `.\scripts\fix-lockfiles.ps1`; never hand-edit lockfiles or disable `--locked-mode`.
+- **`NU1004` lockfile mismatch**: `global.json` pins `.NET SDK 10.0.403` (`rollForward: disable`) and `Directory.Build.props` enforces `RestorePackagesWithLockFile=true`. Regenerate all five `packages.lock.json` files with `.\scripts\fix-lockfiles.ps1`; never hand-edit lockfiles or disable `--locked-mode`.
 - **XAML compiler / typecheck errors**: run `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -Full -NonInteractive` to inspect generated XAML/C# diagnostics, `x:Bind` path types and namespace visibility.
 - **Locked executable during build/typecheck/clean**: another `OnlyWinget.exe` from this checkout may be running. Close it gracefully or pass `-StopRunningInstance`. Inaccessible/null-module candidates are ignored without closure; if the output remains locked, identify the exact owning process and close it manually.
 - **Stale UI content**: verify `Mode=OneWay`/`TwoWay` on `x:Bind`, `ObservableCollection<T>` instance stability, `DispatcherQueue` marshaling in `FeatureViewModel` and `StateChanged` subscription lifetime.

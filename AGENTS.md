@@ -1,14 +1,7 @@
 # Istruzioni del repository: OnlyWinget
 
 <!-- secondbrain:repository:begin -->
-Direttive comuni applicate: revisione **3.3** — 2026-10-28.
-<!-- secondbrain:source global=3D8854B1A2142669C718AC04B00160397DF080E579504D417A9FEE7743086335 workstation=E50AF0DA3AADB07B7AE83940E1A677D1EC3C349E4DD3C6F349C9F0691737D2CA -->
-Dossier SecondBrain di questo repository: 02-areas/products/OnlyWinget, relativo alla radice di SecondBrain indicata nelle istruzioni globali.
-- Leggi a inizio task: questo AGENTS.md, 02-areas/products/OnlyWinget/context.md, 02-areas/products/OnlyWinget/memory.md e 02-areas/products/OnlyWinget/tracker.json (fonte autorevole dichiarata in repository.json; nessun fallback al tracker locale).
-- Nei task di scrittura aggiorna solo novità pertinenti: decisioni e gotcha in 02-areas/products/OnlyWinget/memory.md; architettura e stato in 02-areas/products/OnlyWinget/context.md; attività nel tracker preservandone schema e storico.
-- Nei task di scrittura pulisci temporanei del task e residui confermati, preservando dati e lavoro unico; rivedi diff e git status --ignored. Esegui secondbrain.ps1 -Sync dopo modifiche a dossier o direttive, oppure su richiesta. Nei task di sola lettura segnala i residui senza rimuoverli.
-- Per task dipendenti da fonti normative o dati autorevoli consulta 02-areas/products/OnlyWinget/authoritative-sources.json; risolvi resource-authoritative-sources da PARA. Guide consultive, versioni e applicabilita richiedono riscontri; le prescrizioni comuni restano nei testi approvati.
-- Per consultare i workflow centrali scrivi sb prompt nella chat; il catalogo v2 e la CLI scripts/prompts.ps1 sono nella radice SecondBrain delle istruzioni globali. Carica soltanto la scheda scelta e risolvi i percorsi correnti da PARA; i codici v2 hanno significati diversi dal catalogo legacy.
+Direttive comuni applicate: revisione **4.0** — 2026-10-29. <!-- secondbrain:source global=7585B84CED201216722B7E6646C3D2845045FEEE7E44C889E92E68A5E1975A4A workstation=2BC7FB0217FB690B8CEAB7E3DD85AAB916BA4CF3016533BC9E1D02477CE9321B -->SecondBrain: integrazione opzionale della conoscenza e delle direttive comuni. Risolvi SECONDBRAIN_HOME dallʼambiente utente della postazione; nessun percorso personale è conservato in questo repository. Se il clone privato non è disponibile, prosegui con le istruzioni tecniche locali e segnala lʼintegrazione non configurata; non creare memorie o stub sostitutivi. Dal clone SecondBrain usa scripts/prompts.ps1 -Context -RepositoryPath <checkout-corrente> per risolvere il dossier e il suo index.md. Carica indice, contesto sintetico, memoria essenziale e proiezione task pertinente; approfondimenti e storico soltanto quando servono. Memorie private, tracker interni, backup e output operativi risiedono in SecondBrain. Conserva qui codice, guide e asset pubblicabili. Le direttive non autorizzano commit, push, cancellazioni di artefatti o task applicativi impliciti.
 <!-- secondbrain:repository:end -->
 
 Revisione specifica del progetto 2.5 — 2026-10-25. Vincoli specifici del progetto; i contenuti comuni sono gestiti separatamente.

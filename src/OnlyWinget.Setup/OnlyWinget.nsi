@@ -94,6 +94,7 @@ Section "MainSection" SEC01
   ${If} ${RunningX64}
     SetRegView 64
   ${EndIf}
+  !insertmacro OnlyWingetCloseInstallation
   SetOutPath "$INSTDIR"
   !insertmacro OnlyWingetInstallFiles
 

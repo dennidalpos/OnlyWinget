@@ -129,6 +129,15 @@ class Program {
     if (-not $owned.HasExited -or $other.HasExited) { throw 'Script close ownership failed.' }
     Assert-ExecutableNotLocked -ActionName 'Fixture build with unrelated instance'
 
+    $nsiPath = Join-Path $repositoryRoot 'src/OnlyWinget.Setup/OnlyWinget.nsi'
+    $nsiContent = [IO.File]::ReadAllText($nsiPath)
+    if ($nsiContent -notmatch '(?s)Section\s+"MainSection"\s+SEC01\r?\n(?:(?!SectionEnd).)*?!insertmacro\s+OnlyWingetCloseInstallation\r?\n(?:(?!SectionEnd).)*?!insertmacro\s+OnlyWingetInstallFiles\r?\n.*?SectionEnd') {
+        throw 'OnlyWinget.nsi MainSection must invoke OnlyWingetCloseInstallation before OnlyWingetInstallFiles.'
+    }
+    if ($nsiContent -notmatch '(?s)Section\s+"Uninstall"\r?\n(?:(?!SectionEnd).)*?!insertmacro\s+OnlyWingetCloseInstallation\r?\n(?:(?!SectionEnd).)*?!insertmacro\s+OnlyWingetUninstallFiles\r?\n.*?SectionEnd') {
+        throw 'OnlyWinget.nsi Uninstall section must invoke OnlyWingetCloseInstallation before OnlyWingetUninstallFiles.'
+    }
+
     $include = Join-Path $repositoryRoot 'src/OnlyWinget.Setup/CloseOwnedApplication.nsh'
     $closeScript = Join-Path $PSScriptRoot 'support/CloseOwnedApplication.ps1'
     @'
@@ -138,6 +147,11 @@ Name "OnlyWinget shutdown fixture"
 OutFile "${TEST_SETUP}"
 !include "${CLOSE_INCLUDE}"
 Section
+  !insertmacro OnlyWingetCloseInstallation
+  SetOutPath "$INSTDIR"
+  FileOpen $2 "$INSTDIR\install-marker.txt" w
+  FileWrite $2 "installed"
+  FileClose $2
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 SectionEnd
 Section "Uninstall"
@@ -148,8 +162,24 @@ SectionEnd
     $makensis = 'C:/Program Files (x86)/NSIS/makensis.exe'
     & $makensis "/DTEST_SETUP=$installerPath" "/DCLOSE_INCLUDE=$include" "/DONLYWINGET_CLOSE_SCRIPT=$closeScript" $installerSource > $null
     if ($LASTEXITCODE -ne 0) { throw 'Shutdown fixture compilation failed.' }
-    $setup = Start-Process -FilePath $installerPath -ArgumentList '/S', "/D=$ownedRoot" -WindowStyle Hidden -Wait -PassThru
-    if ($setup.ExitCode -ne 0) { throw 'Shutdown fixture installation failed.' }
+    $installMarker = Join-Path $ownedRoot 'install-marker.txt'
+    foreach ($refuse in @($true, $false)) {
+        $owned = Start-FixtureWindow -Path $ownedPath -RefuseClose:$refuse
+        [IO.File]::WriteAllText($installMarker, 'preserve existing installation until successful close')
+        $setup = Start-Process -FilePath $installerPath -ArgumentList '/S', "/D=$ownedRoot" -WindowStyle Hidden -Wait -PassThru
+        if ($refuse) {
+            if ($setup.ExitCode -eq 0 -or $owned.HasExited -or [IO.File]::ReadAllText($installMarker) -ne 'preserve existing installation until successful close') {
+                throw 'Refused close during install did not preserve process and existing installation.'
+            }
+            # This fixture was started by this test and deliberately refuses WM_CLOSE.
+            $owned.Kill(); $owned.WaitForExit()
+        } else {
+            if ($setup.ExitCode -ne 0 -or -not $owned.WaitForExit(5000) -or [IO.File]::ReadAllText($installMarker) -ne 'installed') {
+                throw "Owned installer close failed (exit: $($setup.ExitCode), exited: $($owned.HasExited), marker: $([IO.File]::ReadAllText($installMarker)))."
+            }
+        }
+        if ($other.HasExited) { throw 'Installer closed an unrelated portable instance.' }
+    }
     $uninstaller = Join-Path $ownedRoot 'Uninstall.exe'
     $marker = Join-Path $ownedRoot 'marker.txt'
     foreach ($refuse in @($true, $false)) {
@@ -169,7 +199,7 @@ SectionEnd
         }
         if ($other.HasExited) { throw 'Uninstaller closed an unrelated portable instance.' }
     }
-    Write-Host 'PASS: script/NSIS close only owned executable; unrelated copies survive; refused close preserves installation.'
+    Write-Host 'PASS: script/NSIS install and uninstall close only owned executable; unrelated copies survive; refused close preserves installation.'
 }
 finally {
     $script:OnlyWingetRepositoryRoot = $repositoryRoot

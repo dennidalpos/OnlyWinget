@@ -29,8 +29,8 @@ public sealed class WingetSourceService(
         string argument,
         CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(argument);
+        WingetInputValidator.Validate(name, nameof(name));
+        WingetInputValidator.Validate(argument, nameof(argument));
 
         var result = await commandRunner.RunAsync(
                 "winget",
@@ -44,7 +44,7 @@ public sealed class WingetSourceService(
         string name,
         CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        WingetInputValidator.Validate(name, nameof(name));
 
         var result = await commandRunner.RunAsync(
                 "winget",

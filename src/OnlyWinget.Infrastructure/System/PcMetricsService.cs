@@ -10,26 +10,28 @@ public sealed class PcMetricsService : IPcMetricsService
 {
     private long lastIdleTime;
     private long lastTotalTime;
-    private (string status, DateTime timestamp) cachedNetworkStatus = ("Unknown", DateTime.MinValue);
+    private (PcNetworkStatus status, DateTime timestamp) cachedNetworkStatus = (PcNetworkStatus.Unknown, DateTime.MinValue);
 
     public PcMetrics GetCurrentMetrics()
     {
         var cpuUsage = GetCpuUsage();
-        var (ramPercent, ramText) = GetRamInfo();
-        var (diskPercent, diskText) = GetDiskInfo();
-        var uptimeText = GetUptimeText();
+        var (ramPercent, ramUsedGb, ramTotalGb) = GetRamInfo();
+        var (diskPercent, diskFreeGb, diskTotalGb) = GetDiskInfo();
+        var uptime = GetUptime();
         var osVersionText = GetOsVersionText();
-        var networkStatusText = GetNetworkStatusText();
+        var networkStatus = GetNetworkStatus();
 
         return new PcMetrics(
             cpuUsage,
             ramPercent,
-            ramText,
+            ramUsedGb,
+            ramTotalGb,
             diskPercent,
-            diskText,
-            uptimeText,
+            diskFreeGb,
+            diskTotalGb,
+            uptime,
             osVersionText,
-            networkStatusText);
+            networkStatus);
     }
 
     private double GetCpuUsage()
@@ -62,7 +64,7 @@ public sealed class PcMetricsService : IPcMetricsService
         return 0.0;
     }
 
-    private static (double percent, string text) GetRamInfo()
+    private static (double percent, double? usedGb, double? totalGb) GetRamInfo()
     {
         try
         {
@@ -75,7 +77,7 @@ public sealed class PcMetricsService : IPcMetricsService
                     var availGb = memStatus.ullAvailPhys / (1024.0 * 1024.0 * 1024.0);
                     var usedGb = totalGb - availGb;
                     var loadPct = memStatus.dwMemoryLoad;
-                    return (loadPct, $"{usedGb:F1} GB / {totalGb:F1} GB ({loadPct}%)");
+                    return (loadPct, usedGb, totalGb);
                 }
             }
         }
@@ -83,10 +85,10 @@ public sealed class PcMetricsService : IPcMetricsService
         {
             global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetRamInfo: {exception}");
         }
-        return (0, "N/A");
+        return (0, null, null);
     }
 
-    private static (double percent, string text) GetDiskInfo()
+    private static (double percent, double? freeGb, double? totalGb) GetDiskInfo()
     {
         try
         {
@@ -98,23 +100,17 @@ public sealed class PcMetricsService : IPcMetricsService
                 var freeGb = drive.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
                 var usedGb = totalGb - freeGb;
                 var pct = totalGb > 0 ? (usedGb / totalGb) * 100.0 : 0.0;
-                return (Math.Round(pct, 1), $"{freeGb:F1} GB free / {totalGb:F1} GB");
+                return (Math.Round(pct, 1), freeGb, totalGb);
             }
         }
         catch (Exception exception)
         {
             global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetDiskInfo: {exception}");
         }
-        return (0, "N/A");
+        return (0, null, null);
     }
 
-    private static string GetUptimeText()
-    {
-        var uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
-        return uptime.Days > 0
-            ? $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m"
-            : $"{uptime.Hours}h {uptime.Minutes}m {uptime.Seconds}s";
-    }
+    private static TimeSpan GetUptime() => TimeSpan.FromMilliseconds(Environment.TickCount64);
 
     private static readonly Lazy<string> CachedOsVersionText = new(ResolveOsVersionText);
 
@@ -153,7 +149,7 @@ public sealed class PcMetricsService : IPcMetricsService
         return RuntimeInformation.OSDescription;
     }
 
-    private string GetNetworkStatusText()
+    private PcNetworkStatus GetNetworkStatus()
     {
         try
         {
@@ -164,8 +160,8 @@ public sealed class PcMetricsService : IPcMetricsService
 
             if (!NetworkInterface.GetIsNetworkAvailable())
             {
-                cachedNetworkStatus = ("Disconnected", DateTime.UtcNow);
-                return "Disconnected";
+                cachedNetworkStatus = (PcNetworkStatus.Disconnected, DateTime.UtcNow);
+                return PcNetworkStatus.Disconnected;
             }
 
             var activeInterfaces = NetworkInterface.GetAllNetworkInterfaces()
@@ -174,18 +170,18 @@ public sealed class PcMetricsService : IPcMetricsService
                               nic.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
                 .ToList();
 
-            string result;
+            PcNetworkStatus result;
             if (activeInterfaces.Any(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
             {
-                result = "Connected (Wi-Fi)";
+                result = PcNetworkStatus.ConnectedWifi;
             }
             else if (activeInterfaces.Any(nic => nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet))
             {
-                result = "Connected (Ethernet)";
+                result = PcNetworkStatus.ConnectedEthernet;
             }
             else
             {
-                result = activeInterfaces.Count > 0 ? "Connected" : "Disconnected";
+                result = activeInterfaces.Count > 0 ? PcNetworkStatus.Connected : PcNetworkStatus.Disconnected;
             }
 
             cachedNetworkStatus = (result, DateTime.UtcNow);
@@ -193,8 +189,8 @@ public sealed class PcMetricsService : IPcMetricsService
         }
         catch (Exception exception)
         {
-            global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetNetworkStatusText: {exception}");
-            return "Unknown";
+            global::System.Diagnostics.Debug.WriteLine($"PcMetricsService.GetNetworkStatus: {exception}");
+            return PcNetworkStatus.Unknown;
         }
     }
 

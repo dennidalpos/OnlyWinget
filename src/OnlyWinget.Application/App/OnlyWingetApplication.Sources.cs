@@ -39,7 +39,12 @@ public sealed partial class OnlyWingetApplication
         CancellationToken cancellationToken)
     {
         return await RunSourceMutationAsync(
-                token => sourceService.AddSourceAsync(name, argument, token),
+                token =>
+                {
+                    WingetInputValidator.Validate(name, nameof(name));
+                    WingetInputValidator.Validate(argument, nameof(argument));
+                    return sourceService.AddSourceAsync(name, argument, token);
+                },
                 "Source added",
                 name,
                 cancellationToken,
@@ -50,7 +55,11 @@ public sealed partial class OnlyWingetApplication
     public async Task<ApplicationActionResult> RemoveSourceAsync(string name, CancellationToken cancellationToken)
     {
         return await RunSourceMutationAsync(
-                token => sourceService.RemoveSourceAsync(name, token),
+                token =>
+                {
+                    WingetInputValidator.Validate(name, nameof(name));
+                    return sourceService.RemoveSourceAsync(name, token);
+                },
                 "Source removed",
                 name,
                 cancellationToken,
