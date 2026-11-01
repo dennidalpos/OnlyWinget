@@ -1,6 +1,8 @@
 # Scripts
 
-Run from the repository root with PowerShell.
+Run from the repository root with PowerShell 7.
+
+`Check` deletes this checkout's `artifacts/` and `tmp/` before running its gate. Preserve evidence and obtain cleanup authorization before using it in a managed agent session.
 
 `run.ps1` is the consolidated task runner entrypoint. Pass `-Task` to run tasks:
 
@@ -64,7 +66,7 @@ Import cancellation captures UIA names/IDs/control types plus ToggleState, IsSel
 
 Landing preparation reads the exact project Version and copies only the matching setup/portable pair. Missing/empty current artifacts or unexpected download-link patterns fail; retained older releases and unrelated landing/build files are preserved. Both prepared files are ignored local artifacts; deploy them together with the HTML only after release checks. Local preparation does not establish deployed-site status.
 
-Offline tests exclude `Category=Smoke`; four live tests report skipped on direct invocation unless explicitly enabled. The duplicate live catalog test was removed and stderr streaming runs deterministically. Both Fast and Full modes retain dotnet output in `artifacts/test-results/*.log` and reject missing TRX, unknown outcomes or zero executed tests. Full also displays output. UI commands check each native exit immediately and assert focus movement, toggle restoration, cancelled-picker row preservation and navigation bounds; real UI qualification remains pending.
+Offline tests exclude `Category=Smoke`; four live tests report skipped on direct invocation unless explicitly enabled. The duplicate live catalog test was removed and stderr streaming runs deterministically. Both Fast and Full modes retain dotnet output in `artifacts/test-results/*.log` and reject missing TRX, unknown outcomes or zero executed tests. Full also displays output. UI commands check each native exit immediately and assert focus movement, toggle restoration, cancelled-picker row preservation and navigation bounds; this suite alone does not establish real UI qualification; historical interactive scenarios and their limits are documented in [operations](../docs/operations.md).
 
 `-StopRunningInstance` requests graceful closure only for executable files in this checkout's application bin/obj and installer publish outputs. Other installations and portable copies are preserved. Processes that exited, have no main module or deny access are ignored and disposed without being closed; an unreadable path cannot establish ownership or prove the output is unlocked. A verified owned process that refuses closure still fails the operation. NSIS install and uninstall use the same exact-path helper through Windows PowerShell 64-bit and stop before overwriting or deleting files if closure fails. `test-process-ownership.ps1` checks inaccessible/null-module discovery in both PowerShell runtimes and script/NSIS closure with real isolated windows.
 

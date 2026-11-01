@@ -1,10 +1,12 @@
 # Repository commands
 
-Run PowerShell 7 (`pwsh`) from the repository root. [AGENTS.md](../../../../AGENTS.md) defines the mandatory pre-commit gate; [scripts/README.md](../../../../scripts/README.md) and [scripts/run.ps1](../../../../scripts/run.ps1) define all runner parameters.
+Run PowerShell 7 (`pwsh`) from the repository root. Read [AGENTS.md](../../../../AGENTS.md) for the repository integration, [operations](../../../../docs/operations.md) for the pre-commit gate, and [scripts/README.md](../../../../scripts/README.md) / [scripts/run.ps1](../../../../scripts/run.ps1) for supported parameters.
+
+Managed runs keep operational evidence in the resolved SecondBrain runtime. Current scripts default to checkout-local `artifacts/` or `tmp/`; they do not share a universal output override. Direct MSBuild `-p:ArtifactsRoot=<absolute-directory>/` redirects .NET outputs only; resource tests also need their source fixture reachable from the binary directory. Record any remaining output exception rather than assuming all scripts use that override. `Clean` and the cleanup performed by `Check` require an explicit cleanup request and preservation of needed evidence.
 
 ## Core development and verification commands
 
-- **Restore (locked mode)**: `.\scripts\run.ps1 -Task Setup -NonInteractive` (or `dotnet restore`)
+- **Restore (locked mode)**: `.\scripts\run.ps1 -Task Setup -NonInteractive` (or `dotnet restore --locked-mode`)
 - **Format check / apply**: `.\scripts\run.ps1 -Task Format -NoRestore -NonInteractive` (`-Fix` to apply formatting)
 - **PowerShell script lint**: `.\scripts\run.ps1 -Task Lint -NonInteractive`
 - **Typecheck (warnings as errors)**: `.\scripts\run.ps1 -Task Typecheck -Configuration Release -NoRestore -NonInteractive`
@@ -37,7 +39,7 @@ Run PowerShell 7 (`pwsh`) from the repository root. [AGENTS.md](../../../../AGEN
 
 ## Qualification boundaries
 
-- **Offline vs live smoke tests**: `scripts/test.ps1` excludes `Category=Smoke` by default; direct `dotnet test` skips the 4 `[LiveFact]` tests unless `ONLYWINGET_RUN_WINGET_SMOKE=1` (or `-RunWingetSmoke`) is passed. Both `-Fast` (default) and `-Full` retain logs in `artifacts/test-results/` and fail on missing TRX or zero executed tests.
-- **Full `Check` gate**: first deletes `artifacts/` and `tmp/` in the current worktree, runs locked restore (`artifacts/check/restore.log`), format, lint, all 11 isolated regression scripts, typecheck, offline unit tests, build, package, and artifact analysis (`artifacts/build-report.txt`). Preserve any needed evidence under `artifacts/` before running `Check`.
+- **Offline vs live smoke tests**: `scripts/test.ps1` excludes `Category=Smoke` by default; direct `dotnet test` skips the 4 `[LiveFact]` tests unless the process environment contains `ONLYWINGET_RUN_WINGET_SMOKE=1`. The task runner exposes `-RunWingetSmoke` for that opt-in. Both `-Fast` (default) and `-Full` retain logs in `artifacts/test-results/` and fail on missing TRX or zero executed tests.
+- **Full `Check` gate**: first deletes `artifacts/` and `tmp/` in the current worktree, runs locked restore (`artifacts/check/restore.log`), format, lint, all 11 isolated regression scripts, typecheck, offline unit tests, build, package, and artifact analysis (`artifacts/build-report.txt`). Preserve needed evidence outside those directories before an authorized `Check` run.
 - **Interactive UI automation**: `.\scripts\ui-test.ps1 -AppPid <PID> -NonInteractive` requires a running app instance and `winapp` CLI. For persistence/log tests, launch the target instance with process-scoped `ONLYWINGET_DATA_ROOT` set to a fully qualified temporary directory. `-StopRunningInstance` requests graceful closure only for verified executables under this checkout's `artifacts/bin`, `artifacts/obj` and `artifacts/publish`; inaccessible/null-module candidates are ignored without closure, not certified as unlocked.
-- **Machine-mutating & external checks**: `.\scripts\validate-installer-lifecycle.ps1` (supports `-Scope CurrentUser|AllUsers`, `-SkipPackage`, `-PreviousSetupPath`, `-PreviousVersion`) and `.\scripts\validate-installed-startup.ps1 -ExePath <path>` modify or execute installed state. Live WinGet/Windows Update installations and hosted GitHub Actions runs require their respective target environments; report them as unverified when not executed.
+- **Machine-mutating & external checks**: `.\scripts\validate-installer-lifecycle.ps1` defaults to elevated `AllUsers`; pass `-Scope CurrentUser` directly for an unprivileged per-user run. It also supports `-SkipPackage`, `-PreviousSetupPath` and `-PreviousVersion`. The consolidated runner does not expose `-Scope`. Lifecycle validation and `.\scripts\validate-installed-startup.ps1 -ExePath <path>` modify or execute installed state. Live WinGet/Windows Update installations and hosted GitHub Actions runs require their respective target environments; report them as unverified when not executed.

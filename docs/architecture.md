@@ -16,10 +16,15 @@ OnlyWinget is a WinUI 3 desktop client for local `winget` package workflows and 
 
 Dependencies point inward:
 
-```text
-WinUI Presentation -> Application -> Domain
-Infrastructure -----> Application -> Domain
+```mermaid
+flowchart LR
+    UI["WinUI presentation"] --> Application["Application"]
+    Application --> Domain["Domain"]
+    Infrastructure["Infrastructure"] --> Application
+    Infrastructure --> Domain
 ```
+
+These arrows show project dependencies. `AppComposition.cs` is the presentation layer's composition-only exception for wiring Infrastructure implementations to Application ports.
 
 The presentation layer references infrastructure strictly for composition via `AppComposition.cs` (`IHostBuilder` DI). No feature page, control, or ViewModel may reference infrastructure directly. The unused URL protocol is retired; composition performs ownership-checked legacy HKCU cleanup. Package input validation uses `WingetInputValidator`. Domain does not reference application, infrastructure, or UI code.
 
@@ -46,6 +51,21 @@ Preset exchange supports only `onlywinget.preset.v1`.
 
 The legacy JSON writer and dormant DPAPI services have been retired. Existing legacy workspace and secure-secret files are retained; SQLite keeps its legacy import reader. `WorkspaceSchemaMigration` replaces `EnsureCreated` with native SQLite `user_version` schema initialization and migration. Empty databases receive the current EF-generated schema at version 1. Recognized unversioned databases are backed up before removing unused Description, CreatedAt, UpdatedAt and PackageName columns; native DDL and the version marker commit together. Preset/package identities, source values, active-preset metadata and unrelated tables remain intact. Unsupported versions, unknown table shapes/constraints or failed integrity checks block initialization and saving. Recovery and retained backups are documented in [operations](operations.md#workspace-schema-migration-and-recovery).
 
+```mermaid
+flowchart TD
+    Load["Load workspace"] --> Inspect["Inspect SQLite schema and integrity"]
+    Inspect -->|"Empty database"| Create["Create schema version 1"]
+    Inspect -->|"Recognized version 0"| Backup["Create and verify native SQLite backup"]
+    Backup --> Migrate["Migrate columns and version in one transaction"]
+    Inspect -->|"Supported version 1"| Read["Read workspace"]
+    Create --> Read
+    Migrate --> Read
+    Inspect -->|"Unsupported or invalid"| Block["Report error and block saves"]
+    Read --> Preferences["Load source preferences"]
+    Preferences -->|"Success"| Publish["Publish complete workspace state"]
+    Preferences -->|"Failure"| Block
+```
+
 A failed workspace load is reported to the UI and blocks SQLite saves until a successful reload. Startup stops after a load failure to preserve the diagnostic. Bulk preset paste validates the full batch before changing the preset.
 
 Application snapshots, selections, metadata, activity and workflow publication share one dedicated state lock. Async search/update discovery builds local results, then publishes rows and selections together. Workspace loading publishes only after both workspace and source preferences load successfully. No lock spans an await. A single operation semaphore rejects overlapping workflows and persistent preset edits; requested workspace saves wait asynchronously for the active workflow and honor caller cancellation. Preset mutation commands are disabled during every busy workflow.
@@ -67,7 +87,7 @@ The WinUI shell is route-driven through `Shell/NavigationRegistry.cs`. User-faci
 
 Reusable presentation primitives live under `DesignSystem`: `PageScaffold` owns page chrome and responsive spacing, `OnlyWingetCommandBar` renders typed `UiCommand` definitions, and `OnlyWingetResponsivePanel`/`OnlyWingetWrapPanel` provide adaptive layout. State controls (`StatePresenter`) provide consistent inline status and error transitions. `OnlyWingetTable` owns shared header/row columns, `ListView` virtualization with `ItemsStackPanel`, horizontal scrolling, keyboard multi-selection, mixed select-all, UI Automation names, and stable collection binding.
 
-`Controls/OperationTrackerControl` is a persistent top-of-shell banner that shows operation progress and links to the Activity log. It is always visible in `MainWindow` above the page host, inside the `NavigationView`.
+`Controls/OperationTrackerControl` is hosted above the page content in `MainWindow`. It shows operation progress and cancellation while a workflow is active, and briefly retains its completion status.
 
 Feature ViewModels own operations, cancellation, validation, confirmation, clipboard, settings, and picker orchestration through the UI service collection created in `AppComposition`.
 
@@ -80,4 +100,4 @@ Packaging generates `InstalledFiles.nsh` from the publish directory. The same fi
 
 ## Notes
 
-Keep this file high-level. Put commands in [`operations.md`](operations.md), release steps in [`release.md`](release.md), and open todos in `../02-areas/products/OnlyWinget/tracker.json (nel dossier SecondBrain)` (SecondBrain: `02-areas/products/OnlyWinget/tracker.json`).
+Keep this file high-level. Put commands in [operations](operations.md) and release steps in [release](release.md). Navigation and UI behavior are described in the [user guide](user-guide.md).

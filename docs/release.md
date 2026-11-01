@@ -15,7 +15,7 @@ Use annotated tags named `v1.0.PATCH`.
 
 ## Required Checks
 
-From a clean working tree:
+From a reviewed working tree, after preserving generated evidence and authorizing the cleanup performed by `Check`:
 
 ```powershell
 .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
@@ -24,9 +24,9 @@ From a clean working tree:
 
 Both hosted workflows install Chocolatey package `nsis` version `3.13.0` and verify compiler `v3.13` before running Check. NSIS is an explicit runner prerequisite for the native ownership fixtures and packaging. See [GitHub runner customization](https://docs.github.com/en/actions/how-tos/manage-runners/github-hosted-runners/customize-runners#installing-software-on-windows-runners) and the [NSIS release](https://nsis.sourceforge.io/Download).
 
-The default lifecycle run validates clean install/uninstall only and reports upgrade as not_run. For a real upgrade, use the lifecycle script directly with `-PreviousSetupPath` pointing to a genuine earlier release and optional `-PreviousVersion` to assert its installed version. `-PreviousVersion` alone fails before machine changes; rebuilding the current payload under an older label is no longer supported as upgrade evidence. AUDIT-31 still requires a true older payload with removed/renamed files and ownership reconciliation.
+The default lifecycle run validates clean install/uninstall only and reports upgrade as not_run. For a real upgrade, use the lifecycle script directly with `-PreviousSetupPath` pointing to a genuine earlier release and optional `-PreviousVersion` to assert its installed version. `-PreviousVersion` alone fails before machine changes; rebuilding the current payload under an older label is no longer supported as upgrade evidence. Reconciliation of removed or renamed installer-owned files still requires an authentic older payload.
 
-The user [cancelled the Windows test-environment qualification tasks](tracker-review-2026-10-18.md#decision--windows-test-environment-tasks-cancelled) because that environment is unavailable. The active tracker retains AUDIT-31's source reconciliation work only. This cancellation does not establish successful lifecycle testing or change the shipping checks above.
+Clean install/uninstall checks do not establish successful upgrade reconciliation or real Windows Update download/install qualification. Those checks require their own target environments and evidence.
 
 The packaging task permits only one run per worktree. Setup and portable outputs are built under unique staging directories on the destination volume, then validated before promotion. The setup must be a nonempty MZ executable; every ZIP file is checked against the published payload by path, length and SHA-256, including hidden files. Each final file is replaced individually with `File.Replace` (or moved on first publication), while a flushed journal and verified backups retain the previous pair for rollback.
 
@@ -62,6 +62,8 @@ artifacts/dist/OnlyWinget/Release/OnlyWinget-1.0.PATCH-portable-x64.zip
 ```
 
 ## Tag
+
+Tag creation, push and GitHub release publication require explicit authorization. The commands below are a release template; replace `PATCH` with the approved version.
 
 ```powershell
 git tag -a v1.0.PATCH -m "OnlyWinget 1.0.PATCH"

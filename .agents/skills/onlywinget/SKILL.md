@@ -5,7 +5,7 @@ description: "Develop, maintain or audit the OnlyWinget .NET 10 WinUI 3 applicat
 
 # OnlyWinget maintenance
 
-Start with [AGENTS.md](../../../AGENTS.md) and 02-areas/products/OnlyWinget/tracker.json (nel dossier SecondBrain) (SecondBrain: `02-areas/products/OnlyWinget/tracker.json`) for project constraints and active backlog items.
+Start with [AGENTS.md](../../../AGENTS.md). Resolve the SecondBrain dossier through that integration and read the authoritative tracker declared in its `repository.json`; do not treat its dossier-relative path as a file in this checkout.
 
 ## References
 

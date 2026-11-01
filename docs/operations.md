@@ -4,7 +4,7 @@
 
 `onlywinget://` is no longer supported. The app does not register or dispatch URL actions. At startup and NSIS uninstall, legacy HKCU cleanup requires the old OnlyWinget label, URL marker and exact quoted command for that executable. Another installed/portable copy's handler is preserved. Cleanup failures are logged at startup or produce a nonzero uninstall exit code.
 
-Already removed portable copies and other user profiles can retain legacy handlers (AUDIT-37). Review `HKCU\Software\Classes\onlywinget\shell\open\command` under the affected profile before manual removal; no automatic cross-profile or unrelated-handler deletion is performed.
+Already removed portable copies and other user profiles can retain legacy handlers. Review `HKCU\Software\Classes\onlywinget\shell\open\command` under the affected profile before manual removal; no automatic cross-profile or unrelated-handler deletion is performed.
 
 Run commands from the repository root in PowerShell 7+.
 
@@ -38,7 +38,18 @@ Run tasks via the `run.ps1` script from the repository root:
 .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```
 
-The full gate restores, formats, lints scripts, typechecks, tests, builds, packages, and writes artifacts under `artifacts/`. Missing local prerequisites are installed where practical.
+The full gate first deletes this checkout's `artifacts/` and `tmp/`, then restores, checks formatting, lints scripts, runs isolated regressions, typechecks, tests, builds and packages. It writes diagnostics under `artifacts/`. Run it only when removal of those generated directories is authorized and needed evidence has been preserved. Missing local prerequisites are installed where practical; `ONLYWINGET_SKIP_AUTO_INSTALL=1` disables automatic installation.
+
+The pre-commit test/build gate is separate and does not run `Clean` or `Check`:
+
+```powershell
+dotnet test --nologo
+dotnet build -c Release --nologo
+```
+
+Stop if tests fail before running the build. The scripts use the exact SDK in `global.json` and locked NuGet restore; `-NoRestore` assumes a successful restore for the selected configuration. `Dev` launches an existing build; it does not compile it unless `scripts/dev.ps1 -Build` is used directly.
+
+Default build/intermediate outputs are in `artifacts/`, as configured by `Directory.Build.props`; script logs and package paths also use that repository-local root. Managed agent runs retain operational evidence in their configured central runtime. A direct MSBuild `-p:ArtifactsRoot=<absolute-directory>/` override redirects .NET build outputs, but does not redirect all PowerShell scripts. Resource tests locate sources by walking upward from their binary directory: an external output root needs a retained source fixture there, or an explicitly recorded repository-local output exception.
 
 ## Common Commands
 
@@ -58,7 +69,7 @@ The full gate restores, formats, lints scripts, typechecks, tests, builds, packa
 
 ## Optional Validations
 
-`Clean` removes generated repository outputs. `-All` also removes repository `.vs`/`packages` directories and clears NuGet caches; it always preserves `%LOCALAPPDATA%/OnlyWinget`, including the database, legacy workspace, settings, source preferences and logs. Preview removal with `scripts/clean.ps1 -All -DryRun -NonInteractive`.
+`Clean` removes generated repository outputs and requires an explicit cleanup request in managed agent sessions. `-All` also removes repository `.vs`/`packages` directories and clears NuGet caches; it always preserves `%LOCALAPPDATA%/OnlyWinget`, including the database, legacy workspace, settings, source preferences and logs. Preview removal with `scripts/clean.ps1 -All -DryRun -NonInteractive`.
 
 The isolated `scripts/test-clean-preserves-data.ps1` regression uses fixture application data and a fixture-only dotnet stub, so it does not clear the machine's NuGet caches. It runs in the full check gate.
 
@@ -68,10 +79,16 @@ Live `winget` smoke tests:
 .\scripts\run.ps1 -Task Test -Configuration Release -RunWingetSmoke -NonInteractive
 ```
 
-Elevated installer lifecycle validation on a clean Windows host:
+Installer lifecycle validation on a clean Windows host (the default `AllUsers` scope requires elevation):
 
 ```powershell
 .\scripts\run.ps1 -Task ValidateInstallerLifecycle -Configuration Release -NoRestore -NonInteractive
+```
+
+For an unprivileged per-user lifecycle run, invoke the script directly with `-Scope CurrentUser`; `run.ps1` does not expose that parameter:
+
+```powershell
+.\scripts\validate-installer-lifecycle.ps1 -Scope CurrentUser -Configuration Release -NoRestore -NonInteractive
 ```
 
 UI automation against a running app PID:

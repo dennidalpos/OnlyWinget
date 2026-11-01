@@ -1,307 +1,156 @@
-# Guida Visiva ai Percorsi Utente (OnlyWinget)
+# Guida utente OnlyWinget
 
-Questa guida illustra graficamente tutti i flussi di utilizzo di OnlyWinget per l'utente finale, descrivendo i punti di ingresso, le decisioni, le azioni, i risultati e i comportamenti in caso di errore o recupero.
+OnlyWinget riunisce liste riutilizzabili di applicazioni, ricerca WinGet e aggiornamenti delle app e di Windows. I nomi seguenti seguono l'interfaccia italiana; la lingua inglese è disponibile nelle impostazioni.
 
----
+## Prima di iniziare
 
-## Indice dei Percorsi
+Avvia `OnlyWinget.exe` dopo l'installazione o l'estrazione completa dello ZIP. Verifica i [requisiti](../README.md#requirements). L'app legge le funzionalità disponibili e carica il workspace locale; gli errori di caricamento vanno risolti prima di salvare nuovi dati.
 
-1. [Navigazione Generale & Dashboard](#1-navigazione-generale--dashboard)
-2. [Gestione dei Preset di Applicazioni](#2-gestione-dei-preset-di-applicazioni)
-3. [Ricerca e Installazione Diretta di Applicazioni](#3-ricerca-e-installazione-diretta-di-applicazioni)
-4. [Aggiornamenti Applicazioni (WinGet)](#4-aggiornamenti-applicazioni-winget)
-5. [Windows Update (Aggiornamenti di Sistema)](#5-windows-update-aggiornamenti-di-sistema)
-6. [Gestione Sorgenti Software (Repository WinGet)](#6-gestione-sorgenti-software-repository-winget)
-7. [Cronologia Attività & Visualizzatore Diagnostico](#7-cronologia-attività--visualizzatore-diagnostico)
-8. [Impostazioni & Personalizzazione](#8-impostazioni--personalizzazione)
-
----
-
-## 1. Navigazione Generale & Dashboard
-
-La schermata principale offre una visione d'insieme della salute del computer, delle metriche del sistema (processore, memoria, spazio su disco) e dei canali di aggiornamento.
+Il menu contiene Home, Pacchetti, Aggiornamenti, Sorgenti, Attività e Impostazioni. Cerca è una modalità di Pacchetti. Apri log consente di accedere alla diagnostica anche dal menu laterale.
 
 ```mermaid
 flowchart TD
-    Start["Avvio di OnlyWinget"] --> Home["Schermata Home / Panoramica"]
-    Home --> HealthCheck{"Verifica stato del PC"}
-    HealthCheck -->|"Riavvio richiesto"| AlertReboot["Mostra avviso: Riavvio del sistema in sospeso"]
-    HealthCheck -->|"WinGet non disponibile"| AlertWinget["Mostra avviso: Gestore pacchetti assente o non configurato"]
-    HealthCheck -->|"Tutto operativo"| StatusReady["Stato: Pronto"]
-    
-    AlertReboot --> Navigation{"Menu di navigazione principale"}
-    AlertWinget --> Navigation
-    StatusReady --> Navigation
-    
-    Navigation -->|"1. Pacchetti e Preset"| NavPackages["Sezione Pacchetti: Crea o gestisci le tue liste di app"]
-    Navigation -->|"2. Ricerca Applicazioni"| NavSearch["Sezione Cerca: Trova nuove app nel catalogo"]
-    Navigation -->|"3. Aggiornamenti"| NavUpdates["Sezione Aggiornamenti: WinGet e Windows Update"]
-    Navigation -->|"4. Sorgenti Software"| NavSources["Sezione Sorgenti: Gestisci i canali di download"]
-    Navigation -->|"5. Cronologia Attività"| NavActivity["Sezione Attività: Consulta storico e log"]
-    Navigation -->|"6. Impostazioni"| NavSettings["Sezione Impostazioni: Lingua, tema e preferenze"]
+    Start["Avvia OnlyWinget"] --> Load["Carica workspace e verifica funzionalità"]
+    Load --> Ready{"Caricamento riuscito?"}
+    Ready -->|"No"| Error["Leggi l'errore e consulta il recupero dati"]
+    Ready -->|"Sì"| Home["Home: stato, preset attivo e metriche del PC"]
+    Home --> Packages["Pacchetti: Preset o Cerca"]
+    Home --> Updates["Aggiornamenti: WinGet o Windows Update"]
+    Home --> Sources["Sorgenti"]
+    Home --> Activity["Attività e log"]
+    Home --> Settings["Impostazioni"]
 ```
 
----
+Home mostra CPU, memoria, disco, uptime, versione di Windows e connettività, oltre allo stato operativo. Le metriche non sostituiscono una diagnosi completa della salute del PC.
 
-## 2. Gestione dei Preset di Applicazioni
+## 1. Creare e usare un preset
 
-I preset consentono di memorizzare collezioni di programmi preferiti da installare o rimuovere in blocco (ad esempio per configurare un nuovo computer o un ambiente di lavoro).
+In **Pacchetti → Preset**, crea una lista con un nome oppure selezionane una esistente. Aggiungi le applicazioni tramite ID e sorgente o dalla modalità Cerca. L'identità comprende entrambi: lo stesso ID da sorgenti diverse può rappresentare due voci distinte.
+
+Importa ed esporta file nel formato `onlywinget.preset.v1`. L'importazione valida il documento e risolve i pacchetti nelle sorgenti abilitate prima di accettare il preset; un nome già esistente viene rifiutato. Un file JSON generico o l'export nativo di WinGet non è un preset OnlyWinget.
 
 ```mermaid
 flowchart TD
-    StartPreset["Ingresso: Sezione Pacchetti -> Scheda Preset"] --> SelectPreset{"Scegli un Preset dal menu"}
-    
-    SelectPreset -->|"Crea nuovo"| NewPreset["Inserisci nome del preset"]
-    NewPreset --> SaveNew["Salva preset vuoto nel catalogo"]
-    
-    SelectPreset -->|"Importa da file"| FilePicker["Scegli file JSON dal tuo computer"]
-    FilePicker --> CheckValid{"Il file e un preset valido?"}
-    CheckValid -->|"No"| ErrorImport["Mostra errore: File non supportato o corrotto"]
-    CheckValid -->|"Si"| LoadImport["Carica e attiva il nuovo preset importato"]
-    
-    SelectPreset -->|"Usa preset esistente"| ViewPreset["Visualizza lista applicazioni del preset"]
-    
-    ViewPreset --> EditChoice{"Cosa vuoi fare?"}
-    
-    EditChoice -->|"Aggiungi app manualmente"| AddManual["Inserisci ID e sorgente dell'app"]
-    AddManual --> SaveManual["Aggiungi alla lista e salva"]
-    
-    EditChoice -->|"Esporta preset"| ExportFile["Salva il preset come file JSON"]
-    
-    EditChoice -->|"Rinomina o elimina"| ManagePreset{"Rinomina o elimina?"}
-    ManagePreset -->|"Rinomina"| RenameP["Inserisci nuovo nome"] --> SaveManual
-    ManagePreset -->|"Elimina"| ConfirmDel{"Confermi eliminazione?"}
-    ConfirmDel -->|"Si"| DeleteP["Preset rimosso dal catalogo"]
-    ConfirmDel -->|"No"| ViewPreset
-    
-    EditChoice -->|"Installa o disinstalla"| SelectApps["Spunta le applicazioni desiderate"]
-    SelectApps --> BatchAction{"Azione da eseguire"}
-    BatchAction -->|"Installa"| RunInstall["Avvia installazione dei selezionati"]
-    BatchAction -->|"Disinstalla"| RunUninstall["Avvia disinstallazione dei selezionati"]
-    
-    RunInstall --> ExecutionLoop["Esecuzione in corso con barra di avanzamento"]
-    RunUninstall --> ExecutionLoop
-    
-    ExecutionLoop --> UserCancel{"L'utente clicca Annulla?"}
-    UserCancel -->|"Si"| StopOp["Interrompe l'operazione in modo sicuro"]
-    UserCancel -->|"No"| CompleteOp["Operazione terminata"]
-    
-    StopOp --> ShowResults["Riepilogo: mostra app riuscite, fallite o interrotte"]
-    CompleteOp --> ShowResults
-    ShowResults --> RetryFailed["Le app fallite restano selezionabili per riprovare"]
+    Open["Pacchetti → Preset"] --> Choose{"Crea, importa o seleziona"}
+    Choose -->|"Crea"| New["Inserisci un nome"]
+    Choose -->|"Importa"| Validate["Valida documento e pacchetti"]
+    Choose -->|"Seleziona"| List["Visualizza il preset attivo"]
+    New --> List
+    Validate -->|"Valido"| List
+    Validate -->|"Errore"| Fix["Correggi file, nome o sorgenti e riprova"]
+    List --> Edit["Aggiungi, modifica o rimuovi voci; esporta la lista"]
+    List --> Select["Seleziona le voci da installare o disinstallare"]
+    Select --> Run["Avvia l'azione e consulta gli esiti"]
 ```
 
----
+Le modifiche persistenti e il cambio del preset sono bloccati durante un'operazione. Se esiste una bozza, applicala oppure scartala prima di cambiare pagina, modalità o preset. Se la modifica è accettata ma il salvataggio fallisce, i campi restano bloccati e Applica riprova il salvataggio: non reinserire la stessa modifica.
 
-## 3. Ricerca e Installazione Diretta di Applicazioni
+Il cambio del preset attivo viene salvato automaticamente quando accettato. Se il salvataggio fallisce, consulta l'errore e usa Salva workspace per riprovare.
 
-Permette di cercare programmi nell'intero catalogo di WinGet e Microsoft Store, con la libertà di installarli immediatamente sul computer oppure di salvarli in un preset.
+## 2. Cercare e installare applicazioni
+
+Apri **Pacchetti → Cerca**, scrivi un nome o ID e avvia la ricerca. È necessaria almeno una sorgente abilitata. I risultati mostrano nome, ID, sorgente, versione e fornitore quando disponibili.
 
 ```mermaid
 flowchart TD
-    StartSearch["Ingresso: Sezione Pacchetti -> Scheda Cerca"] --> InputQuery["Scrivi il nome o l'ID dell'app desiderata"]
-    InputQuery --> PressSearch["Premi Cerca o Invio"]
-    
-    PressSearch --> QueryExecution["Ricerca nelle sorgenti abilitate"]
-    QueryExecution --> HasResults{"Trovata corrispondenza?"}
-    
-    HasResults -->|"Nessun risultato"| EmptyResult["Mostra: Nessun pacchetto trovato"]
-    EmptyResult --> Suggestion["Suggerimento: Controlla il nome o abilita altre sorgenti"]
-    Suggestion --> InputQuery
-    
-    HasResults -->|"Risultati disponibili"| DisplayResults["Mostra elenco app con Nome, ID, Versione e Fornitore"]
-    DisplayResults --> SelectItems["Seleziona una o piu app dalla lista"]
-    
-    SelectItems --> ActionChoice{"Cosa desideri fare?"}
-    
-    ActionChoice -->|"Installa subito"| DirectInstall["Clicca Installa Selezionati"]
-    DirectInstall --> RunningDirect["Download e installazione diretta sul PC"]
-    RunningDirect --> DirectResult{"Esito installazione"}
-    DirectResult -->|"Riuscita"| SuccessDirect["App pronta all'uso! Registrata in Attività"]
-    DirectResult -->|"Errore"| FailDirect["Mostra errore con dettagli e codice"]
-    FailDirect --> DisplayResults
-    
-    ActionChoice -->|"Aggiungi a Preset"| AddToPreset["Clicca Aggiungi al Preset Attivo"]
-    AddToPreset --> ConfirmAdd["App inserite nel preset corrente per utilizzi futuri"]
+    Query["Inserisci nome o ID e premi Cerca o Invio"] --> Search["Interroga le sorgenti abilitate"]
+    Search --> Results{"Risultati disponibili?"}
+    Results -->|"No"| Check["Controlla query, sorgenti e diagnostica"]
+    Check --> Query
+    Results -->|"Sì"| Select["Seleziona una o più righe"]
+    Select --> Install["Installa direttamente"]
+    Select --> Preset["Aggiungi al preset attivo"]
+    Install --> Outcome["Leggi esiti e Attività"]
+    Preset --> Saved["Voci validate e aggiunte al preset"]
 ```
 
----
+L'installazione diretta non richiede un preset. Un errore di una sorgente può lasciare disponibili i risultati delle altre: leggi anche gli avvisi. Le ricerche identiche possono usare una cache in memoria di cinque minuti.
 
-## 4. Aggiornamenti Applicazioni (WinGet)
+## 3. Aggiornare le applicazioni WinGet
 
-Identifica i programmi installati sul PC che dispongono di una versione più recente e consente di aggiornarli singolarmente o tutti insieme.
+In **Aggiornamenti → WinGet**, avvia una scansione, confronta versione installata e disponibile e seleziona le righe da applicare. La copertura dipende da ciò che WinGet riconosce e dalle sorgenti disponibili.
 
 ```mermaid
 flowchart TD
-    StartUpdates["Ingresso: Sezione Aggiornamenti -> Scheda WinGet"] --> ScanUpdates["Scansione applicazioni installate sul PC"]
-    ScanUpdates --> CheckUpdates{"Ci sono nuove versioni?"}
-    
-    CheckUpdates -->|"Tutto aggiornato"| NoUpdates["Messaggio: Tutte le applicazioni sono aggiornate!"]
-    NoUpdates --> ManualRefresh["Possibilita di rieseguire la verifica manuale"]
-    
-    CheckUpdates -->|"Aggiornamenti presenti"| ListUpdates["Tabella con Versione Corrente e Nuova Versione"]
-    ListUpdates --> SelectionChoice{"Scelta aggiornamenti"}
-    
-    SelectionChoice -->|"Tutti"| SelectAll["Seleziona tutti gli aggiornamenti"]
-    SelectionChoice -->|"Personalizzata"| SelectSome["Spunta singolarmente solo le app desiderate"]
-    
-    SelectAll --> ClickApply["Clicca su Applica Aggiornamenti"]
-    SelectSome --> ClickApply
-    
-    ClickApply --> UpdatingLoop["Download e aggiornamento sequenziale dei pacchetti"]
-    UpdatingLoop --> CheckCancel{"Desideri annullare?"}
-    CheckCancel -->|"Si: Annulla"| CancelUpdate["Arresto sicuro: completa l'app in corso e ferma le altre"]
-    CheckCancel -->|"No"| FinishUpdate["Completamento del ciclo di aggiornamento"]
-    
-    CancelUpdate --> ResultsView["Mostra tabella esiti: Aggiornate, Fallite, Annullate"]
-    FinishUpdate --> ResultsView
-    
-    ResultsView --> CheckAllSuccess{"Tutte riuscite con successo?"}
-    CheckAllSuccess -->|"Si"| AutoRescan["Nuova scansione automatica: elenco pulito"]
-    CheckAllSuccess -->|"No"| KeepResults["Conserva gli esiti e permette di riprovare quelle fallite"]
+    Scan["Avvia scansione WinGet"] --> Rows["Esamina aggiornamenti e seleziona righe"]
+    Rows --> Apply["Applica la selezione"]
+    Apply --> Outcome{"Esito del batch"}
+    Outcome -->|"Riuscito"| Rescan["Nuova scansione automatica"]
+    Outcome -->|"Fallito o annullato"| Keep["Conserva esiti, diagnostica e righe pendenti"]
+    Keep --> Check["Verifica lo stato installato prima di riprovare"]
+    Check --> Rows
 ```
 
----
+**Annulla è una richiesta di interruzione.** Non garantisce che l'installer attivo completi o annulli il proprio lavoro. Gli esiti distinguono operazioni già concluse, pacchetto attivo non confermato e pacchetti mai avviati. Un errore o una cancellazione non provoca una nuova scansione automatica; le scansioni manuali conservano il riepilogo del batch.
 
-## 5. Windows Update (Aggiornamenti di Sistema)
+## 4. Usare Windows Update
 
-Esegue la scansione degli aggiornamenti ufficiali di Windows (inclusi aggiornamenti di sicurezza, driver e componenti opzionali) e ne gestisce l'installazione controllata.
+Apri **Aggiornamenti → Windows Update**. Le opzioni software, driver, Microsoft Update e aggiornamenti facoltativi sono separate. Per impostazione iniziale è selezionato il software; driver e facoltativi non sono inclusi. Seleziona almeno software o driver, poi avvia la scansione.
 
 ```mermaid
 flowchart TD
-    StartWU["Ingresso: Sezione Aggiornamenti -> Scheda Windows Update"] --> OptChoice{"Vuoi includere driver e opzionali?"}
-    
-    OptChoice -->|"Si"| EnableOptional["Attiva casella: Includi facoltativi e driver"]
-    OptChoice -->|"No"| StandardScan["Mantieni solo aggiornamenti importanti e di sicurezza"]
-    
-    EnableOptional --> ClickScan["Clicca Verifica Aggiornamenti"]
-    StandardScan --> ClickScan
-    
-    ClickScan --> ScanningWU["Contatto con i server di Windows Update"]
-    ScanningWU --> FoundUpdates{"Rilevati aggiornamenti?"}
-    
-    FoundUpdates -->|"Nessuno"| AllGood["Messaggio: Il sistema operativo e aggiornato"]
-    
-    FoundUpdates -->|"Disponibili"| TableWU["Mostra aggiornamenti con Titolo, Codice KB, Gravità MSRC"]
-    TableWU --> SelectWU["Seleziona gli aggiornamenti da applicare"]
-    SelectWU --> ClickInstallWU["Clicca su Installa Aggiornamenti"]
-    
-    ClickInstallWU --> EulaAccept["Accettazione automatica termini di licenza verificati"]
-    EulaAccept --> DownloadInstallWU["Fase di download e installazione in background"]
-    
-    DownloadInstallWU --> CancelWU{"Clicchi su Annulla?"}
-    CancelWU -->|"Si"| RequestAbortWU["Invia richiesta di interruzione controllata al servizio Windows"]
-    CancelWU -->|"No"| FinishWU["Installazione completata"]
-    
-    RequestAbortWU --> OutcomeWU["Riepilogo esito con stato interrotto"]
-    FinishWU --> CheckReboot{"Un aggiornamento richiede il riavvio?"}
-    
-    CheckReboot -->|"Si"| NotifyReboot["Notifica prominente: Riavvia il PC per completare l'installazione"]
-    CheckReboot -->|"No"| SystemUpdated["Aggiornamento completato con successo"]
+    Options["Scegli tipi di aggiornamenti e opzioni"] --> Scan["Avvia scansione"]
+    Scan --> Select["Esamina KB, titolo e metadati; seleziona le righe"]
+    Select --> Install["Avvia installazione con privilegi richiesti"]
+    Install --> Validate["Verifica ID e revisione di tutta la selezione"]
+    Validate --> Jobs["Accetta EULA, scarica e installa"]
+    Jobs --> Outcome["Conserva esiti e avvisi di riavvio"]
+    Jobs --> Cancel["Annulla: richiedi abort e attendi pulizia nativa"]
+    Cancel --> Outcome
+    Outcome --> Check["Se lo stato è incerto, controlla Windows Update prima di riprovare"]
 ```
 
----
+Avviando l'installazione, l'app accetta le EULA degli aggiornamenti selezionati dopo aver verificato la selezione completa. La gravità MSRC appare quando disponibile; il campo riavvio indica lo stato rilevato, non una previsione per ogni installazione futura.
 
-## 6. Gestione Sorgenti Software (Repository WinGet)
+Il fallback PowerShell serve quando COM non è attivabile: non ripete automaticamente un'installazione COM fallita. Se l'interruzione o la pulizia nativa non sono confermate, l'app segnala uno stato incerto. La cancellazione non effettua rollback; consulta il servizio Windows Update prima di un nuovo tentativo. Per i limiti delle prove reali, vedi [Operazioni](operations.md#windows-update-metadata).
 
-Consente di visualizzare e configurare i canali da cui vengono scaricate le applicazioni (ad esempio il catalogo ufficiale WinGet o Microsoft Store).
+## 5. Gestire le sorgenti
+
+In **Sorgenti**, aggiorna l'elenco per vedere le sorgenti configurate in WinGet. Abilita o disabilita localmente quelle da usare nelle ricerche. Questa preferenza non rimuove la sorgente da WinGet.
+
+| Azione | Privilegi e risultato |
+| --- | --- |
+| Ricaricare l'elenco | Disponibile senza elevazione; preserva URL e preferenze locali. |
+| Aggiornare metadati | Esegue l'aggiornamento delle sorgenti tramite WinGet. |
+| Abilitare/disabilitare | Salva una preferenza locale; non richiede amministratore. |
+| Aggiungere/rimuovere/ripristinare | Richiede OnlyWinget avviato come amministratore; modifica la configurazione WinGet. |
 
 ```mermaid
 flowchart TD
-    StartSources["Ingresso: Sezione Sorgenti"] --> ListSources["Elenco sorgenti configurate: Nome, Indirizzo e Stato"]
-    
-    ListSources --> ActionFilter{"Cosa desideri fare?"}
-    
-    ActionFilter -->|"Filtra elenco"| TypeFilter["Cerca per nome, tipo o stato"]
-    
-    ActionFilter -->|"Attiva o disattiva sorgente"| ToggleSource["Clicca sull'interruttore della sorgente"]
-    ToggleSource --> InstantSave["Preferenza salvata all'istante (Nessun admin richiesto)"]
-    
-    ActionFilter -->|"Aggiorna metadati"| UpdateMetadata["Clicca Aggiorna Sorgenti"]
-    UpdateMetadata --> SyncRemote["Download indici aggiornati dai repository"]
-    
-    ActionFilter -->|"Aggiungi nuova sorgente"| AddPrompt["Inserisci Nome e Indirizzo URL del repository"]
-    AddPrompt --> CheckAdminAdd{"L'app e avviata come amministratore?"}
-    CheckAdminAdd -->|"No"| UacHintAdd["Avviso: Operazione bloccata. Riavvia OnlyWinget come amministratore"]
-    CheckAdminAdd -->|"Si"| ValidateSource["Verifica validita URL e certificato"]
-    ValidateSource -->|"Valido"| SourceAdded["Nuova sorgente registrata nel sistema"]
-    ValidateSource -->|"Non valido"| ErrorSource["Errore: Indirizzo non raggiungibile o certificato errato"]
-    
-    ActionFilter -->|"Rimuovi sorgente"| SelectSource["Seleziona sorgente personalizzata da rimuovere"]
-    SelectSource --> ConfirmRemove{"Confermi la rimozione della sorgente?"}
-    ConfirmRemove -->|"No"| ListSources
-    ConfirmRemove -->|"Si"| CheckAdminDel{"Privilegi amministratore presenti?"}
-    CheckAdminDel -->|"No"| UacHintAdd
-    CheckAdminDel -->|"Si"| SourceDeleted["Sorgente eliminata dal sistema"]
-    
-    ActionFilter -->|"Ripristina predefinite"| ConfirmReset{"Confermi ripristino sorgenti ufficiali?"}
-    ConfirmReset -->|"Si con permessi admin"| ResetDone["Sorgenti ufficiali Microsoft reimpostate"]
+    Sources["Apri Sorgenti"] --> Action{"Scegli un'azione"}
+    Action -->|"Abilita o disabilita"| Save["Salva la preferenza locale"]
+    Action -->|"Ricarica o aggiorna"| Refresh["Esegui il comando e consulta l'esito"]
+    Action -->|"Aggiungi, rimuovi o ripristina"| Admin{"App elevata?"}
+    Admin -->|"No"| Restart["Riavvia come amministratore se vuoi procedere"]
+    Admin -->|"Sì"| Native["Valida input ed esegui WinGet"]
+    Native --> Result["Controlla esito e persistenza delle preferenze"]
 ```
 
----
+OnlyWinget valida gli input; gli esiti di accesso e registrazione provengono da WinGet. Se una modifica nativa riesce ma il salvataggio locale fallisce, ricarica l'elenco prima di riprovare. Annullare non ripristina una modifica già completata.
 
-## 7. Cronologia Attività & Visualizzatore Diagnostico
+## 6. Attività e log diagnostici
 
-Registra ogni operazione eseguita per consentire all'utente di esaminare lo storico, verificare gli errori, copiare i dettagli o esportare i log per assistenza tecnica.
+In **Attività** filtra per testo, gravità e categoria, copia i dettagli o esporta la cronologia. Cancella e Annulla riguardano la cronologia delle attività.
+
+**Apri log** mostra invece i messaggi diagnostici con filtro, copia, esportazione e svuotamento. Lo svuotamento richiede conferma all'interno del visualizzatore; annullarla lascia i log invariati. Se la scrittura, l'esportazione o la cancellazione fallisce, leggi l'errore prima di riprovare. Controlla il testo esportato prima di condividerlo: può contenere percorsi e indirizzi delle sorgenti.
+
+## 7. Impostazioni
+
+Apri **Impostazioni** per scegliere lingua di sistema/inglese/italiano e tema di sistema/chiaro/scuro, conferme, diagnostica e livello dei log. Le preferenze includono anche la prosecuzione dopo un errore e l'opzione di bypass della verifica hash degli installer.
+
+Le modifiche si salvano automaticamente. Il bypass hash modifica il controllo eseguito da WinGet e resta disattivato per impostazione predefinita. Ripristina predefiniti richiede conferma e salva nuovamente i valori iniziali.
 
 ```mermaid
-flowchart TD
-    StartAct["Punto di ingresso: Scheda Attività o clic sul banner in alto"] --> ViewLog["Visualizzazione cronologica degli eventi"]
-    
-    ViewLog --> FilterAct{"Filtra eventi"}
-    FilterAct -->|"Per Categoria"| CatFilter["Filtra: Preset, Ricerca, Aggiornamenti, Sorgenti, Sistema"]
-    FilterAct -->|"Per Gravità"| SevFilter["Filtra: Solo Errori, Avvisi o Informazioni"]
-    
-    ViewLog --> SelectEntry["Clicca su un evento specifico"]
-    SelectEntry --> ReadDetails["Leggi dettagli completi, orario ed eventuale codice errore"]
-    ReadDetails --> CopyClip["Pulsante: Copia dettagli negli Appunti"]
-    
-    ViewLog --> ClearHistory["Clicca: Cancella cronologia attività"]
-    ClearHistory --> UndoAvailable["Attivita nascoste con possibilita di fare Annulla"]
-    
-    ViewLog --> OpenViewer["Clicca: Visualizzatore Log Completi"]
-    OpenViewer --> ModalViewer["Apertura finestra dedicata Visualizzatore Log"]
-    
-    ModalViewer --> ViewerAction{"Cosa desideri fare?"}
-    ViewerAction -->|"Cerca testo"| SearchViewer["Filtro in tempo reale sui log di sistema"]
-    ViewerAction -->|"Esporta su file"| ExportLogFile["Scegli percorso e salva file di log (.log/.txt)"]
-    ViewerAction -->|"Svuota file log"| ConfirmClearLogs{"Confermi eliminazione file di log da disco?"}
-    ConfirmClearLogs -->|"Si"| DeleteLogFiles["File di log rimossi dal computer"]
-    ConfirmClearLogs -->|"No"| ModalViewer
-    ViewerAction -->|"Chiudi"| CloseViewer["Ritorno alla schermata principale"]
+flowchart LR
+    Settings["Apri Impostazioni"] --> Change["Modifica una preferenza"]
+    Change --> Save["Salvataggio automatico"]
+    Settings --> Reset["Ripristina predefiniti"]
+    Reset --> Confirm["Conferma il ripristino"]
+    Confirm --> Save
 ```
 
----
+## Dati locali e assistenza
 
-## 8. Impostazioni & Personalizzazione
+Per impostazione predefinita, anche nell'edizione portatile, i dati sono in `%LOCALAPPDATA%\OnlyWinget`: database `onlywinget.db`, `settings.json`, `source-preferences-v1.json` e `logs`. I log ruotano a 10 MiB con un massimo di 14 file riconosciuti / 140 MiB dopo scritture riuscite.
 
-Permette di personalizzare l'esperienza d'uso, la lingua, il tema grafico e le impostazioni di sicurezza dell'applicazione.
-
-```mermaid
-flowchart TD
-    StartSettings["Ingresso: Icona Impostazioni in basso a sinistra"] --> ViewSettings["Pannello di configurazione dell'applicazione"]
-    
-    ViewSettings --> SettingChoice{"Opzione da modificare"}
-    
-    SettingChoice -->|"Lingua interfaccia"| LangSelect["Scegli: Italiano oppure English"]
-    LangSelect --> ApplyLang["Testi dell'interfaccia aggiornati all'istante"]
-    
-    SettingChoice -->|"Aspetto e Tema"| ThemeSelect["Scegli: Chiaro, Scuro oppure Segui Sistema"]
-    ThemeSelect --> ApplyTheme["Palette visiva e contrasto applicati immediatamente"]
-    
-    SettingChoice -->|"Conferma azioni distruttive"| ConfirmToggle["Attiva/Disattiva dialoghi di conferma eliminazione"]
-    
-    SettingChoice -->|"Diagnostica e Log"| DiagToggle["Attiva/Disattiva registrazione diagnostica su disco"]
-    DiagToggle --> LevelSelect["Scegli livello di dettaglio: Base, Informazioni, Dettagliato"]
-    
-    ApplyLang --> SaveSettings["Clicca Salva Impostazioni"]
-    ApplyTheme --> SaveSettings
-    ConfirmToggle --> SaveSettings
-    LevelSelect --> SaveSettings
-    
-    SaveSettings --> SavedState["Preferenze memorizzate in modo permanente nel profilo utente"]
-    
-    ViewSettings --> ResetDefaults["Clicca: Ripristina valori predefiniti"]
-    ResetDefaults --> ConfirmResetOpt{"Ripristinare tutte le impostazioni iniziali?"}
-    ConfirmResetOpt -->|"Si"| RestoredDefaults["Tutte le opzioni tornano allo stato di fabbrica"]
-```
+In caso di errori di caricamento o migrazione, preserva i file e segui [le istruzioni di recupero](operations.md#workspace-schema-migration-and-recovery). Per segnalare un problema, indica versione, percorso operativo ed errore come descritto nel [README](../README.md#support).

@@ -14,7 +14,7 @@ Use with [the project skill](../onlywinget/SKILL.md). Inspect [scripts/ui-test.p
 - Persisted behavior requires checking stored SQLite/JSON state or restarting the app against the same `ONLYWINGET_DATA_ROOT`, not screenshots alone. Keep accepted-unsaved edits (locked fields retrying save) distinct from unapplied dirty drafts (`IPendingNavigationGuard`).
 - Import-picker cancellation compares row identities, `ToggleState`, `IsSelected` and the selection container's selected item (including collapsed `ComboBox` preset selectors) via `UiTestStateHelpers.ps1`.
 - In `Controls/LogViewerDialog`, verify inline `InfoBar` clear confirm/cancel, I/O error surfacing (`DiagnosticLogStore.LastError`), clipboard/export outcomes and Light/Dark/High Contrast themes. Note that `CancellationToken` in `FilePickerService` governs file I/O after picker return, not native modal picker lifetime; cancel or close an owned modal picker before shutting down the app, or send `WM_CLOSE` to the verified owner HWND.
-- Store temporary screenshots/logs under ignored `artifacts/tmp/`, clean up fixture scratch files and stop only processes started for the fixture.
+- Pass `-OutputDirectory <absolute-directory>` under the resolved SecondBrain runtime for UI screenshots/logs; the script's default remains checkout-local `artifacts/ui-tests`. Preserve fixture files and captures until cleanup is explicitly requested. Stop only processes started for the fixture.
 
 ## Deterministic UI & ownership regressions (no `winapp` required)
 
