@@ -105,4 +105,6 @@ Report reproducible problems through [GitHub Issues](https://github.com/dennidal
 
 ## License
 
-OnlyWinget is proprietary software. Copyright (c) 2026 Danny Perondi. All rights reserved.
+OnlyWinget is proprietary software. Copyright (c) 2026 Danny Perondi. All rights reserved. See [LICENSE](LICENSE).
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md). The repository contains build and release workflows in `.github/workflows/`, but GitHub Actions are disabled: build and package locally with the scripts above.
