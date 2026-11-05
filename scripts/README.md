@@ -49,8 +49,6 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 | `test-media-assets.ps1` | Generates media in an isolated output root and checks consumed NSIS dimensions/depth, readable ICO and exact output files. |
 | `generate-landing-setup.ps1` | Bundles the setup installer and portable ZIP, copies them to the landing page build directory, and updates landing download links. |
 | `test-landing-artifacts.ps1` | Isolated sentinel regression for exact project-version selection, missing current artifacts and preserved unrelated landing files. |
-| `install-skills.ps1` | Read-only verification of all canonical `.agents/skills` entrypoints; does not create duplicate copies. |
-| `sync-win-dev-skills.ps1` | Resolves the maintained Microsoft WinUI upstream HEAD and verifies local entrypoints; updates require manual review and are never imported automatically. |
 | `update-media-assets.ps1` | Generates application/landing PNG/ICO assets and consumed NSIS HeaderBanner/WelcomeDialog bitmaps from the master logo. |
 | `fix-lockfiles.ps1` | Regenerates NuGet packages.lock.json files with the pinned .NET SDK from global.json and verifies locked restore. |
 
@@ -70,7 +68,7 @@ Offline tests exclude `Category=Smoke`; four live tests report skipped on direct
 
 `-StopRunningInstance` requests graceful closure only for executable files in this checkout's application bin/obj and installer publish outputs. Other installations and portable copies are preserved. Processes that exited, have no main module or deny access are ignored and disposed without being closed; an unreadable path cannot establish ownership or prove the output is unlocked. A verified owned process that refuses closure still fails the operation. NSIS install and uninstall use the same exact-path helper through Windows PowerShell 64-bit and stop before overwriting or deleting files if closure fails. `test-process-ownership.ps1` checks inaccessible/null-module discovery in both PowerShell runtimes and script/NSIS closure with real isolated windows.
 
-Developer skills are maintained only in `.agents/skills`. The former root `skills/` copies and generic application/MSIX templates have been removed. `sync-win-dev-skills.ps1` now preserves local instructions rather than replacing directories. Microsoft moved WinUI skill maintenance to [microsoft/winappCli](https://github.com/microsoft/winappCli), as described by [the original catalog](https://github.com/microsoft/win-dev-skills).
+Repository development knowledge and the retired local skill sources are maintained in the SecondBrain dossier. Use this script catalog and the current project documentation for supported commands.
 
 Only NSIS setup EXE and self-contained portable ZIP distribution are supported. The unused `PackageMsix` task/script/manifest have been removed; use `run.ps1 -Task Package` for both supported assets.
 

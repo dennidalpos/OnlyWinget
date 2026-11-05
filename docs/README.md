@@ -13,4 +13,4 @@ OnlyWinget gestisce preset di applicazioni, ricerca nelle sorgenti WinGet, aggio
 
 I diagrammi descrivono i flussi implementati; non attestano l'esecuzione di installazioni o il superamento dei gate di rilascio. I documenti datati presenti in questa cartella riportano verifiche storiche e vanno letti con il loro scenario e la loro data.
 
-Le fonti tecniche principali sono [i progetti](../src), [il task runner](../scripts/run.ps1), [la configurazione SDK](../global.json) e [i workflow CI](../.github/workflows). Le istruzioni per gli agenti sono in [AGENTS.md](../AGENTS.md) e nelle [skill del progetto](../.agents/skills).
+Le fonti tecniche principali sono [i progetti](../src), [il task runner](../scripts/run.ps1), [la configurazione SDK](../global.json) e [i workflow CI](../.github/workflows). Le istruzioni comuni per gli agenti sono in [AGENTS.md](../AGENTS.md); la conoscenza di sviluppo specifica del repository è nel dossier SecondBrain.
