@@ -65,7 +65,7 @@ jobs:
           ./scripts/validate-release.ps1 -TagName $env:RELEASE_TAG -ExpectedCommit $env:RELEASE_SHA -CheckRemoteTag -CheckAssets
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release.outputs.tag }}
           target_commitish: ${{ steps.release.outputs.sha }}
