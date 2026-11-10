@@ -1,0 +1,69 @@
+using System.Globalization;
+using Microsoft.Extensions.Hosting;
+using OnlyWinget.Application.App;
+using OnlyWinget.Application.System;
+using OnlyWinget.Services;
+
+namespace OnlyWinget;
+
+public partial class App : Microsoft.UI.Xaml.Application
+{
+    private static Microsoft.UI.Xaml.Window? window;
+
+    internal static nint WindowHandle => window is null ? 0 : WinRT.Interop.WindowNative.GetWindowHandle(window);
+
+    internal static Microsoft.UI.WindowId WindowId => Microsoft.UI.Win32Interop.GetWindowIdFromWindow(WindowHandle);
+    internal static Microsoft.UI.Xaml.XamlRoot? XamlRoot => (window?.Content as Microsoft.UI.Xaml.FrameworkElement)?.XamlRoot;
+
+    internal static void Navigate(string routeId)
+    {
+        if (window is MainWindow mainWindow) mainWindow.Navigate(routeId);
+    }
+
+    internal static Microsoft.Extensions.Hosting.IHost Host { get; } = AppComposition.Host;
+
+    internal static UiServiceCollection UiServices => AppComposition.CreateUiServices();
+
+    public static OnlyWingetApplication Workflow => AppComposition.CreateWorkflow();
+
+    public App()
+    {
+        Host.Start();
+        ApplySettings();
+        AppDiagnostics.Initialize();
+        AppDiagnostics.Register(this);
+
+        AppComposition.CleanupLegacyProtocol();
+
+        InitializeComponent();
+    }
+
+    internal static void ApplySettings()
+    {
+        var settings = UiServices.Settings.Current;
+        TextResources.OverrideCulture = settings.Language switch
+        {
+            "en" => CultureInfo.GetCultureInfo("en"),
+            "it" => CultureInfo.GetCultureInfo("it"),
+            _ => null
+        };
+        AppDiagnostics.Configure(settings.DiagnosticLogging,
+            Enum.TryParse<AppLogLevel>(settings.LogLevel, out var level) ? level : AppLogLevel.Information);
+        Workflow.ContinueOperationsAfterFailure = settings.ContinueOperationsAfterFailure;
+        Workflow.BypassHashValidation = settings.BypassHashValidation;
+    }
+
+    protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+    {
+        try
+        {
+            window = new MainWindow();
+            window.Activate();
+        }
+        catch (Exception exception)
+        {
+            AppDiagnostics.WriteException("OnLaunched", exception);
+            throw;
+        }
+    }
+}

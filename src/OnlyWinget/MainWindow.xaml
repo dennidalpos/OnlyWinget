@@ -1,0 +1,65 @@
+<Window
+    x:Class="OnlyWinget.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:OnlyWinget.Controls"
+    Title="OnlyWinget">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Custom Title Bar -->
+        <Grid x:Name="AppTitleBar" Height="44" Background="Transparent" VerticalAlignment="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Image Source="Assets/OnlyWinget-icon.png" Width="16" Height="16" Margin="0,0,8,0" />
+                <TextBlock Text="OnlyWinget" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <controls:StatusBadgeControl x:Name="WingetStatusBadge" Visibility="Collapsed" />
+            </StackPanel>
+        </Grid>
+
+    <Grid Grid.Row="1">
+        <NavigationView
+            x:Name="RootNavigation"
+            CompactModeThresholdWidth="720"
+            ExpandedModeThresholdWidth="1050"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="True"
+            PaneTitle=""
+            PaneDisplayMode="Auto"
+            OpenPaneLength="240"
+            AutomationProperties.AutomationId="RootNavigation"
+            SelectionFollowsFocus="Disabled"
+            SelectionChanged="OnSelectionChanged">
+            <NavigationView.PaneFooter>
+                <NavigationViewItem x:Name="OpenLogsItem" Tapped="OnOpenLogsTapped" AutomationProperties.AutomationId="NavOpenLogs">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Document" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.PaneFooter>
+            <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <controls:OperationTrackerControl x:Name="OperationTracker" Grid.Row="0" Margin="16,12,16,0" />
+                <ContentControl
+                    x:Name="PageHost"
+                    Grid.Row="1"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch" />
+            </Grid>
+        </NavigationView>
+    </Grid>
+    </Grid>
+</Window>

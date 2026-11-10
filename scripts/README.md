@@ -1,0 +1,75 @@
+# Scripts
+
+Run from the repository root with PowerShell 7.
+
+`Check` deletes this checkout's `artifacts/` and `tmp/` before running its gate. Preserve evidence and obtain cleanup authorization before using it in a managed agent session.
+
+`run.ps1` is the consolidated task runner entrypoint. Pass `-Task` to run tasks:
+
+```powershell
+.\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
+```
+
+The scripts bootstrap missing prerequisites where practical:
+
+- .NET SDK major from `global.json` via `winget`; locked restore requires the exact SDK declared in that file to be installed.
+- PSScriptAnalyzer via `Install-Module`.
+- NSIS 3.x for setup executable creation.
+- Windows App Runtime self-contained bundling.
+
+Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation into a hard failure.
+
+| Script | Purpose |
+| --- | --- |
+| `run.ps1` | Main task runner entrypoint. Requires `-Task`. Supports `-Fast` (default) and `-Full` for test tasks. |
+| `setup.ps1` | Direct restore action. |
+| `format.ps1` | Direct format action. |
+| `lint.ps1` | Direct PowerShell lint action. |
+| `typecheck.ps1` | Direct warnings-as-errors build action. |
+| `test.ps1` | Direct xUnit action. Default `-Fast` returns concise PASS/FAIL + minimal stack trace; use `-Full` for verbose developer logs. |
+| `ui-test.ps1` | Repeatable WinApp UI checks against a running app PID. Supports `-Fast` (default) and `-Full`. |
+| `test-ui-dialog-ownership.ps1` | Native-window ownership regression: preserves unrelated windows and rejects a mismatched app PID. |
+| `test-ui-state-snapshot.ps1` | Real isolated UIA regression: observes checkbox/list/collapsed-preset selection changes and restoration without touching OnlyWinget data. |
+| `validate-release.ps1` | Validates tag/HEAD/project versions, optionally remote tag SHA and required setup/portable assets. |
+| `test-release-validation.ps1` | Isolated Git/tag and sentinel-asset release regression; included in the full gate. |
+| `build.ps1` | Direct WinUI build action. |
+| `dev.ps1` | Direct app launch action. |
+| `package.ps1` | Direct x64 NSIS setup executable and self-contained portable ZIP packaging action. |
+| `test-installer-owned-files.ps1` | Compiles and runs an isolated NSIS fixture; verifies removal of distributed files and preservation of unrelated root/nested files. Requires NSIS. |
+| `test-process-ownership.ps1` | Verifies scoped script/NSIS install and uninstall graceful close, preservation of another executable copy and refused-close failure before overwriting or deleting installation files. |
+| `test-package-artifacts.ps1` | Isolated real-NSIS artifact regression: preserves previous outputs on failures, recovers interrupted promotion and rejects corrupt journals/backups. |
+| `check.ps1` | Full gate including the installer file ownership regression. Supports `-Fast` (default) and `-Full`. |
+| `clean.ps1` | Guarded generated-output cleanup; `-All` also clears NuGet caches, never application data. |
+| `test-clean-preserves-data.ps1` | Isolated cleanup regression preserving workspace/settings/preferences/log sentinels; no real cache clearing. |
+| `validate-installer-lifecycle.ps1` | Clean install/uninstall; CurrentUser runs unprivileged, AllUsers needs elevation. Upgrade requires a genuine PreviousSetupPath. |
+| `validate-installed-startup.ps1` | Verifies that an installed executable starts and remains responsive. |
+| `test-verification-invariants.ps1` | Isolated failures: early native/pre-TRX failure, retained Fast/Full logs, early zero exit and missing/responsive startup window. |
+| `test-check-diagnostics.ps1` | Runs Check against isolated command failures in default/Fast/Full modes and a real NuGet NU1004 lock mismatch; verifies retained diagnostics and stopping before later steps. Real failure-fixture logs/reports are retained for CI upload. |
+| `align-logos.ps1` | Converts the master brand logo from JPEG to standard PNG/ICO formats and distributes them to application and landing assets. |
+| `test-media-assets.ps1` | Generates media in an isolated output root and checks consumed NSIS dimensions/depth, readable ICO and exact output files. |
+| `generate-landing-setup.ps1` | Bundles the setup installer and portable ZIP, copies them to the landing page build directory, and updates landing download links. |
+| `test-landing-artifacts.ps1` | Isolated sentinel regression for exact project-version selection, missing current artifacts and preserved unrelated landing files. |
+| `update-media-assets.ps1` | Generates application/landing PNG/ICO assets and consumed NSIS HeaderBanner/WelcomeDialog bitmaps from the master logo. |
+| `fix-lockfiles.ps1` | Regenerates NuGet packages.lock.json files with the pinned .NET SDK from global.json and verifies locked restore. |
+
+Support files live under `scripts/support/` and are not standalone entrypoints.
+
+`global.json` pins an exact SDK with roll-forward disabled so implicit SDK packages remain consistent with `packages.lock.json`. When intentionally changing that SDK, regenerate lockfiles with `scripts/fix-lockfiles.ps1`, review the generated diff and verify locked restore again after packaging. Do not bypass locked mode to make CI pass. See [SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json#rollforward) and [NuGet locked restore](https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies).
+
+Check retains restore stdout/stderr in `artifacts/check/restore.log`. Default/Fast output shows the last 60 lines on failure; Full also streams the output. A failed step writes `artifacts/build-report.txt` with its name, error and completed steps. The build and release workflows upload those diagnostics along with test logs/TRX, including after failures. The diagnostics regression also retains `artifacts/check/restore-failure-fixture*.log` from an expected real NuGet failure in an isolated temporary solution; those files show a successful negative test and do not describe the main solution's restore. The release workflow may fail tag validation before producing diagnostic files. Check first deletes this checkout's `artifacts/` and `tmp/`; preserve existing evidence or run it in an isolated checkout.
+
+Import cancellation captures UIA names/IDs/control types plus ToggleState, IsSelected and the selection container's selected items before and after closing the owned picker. This includes the collapsed preset selector; unchanged labels alone do not prove preserved selection. `test-ui-state-snapshot.ps1` exercises actual checkbox/list/collapsed-selector patterns in a separate WPF fixture, with no OnlyWinget launch or personal-store changes.
+
+`update-media-assets.ps1` defaults to the repository's `assets/logos/logo.png`; a supplied source is used as a complete logo without the former fixed crop. It writes only PNG/ICO app/landing assets and consumed NSIS `HeaderBanner.bmp` (150x57) / `WelcomeDialog.bmp` (164x314), both 24-bit. `-OutputRoot` allows isolated generation; `test-media-assets.ps1` validates that path without modifying tracked branding. No WiX assets or private-machine input path are used.
+
+Landing preparation reads the exact project Version and copies only the matching setup/portable pair. Missing/empty current artifacts or unexpected download-link patterns fail; retained older releases and unrelated landing/build files are preserved. Both prepared files are ignored local artifacts; deploy them together with the HTML only after release checks. Local preparation does not establish deployed-site status.
+
+Offline tests exclude `Category=Smoke`; four live tests report skipped on direct invocation unless explicitly enabled. The duplicate live catalog test was removed and stderr streaming runs deterministically. Both Fast and Full modes retain dotnet output in `artifacts/test-results/*.log` and reject missing TRX, unknown outcomes or zero executed tests. Full also displays output. UI commands check each native exit immediately and assert focus movement, toggle restoration, cancelled-picker row preservation and navigation bounds; this suite alone does not establish real UI qualification; historical interactive scenarios and their limits are documented in [operations](../docs/operations.md).
+
+`-StopRunningInstance` requests graceful closure only for executable files in this checkout's application bin/obj and installer publish outputs. Other installations and portable copies are preserved. Processes that exited, have no main module or deny access are ignored and disposed without being closed; an unreadable path cannot establish ownership or prove the output is unlocked. A verified owned process that refuses closure still fails the operation. NSIS install and uninstall use the same exact-path helper through Windows PowerShell 64-bit and stop before overwriting or deleting files if closure fails. `test-process-ownership.ps1` checks inaccessible/null-module discovery in both PowerShell runtimes and script/NSIS closure with real isolated windows.
+
+Repository development knowledge and the retired local skill sources are maintained in the SecondBrain dossier. Use this script catalog and the current project documentation for supported commands.
+
+Only NSIS setup EXE and self-contained portable ZIP distribution are supported. The unused `PackageMsix` task/script/manifest have been removed; use `run.ps1 -Task Package` for both supported assets.
+
+Packaging is serialized per worktree through `artifacts/.package.lock`. Setup/portable files are staged on the output volume, validated and individually promoted with retained rollback copies and a recovery journal. The next invocation restores interrupted promotions before building; corrupt recovery data is preserved and fails closed. Consume the pair only after successful packaging completion; two file replacements are not one atomic transaction. See [release details](../docs/release.md).

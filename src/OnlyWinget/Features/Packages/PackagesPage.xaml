@@ -1,0 +1,23 @@
+<Page
+    x:Class="OnlyWinget.Features.Packages.PackagesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:design="using:OnlyWinget.DesignSystem.Controls"
+    xmlns:packages="using:OnlyWinget.Features.Packages"
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:services="using:OnlyWinget.Services">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Nav_Packages}" AreaAccentBrush="{ThemeResource AreaPackagesBrush}">
+        <design:PageScaffold.Commands>
+            <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind PresetMode}" SelectionChanged="OnModeSelectionChanged" AutomationProperties.AutomationId="PackagesModes">
+                <SelectorBarItem x:Name="PresetMode" Text="{services:Localize Key=Packages_PresetsMode}" Icon="Library" AutomationProperties.AutomationId="PackagesPresetTab" />
+                <SelectorBarItem x:Name="SearchMode" Text="{services:Localize Key=Packages_SearchMode}" Icon="Find" AutomationProperties.AutomationId="PackagesSearchTab" />
+            </SelectorBar>
+        </design:PageScaffold.Commands>
+        <design:PageScaffold.Body>
+            <Grid VerticalAlignment="Stretch">
+                <packages:PresetsPage x:Name="PresetWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
+                <packages:SearchPage x:Name="SearchWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, SearchMode), Mode=OneWay}" />
+            </Grid>
+        </design:PageScaffold.Body>
+    </design:PageScaffold>
+</Page>

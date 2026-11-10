@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <PreferredUILang>en-US</PreferredUILang>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>10.0</AnalysisLevel>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <ArtifactsRoot>$(MSBuildThisFileDirectory)artifacts\</ArtifactsRoot>
+    <BaseOutputPath>$(ArtifactsRoot)bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(ArtifactsRoot)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <PublishDir Condition="'$(TargetFramework)' != ''">$(ArtifactsRoot)publish\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\</PublishDir>
+  </PropertyGroup>
+</Project>

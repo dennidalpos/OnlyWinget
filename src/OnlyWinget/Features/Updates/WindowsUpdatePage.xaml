@@ -1,0 +1,43 @@
+<UserControl
+    x:Class="OnlyWinget.Features.Updates.WindowsUpdatePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:OnlyWinget.Controls"
+    xmlns:states="using:OnlyWinget.DesignSystem.States"
+    xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:design="using:OnlyWinget.DesignSystem.Controls"
+    xmlns:services="using:OnlyWinget.Services">
+    <Grid RowSpacing="12" VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Border Style="{StaticResource CardStyle}">
+            <design:OnlyWingetResponsivePanel ItemMinWidth="220" HorizontalSpacing="16" VerticalSpacing="12">
+                <design:OnlyWingetWrapPanel HorizontalSpacing="16" VerticalSpacing="8" VerticalAlignment="Center">
+                    <CheckBox x:Name="SoftwareUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeSoftware}" IsChecked="True" AutomationProperties.AutomationId="WindowsSoftwareFilter" />
+                    <CheckBox x:Name="DriverUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeDrivers}" IsChecked="False" AutomationProperties.AutomationId="WindowsDriverFilter" />
+                    <CheckBox x:Name="MicrosoftUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeMicrosoft}" IsChecked="False" AutomationProperties.AutomationId="WindowsMicrosoftFilter" />
+                    <CheckBox x:Name="OptionalUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeOptional}" IsChecked="False" AutomationProperties.AutomationId="WindowsOptionalFilter" />
+                </design:OnlyWingetWrapPanel>
+                <commands:OnlyWingetCommandBar ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />
+            </design:OnlyWingetResponsivePanel>
+        </Border>
+        <states:StatePresenter x:Name="PageState" Grid.Row="1" />
+        <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
+            <controls:OnlyWingetTable x:Name="WindowsUpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="WindowsUpdateList" ToggleAllRequested="OnToggleAllWindowsUpdates" BatchSelectionChanged="OnWindowsUpdateBatchSelectionChanged">
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Title}" BindingPath="Title" Width="320" IsPrimary="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_KnowledgeBase}" BindingPath="KnowledgeBaseArticles" Width="120" IsTextSelectable="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Severity}" BindingPath="Severity" Width="120" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Categories}" BindingPath="Categories" Width="200" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Size}" BindingPath="MaxDownloadSize" Width="110" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Downloaded}" BindingPath="IsDownloaded" Width="110" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Reboot}" BindingPath="RebootRequired" Width="100" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Revision}" BindingPath="Revision" Width="90" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Status}" BindingPath="Status" Width="*" />
+            </controls:OnlyWingetTable>
+        </Border>
+    </Grid>
+</UserControl>

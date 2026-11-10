@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnlyWinget — The Safest & Fastest Way to Set Up Your Windows PC</title>
+    <meta name="description" content="Download and update all your Windows applications in one click. No registration, no adware, and zero tracking. 100% safe and automatic.">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <header>
+        <div class="container nav-wrapper">
+            <div class="logo-container" onclick="window.location.reload()" style="cursor: pointer;">
+                <img class="logo-img" src="assets/logo.png" alt="OnlyWinget Logo">
+                <span class="logo-text">OnlyWinget</span>
+            </div>
+            <div class="nav-controls">
+                <button class="lang-switch" id="langBtn" onclick="toggleLanguage()">
+                    <i class="fa-solid fa-globe"></i> <span id="langLabel">Italiano</span>
+                </button>
+                <a href="privacy.html" class="privacy-link">
+                    <i class="fa-solid fa-user-lock"></i> <span id="nav-privacy" data-i18n="privacy">Privacy Policy</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <span class="hero-badge" id="hero-badge" data-i18n="badge">100% Safe, Private & Ad-Free</span>
+            <h1 id="hero-title" data-i18n="title">Set Up Your Windows PC <span>Without the Hassle</span></h1>
+            <p class="hero-subtitle" id="hero-subtitle" data-i18n="subtitle">
+                Stop searching sketchy websites for installers and clicking "Next" a hundred times. OnlyWinget downloads and installs all your favorite apps automatically, in seconds, safely.
+            </p>
+            <div class="hero-bullets">
+                <div class="bullet-item"><i class="fa-solid fa-circle-check"></i> <span data-i18n="b1">No adware or junkware</span></div>
+                <div class="bullet-item"><i class="fa-solid fa-circle-check"></i> <span data-i18n="b2">Automatic skip of setup wizards</span></div>
+                <div class="bullet-item"><i class="fa-solid fa-circle-check"></i> <span data-i18n="b3">No account or registration required</span></div>
+            </div>
+            <div class="hero-ctas">
+                <a href="build/OnlyWinget-1.0.2-setup.exe" class="btn btn-primary" id="cta-download" data-i18n="download">
+                    <i class="fa-solid fa-download" style="margin-right: 8px;"></i> Download OnlyWinget
+                </a>
+                <a href="build/OnlyWinget-1.0.2-portable-x64.zip" class="btn btn-secondary-download" id="cta-portable" data-i18n="downloadPortable">
+                    <i class="fa-solid fa-file-zipper" style="margin-right: 8px;"></i> Portable Version (.zip)
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="comparison-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="comp-title" data-i18n="compTitle">Say Goodbye to Shady Installers</h2>
+                <p id="comp-subtitle" data-i18n="compSubtitle">Installing software on Windows used to be a chore. Not anymore.</p>
+            </div>
+            <div class="comparison-grid">
+                <!-- Old Way Card -->
+                <div class="comparison-card old-way">
+                    <div class="card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <h3 data-i18n="compOldTitle">The Old, Painful Way</h3>
+                    <ul class="comparison-list">
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld1">Search for each app on web search engines</span></li>
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld2">Avoid fake download buttons and malware</span></li>
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld3">Click "Next" dozens of times and decline unwanted junkware</span></li>
+                        <li><i class="fa-solid fa-xmark"></i> <span data-i18n="compOld4">Repeat for every single program you need</span></li>
+                    </ul>
+                </div>
+                <!-- OnlyWinget Card -->
+                <div class="comparison-card new-way">
+                    <div class="card-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <h3 data-i18n="compNewTitle">The Safe & Simple Way</h3>
+                    <ul class="comparison-list">
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew1">Search and select from 8,000+ verified official apps</span></li>
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew2">Install everything in bulk with zero clicks required</span></li>
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew3">Save your app list to set up any new PC instantly</span></li>
+                        <li><i class="fa-solid fa-check"></i> <span data-i18n="compNew4">Keep everything updated from a single dashboard</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="features-title" data-i18n="featuresTitle">Designed for Windows 10 & 11</h2>
+                <p id="features-subtitle" data-i18n="featuresSubtitle">A sleek, native desktop utility built for efficiency, privacy, and control.</p>
+            </div>
+            <div class="features-grid">
+                <!-- Feature 1 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-list-check"></i></div>
+                    <h3 id="f1-title" data-i18n="f1Title">App Lists (Presets)</h3>
+                    <p id="f1-desc" data-i18n="f1Desc">Save your favorite tools into presets and deploy them onto a new computer instantly.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                    <h3 id="f2-title" data-i18n="f2Title">Instant Search</h3>
+                    <p id="f2-desc" data-i18n="f2Desc">Find thousands of official packages powered by the Microsoft Winget repository.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-arrows-rotate"></i></div>
+                    <h3 id="f3-title" data-i18n="f3Title">Windows Update</h3>
+                    <p id="f3-desc" data-i18n="f3Desc">Scan, download, and install system patches directly from a clean interface.</p>
+                </div>
+                <!-- Feature 4 -->
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-user-shield"></i></div>
+                    <h3 id="f4-title" data-i18n="f4Title">100% Offline & Private</h3>
+                    <p id="f4-desc" data-i18n="f4Desc">No registration, no tracking, and no external servers. All data remains on your PC.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="gallery-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 id="gallery-title" data-i18n="galleryTitle">See It In Action</h2>
+                <p id="gallery-subtitle" data-i18n="gallerySubtitle">Explore how easy it is to manage software and system updates.</p>
+            </div>
+
+            <!-- Gallery Tabs -->
+            <div class="gallery-tabs">
+                <button class="tab-btn active" onclick="switchTab('home', this)" data-i18n="tabHome">Overview</button>
+                <button class="tab-btn" onclick="switchTab('presets', this)" data-i18n="tabPresets">App Lists</button>
+                <button class="tab-btn" onclick="switchTab('search', this)" data-i18n="tabSearch">App Search</button>
+                <button class="tab-btn" onclick="switchTab('updates', this)" data-i18n="tabUpdates">Updates</button>
+            </div>
+
+            <!-- Two-Column Interactive Layout -->
+            <div class="gallery-layout">
+                <!-- Left: Step Indicator Stepper -->
+                <div class="gallery-stepper">
+                    <div class="stepper-title-container">
+                        <span class="stepper-label">WORKFLOW</span>
+                    </div>
+                    <ul class="steps-list" id="stepsList">
+                        <!-- Populated by script -->
+                    </ul>
+                </div>
+
+                <!-- Right: Application Window Mockup -->
+                <div class="gallery-showcase">
+                    <div class="mockup-window">
+                        <div class="mockup-header">
+                            <div class="mockup-dots">
+                                <span class="dot close"></span>
+                                <span class="dot minimize"></span>
+                                <span class="dot maximize"></span>
+                            </div>
+                            <div class="mockup-title">OnlyWinget</div>
+                        </div>
+                        <div class="mockup-body">
+                            <!-- Overview / Home Images -->
+                            <img id="img-home-1" class="gallery-img" src="assets/gallery/01-home.png" alt="Home Dashboard Overview">
+                            <img id="img-home-2" class="gallery-img" src="assets/gallery/07-activity.png" alt="Activity History">
+                            <img id="img-home-3" class="gallery-img" src="assets/gallery/08-settings.png" alt="Application Settings">
+
+                            <!-- Presets Images -->
+                            <img id="img-presets-1" class="gallery-img" src="assets/gallery/02-packages-presets.png" alt="App Lists and Presets">
+                            <img id="img-presets-2" class="gallery-img" src="assets/gallery/06-sources.png" alt="Software Sources">
+                            
+                            <!-- Search Images -->
+                            <img id="img-search-1" class="gallery-img" src="assets/gallery/03-packages-search.png" alt="Official App Search">
+                            
+                            <!-- Updates Images -->
+                            <img id="img-updates-1" class="gallery-img" src="assets/gallery/04-updates-winget.png" alt="Application Updates">
+                            <img id="img-updates-2" class="gallery-img" src="assets/gallery/05-updates-windows.png" alt="Windows Update">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2026 OnlyWinget. <span id="footer-note" data-i18n="footerNote">All rights reserved. All data remains securely on your computer.</span></p>
+            <p><a href="privacy.html" id="footer-privacy" data-i18n="footerPrivacy">Privacy Policy (GDPR Compliant)</a></p>
+        </div>
+    </footer>
+
+    <!-- Interactive script for Language Switch & Gallery workflow -->
+    <script>
+        let currentLang = 'en';
+        let activeTab = 'home';
+        let activeStep = 1;
+
+        const translations = {
+            en: {
+                titleTag: "OnlyWinget — The Safest & Fastest Way to Set Up Your Windows PC",
+                badge: "100% Safe, Private & Ad-Free",
+                title: "Set Up Your Windows PC <span>Without the Hassle</span>",
+                subtitle: "Stop searching sketchy websites for installers and clicking 'Next' a hundred times. OnlyWinget downloads and installs all your favorite apps automatically, in seconds, safely.",
+                download: "<i class='fa-solid fa-download' style='margin-right: 8px;'></i> Download OnlyWinget",
+                downloadPortable: "<i class='fa-solid fa-file-zipper' style='margin-right: 8px;'></i> Portable Version (.zip)",
+                privacy: "Privacy Policy",
+                
+                // Hero bullets
+                b1: "No adware or junkware",
+                b2: "Automatic skip of setup wizards",
+                b3: "No account or registration required",
+
+                // Comparison section
+                compTitle: "Say Goodbye to Shady Installers",
+                compSubtitle: "Installing software on Windows used to be a chore. Not anymore.",
+                compOldTitle: "The Old, Painful Way",
+                compOld1: "Search for each app on web search engines",
+                compOld2: "Avoid fake download buttons and malware",
+                compOld3: "Click 'Next' dozens of times and decline unwanted junkware",
+                compOld4: "Repeat for every single program you need",
+                compNewTitle: "The Safe & Simple Way",
+                compNew1: "Search and select from 8,000+ verified official apps",
+                compNew2: "Install everything in bulk with zero clicks required",
+                compNew3: "Save your app list to set up any new PC instantly",
+                compNew4: "Keep everything updated from a single dashboard",
+
+                // Features
+                featuresTitle: "Designed for Windows 10 & 11",
+                featuresSubtitle: "A sleek, native desktop utility built for efficiency, privacy, and control.",
+                f1Title: "Custom App Lists",
+                f1Desc: "Create custom lists of your favorite programs (like office tools, media players, or games) and install them on any computer.",
+                f2Title: "Safe Search",
+                f2Desc: "Find official software in a database verified by Microsoft. No dangerous mirror sites or bundled viruses.",
+                f3Title: "One-Click System Updates",
+                f3Desc: "Scan and install operating system updates and your installed apps together, keeping your PC secure.",
+                f4Title: "100% Local & Private",
+                f4Desc: "We don't collect analytics, tracking data, or require you to sign up. All configurations remain safely on your PC.",
+                
+                // Gallery
+                galleryTitle: "See It In Action",
+                gallerySubtitle: "Explore how easy it is to manage software and system updates.",
+                tabHome: "Overview",
+                tabPresets: "App Lists",
+                tabSearch: "App Search",
+                tabUpdates: "Updates",
+                
+                // Steps
+                steps: {
+                    home: [
+                        "Start from the Home dashboard: check PC status, active app list, and live hardware metrics at a glance.",
+                        "Review every action in the Activity History with clear status indicators and quick filters.",
+                        "Customize language (English / Italian), visual theme, and safety prompts in Settings."
+                    ],
+                    presets: [
+                        "Manage custom lists of your favorite programs and install or remove them in batch with one click.",
+                        "Enable or refresh official download sources (Microsoft Winget & Store) without administrative hassle."
+                    ],
+                    search: [
+                        "Type the name of any program to find verified official versions and install them immediately or add them to your list."
+                    ],
+                    updates: [
+                        "Scan all installed programs on your PC to see available updates and apply them in bulk.",
+                        "Check and install official Windows security patches and optional drivers from the same clean window."
+                    ]
+                },
+                
+                footerPrivacy: "Privacy Policy (GDPR Compliant)",
+                footerNote: "All rights reserved. All data remains securely on your computer."
+            },
+            it: {
+                titleTag: "OnlyWinget — Il Modo Più Sicuro e Veloce per Configurare il Tuo PC Windows",
+                badge: "100% Sicuro, Privato e Senza Pubblicità",
+                title: "Configura il tuo PC Windows <span>Senza Stress</span>",
+                subtitle: "Smetti di cercare programmi su siti web sospetti e cliccare 'Avanti' cento volte. OnlyWinget scarica e installa tutte le tue app preferite in automatico, in pochi secondi, in totale sicurezza.",
+                download: "<i class='fa-solid fa-download' style='margin-right: 8px;'></i> Scarica OnlyWinget",
+                downloadPortable: "<i class='fa-solid fa-file-zipper' style='margin-right: 8px;'></i> Versione Portabile (.zip)",
+                privacy: "Informativa Privacy",
+                
+                // Hero bullets
+                b1: "Niente pubblicità o adware",
+                b2: "Salta gli installatori in automatico",
+                b3: "Nessun account o registrazione",
+
+                // Comparison section
+                compTitle: "Dì Addio agli Installatori Sospetti",
+                compSubtitle: "Installare programmi su Windows è sempre stato frustrante. Ora non più.",
+                compOldTitle: "Il Vecchio Metodo Frustrante",
+                compOld1: "Cerca ogni programma su Google sperando sia il sito ufficiale",
+                compOld2: "Fai attenzione a falsi pulsanti di download e malware",
+                compOld3: "Clicca 'Avanti' decine di volte rifiutando programmi spazzatura",
+                compOld4: "Ripeti l'intera procedura per ogni singola applicazione",
+                compNewTitle: "Il Metodo Sicuro e Semplice",
+                compNew1: "Cerca e seleziona tra oltre 8.000 app ufficiali e verificate",
+                compNew2: "Installa tutto in blocco senza dover fare alcun click aggiuntivo",
+                compNew3: "Salva la tua lista per configurare qualsiasi nuovo PC all'istante",
+                compNew4: "Mantieni tutto aggiornato da una sola schermata pulita",
+
+                // Features
+                featuresTitle: "Progettato per Windows 10 & 11",
+                featuresSubtitle: "Una utility desktop elegante e nativa, progettata per efficienza, privacy e controllo.",
+                f1Title: "Liste App Personalizzate",
+                f1Desc: "Crea liste personalizzate delle tue app preferite (es. programmi d'ufficio, lettori video, utility) e installale su qualsiasi computer.",
+                f2Title: "Ricerca Sicura",
+                f2Desc: "Trova software ufficiali in un archivio sicuro verificato da Microsoft. Niente siti ingannevoli o virus nascosti.",
+                f3Title: "Aggiorna Tutto in 1 Click",
+                f3Desc: "Controlla e installa gli aggiornamenti di Windows e delle tue app in contemporanea, per un PC sempre protetto.",
+                f4Title: "100% Locale e Privato",
+                f4Desc: "Non raccogliamo dati d'uso o statistiche, e non serve creare un account. Le impostazioni restano sul tuo PC.",
+                
+                // Gallery
+                galleryTitle: "Guardalo in Azione",
+                gallerySubtitle: "Esplora come sia facile gestire software e aggiornamenti di sistema.",
+                tabHome: "Panoramica",
+                tabPresets: "Liste App",
+                tabSearch: "Ricerca App",
+                tabUpdates: "Aggiornamenti",
+                
+                // Steps
+                steps: {
+                    home: [
+                        "Parti dalla schermata Home: controlla a colpo d'occhio lo stato del PC, la lista attiva e i parametri del computer.",
+                        "Consulta lo storico completo nella sezione Attività per sapere sempre cosa è stato installato o aggiornato.",
+                        "Personalizza lingua (Italiano / Inglese), tema chiaro o scuro e conferme di sicurezza nelle Impostazioni."
+                    ],
+                    presets: [
+                        "Raggruppa i tuoi programmi preferiti in liste pronte all'uso e installali tutti insieme con un solo clic.",
+                        "Scegli e aggiorna i cataloghi ufficiali verificati da cui scaricare i programmi in totale sicurezza."
+                    ],
+                    search: [
+                        "Scrivi il nome del programma che cerchi per trovarlo subito nel catalogo ufficiale, installarlo al volo o aggiungerlo alla tua lista."
+                    ],
+                    updates: [
+                        "Verifica in un attimo quali programmi del tuo PC hanno una nuova versione disponibile e aggiornali tutti insieme.",
+                        "Controlla e installa anche gli aggiornamenti ufficiali di Windows e i driver dalla stessa finestra pulita."
+                    ]
+                },
+                
+                footerPrivacy: "Informativa sulla Privacy (Conforme GDPR)",
+                footerNote: "Tutti i diritti riservati. Tutti i dati rimangono memorizzati sul tuo PC."
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'it' : 'en';
+            
+            // Update button label
+            document.getElementById('langLabel').textContent = currentLang === 'en' ? 'Italiano' : 'English';
+            
+            // Update page title
+            document.title = translations[currentLang].titleTag;
+
+            // Translate all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerHTML = translations[currentLang][key];
+                }
+            });
+
+            // Re-render steps to apply translations
+            renderSteps();
+        }
+
+        function switchTab(tabId, buttonEl) {
+            activeTab = tabId;
+            activeStep = 1;
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            if (buttonEl) {
+                buttonEl.classList.add('active');
+            }
+
+            renderSteps();
+            updateGalleryImage();
+        }
+
+        function selectStep(stepNum) {
+            activeStep = stepNum;
+            
+            // Toggle active class in UI
+            document.querySelectorAll('.step-item').forEach(item => item.classList.remove('active'));
+            const clickedItem = document.getElementById(`step-${activeTab}-${stepNum}`);
+            if (clickedItem) {
+                clickedItem.classList.add('active');
+            }
+
+            updateGalleryImage();
+        }
+
+        function renderSteps() {
+            const stepsList = document.getElementById('stepsList');
+            stepsList.innerHTML = '';
+            
+            const currentSteps = translations[currentLang].steps[activeTab];
+            currentSteps.forEach((stepText, idx) => {
+                const stepNum = idx + 1;
+                const li = document.createElement('li');
+                li.id = `step-${activeTab}-${stepNum}`;
+                li.className = `step-item ${stepNum === activeStep ? 'active' : ''}`;
+                li.setAttribute('onclick', `selectStep(${stepNum})`);
+                
+                li.innerHTML = `
+                    <div class="step-badge">${stepNum}</div>
+                    <div class="step-content">
+                        <p class="step-text">${stepText}</p>
+                    </div>
+                `;
+                
+                stepsList.appendChild(li);
+            });
+        }
+
+        function updateGalleryImage() {
+            // Hide all gallery images
+            document.querySelectorAll('.gallery-img').forEach(img => img.classList.remove('active'));
+            
+            // Show the active one
+            const activeImg = document.getElementById(`img-${activeTab}-${activeStep}`);
+            if (activeImg) {
+                activeImg.classList.add('active');
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSteps();
+            updateGalleryImage();
+        });
+    </script>
+</body>
+</html>

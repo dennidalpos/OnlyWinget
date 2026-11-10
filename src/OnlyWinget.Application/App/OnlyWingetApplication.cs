@@ -1,0 +1,305 @@
+using Microsoft.Extensions.Logging;
+using OnlyWinget.Application.Activity;
+using OnlyWinget.Application.Operations;
+using OnlyWinget.Application.Presets;
+using OnlyWinget.Application.Storage;
+using OnlyWinget.Application.System;
+using OnlyWinget.Application.Winget;
+using OnlyWinget.Application.WindowsUpdate;
+using OnlyWinget.Domain.Operations;
+using OnlyWinget.Domain.Packages;
+using OnlyWinget.Domain.Selection;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("OnlyWinget.Tests")]
+
+namespace OnlyWinget.Application.App;
+
+public sealed partial class OnlyWingetApplication(
+    IWorkspaceStore workspaceStore,
+    ISystemCapabilityService capabilityService,
+    IPackageSearchService packageSearch,
+    IPackageResolver packageResolver,
+    IUpdateLoader updateLoader,
+    IWindowsUpdateService windowsUpdateService,
+    IWingetSourceService sourceService,
+    IOperationExecutor operationExecutor,
+    TimeProvider? timeProvider = null,
+    ISourcePreferenceStore? sourcePreferenceStore = null,
+    Microsoft.Extensions.Logging.ILogger<OnlyWingetApplication>? appLogger = null)
+{
+    public bool ContinueOperationsAfterFailure { get; set; }
+    public bool BypassHashValidation { get; set; }
+    public int MaxPackageOperationRetries { get; set; } = 1;
+    public Action<string, Exception>? ExceptionLogger { get; set; }
+    public Action<AppLogLevel, string, string>? Logger { get; set; }
+
+    private readonly PresetDocumentService presetDocuments = new();
+    private readonly OperationPlanner operationPlanner = new();
+    private readonly SelectionState<PackageIdentity> presetInstallSelection = new();
+    private readonly SelectionState<PackageIdentity> searchSelection = new();
+    private readonly SelectionState<PackageIdentity> updateSelection = new();
+    private readonly SelectionState<WindowsUpdateIdentity> windowsUpdateSelection = new();
+    private readonly List<PackageSearchResult> searchResults = [];
+    private readonly List<PackageUpdate> updates = [];
+    private readonly List<WindowsUpdateItem> windowsUpdates = [];
+    private readonly List<WingetSource> sources = [];
+    private readonly List<ActivityEntry> activity = [];
+    private readonly List<OperationExecutionResult> lastOperationResults = [];
+    private readonly Dictionary<PackageIdentity, CachedPackageResolution> packageMetadata = new();
+    private static readonly TimeSpan PackageMetadataCacheDuration = TimeSpan.FromMinutes(5);
+    private readonly List<WindowsUpdateInstallResult> lastWindowsUpdateResults = [];
+    private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
+    private readonly ISourcePreferenceStore sourcePreferences = sourcePreferenceStore ?? new EmptySourcePreferenceStore();
+    private readonly HashSet<string> disabledSources = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool defaultSourcesConfigured;
+    private WorkspaceState workspace = WorkspaceState.Empty;
+    private ApplicationBusyState busyState;
+    private SystemCapabilities capabilities = SystemCapabilities.Unknown;
+    private ClassifiedWingetError? sourceError;
+    private string? userVisibleError;
+    private OperationProgress? operationProgress;
+    private readonly SemaphoreSlim operationGate = new(1, 1);
+    private OnlyWingetState? cachedState;
+    private bool isStateDirty = true;
+
+    private readonly Lock stateLock = new();
+
+    public OnlyWingetState State => CreateState();
+
+    public event EventHandler? StateChanged;
+
+    private OnlyWingetState CreateState()
+    {
+        lock (stateLock)
+        {
+            if (!isStateDirty && cachedState != null)
+            {
+                return cachedState;
+            }
+
+            var active = ActivePreset;
+            cachedState = new OnlyWingetState(
+                workspace,
+                active,
+                presetInstallSelection.Selected.ToArray(),
+                presetInstallSelection.HeaderState,
+                searchResults.ToArray(),
+                searchSelection.Selected.ToArray(),
+                searchSelection.HeaderState,
+                updates.ToArray(),
+                updateSelection.Selected.ToArray(),
+                updateSelection.HeaderState,
+                windowsUpdates.ToArray(),
+                windowsUpdateSelection.Selected.ToArray(),
+                windowsUpdateSelection.HeaderState,
+                lastWindowsUpdateResults.ToArray(),
+                SnapshotPackageMetadata(),
+                capabilities,
+                sources.OrderBy(source => source.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
+                sourceError,
+                activity.ToArray(),
+                lastOperationResults.ToArray(),
+                operationProgress,
+                busyState,
+                userVisibleError);
+
+            isStateDirty = false;
+            return cachedState;
+        }
+    }
+
+    private CancellationTokenSource? currentOperationCts;
+
+    public void CancelCurrentOperation()
+    {
+        lock (stateLock)
+        {
+            try
+            {
+                currentOperationCts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
+    private async Task<ApplicationActionResult> RunAsync(
+        ApplicationBusyState state,
+        CancellationToken cancellationToken,
+        Func<CancellationToken, Task> action,
+        string fallbackError,
+        bool waitForTurn = false)
+    {
+        if (waitForTurn)
+        {
+            try
+            {
+                await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return ApplicationActionResult.Failure("Workspace save cancelled while waiting for another operation.");
+            }
+        }
+        else if (!operationGate.Wait(0))
+        {
+            return ApplicationActionResult.Failure("Another operation is already in progress.");
+        }
+
+        try
+        {
+            // Both caller and tracker cancellation stop the guarded operation.
+            var operationCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            UpdateState(() =>
+            {
+                currentOperationCts = operationCts;
+                busyState = state;
+                userVisibleError = null;
+                operationProgress = null;
+            });
+            NotifyStateChanged();
+            Logger?.Invoke(AppLogLevel.Verbose, $"Starting operation {state}...", "RunAsync");
+            appLogger?.LogDebug("Starting operation {State}...", state);
+            await action(operationCts.Token).ConfigureAwait(false);
+            Logger?.Invoke(AppLogLevel.Verbose, $"Operation {state} completed successfully.", "RunAsync");
+            appLogger?.LogDebug("Operation {State} completed successfully.", state);
+            return ApplicationActionResult.Success;
+        }
+        catch (OperationCanceledException)
+        {
+            MarkProgressFailed();
+            Logger?.Invoke(AppLogLevel.Information, $"Operation {state} was cancelled.", "RunAsync");
+            appLogger?.LogInformation("Operation {State} was cancelled.", state);
+            return Fail("Operation cancelled.", state);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            MarkProgressFailed();
+            Logger?.Invoke(AppLogLevel.Warning, $"Operation {state} failed with user error: {exception.Message}", "RunAsync");
+            appLogger?.LogWarning(exception, "Operation {State} failed with user error: {Message}", state, exception.Message);
+            return Fail(exception.Message, state);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            MarkProgressFailed();
+            ExceptionLogger?.Invoke("OnlyWingetApplication.RunAsync", exception);
+            Logger?.Invoke(AppLogLevel.Error, $"Operation {state} failed: {exception}", "RunAsync");
+            appLogger?.LogError(exception, "Operation {State} failed.", state);
+            return Fail(fallbackError, state);
+        }
+        finally
+        {
+            UpdateState(() =>
+            {
+                busyState = ApplicationBusyState.Idle;
+                currentOperationCts?.Dispose();
+                currentOperationCts = null;
+            });
+            operationGate.Release();
+            NotifyStateChanged();
+        }
+    }
+
+    private ApplicationActionResult Run(Action action, bool requiresIdle = false)
+    {
+        if (requiresIdle && !operationGate.Wait(0))
+        {
+            return ApplicationActionResult.Failure("Another operation is already in progress.");
+        }
+        try
+        {
+            UpdateState(() =>
+            {
+                if (requiresIdle) userVisibleError = null;
+                action();
+            });
+            return ApplicationActionResult.Success;
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            return Fail(exception.Message, ApplicationBusyState.Idle);
+        }
+        finally
+        {
+            if (requiresIdle) operationGate.Release();
+            NotifyStateChanged();
+        }
+    }
+
+    private T ReadState<T>(Func<T> read)
+    {
+        lock (stateLock)
+        {
+            return read();
+        }
+    }
+
+    private void UpdateState(Action update)
+    {
+        lock (stateLock)
+        {
+            // Invalidate before callbacks can read the changed state.
+            isStateDirty = true;
+            update();
+        }
+    }
+
+    private void MarkProgressFailed() => UpdateState(() =>
+    {
+        if (operationProgress is not null)
+        {
+            operationProgress = operationProgress with { Phase = WingetProgressPhase.Failed };
+        }
+    });
+
+    private void NotifyStateChanged()
+    {
+        lock (stateLock)
+        {
+            isStateDirty = true;
+        }
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private ApplicationActionResult ToggleSelection<TKey>(SelectionState<TKey> selection, TKey key)
+        where TKey : notnull =>
+        Run(() => selection.Toggle(key));
+
+    private void RequireWinget()
+    {
+        var current = ReadState(() => capabilities);
+        if (!current.CanUseWinget)
+        {
+            throw new NotSupportedException(current.WingetUnavailableMessage);
+        }
+    }
+
+    private void RequireWindowsUpdate()
+    {
+        var current = ReadState(() => capabilities);
+        if (!current.CanUseWindowsUpdate)
+        {
+            throw new NotSupportedException(current.WindowsUpdateUnavailableMessage);
+        }
+    }
+
+    private ApplicationActionResult Fail(string error, ApplicationBusyState state = ApplicationBusyState.Idle)
+    {
+        if (state != ApplicationBusyState.ExecutingOperation)
+        {
+            UpdateState(() => userVisibleError = error);
+        }
+        AddActivity(ActivitySeverity.Error, "Action failed", error);
+        return ApplicationActionResult.Failure(error);
+    }
+
+    private static string WindowsUpdateFingerprint(WindowsUpdateIdentity update) =>
+        $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";
+
+    private static bool PresetNameEquals(string left, string right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private readonly record struct CachedPackageResolution(PackageResolution Resolution, DateTimeOffset ResolvedAt);
+}

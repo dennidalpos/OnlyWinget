@@ -1,0 +1,51 @@
+<Application
+    x:Class="OnlyWinget.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AreaHomeBrush" Color="#0078D4" />
+                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="#8764B8" />
+                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="#00828A" />
+                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="#107C41" />
+                    <SolidColorBrush x:Key="AreaActivityBrush" Color="#D83B01" />
+                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="#5A5958" />
+                    <x:Double x:Key="TableCellDividerOpacity">0.85</x:Double>
+                    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#B0B0B0" />
+                    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="#A8A8A8" />
+                    <SolidColorBrush x:Key="NavigationViewBorderBrush" Color="#A8A8A8" />
+                    <SolidColorBrush x:Key="ControlStrokeColorDefault" Color="#999999" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AreaHomeBrush" Color="#60CDFF" />
+                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="#B194E3" />
+                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="#4DF2F9" />
+                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="#60CD9B" />
+                    <SolidColorBrush x:Key="AreaActivityBrush" Color="#FF8C00" />
+                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="#A19F9D" />
+                    <x:Double x:Key="TableCellDividerOpacity">0.55</x:Double>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="AreaHomeBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaPackagesBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaUpdatesBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaSourcesBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaActivityBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="AreaSettingsBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <x:Double x:Key="TableCellDividerOpacity">1.0</x:Double>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <ResourceDictionary Source="DesignSystem/Resources/Spacing.xaml" />
+                <ResourceDictionary Source="DesignSystem/Resources/Typography.xaml" />
+                <ResourceDictionary Source="DesignSystem/Resources/Cards.xaml" />
+                <ResourceDictionary Source="DesignSystem/Resources/Buttons.xaml" />
+                <ResourceDictionary Source="DesignSystem/Resources/Tables.xaml" />
+                <ResourceDictionary Source="DesignSystem/Resources/Forms.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

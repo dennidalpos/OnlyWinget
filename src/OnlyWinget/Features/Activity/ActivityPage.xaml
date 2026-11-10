@@ -1,0 +1,90 @@
+<Page
+    x:Class="OnlyWinget.Features.Activity.ActivityPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:design="using:OnlyWinget.DesignSystem.Controls"
+    xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
+    xmlns:states="using:OnlyWinget.DesignSystem.States"
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
+    xmlns:activity="using:OnlyWinget.Features.Activity"
+    xmlns:services="using:OnlyWinget.Services">
+    <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Activity_Title}" AreaAccentBrush="{ThemeResource AreaActivityBrush}">
+        <design:PageScaffold.Commands>
+            <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
+        </design:PageScaffold.Commands>
+        <design:PageScaffold.State>
+            <states:StatePresenter x:Name="PageState" />
+        </design:PageScaffold.State>
+        <design:PageScaffold.Body>
+            <Grid RowSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border Style="{StaticResource CardStyle}">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MaxWidth="480" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" AutomationProperties.AutomationId="ActivitySearchBox" AutomationProperties.Name="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivitySeverityFilter" AutomationProperties.Name="Severity Filter" MinWidth="140" VerticalAlignment="Center">
+                            <ComboBoxItem Content="{services:Localize Key=Activity_AllSeverities}" Tag="all" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Information}" Tag="Information" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Success}" Tag="Success" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Warning}" Tag="Warning" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Error}" Tag="Error" />
+                        </ComboBox>
+                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivityCategoryFilter" AutomationProperties.Name="Category Filter" MinWidth="140" VerticalAlignment="Center">
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_AllCategories}" Tag="all" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_Packages}" Tag="packages" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_WindowsUpdate}" Tag="windows" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_Sources}" Tag="sources" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_Presets}" Tag="presets" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_System}" Tag="system" />
+                        </ComboBox>
+                    </Grid>
+                </Border>
+                <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None" AutomationProperties.AutomationId="ActivityList">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
+                            <Setter Property="Padding" Value="0,2" />
+                            <Setter Property="Margin" Value="0,0,0,4" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="appPresentation:ActivityRow">
+                            <Border Style="{StaticResource CardStyle}" Padding="12,10" Margin="0,0,0,4" HorizontalAlignment="Stretch">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="4" CornerRadius="2" VerticalAlignment="Stretch" Background="{x:Bind presentation:PresentationValues.SeverityBrush(Severity), Mode=OneTime}" />
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind TimestampDisplay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock Text="{x:Bind activity:ActivityViewModel.LocalizeSeverity(Severity), Mode=OneTime}" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{x:Bind presentation:PresentationValues.SeverityBrush(Severity), Mode=OneTime}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Title}" Style="{StaticResource BodyStrongTextBlockStyle}" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="3" Tag="{x:Bind}" Click="OnCopyDetails" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Padding="8,6" MinWidth="0">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <SymbolIcon Symbol="Copy" />
+                                            <TextBlock Text="{x:Bind activity:ActivityViewModel.CopyLabel}" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </design:PageScaffold.Body>
+    </design:PageScaffold>
+</Page>

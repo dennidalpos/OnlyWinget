@@ -1,0 +1,10 @@
+namespace OnlyWinget.Application.Presentation;
+
+public sealed record SearchResultRow(
+    string PackageId,
+    string Name,
+    string? Source,
+    string? Version,
+    string Publisher,
+    string? Match,
+    bool IsSelected);

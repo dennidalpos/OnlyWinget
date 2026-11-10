@@ -1,0 +1,91 @@
+name: release-automation
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for release (e.g. v1.0.0)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag_name != '' && format('refs/tags/{0}', inputs.tag_name) || github.ref }}
+          fetch-depth: 0
+
+      - name: Validate Release Tag and Version
+        id: release
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag_name || github.ref_name }}
+        run: |
+          $release = ./scripts/validate-release.ps1 -TagName $env:RELEASE_TAG
+          "sha=$($release.CommitSha)" >> $env:GITHUB_OUTPUT
+          "version=$($release.Version)" >> $env:GITHUB_OUTPUT
+          "tag=$($release.TagName)" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis --version=3.13.0 --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS installation failed.' }
+          $nsisVersion = & (Join-Path ${env:ProgramFiles(x86)} 'NSIS/makensis.exe') /VERSION
+          if ($LASTEXITCODE -ne 0 -or $nsisVersion -ne 'v3.13') { throw "Unexpected NSIS compiler: $nsisVersion" }
+          Write-Host "NSIS compiler: $nsisVersion"
+
+      - name: Verify and Package Release Commit
+        shell: pwsh
+        run: |
+          ./scripts/run.ps1 -Task Check -Configuration Release -NonInteractive
+
+      - name: Validate Verified Commit and Required Assets
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          ./scripts/validate-release.ps1 -TagName $env:RELEASE_TAG -ExpectedCommit $env:RELEASE_SHA -CheckRemoteTag -CheckAssets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          target_commitish: ${{ steps.release.outputs.sha }}
+          name: OnlyWinget Release ${{ steps.release.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/dist/OnlyWinget/Release/OnlyWinget-${{ steps.release.outputs.version }}-setup.exe
+            artifacts/dist/OnlyWinget/Release/OnlyWinget-${{ steps.release.outputs.version }}-portable-x64.zip
+
+      - name: Upload verification diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: onlywinget-release-verification
+          path: |
+            artifacts/build-report.txt
+            artifacts/check/*.log
+            artifacts/test-results/**/*.trx
+            artifacts/test-results/**/*.log
+          if-no-files-found: warn

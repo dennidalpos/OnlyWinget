@@ -1,0 +1,86 @@
+using System.Runtime.Versioning;
+using OnlyWinget.Application.System;
+using OnlyWinget.Application.WindowsUpdate;
+using OnlyWinget.Application.Winget;
+using OnlyWinget.Infrastructure.System;
+using OnlyWinget.Infrastructure.WindowsUpdate;
+using OnlyWinget.Infrastructure.Winget;
+
+namespace OnlyWinget.Tests;
+
+public sealed class LiveUpdateSearchSmokeTests
+{
+    [LiveFact]
+    [Trait("Category", "Smoke")]
+    public async Task WingetSearchAndUpdateDiscoveryCompleteAgainstLiveSource()
+    {
+        var processRunner = new ProcessExternalProcessRunner();
+        var commandRunner = new ProcessWingetCommandRunner(processRunner, new WingetProgressParser());
+        var parser = new WingetTableParser();
+        var classifier = new WingetErrorClassifier();
+        var search = new WingetPackageSearchService(commandRunner, parser, classifier);
+        var updates = new WingetUpdateLoader(commandRunner, parser, classifier);
+
+        var searchOutcome = await search.SearchAsync(
+            new PackageSearchRequest("powertoys", "winget"),
+            CancellationToken.None);
+        var updateOutcome = await updates.LoadUpdatesAsync("winget", CancellationToken.None);
+
+        Assert.True(searchOutcome.Succeeded, searchOutcome.Error?.Message);
+        Assert.Contains(searchOutcome.Rows, row =>
+            string.Equals(row.Package.Id, "Microsoft.PowerToys", StringComparison.OrdinalIgnoreCase));
+        Assert.True(
+            updateOutcome.Succeeded || updateOutcome.Error?.Kind == WingetErrorKind.NoUpdates,
+            updateOutcome.Error?.Message);
+    }
+
+    [LiveFact]
+    [Trait("Category", "Smoke")]
+    public async Task WindowsUpdateDiscoveryCompletesWithoutElevation()
+    {
+        var processRunner = new ProcessExternalProcessRunner();
+        ISystemCapabilityService capabilities = new SystemCapabilityService(processRunner);
+        var service = new PowerShellWindowsUpdateService(processRunner, capabilities);
+
+        var outcome = await service.ScanAsync(
+            new WindowsUpdateOptions(IncludeSoftware: true, IncludeDrivers: true),
+            CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Error?.Message);
+    }
+
+    [LiveFact]
+    [Trait("Category", "Smoke")]
+    [SupportedOSPlatform("windows")]
+    public async Task ComWindowsUpdateServiceScansLiveSystemThroughComOrPowerShellFallback()
+    {
+        var processRunner = new ProcessExternalProcessRunner();
+        ISystemCapabilityService capabilities = new SystemCapabilityService(processRunner);
+        var fallback = new PowerShellWindowsUpdateService(processRunner, capabilities);
+        var service = new ComWindowsUpdateService(fallback);
+
+        var outcome = await service.ScanAsync(
+            new WindowsUpdateOptions(IncludeSoftware: true, IncludeDrivers: true),
+            CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Error?.Message);
+    }
+
+    [Fact]
+    public async Task ProcessExternalProcessRunnerStreamsStandardErrorLines()
+    {
+        var processRunner = new ProcessExternalProcessRunner();
+        var lines = new List<string>();
+        var progress = new InlineProgress<string>(lines.Add);
+
+        var result = await processRunner.RunAsync(
+            "powershell.exe",
+            ["-NoProfile", "-Command", "[Console]::Error.WriteLine('one'); [Console]::Error.WriteLine('two')"],
+            CancellationToken.None,
+            standardErrorLines: progress);
+
+        Assert.True(result.Succeeded, result.StandardError);
+        Assert.Contains("one", lines);
+        Assert.Contains("two", lines);
+    }
+}

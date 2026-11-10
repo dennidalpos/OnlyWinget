@@ -1,0 +1,33 @@
+<UserControl
+    x:Class="OnlyWinget.Features.Updates.UpdatesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:OnlyWinget.Controls"
+    xmlns:states="using:OnlyWinget.DesignSystem.States"
+    xmlns:commands="using:OnlyWinget.DesignSystem.Commands"
+    xmlns:presentation="using:OnlyWinget.Presentation"
+    xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
+    xmlns:services="using:OnlyWinget.Services">
+    <Grid RowSpacing="12" VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Border Style="{StaticResource CardStyle}">
+            <commands:OnlyWingetCommandBar ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />
+        </Border>
+        <states:StatePresenter x:Name="PageState" Grid.Row="1" />
+        <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
+            <controls:OnlyWingetTable x:Name="UpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="UpdateList" ToggleAllRequested="OnToggleAllUpdates" BatchSelectionChanged="OnUpdateBatchSelectionChanged">
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Name}" BindingPath="Name" Width="210" IsPrimary="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_PackageId}" BindingPath="PackageId" Width="250" IsTextSelectable="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Source}" BindingPath="Source" Width="100" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Installed}" BindingPath="InstalledVersion" Width="110" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Available}" BindingPath="AvailableVersion" Width="120" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Publisher}" BindingPath="Publisher" Width="160" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Status}" BindingPath="Status" Width="*" />
+            </controls:OnlyWingetTable>
+        </Border>
+    </Grid>
+</UserControl>
