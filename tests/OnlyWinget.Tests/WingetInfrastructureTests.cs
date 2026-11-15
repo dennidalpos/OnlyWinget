@@ -627,6 +627,55 @@ public sealed class WingetInfrastructureTests
         Assert.Equal("Piriform.CCleaner.Slim", update.Package.Id);
     }
 
+    [Theory]
+    [InlineData(0, "")]
+    [InlineData(0, " \r\n-\r\nNo packages need an update.")]
+    [InlineData(0, "Non sono stati trovati aggiornamenti disponibili.")]
+    [InlineData(0, "1 package(s) have version numbers that cannot be determined. Use --include-unknown to see all results.")]
+    [InlineData(0, "Name  Id       Version  Available\n----------------------------------")]
+    [InlineData(unchecked((int)0x8A150014), "No installed package found matching input criteria.")]
+    public async Task UpdateLoaderRecognizesEmptyResults(int exitCode, string output)
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(exitCode, output, string.Empty));
+        var loader = new WingetUpdateLoader(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var outcome = await loader.LoadUpdatesAsync("winget", CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Empty(outcome.Rows);
+    }
+
+    [Fact]
+    public async Task UpdateLoaderPreservesNativeNoUpdatesClassification()
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(unchecked((int)0x8A15002B), string.Empty, string.Empty));
+        var loader = new WingetUpdateLoader(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var outcome = await loader.LoadUpdatesAsync("winget", CancellationToken.None);
+
+        Assert.Equal(WingetErrorKind.NoUpdates, outcome.Error?.Kind);
+        Assert.Empty(outcome.Rows);
+    }
+
+    [Theory]
+    [InlineData("unrecognized command output", "", "required columns")]
+    [InlineData("", "source warning", "required columns")]
+    [InlineData("Name  Id       Version\n----------------------\nGit   Git.Git  2.0.0", "", "Available")]
+    [InlineData("Name  Id       Version  Available\n----------------------------------\nGit   Git.Git  2.0.0", "", "readable package rows")]
+    [InlineData("Name  Id       Version  Available\n----------------------------------\nGit   Git.Git  2.0.0    2.1.0\nTool  App.App  1.0.0", "", "no available version")]
+    public async Task UpdateLoaderReportsUnreadableOutput(string output, string error, string diagnostic)
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, error));
+        var loader = new WingetUpdateLoader(runner, new WingetTableParser(), new WingetErrorClassifier());
+
+        var outcome = await loader.LoadUpdatesAsync("winget", CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(WingetErrorKind.InvalidOutput, outcome.Error?.Kind);
+        Assert.Contains(diagnostic, outcome.Error?.Message);
+        Assert.Equal(string.IsNullOrEmpty(output) ? error : output, outcome.RawOutput);
+    }
+
     [Fact]
     public async Task SourceServiceRunsSourceCommandsAndMapsLocalizedRows()
     {

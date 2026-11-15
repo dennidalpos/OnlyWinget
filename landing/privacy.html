@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OnlyWinget — Privacy & Policy</title>
-    <meta name="description" content="Privacy Policy for OnlyWinget: 100% local, privacy-by-default, and GDPR compliant package manager dashboard.">
+    <meta name="description" content="OnlyWinget desktop app storage and website connections.">
     <link rel="stylesheet" href="index.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -132,42 +132,42 @@
     <div class="container privacy-body">
         <div class="privacy-title-wrap">
             <h1 data-i18n="p-title">Privacy Policy</h1>
-            <p style="color: var(--text-secondary);" data-i18n="p-subtitle">Privacy by Default & GDPR Compliance Statement</p>
+            <p style="color: var(--text-secondary);" data-i18n="p-subtitle">Local storage and network connections</p>
         </div>
 
         <div class="privacy-content-card">
             <!-- Section 1 -->
             <div class="privacy-section">
-                <h2><i class="fa-solid fa-shield-halved"></i> <span data-i18n="s1-title">Privacy by Default</span></h2>
-                <p data-i18n="s1-desc">OnlyWinget is built on the philosophy that you shouldn't have to sacrifice your privacy to get a convenient user interface. The app is entirely local. This means there are no intermediary servers, cloud tracking, or centralized databases monitoring your actions.</p>
+                <h2><i class="fa-solid fa-shield-halved"></i> <span data-i18n="s1-title">About this notice</span></h2>
+                <p data-i18n="s1-desc">This page describes what the OnlyWinget desktop app stores on your PC and which external services the app and this website use.</p>
             </div>
 
             <!-- Section 2 -->
             <div class="privacy-section">
-                <h2><i class="fa-solid fa-user-shield"></i> <span data-i18n="s2-title">GDPR Compliance & Your Rights</span></h2>
-                <p data-i18n="s2-desc">Under the General Data Protection Regulation (GDPR), European users have specific data protection rights. Because OnlyWinget operates 100% locally on your computer, your rights are fully respected by design:</p>
+                <h2><i class="fa-solid fa-user-shield"></i> <span data-i18n="s2-title">Data stored on your PC</span></h2>
+                <p data-i18n="s2-desc">By default, OnlyWinget stores its application data in <code>%LOCALAPPDATA%\OnlyWinget</code>.</p>
                 <ul>
-                    <li data-i18n="r1"><strong>Data Minimization:</strong> We do not collect, process, or transmit any personal data. You are completely anonymous.</li>
-                    <li data-i18n="r2"><strong>Right to Access:</strong> Your settings, packages lists, and workspace configurations are stored as human-readable JSON files in local appdata. You have complete visibility and ownership of your data at all times.</li>
-                    <li data-i18n="r3"><strong>Right to Erasure (Right to be Forgotten):</strong> Uninstalling the application or deleting the workspace file removes 100% of the application state from your computer. No data persists on any remote server.</li>
-                    <li data-i18n="r4"><strong>Data Portability:</strong> You can export your app configurations (Presets) easily using a plain JSON text format to move them to any other device.</li>
+                    <li data-i18n="r1"><strong>Workspace:</strong> Presets, their package lists and your active preset are stored in the <code>onlywinget.db</code> SQLite database.</li>
+                    <li data-i18n="r2"><strong>Settings and diagnostics:</strong> Settings and source preferences are stored in JSON files. Diagnostic logs are stored in the <code>logs</code> folder.</li>
+                    <li data-i18n="r3"><strong>Uninstall:</strong> The OnlyWinget uninstaller preserves the application data folder, including the database, settings and logs.</li>
+                    <li data-i18n="r4"><strong>Export:</strong> You can export individual presets as JSON files.</li>
                 </ul>
             </div>
 
             <!-- Section 3 -->
             <div class="privacy-section">
-                <h2><i class="fa-solid fa-network-wired"></i> <span data-i18n="s3-title">External Data Connections</span></h2>
-                <p data-i18n="s3-desc">The application communicates directly with official Microsoft services to perform its tasks. No traffic is routed through third-party platforms. OnlyWinget connects solely to:</p>
+                <h2><i class="fa-solid fa-network-wired"></i> <span data-i18n="s3-title">Desktop app connections</span></h2>
+                <p data-i18n="s3-desc">OnlyWinget delegates package and operating system operations to WinGet and Windows Update.</p>
                 <ul>
-                    <li data-i18n="c1"><strong>Microsoft Winget Repository:</strong> To download and install packages.</li>
-                    <li data-i18n="c2"><strong>Windows Update Service:</strong> Via local Windows Update COM interface to scan and download operating system updates.</li>
+                    <li data-i18n="c1"><strong>WinGet:</strong> WinGet contacts the selected, enabled sources, which may include custom sources you configure. Package downloads may come from addresses specified by those sources.</li>
+                    <li data-i18n="c2"><strong>Windows Update:</strong> Windows handles scans and downloads through its configured update service.</li>
                 </ul>
             </div>
 
             <!-- Section 4 -->
             <div class="privacy-section">
-                <h2><i class="fa-solid fa-cookie-bite"></i> <span data-i18n="s4-title">No Cookies or Trackers</span></h2>
-                <p data-i18n="s4-desc">This website and the application do not use cookies, tracking pixels, or third-party analytical tools. We do not monitor how long you stay on the landing page or which features you use inside the app.</p>
+                <h2><i class="fa-solid fa-globe"></i> <span data-i18n="s4-title">Website connections</span></h2>
+                <p data-i18n="s4-desc">The home and privacy pages load fonts from Google Fonts and icons from Cloudflare’s cdnjs. Your browser connects to those providers and shares network information such as your IP address in the course of those requests.</p>
             </div>
         </div>
 
@@ -182,7 +182,7 @@
     <footer>
         <div class="container">
             <p>© 2026 OnlyWinget. All rights reserved.</p>
-            <p data-i18n="footer-local">OnlyWinget is a local application. All data remains on your PC.</p>
+            <p data-i18n="footer-local">OnlyWinget desktop app and website</p>
         </div>
     </footer>
 
@@ -195,45 +195,45 @@
                 titleTag: "OnlyWinget — Privacy & Policy",
                 "nav-home": "Home",
                 "p-title": "Privacy Policy",
-                "p-subtitle": "Privacy by Default & GDPR Compliance Statement",
-                "s1-title": "Privacy by Default",
-                "s1-desc": "OnlyWinget is built on the philosophy that you shouldn't have to sacrifice your privacy to get a convenient user interface. The app is entirely local. This means there are no intermediary servers, cloud tracking, or centralized databases monitoring your actions.",
-                "s2-title": "GDPR Compliance & Your Rights",
-                "s2-desc": "Under the General Data Protection Regulation (GDPR), European users have specific data protection rights. Because OnlyWinget operates 100% locally on your computer, your rights are fully respected by design:",
-                "r1": "<strong>Data Minimization:</strong> We do not collect, process, or transmit any personal data. You are completely anonymous.",
-                "r2": "<strong>Right to Access:</strong> Your settings, packages lists, and workspace configurations are stored as human-readable JSON files in local appdata. You have complete visibility and ownership of your data at all times.",
-                "r3": "<strong>Right to Erasure (Right to be Forgotten):</strong> Uninstalling the application or deleting the workspace file removes 100% of the application state from your computer. No data persists on any remote server.",
-                "r4": "<strong>Data Portability:</strong> You can export your app configurations (Presets) easily using a plain JSON text format to move them to any other device.",
-                "s3-title": "External Data Connections",
-                "s3-desc": "The application communicates directly with official Microsoft services to perform its tasks. No traffic is routed through third-party platforms. OnlyWinget connects solely to:",
-                "c1": "<strong>Microsoft Winget Repository:</strong> To search and download packages.",
-                "c2": "<strong>Windows Update Service:</strong> Via local Windows Update COM interface to scan and download operating system updates.",
-                "s4-title": "No Cookies or Trackers",
-                "s4-desc": "This website and the application do not use cookies, tracking pixels, or third-party analytical tools. We do not monitor how long you stay on the landing page or which features you use inside the app.",
+                "p-subtitle": "Local storage and network connections",
+                "s1-title": "About this notice",
+                "s1-desc": "This page describes what the OnlyWinget desktop app stores on your PC and which external services the app and this website use.",
+                "s2-title": "Data stored on your PC",
+                "s2-desc": "By default, OnlyWinget stores its application data in <code>%LOCALAPPDATA%\\OnlyWinget</code>.",
+                "r1": "<strong>Workspace:</strong> Presets, their package lists and your active preset are stored in the <code>onlywinget.db</code> SQLite database.",
+                "r2": "<strong>Settings and diagnostics:</strong> Settings and source preferences are stored in JSON files. Diagnostic logs are stored in the <code>logs</code> folder.",
+                "r3": "<strong>Uninstall:</strong> The OnlyWinget uninstaller preserves the application data folder, including the database, settings and logs.",
+                "r4": "<strong>Export:</strong> You can export individual presets as JSON files.",
+                "s3-title": "Desktop app connections",
+                "s3-desc": "OnlyWinget delegates package and operating system operations to WinGet and Windows Update.",
+                "c1": "<strong>WinGet:</strong> WinGet contacts the selected, enabled sources, which may include custom sources you configure. Package downloads may come from addresses specified by those sources.",
+                "c2": "<strong>Windows Update:</strong> Windows handles scans and downloads through its configured update service.",
+                "s4-title": "Website connections",
+                "s4-desc": "The home and privacy pages load fonts from Google Fonts and icons from Cloudflare’s cdnjs. Your browser connects to those providers and shares network information such as your IP address in the course of those requests.",
                 "back-btn": "<i class='fa-solid fa-house' style='margin-right: 8px;'></i> Return to Home",
-                "footer-local": "OnlyWinget is a local application. All data remains on your PC."
+                "footer-local": "OnlyWinget desktop app and website"
             },
             it: {
                 titleTag: "OnlyWinget — Informativa Privacy",
                 "nav-home": "Home",
                 "p-title": "Informativa sulla Privacy",
-                "p-subtitle": "Dichiarazione di conformità al GDPR e Privacy by Default",
-                "s1-title": "Privacy by Default (Privacy Integrata)",
-                "s1-desc": "OnlyWinget è sviluppato seguendo il principio che non dovresti rinunciare alla tua privacy per avere un'interfaccia comoda. L'app funziona esclusivamente in locale. Ciò significa che non esistono server esterni, tracciamenti in cloud o database centralizzati che monitorano le tue azioni.",
-                "s2-title": "Conformità al GDPR e Diritti dell'Utente",
-                "s2-desc": "Ai sensi del Regolamento Generale sulla Protezione dei Dati (GDPR), gli utenti europei hanno diritti specifici. Poiché OnlyWinget opera al 100% in locale sul tuo computer, questi diritti sono garantiti nativamente:",
-                "r1": "<strong>Minimizzazione dei Dati:</strong> Non raccogliamo, elaboriamo o trasmetiamo alcun dato personale. Rimani totalmente anonimo.",
-                "r2": "<strong>Diritto di Accesso:</strong> Le tue preferenze, le liste di app e le impostazioni del workspace sono salvate in file JSON facilmente leggibili all'interno di AppData. Hai sempre la visibilità e il controllo totale dei tuoi dati.",
-                "r3": "<strong>Diritto alla Cancellazione (Oblio):</strong> Disinstallando l'applicazione o rimuovendo il file di configurazione cancelli definitivamente ogni dato di OnlyWinget dal tuo computer. Nessun dato rimane salvato su server remoti.",
-                "r4": "<strong>Portabilità dei Dati:</strong> Puoi esportare i tuoi preset delle app in un formato JSON standard per trasferirli su qualsiasi altro dispositivo.",
-                "s3-title": "Connessioni a Servizi Esterni",
-                "s3-desc": "L'applicazione comunica direttamente con i servizi ufficiali Microsoft per svolgere le proprie operazioni. Nessun traffico viene deviato su server terzi. L'app contatta esclusivamente:",
-                "c1": "<strong>Repository Microsoft Winget:</strong> Per cercare ed installare i pacchetti software.",
-                "c2": "<strong>Servizio Windows Update:</strong> Tramite l'interfaccia locale COM di Windows Update per cercare e scaricare le patch del sistema operativo.",
-                "s4-title": "Nessun Cookie o Tracciamento",
-                "s4-desc": "Questo sito e l'applicazione non utilizzano cookie, pixel di tracciamento o strumenti di analisi statistica di terze parti. Non tracciamo quanto tempo rimani sulla pagina o quali sezioni visiti.",
+                "p-subtitle": "Archiviazione locale e connessioni di rete",
+                "s1-title": "Informazioni su questa pagina",
+                "s1-desc": "Questa pagina descrive cosa salva sul PC l’app desktop OnlyWinget e quali servizi esterni usano l’app e il sito.",
+                "s2-title": "Dati salvati sul PC",
+                "s2-desc": "Per impostazione predefinita, OnlyWinget salva i dati dell’app in <code>%LOCALAPPDATA%\\OnlyWinget</code>.",
+                "r1": "<strong>Area di lavoro:</strong> I preset, gli elenchi dei pacchetti e il preset attivo sono salvati nel database SQLite <code>onlywinget.db</code>.",
+                "r2": "<strong>Impostazioni e diagnostica:</strong> Le impostazioni e le preferenze delle sorgenti sono salvate in file JSON. I log diagnostici si trovano nella cartella <code>logs</code>.",
+                "r3": "<strong>Disinstallazione:</strong> Il programma di disinstallazione conserva la cartella dei dati dell’app, compresi il database, le impostazioni e i log.",
+                "r4": "<strong>Esportazione:</strong> Puoi esportare i singoli preset come file JSON.",
+                "s3-title": "Connessioni dell’app desktop",
+                "s3-desc": "OnlyWinget affida la gestione dei pacchetti e degli aggiornamenti di sistema a WinGet e Windows Update.",
+                "c1": "<strong>WinGet:</strong> WinGet contatta le sorgenti abilitate e selezionate, incluse eventuali sorgenti personalizzate. I pacchetti possono essere scaricati dagli indirizzi indicati da queste sorgenti.",
+                "c2": "<strong>Windows Update:</strong> Windows gestisce le ricerche e i download tramite il servizio di aggiornamento configurato.",
+                "s4-title": "Connessioni del sito",
+                "s4-desc": "La pagina iniziale e quella sulla privacy caricano caratteri da Google Fonts e icone da cdnjs di Cloudflare. Durante queste richieste il browser contatta i fornitori e comunica informazioni di rete come l’indirizzo IP.",
                 "back-btn": "<i class='fa-solid fa-house' style='margin-right: 8px;'></i> Torna alla Home",
-                "footer-local": "OnlyWinget è un'applicazione locale. Tutti i dati rimangono sul tuo PC."
+                "footer-local": "App desktop e sito OnlyWinget"
             }
         };
 

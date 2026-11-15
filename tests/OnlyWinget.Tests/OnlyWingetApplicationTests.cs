@@ -420,6 +420,42 @@ public sealed class OnlyWingetApplicationTests
         Assert.Contains(app.State.Activity, entry => entry.Title == "Some sources could not be refreshed");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RefreshUpdatesRetainsRowsAndSelectionForUnreadableSources(bool otherSourceSucceeds)
+    {
+        var storePackage = new PackageIdentity("Store.App", "msstore");
+        var wingetPackage = new PackageIdentity("Git.Git", "winget");
+        var storeUpdate = new PackageUpdate(storePackage, "Store App", "1", "2");
+        var previousWingetUpdate = new PackageUpdate(wingetPackage, "Git", "1", "2");
+        var updates = new StubUpdateLoader(storeUpdate, previousWingetUpdate);
+        var sources = new StubSourceService(
+            new WingetSource("msstore", "https://store", false, WingetSourceStatus.Available),
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+        var app = CreateApplication(updates: updates, sources: sources);
+
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        Assert.True((await app.RefreshUpdatesAsync(CancellationToken.None)).Succeeded);
+        app.ToggleUpdate(storePackage);
+
+        updates.UnreadableSources.Add("msstore");
+        if (!otherSourceSucceeds)
+        {
+            updates.UnreadableSources.Add("winget");
+        }
+        var currentWingetUpdate = previousWingetUpdate with { AvailableVersion = "3" };
+        updates.Updates = [currentWingetUpdate];
+        var result = await app.RefreshUpdatesAsync(CancellationToken.None);
+
+        Assert.Equal(otherSourceSucceeds, result.Succeeded);
+        Assert.Contains(storeUpdate, app.State.Updates);
+        Assert.Contains(otherSourceSucceeds ? currentWingetUpdate : previousWingetUpdate, app.State.Updates);
+        Assert.Contains(storePackage, app.State.SelectedUpdates);
+        Assert.Contains(app.State.Activity, entry => entry.Message.Contains("msstore: Unreadable output.", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task UpdatePresentationUsesActionableDefaultsBeforeExecution()
     {
@@ -2091,13 +2127,21 @@ public sealed class OnlyWingetApplicationTests
     private sealed class StubUpdateLoader(params PackageUpdate[] updates) : IUpdateLoader
     {
         public HashSet<string> FailingSources { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> UnreadableSources { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public IReadOnlyList<PackageUpdate> Updates { get; set; } = updates;
 
-        public Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(string source, CancellationToken cancellationToken) =>
-            Task.FromResult(FailingSources.Contains(source)
-                ? WingetOperationOutcome<PackageUpdate>.Failure(
-                    new ClassifiedWingetError(WingetErrorKind.SourceUnavailable, "Source unavailable."),
-                    string.Empty)
-                : WingetOperationOutcome<PackageUpdate>.Success(updates, string.Empty));
+        public Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(string source, CancellationToken cancellationToken)
+        {
+            var error = UnreadableSources.Contains(source)
+                ? new ClassifiedWingetError(WingetErrorKind.InvalidOutput, "Unreadable output.")
+                : FailingSources.Contains(source)
+                    ? new ClassifiedWingetError(WingetErrorKind.SourceUnavailable, "Source unavailable.")
+                    : null;
+            var outcome = error is null
+                ? WingetOperationOutcome<PackageUpdate>.Success(Updates, string.Empty)
+                : WingetOperationOutcome<PackageUpdate>.Failure(error, string.Empty);
+            return Task.FromResult(outcome);
+        }
     }
 
     private sealed class StubWindowsUpdateService(

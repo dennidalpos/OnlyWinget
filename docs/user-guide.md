@@ -26,6 +26,10 @@ flowchart LR
 
 In **Pacchetti → Preset**, create a named list or select an existing one. Add packages by ID/source or from Search. Both ID and source form the identity: identical IDs from different sources can be separate entries.
 
+![The OnlyWinget Preset tab shows Demo PC and three package IDs selected for a batch action.](assets/presets-demo-pc.jpg)
+
+The example was captured in OnlyWinget 1.0.2 with sample preset data. WinGet was unavailable to this session, so package metadata is shown as Unknown and install actions are disabled.
+
 Import/export uses onlywinget.preset.v1. Import validates the document and resolves packages against enabled sources; duplicate preset names are refused. Generic JSON and native WinGet export are not equivalent formats.
 
 Add/edit/remove entries, export the list, then select packages for the intended install/uninstall action. Persistent editing and preset changes are blocked during an operation. Apply or discard a draft before changing page, mode or preset. If an accepted edit fails to save, fields remain locked and Apply retries that save; do not add the edit again.

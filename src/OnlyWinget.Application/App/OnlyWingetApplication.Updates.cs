@@ -35,7 +35,6 @@ public sealed partial class OnlyWingetApplication
                     var distinctUpdates = outcomes.Where(item => item.Outcome.Succeeded)
                         .SelectMany(item => item.Outcome.Rows)
                         .DistinctBy(update => update.Package)
-                        .OrderBy(update => update.Name, StringComparer.OrdinalIgnoreCase)
                         .ToArray();
 
                     if (distinctUpdates.Length == 0 && sourceErrors.Length > 0)
@@ -48,11 +47,21 @@ public sealed partial class OnlyWingetApplication
                             cancellationToken)
                         .ConfigureAwait(false);
 
+                    var unreadableSources = outcomes
+                        .Where(item => item.Outcome.Error?.Kind == WingetErrorKind.InvalidOutput)
+                        .Select(item => item.Source)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
                     UpdateState(() =>
                     {
+                        var refreshedUpdates = distinctUpdates
+                            .Concat(updates.Where(update =>
+                                update.Package.Source is { } source && unreadableSources.Contains(source)))
+                            .DistinctBy(update => update.Package)
+                            .OrderBy(update => update.Name, StringComparer.OrdinalIgnoreCase)
+                            .ToArray();
                         updates.Clear();
-                        updates.AddRange(distinctUpdates);
-                        updateSelection.ReplaceAvailable(distinctUpdates.Select(update => update.Package));
+                        updates.AddRange(refreshedUpdates);
+                        updateSelection.ReplaceAvailable(refreshedUpdates.Select(update => update.Package));
                     });
                     AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{distinctUpdates.Length} update(s).");
 

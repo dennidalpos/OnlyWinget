@@ -9,5 +9,6 @@ public enum WingetErrorKind
     Cancelled,
     CannotUpgrade,
     HashMismatch,
-    Unknown
+    Unknown,
+    InvalidOutput
 }

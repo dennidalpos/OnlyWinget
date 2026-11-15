@@ -69,9 +69,14 @@ public sealed class WingetTableParser
 
     public IReadOnlyList<IReadOnlyDictionary<string, string>> Parse(string output)
     {
+        return ParseTable(output).Rows.Where(row => row.Count > 0 && IsValidRow(row)).ToArray();
+    }
+
+    internal (IReadOnlyList<string> Columns, IReadOnlyList<IReadOnlyDictionary<string, string>> Rows) ParseTable(string output)
+    {
         if (string.IsNullOrWhiteSpace(output))
         {
-            return [];
+            return ([], []);
         }
 
         var lines = output
@@ -83,7 +88,7 @@ public sealed class WingetTableParser
         var separatorIndex = FindSeparatorIndex(lines);
         if (separatorIndex <= 0)
         {
-            return [];
+            return ([], []);
         }
 
         var header = lines[separatorIndex - 1];
@@ -91,20 +96,27 @@ public sealed class WingetTableParser
         var starts = GetColumnStarts(header, separatorLine).ToArray();
         if (starts.Length == 0)
         {
-            return [];
+            return ([], []);
         }
 
         var headers = starts
             .Select((start, index) => SliceColumn(header, starts, index).Trim())
             .ToArray();
         ApplyPositionalFallback(headers);
+        for (var index = 0; index < headers.Length; index++)
+        {
+            if (HeaderTranslations.TryGetValue(headers[index], out var translated))
+            {
+                headers[index] = translated;
+            }
+        }
 
-        return lines
+        var rows = lines
             .Skip(separatorIndex + 1)
             .Where(line => !IsSeparatorLine(line))
             .Select(line => ParseRow(line, starts, headers))
-            .Where(row => row.Count > 0 && IsValidRow(row))
             .ToArray();
+        return (headers, rows);
     }
 
     /// <summary>
@@ -236,18 +248,13 @@ public sealed class WingetTableParser
         var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < starts.Length && index < headers.Length; index++)
         {
-            var rawHeader = headers[index];
-            if (string.IsNullOrWhiteSpace(rawHeader))
+            var header = headers[index];
+            if (string.IsNullOrWhiteSpace(header))
             {
                 continue;
             }
 
-            var value = SliceColumn(line, starts, index).Trim();
-            var normalizedHeader = HeaderTranslations.TryGetValue(rawHeader, out var translated)
-                ? translated
-                : rawHeader;
-
-            row[normalizedHeader] = value;
+            row[header] = SliceColumn(line, starts, index).Trim();
         }
 
         return row;
