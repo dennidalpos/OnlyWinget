@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$fixtureRoot = Join-Path $repoRoot "tmp/clean-regression-$([Guid]::NewGuid().ToString('N'))"
+$fixtureRoot = Join-Path (Get-ScratchRoot -RepositoryRoot $repoRoot) "clean-regression-$([Guid]::NewGuid().ToString('N'))"
 $fixtureRepo = Join-Path $fixtureRoot 'repository'
 $fixtureData = Join-Path $fixtureRoot 'local-data'
 $previousLocalAppData = $env:LOCALAPPDATA
@@ -46,7 +46,7 @@ try {
 }
 finally {
     $env:LOCALAPPDATA = $previousLocalAppData
-    $cleanupPath = Assert-RepositoryPathInAllowedRoot -Path $fixtureRoot -RepositoryRoot $repoRoot -AllowedRoots @((Join-Path $repoRoot 'tmp'))
+    $cleanupPath = Assert-RepositoryPathInAllowedRoot -Path $fixtureRoot -RepositoryRoot $repoRoot -AllowedRoots @((Get-ScratchRoot -RepositoryRoot $repoRoot))
     if (Test-Path -LiteralPath $cleanupPath) {
         Remove-Item -LiteralPath $cleanupPath -Recurse -Force
     }

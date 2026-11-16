@@ -51,7 +51,7 @@ function Get-SupportedProjectPath {
     @(
         Get-ChildItem -Path $repoRoot -Recurse -File -Filter '*.csproj' |
             Where-Object {
-                $_.FullName -notmatch '\\(\.git|\.vs|artifacts|packages)\\'
+                [IO.Path]::GetRelativePath($repoRoot, $_.FullName) -notmatch '(^|[\\/])(\.git|\.vs|artifacts|packages)[\\/]'
             } |
             Sort-Object FullName |
             Select-Object -ExpandProperty FullName
@@ -205,8 +205,6 @@ if ($All) {
         Remove-GeneratedPath -Path $target
     }
 }
-
-Clear-ExternalOutputRoot -RepositoryRoot $repoRoot -DryRun:$DryRun
 
 Invoke-NuGetCacheClean
 

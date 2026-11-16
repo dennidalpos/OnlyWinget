@@ -2,7 +2,9 @@
 
 Run from the repository root with PowerShell 7.
 
-`Check` deletes this checkout's `artifacts/` and `tmp/` before running its gate. Preserve evidence and obtain cleanup authorization before using it in a managed agent session.
+All managed output (build, publish, packages, test results, fixtures and scratch files) lives under the single in-repository root `artifacts/`, resolved by `scripts/support/OutputRoot.ps1` and `Directory.Build.props`; nothing is written outside the repository.
+
+`Check` deletes this checkout's `artifacts/` (including its `tmp/` scratch folder) before running its gate. Preserve evidence and obtain cleanup authorization before using it in a managed agent session.
 
 `run.ps1` is the consolidated task runner entrypoint. Pass `-Task` to run tasks:
 
@@ -56,7 +58,7 @@ Support files live under `scripts/support/` and are not standalone entrypoints.
 
 `global.json` pins an exact SDK with roll-forward disabled so implicit SDK packages remain consistent with `packages.lock.json`. When intentionally changing that SDK, regenerate lockfiles with `scripts/fix-lockfiles.ps1`, review the generated diff and verify locked restore again after packaging. Do not bypass locked mode to make CI pass. See [SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json#rollforward) and [NuGet locked restore](https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies).
 
-Check retains restore stdout/stderr in `artifacts/check/restore.log`. Default/Fast output shows the last 60 lines on failure; Full also streams the output. A failed step writes `artifacts/build-report.txt` with its name, error and completed steps. The build and release workflows upload those diagnostics along with test logs/TRX, including after failures. The diagnostics regression also retains `artifacts/check/restore-failure-fixture*.log` from an expected real NuGet failure in an isolated temporary solution; those files show a successful negative test and do not describe the main solution's restore. The release workflow may fail tag validation before producing diagnostic files. Check first deletes this checkout's `artifacts/` and `tmp/`; preserve existing evidence or run it in an isolated checkout.
+Check retains restore stdout/stderr in `artifacts/check/restore.log`. Default/Fast output shows the last 60 lines on failure; Full also streams the output. A failed step writes `artifacts/build-report.txt` with its name, error and completed steps. The build and release workflows upload those diagnostics along with test logs/TRX, including after failures. The diagnostics regression also retains `artifacts/check/restore-failure-fixture*.log` from an expected real NuGet failure in an isolated temporary solution; those files show a successful negative test and do not describe the main solution's restore. The release workflow may fail tag validation before producing diagnostic files. Check first deletes this checkout's `artifacts/` (including its `tmp/` scratch folder); preserve existing evidence or run it in an isolated checkout.
 
 Import cancellation captures UIA names/IDs/control types plus ToggleState, IsSelected and the selection container's selected items before and after closing the owned picker. This includes the collapsed preset selector; unchanged labels alone do not prove preserved selection. `test-ui-state-snapshot.ps1` exercises actual checkbox/list/collapsed-selector patterns in a separate WPF fixture, with no OnlyWinget launch or personal-store changes.
 

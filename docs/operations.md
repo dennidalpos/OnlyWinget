@@ -36,7 +36,7 @@ Run tasks via the `run.ps1` script from the repository root:
 .\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive
 ```
 
-The full gate first deletes this checkout's `artifacts/` and `tmp/`, then restores, checks formatting, lints scripts, runs isolated regressions, typechecks, tests, builds and packages. It writes diagnostics under `artifacts/`. Run it only when removal of those generated directories is authorized and needed evidence has been preserved. Missing local prerequisites are installed where practical; `ONLYWINGET_SKIP_AUTO_INSTALL=1` disables automatic installation.
+The full gate first deletes this checkout's `artifacts/` (including its `tmp/` scratch folder), then restores, checks formatting, lints scripts, runs isolated regressions, typechecks, tests, builds and packages. It writes diagnostics under `artifacts/`. Run it only when removal of those generated directories is authorized and needed evidence has been preserved. Missing local prerequisites are installed where practical; `ONLYWINGET_SKIP_AUTO_INSTALL=1` disables automatic installation.
 
 The pre-commit test/build gate is separate and does not run `Clean` or `Check`:
 

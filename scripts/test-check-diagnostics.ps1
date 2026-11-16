@@ -1,7 +1,5 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-# Repository-layout fixture: pin the default output root when run directly (check.ps1 pins it for nested runs).
-if ($MyInvocation.CommandOrigin -eq 'Runspace') { $env:ONLYWINGET_OUTPUT_ROOT = $null }
 
 $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('OnlyWinget-check-tests-' + [Guid]::NewGuid().ToString('N'))
 $fixtureScripts = Join-Path $fixtureRoot 'scripts'

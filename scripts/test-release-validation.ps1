@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$fixtureRoot = Join-Path $repoRoot "tmp/release-regression-$([Guid]::NewGuid().ToString('N'))"
+$fixtureRoot = Join-Path (Get-ScratchRoot -RepositoryRoot $repoRoot) "release-regression-$([Guid]::NewGuid().ToString('N'))"
 $fixtureRepo = Join-Path $fixtureRoot 'checkout'
 $fixtureRemote = Join-Path $fixtureRoot 'remote'
 $validator = Join-Path $PSScriptRoot 'validate-release.ps1'
@@ -77,6 +77,6 @@ try {
     Write-Host 'PASS: Release rejects wrong refs/commits/versions/assets and remote tag drift; lightweight and annotated tags pass.' -ForegroundColor Green
 }
 finally {
-    $cleanupPath = Assert-RepositoryPathInAllowedRoot -Path $fixtureRoot -RepositoryRoot $repoRoot -AllowedRoots @((Join-Path $repoRoot 'tmp'))
+    $cleanupPath = Assert-RepositoryPathInAllowedRoot -Path $fixtureRoot -RepositoryRoot $repoRoot -AllowedRoots @((Get-ScratchRoot -RepositoryRoot $repoRoot))
     if (Test-Path -LiteralPath $cleanupPath) { Remove-Item -LiteralPath $cleanupPath -Recurse -Force }
 }
