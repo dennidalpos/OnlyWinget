@@ -2,9 +2,7 @@
 
 ## Retired URL protocol
 
-`onlywinget://` is no longer supported. The app does not register or dispatch URL actions. At startup and NSIS uninstall, legacy HKCU cleanup requires the old OnlyWinget label, URL marker and exact quoted command for that executable. Another installed/portable copy's handler is preserved. Cleanup failures are logged at startup or produce a nonzero uninstall exit code.
-
-Already removed portable copies and other user profiles can retain legacy handlers. Review `HKCU\Software\Classes\onlywinget\shell\open\command` under the affected profile before manual removal; no automatic cross-profile or unrelated-handler deletion is performed.
+`onlywinget://` is not supported: the app does not register or dispatch URL actions, and neither the app nor the installer touches protocol registrations.
 
 Run commands from the repository root in PowerShell 7+.
 
@@ -133,19 +131,11 @@ Synchronization follows Microsoft's [lock guidance](https://learn.microsoft.com/
 
 The preset selector restores the actual active preset after a rejected/cancelled switch. Accepted idle changes trigger workspace autosave. Rejected busy selections retain the active preset and do not save. A failed save keeps the accepted in-memory choice and the visible workspace-save error; retry Save Workspace to persist it. Selector navigation uses the pending-edit guard; its cancelled-switch behavior was verified in the AUDIT-19 UI qualification.
 
-## Workspace schema migration and recovery
+## Workspace schema and unsupported databases
 
-Workspace SQLite schema version 1 removes the unused Description, CreatedAt, UpdatedAt and PackageName columns. Migration runs during the first workspace load/save after updating the app. A recognized unversioned database is inspected under an immediate write transaction, then backed up through SQLite's native `BackupDatabase` API, including committed WAL data. Backup integrity and foreign keys are verified before changing the original schema. All four column removals and `user_version=1` commit in one transaction with full synchronization; errors or observed cancellation before commit roll back the changes. Empty databases are created directly at version 1 without a backup.
+The workspace database uses SQLite schema version 1 (`PRAGMA user_version`). A missing or empty database is created directly at version 1. There are no upgrade paths: a database with any other version, unknown tables, columns or constraints is rejected with an explicit error and is never converted, reset or deleted. Loading and saving stay blocked until a compatible database is in place.
 
-Completed snapshots remain next to the database as `onlywinget.db.pre-schema-v1-<unique-id>.bak`. They contain the whole previous database, including retired metadata and unrelated tables. Backups are not overwritten or automatically pruned; a retry after failed migration can retain more than one snapshot. Files ending in `.bak.partial` are unfinished evidence, not verified restore points. Backup I/O failure blocks migration before column removal. Schema/version/integrity errors remain visible and block workspace saving until a successful reload.
-
-To downgrade after a completed migration:
-
-1. Close OnlyWinget and every other database client. Preserve the current database and any matching `-wal`/`-shm` sidecars together in a separate recovery directory, retaining edits made since migration.
-2. Restore the chosen verified `.bak` snapshot as `onlywinget.db`, with no sidecars from the migrated database left beside it. Restoring an older snapshot also restores its older workspace state.
-3. Open a compatible previous build. Reopening the current build migrates the restored version-0 database again and retains another backup.
-
-Native backup restoration, including retired values, is verified on isolated databases. No personal database was migrated or restored during development. Physical power-loss behavior and real-profile downgrade are not verified. SQLite documents the [online backup API](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/backup), [transaction rollback](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/transactions) and why the [WAL belongs to the database's persistent state](https://www.sqlite.org/wal.html#the_wal_file).
+To recover, close OnlyWinget, preserve `onlywinget.db` and its `-wal`/`-shm` sidecars in a separate directory, then move the database aside to start from a new workspace. SQLite documents [why the WAL belongs to the database's persistent state](https://www.sqlite.org/wal.html#the_wal_file).
 
 ## Diagnostic logs
 

@@ -8,7 +8,8 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>10.0</AnalysisLevel>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
-    <ArtifactsRoot>$(MSBuildThisFileDirectory)artifacts\</ArtifactsRoot>
+    <ArtifactsRoot Condition="'$(ArtifactsRoot)' == '' and '$(ONLYWINGET_OUTPUT_ROOT)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ONLYWINGET_OUTPUT_ROOT)'))</ArtifactsRoot>
+    <ArtifactsRoot Condition="'$(ArtifactsRoot)' == ''">$(MSBuildThisFileDirectory)artifacts\</ArtifactsRoot>
     <BaseOutputPath>$(ArtifactsRoot)bin\$(MSBuildProjectName)\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(ArtifactsRoot)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>

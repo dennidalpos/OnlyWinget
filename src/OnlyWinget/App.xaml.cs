@@ -33,8 +33,6 @@ public partial class App : Microsoft.UI.Xaml.Application
         AppDiagnostics.Initialize();
         AppDiagnostics.Register(this);
 
-        AppComposition.CleanupLegacyProtocol();
-
         InitializeComponent();
     }
 

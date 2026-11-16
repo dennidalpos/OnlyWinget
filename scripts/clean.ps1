@@ -206,6 +206,8 @@ if ($All) {
     }
 }
 
+Clear-ExternalOutputRoot -RepositoryRoot $repoRoot -DryRun:$DryRun
+
 Invoke-NuGetCacheClean
 
 $modeLabel = if ($All) { 'clean:all' } else { 'clean' }

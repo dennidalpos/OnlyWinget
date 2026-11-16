@@ -1,10 +1,12 @@
+. (Join-Path $PSScriptRoot 'OutputRoot.ps1')
+
 function Copy-CurrentLandingArtifactPair {
     param([string]$RepositoryRoot, [string]$Configuration = 'Release')
     [xml]$project = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'src/OnlyWinget/OnlyWinget.csproj')
     $version = [string]($project.Project.PropertyGroup | Where-Object Version | Select-Object -ExpandProperty Version -First 1)
     if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Project release version is missing or invalid.' }
     $names = @("OnlyWinget-$version-setup.exe", "OnlyWinget-$version-portable-x64.zip")
-    $dist = Join-Path $RepositoryRoot "artifacts/dist/OnlyWinget/$Configuration"
+    $dist = Join-Path (Get-OutputRoot -RepositoryRoot $RepositoryRoot) "dist/OnlyWinget/$Configuration"
     foreach ($name in $names) {
         $source = Join-Path $dist $name
         if (-not (Test-Path -LiteralPath $source -PathType Leaf) -or (Get-Item -LiteralPath $source).Length -eq 0) {

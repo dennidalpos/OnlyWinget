@@ -1,3 +1,4 @@
+using System.Reflection;
 using OnlyWinget.Application.System;
 using System.Globalization;
 using System.Text;
@@ -87,6 +88,11 @@ public sealed class TextResourcesTests
 
     private static string RepositoryRoot()
     {
+        var configured = typeof(TextResourcesTests).Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "RepositoryRoot")?.Value;
+        if (configured is not null && File.Exists(Path.Combine(configured, "OnlyWinget.sln"))) return configured;
+
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "OnlyWinget.sln"))) directory = directory.Parent;
         return directory?.FullName ?? throw new InvalidOperationException("Repository sources are required for resource verification.");

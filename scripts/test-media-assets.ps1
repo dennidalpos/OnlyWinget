@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'support/OutputRoot.ps1')
 $repositoryRoot = Split-Path $PSScriptRoot -Parent
-$fixtureRoot = Join-Path $repositoryRoot ('artifacts/media-tests/' + [Guid]::NewGuid().ToString('N'))
+$fixtureRoot = Join-Path (Initialize-OutputRoot -RepositoryRoot $repositoryRoot) ('media-tests/' + [Guid]::NewGuid().ToString('N'))
 $files = @('assets/logos/logo.png', 'assets/logos/logo.ico', 'landing/assets/logo.png',
     'src/OnlyWinget/Assets/OnlyWinget-icon.png', 'src/OnlyWinget/Assets/OnlyWinget.ico',
     'src/OnlyWinget.Setup/Assets/HeaderBanner.bmp', 'src/OnlyWinget.Setup/Assets/WelcomeDialog.bmp')
@@ -24,7 +25,7 @@ try {
 }
 finally {
     $resolvedRoot = [IO.Path]::GetFullPath($fixtureRoot)
-    if (-not $resolvedRoot.StartsWith((Join-Path $repositoryRoot 'artifacts/media-tests/'), [StringComparison]::OrdinalIgnoreCase)) {
+    if (-not $resolvedRoot.StartsWith((Join-Path (Get-OutputRoot -RepositoryRoot $repositoryRoot) 'media-tests/'), [StringComparison]::OrdinalIgnoreCase)) {
         throw 'Unexpected media cleanup path.'
     }
     foreach ($file in $files) {

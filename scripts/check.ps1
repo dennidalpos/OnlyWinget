@@ -17,8 +17,8 @@ $isFastMode = -not $Full
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $solutionPath = Join-Path $repoRoot 'OnlyWinget.sln'
 $testProjectPath = Join-Path $repoRoot 'tests/OnlyWinget.Tests/OnlyWinget.Tests.csproj'
-$artifactsPath = Join-Path $repoRoot 'artifacts'
-$tmpPath = Join-Path $repoRoot 'tmp'
+$artifactsPath = Get-OutputRoot -RepositoryRoot $repoRoot
+$tmpPath = Get-ScratchRoot -RepositoryRoot $repoRoot
 $reportPath = Join-Path $artifactsPath 'build-report.txt'
 $testResultsPath = Join-Path $artifactsPath 'test-results'
 $scriptsRoot = $PSScriptRoot
@@ -65,6 +65,13 @@ function Invoke-Step {
     $steps.Add("${Name}: OK")
 }
 
+function Invoke-WithDefaultOutputRoot {
+    param([scriptblock]$Action)
+    $previous = $env:ONLYWINGET_OUTPUT_ROOT
+    $env:ONLYWINGET_OUTPUT_ROOT = $null
+    try { & $Action } finally { $env:ONLYWINGET_OUTPUT_ROOT = $previous }
+}
+
 function Assert-LastExitCode {
     param(
         [string]$FailureMessage
@@ -79,6 +86,12 @@ function Remove-CheckGeneratedPath {
     param(
         [string]$Path
     )
+
+    if (Test-OutputRootExternal -RepositoryRoot $repoRoot) {
+        # External root: only its owned contents are removed, never the root itself.
+        if ((Get-NormalizedFullPath -Path $Path) -eq (Get-NormalizedFullPath -Path $artifactsPath)) { Clear-ExternalOutputRoot -RepositoryRoot $repoRoot }
+        return
+    }
 
     $fullPath = Assert-RepositoryPathInAllowedRoot `
         -Path $Path `
@@ -137,15 +150,15 @@ Invoke-Step 'cleanup data preservation regression' {
 }
 
 Invoke-Step 'process ownership regression' {
-    & (Join-Path $scriptsRoot 'test-process-ownership.ps1')
+    Invoke-WithDefaultOutputRoot { & (Join-Path $scriptsRoot 'test-process-ownership.ps1') }
 }
 
 Invoke-Step 'verification invariants regression' {
-    & (Join-Path $scriptsRoot 'test-verification-invariants.ps1')
+    Invoke-WithDefaultOutputRoot { & (Join-Path $scriptsRoot 'test-verification-invariants.ps1') }
 }
 
 Invoke-Step 'check diagnostics regression' {
-    & (Join-Path $scriptsRoot 'test-check-diagnostics.ps1')
+    Invoke-WithDefaultOutputRoot { & (Join-Path $scriptsRoot 'test-check-diagnostics.ps1') }
 }
 
 Invoke-Step 'media generation regression' {
@@ -153,7 +166,7 @@ Invoke-Step 'media generation regression' {
 }
 
 Invoke-Step 'landing artifact regression' {
-    & (Join-Path $scriptsRoot 'test-landing-artifacts.ps1')
+    Invoke-WithDefaultOutputRoot { & (Join-Path $scriptsRoot 'test-landing-artifacts.ps1') }
 }
 
 Invoke-Step 'UI dialog ownership regression' {
@@ -218,9 +231,9 @@ Invoke-Step 'package artifact preservation regression' {
 }
 
 Invoke-Step 'artifact analysis' {
-    New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
-    $artifact = Get-Item (Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe")
-    $distPath = Join-Path $repoRoot "artifacts/dist/OnlyWinget/$Configuration"
+    Initialize-OutputRoot -RepositoryRoot $repoRoot | Out-Null
+    $artifact = Get-Item (Join-Path $artifactsPath "bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe")
+    $distPath = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
     $setup = Get-ChildItem -Path $distPath -Filter '*-setup.exe' |
         Sort-Object LastWriteTimeUtc -Descending |
         Select-Object -First 1

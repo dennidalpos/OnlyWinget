@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+# Repository-layout fixture: pin the default output root when run directly (check.ps1 pins it for nested runs).
+if ($MyInvocation.CommandOrigin -eq 'Runspace') { $env:ONLYWINGET_OUTPUT_ROOT = $null }
 . (Join-Path $PSScriptRoot 'support/VerificationHelpers.ps1')
 $repositoryRoot = Split-Path $PSScriptRoot -Parent
 $fixtureRoot = Join-Path $repositoryRoot ('artifacts/verification-tests/' + [Guid]::NewGuid().ToString('N'))
@@ -56,7 +58,7 @@ class Program {
     $fixtureProject = Join-Path $fixtureRoot 'tests/OnlyWinget.Tests'
     New-Item -ItemType Directory -Path $fixtureSupport, $fixtureProject -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'test.ps1') -Destination $fixtureScripts
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1') -Destination $fixtureSupport
+    foreach ($helper in @('ScriptHelpers.ps1', 'OutputRoot.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot "support/$helper") -Destination $fixtureSupport }
     [IO.File]::WriteAllText((Join-Path $fixtureProject 'OnlyWinget.Tests.csproj'), '<Project />')
     Copy-Item -LiteralPath $failureCommand -Destination (Join-Path $fixtureRoot 'dotnet.cmd')
     foreach ($full in @($false, $true)) {

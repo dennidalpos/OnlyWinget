@@ -23,7 +23,7 @@ $isFastMode = -not $Full
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    $OutputDirectory = Join-Path $repoRoot 'artifacts/ui-tests'
+    $OutputDirectory = Join-Path (Get-OutputRoot -RepositoryRoot $repoRoot) 'ui-tests'
 }
 
 Assert-Command -Name 'winapp'

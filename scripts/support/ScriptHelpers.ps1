@@ -4,6 +4,8 @@ Set-StrictMode -Version Latest
 $script:OnlyWingetScriptsRoot = Split-Path $PSScriptRoot -Parent
 $script:OnlyWingetRepositoryRoot = Split-Path $script:OnlyWingetScriptsRoot -Parent
 
+. (Join-Path $PSScriptRoot 'OutputRoot.ps1')
+
 $env:DOTNET_CLI_UI_LANGUAGE = 'en-US'
 $env:VSLANG = '1033'
 $env:PreferredUILang = 'en-US'
@@ -194,8 +196,9 @@ function Assert-RepositoryPathInAllowedRoot {
 
 function Get-OnlyWingetProcess {
     . (Join-Path $PSScriptRoot 'CloseOwnedApplication.ps1')
-    $paths = @(foreach ($relativeRoot in @('artifacts/bin/OnlyWinget', 'artifacts/obj/OnlyWinget', 'artifacts/publish/OnlyWinget', 'artifacts/installer/win-x64/publish')) {
-        $outputRoot = Join-Path $script:OnlyWingetRepositoryRoot $relativeRoot
+    $managedOutputRoot = Get-OutputRoot -RepositoryRoot $script:OnlyWingetRepositoryRoot
+    $paths = @(foreach ($relativeRoot in @('bin/OnlyWinget', 'obj/OnlyWinget', 'publish/OnlyWinget', 'installer/win-x64/publish')) {
+        $outputRoot = Join-Path $managedOutputRoot $relativeRoot
         if (Test-Path -LiteralPath $outputRoot) {
             Get-ChildItem -LiteralPath $outputRoot -Filter 'OnlyWinget.exe' -File -Recurse | Select-Object -ExpandProperty FullName
         }

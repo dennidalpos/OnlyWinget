@@ -35,7 +35,7 @@ if (-not [string]::IsNullOrWhiteSpace($PreviousVersion)) {
 }
 
 $packageScriptPath = Join-Path $PSScriptRoot 'package.ps1'
-$artifactsPath = Join-Path $repoRoot 'artifacts'
+$artifactsPath = Get-OutputRoot -RepositoryRoot $repoRoot
 $distPath = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
 $validationPath = Join-Path $artifactsPath "installer-validation/$Configuration"
 $reportPath = Join-Path $validationPath 'installer-lifecycle-report.txt'

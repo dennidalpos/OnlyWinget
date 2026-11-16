@@ -3,73 +3,41 @@ using Microsoft.EntityFrameworkCore;
 
 namespace OnlyWinget.Infrastructure.Storage.Sqlite;
 
-internal static class WorkspaceSchemaMigration
+internal static class WorkspaceSchemaInitializer
 {
     private const int CurrentVersion = 1;
 
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "EF Core model is defined statically.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "EF Core model is defined statically.")]
-    public static async Task<string?> InitializeAsync(string dbPath, CancellationToken cancellationToken)
+    public static async Task InitializeAsync(string dbPath, CancellationToken cancellationToken)
     {
         await using var connection = CreateConnection(dbPath, SqliteOpenMode.ReadWriteCreate);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         await ExecuteAsync(connection, null, "PRAGMA synchronous=FULL;", cancellationToken).ConfigureAwait(false);
 
-        // Reserve the writer before inspecting or backing up the previous schema.
+        // Reserve the writer so concurrent stores initialize a new database only once.
         using var transaction = connection.BeginTransaction(deferred: false);
         var version = Convert.ToInt32(await ScalarAsync(connection, transaction, "PRAGMA user_version;", cancellationToken).ConfigureAwait(false));
-        if (version is < 0 or > CurrentVersion)
-        {
-            throw new InvalidOperationException($"Unsupported workspace schema version {version}; this application supports version {CurrentVersion}. Use a compatible application before saving.");
-        }
-
         var schemaObjectCount = Convert.ToInt32(await ScalarAsync(connection, transaction,
             "SELECT COUNT(*) FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*';", cancellationToken).ConfigureAwait(false));
+
         if (schemaObjectCount == 0 && version == 0)
         {
             await using var context = new WorkspaceDbContext(dbPath);
             await ExecuteAsync(connection, transaction, context.Database.GenerateCreateScript(), cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            await ValidateColumnsAsync(connection, transaction, version, cancellationToken).ConfigureAwait(false);
-            if (version == CurrentVersion) return null;
-        }
-
-        string? backupPath = null;
-        if (schemaObjectCount != 0)
-        {
-            await VerifyDatabaseAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-            backupPath = await CreateBackupAsync(dbPath, cancellationToken).ConfigureAwait(false);
-        }
-
-        try
-        {
-            if (backupPath is not null)
-            {
-                foreach (var statement in new[]
-                {
-                    "ALTER TABLE Presets DROP COLUMN Description;",
-                    "ALTER TABLE Presets DROP COLUMN CreatedAt;",
-                    "ALTER TABLE Presets DROP COLUMN UpdatedAt;",
-                    "ALTER TABLE PresetItems DROP COLUMN PackageName;"
-                })
-                {
-                    await ExecuteAsync(connection, transaction, statement, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            await ValidateColumnsAsync(connection, transaction, CurrentVersion, cancellationToken).ConfigureAwait(false);
-            await VerifyDatabaseAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-            await ExecuteAsync(connection, transaction, "PRAGMA user_version=1;", cancellationToken).ConfigureAwait(false);
+            await ExecuteAsync(connection, transaction, $"PRAGMA user_version={CurrentVersion};", cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             transaction.Commit();
-            return backupPath;
+            return;
         }
-        catch (Exception exception) when (exception is SqliteException or InvalidOperationException)
+
+        if (version != CurrentVersion)
         {
-            throw new InvalidOperationException($"Workspace schema migration failed; the transaction will roll back. Previous database backup: {backupPath ?? "not required for an empty database"}.", exception);
+            throw new InvalidOperationException($"Unsupported workspace schema version {version}; this application supports only version {CurrentVersion}. The database was not modified: no conversion, reset or deletion is performed.");
         }
+
+        await ValidateColumnsAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await VerifyDatabaseAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
     }
 
     private static SqliteConnection CreateConnection(string path, SqliteOpenMode mode) => new(new SqliteConnectionStringBuilder
@@ -81,12 +49,12 @@ internal static class WorkspaceSchemaMigration
         ForeignKeys = true
     }.ToString());
 
-    private static async Task ValidateColumnsAsync(SqliteConnection connection, SqliteTransaction transaction, int version, CancellationToken cancellationToken)
+    private static async Task ValidateColumnsAsync(SqliteConnection connection, SqliteTransaction transaction, CancellationToken cancellationToken)
     {
         var expectedColumns = new Dictionary<string, string[]>
         {
-            ["Presets"] = version == 0 ? ["Id", "Name", "Description", "CreatedAt", "UpdatedAt"] : ["Id", "Name"],
-            ["PresetItems"] = version == 0 ? ["Id", "PresetId", "PackageId", "PackageName", "Source"] : ["Id", "PresetId", "PackageId", "Source"],
+            ["Presets"] = ["Id", "Name"],
+            ["PresetItems"] = ["Id", "PresetId", "PackageId", "Source"],
             ["WorkspaceMetadata"] = ["Key", "Value"]
         };
 
@@ -101,9 +69,8 @@ internal static class WorkspaceSchemaMigration
             {
                 var name = reader.GetString(1);
                 var primaryKey = name == (table == "WorkspaceMetadata" ? "Key" : "Id") ? 1L : 0L;
-                var notNull = name == "Description" ? 0L : 1L;
                 if (!string.Equals(reader.GetString(2), "TEXT", StringComparison.OrdinalIgnoreCase)
-                    || reader.GetInt64(3) != notNull || reader.GetInt64(5) != primaryKey || reader.GetInt64(6) != 0)
+                    || reader.GetInt64(3) != 1 || reader.GetInt64(5) != primaryKey || reader.GetInt64(6) != 0)
                 {
                     throw new InvalidOperationException($"Unrecognized workspace column '{table}.{name}'; no schema changes were committed.");
                 }
@@ -111,7 +78,7 @@ internal static class WorkspaceSchemaMigration
             }
             if (!columns.SetEquals(expected))
             {
-                throw new InvalidOperationException($"Unrecognized workspace table '{table}' for schema version {version}; no schema changes were committed.");
+                throw new InvalidOperationException($"Unrecognized workspace table '{table}' for the current schema; no schema changes were committed.");
             }
         }
 
@@ -143,35 +110,6 @@ internal static class WorkspaceSchemaMigration
         if (await ScalarAsync(connection, transaction, "PRAGMA foreign_key_check;", cancellationToken).ConfigureAwait(false) is not null)
         {
             throw new InvalidOperationException("Workspace database contains invalid foreign keys; no schema changes were committed.");
-        }
-    }
-
-    private static async Task<string> CreateBackupAsync(string dbPath, CancellationToken cancellationToken)
-    {
-        var backupPath = $"{dbPath}.pre-schema-v1-{Guid.NewGuid():N}.bak";
-        var pendingPath = backupPath + ".partial";
-        try
-        {
-            using (new FileStream(pendingPath, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
-            // A separate reader includes committed WAL data while the writer reservation prevents changes.
-            await using (var source = CreateConnection(dbPath, SqliteOpenMode.ReadOnly))
-            await using (var backup = CreateConnection(pendingPath, SqliteOpenMode.ReadWrite))
-            {
-                await source.OpenAsync(cancellationToken).ConfigureAwait(false);
-                await backup.OpenAsync(cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-                source.BackupDatabase(backup);
-                await ExecuteAsync(backup, null, "PRAGMA journal_mode=DELETE;", cancellationToken).ConfigureAwait(false);
-                await VerifyDatabaseAsync(backup, null, cancellationToken).ConfigureAwait(false);
-            }
-            using (var file = new FileStream(pendingPath, FileMode.Open, FileAccess.Write, FileShare.None)) file.Flush(flushToDisk: true);
-            cancellationToken.ThrowIfCancellationRequested();
-            File.Move(pendingPath, backupPath);
-            return backupPath;
-        }
-        catch (Exception exception) when (exception is SqliteException or IOException or UnauthorizedAccessException or InvalidOperationException)
-        {
-            throw new InvalidOperationException($"Cannot create a verified workspace backup. Original schema preserved; inspect '{pendingPath}'.", exception);
         }
     }
 

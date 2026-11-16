@@ -14,7 +14,7 @@ public sealed class SqliteWorkspaceStoreTests
     {
         var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");
         var dbPath = Path.Combine(tempFolder, "onlywinget.db");
-        var store = new SqliteWorkspaceStore(dbPath, Path.Combine(tempFolder, "legacy.json"));
+        var store = new SqliteWorkspaceStore(dbPath);
         var original = new WorkspaceState([new Preset("Original", [new PackageIdentity("Dummy.App")])], "Original");
         await store.SaveAsync(original, CancellationToken.None);
 
@@ -37,21 +37,6 @@ public sealed class SqliteWorkspaceStoreTests
     }
 
     [Fact]
-    public async Task MalformedLegacyWorkspaceDoesNotBecomeAnEmptyWritableWorkspace()
-    {
-        var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempFolder);
-        var legacyPath = Path.Combine(tempFolder, "workspace-v1.json");
-        const string damagedJson = "{ damaged";
-        await File.WriteAllTextAsync(legacyPath, damagedJson);
-        var store = new SqliteWorkspaceStore(Path.Combine(tempFolder, "onlywinget.db"), legacyPath);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => store.LoadAsync(CancellationToken.None));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => store.SaveAsync(WorkspaceState.Empty, CancellationToken.None));
-        Assert.Equal(damagedJson, await File.ReadAllTextAsync(legacyPath));
-    }
-
-    [Fact]
     public async Task SaveAndLoadUseSqliteDatabase()
     {
         var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");
@@ -68,31 +53,6 @@ public sealed class SqliteWorkspaceStoreTests
         var loadedPreset = Assert.Single(loaded.Presets);
         Assert.Equal("Default", loadedPreset.Name);
         Assert.Equal([new PackageIdentity("Git.Git")], loadedPreset.Packages);
-    }
-
-    [Fact]
-    public async Task TransparentMigrationFromLegacyJson()
-    {
-        var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");
-        var jsonPath = Path.Combine(tempFolder, "workspace-v1.json");
-        var dbPath = Path.Combine(tempFolder, "onlywinget.db");
-
-        Directory.CreateDirectory(tempFolder);
-        const string legacyJson = """
-            {"schemaVersion":1,"presets":[{"name":"MigratedPreset","packages":[{"id":"Microsoft.PowerToys","source":"winget"}]}],"activePresetName":"MigratedPreset"}
-            """;
-        await File.WriteAllTextAsync(jsonPath, legacyJson);
-
-        var sqliteStore = new SqliteWorkspaceStore(dbPath, jsonPath);
-        var loaded = await sqliteStore.LoadAsync(CancellationToken.None);
-
-        Assert.Equal("MigratedPreset", loaded.ActivePresetName);
-        var loadedPreset = Assert.Single(loaded.Presets);
-        Assert.Equal("MigratedPreset", loadedPreset.Name);
-        Assert.Equal([new PackageIdentity("Microsoft.PowerToys", "winget")], loadedPreset.Packages);
-        Assert.Equal(legacyJson, await File.ReadAllTextAsync(jsonPath));
-        Assert.Equal("MigratedPreset", (await new SqliteWorkspaceStore(dbPath, jsonPath)
-            .LoadAsync(CancellationToken.None)).ActivePresetName);
     }
 
     [Fact]

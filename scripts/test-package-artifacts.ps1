@@ -1,9 +1,10 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/PackageArtifacts.ps1')
+. (Join-Path $PSScriptRoot 'support/OutputRoot.ps1')
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$fixtureRoot = Join-Path $repoRoot ('artifacts/package-tests/' + [Guid]::NewGuid().ToString('N'))
+$fixtureRoot = Join-Path (Initialize-OutputRoot -RepositoryRoot $repoRoot) ('package-tests/' + [Guid]::NewGuid().ToString('N'))
 $output = Join-Path $fixtureRoot 'dist'
 $publish = Join-Path $fixtureRoot 'publish'
 $stage = Join-Path $fixtureRoot 'stage'
@@ -172,7 +173,7 @@ finally {
     if ($null -ne $lock) { $lock.Dispose() }
     if ($null -ne $child) { if (-not $child.HasExited) { $child.Kill(); $child.WaitForExit() }; $child.Dispose() }
     $resolved = [IO.Path]::GetFullPath($fixtureRoot)
-    $allowed = [IO.Path]::GetFullPath((Join-Path $repoRoot 'artifacts/package-tests')) + [IO.Path]::DirectorySeparatorChar
+    $allowed = [IO.Path]::GetFullPath((Join-Path (Get-OutputRoot -RepositoryRoot $repoRoot) 'package-tests')) + [IO.Path]::DirectorySeparatorChar
     if (-not $resolved.StartsWith($allowed, [StringComparison]::OrdinalIgnoreCase)) { throw 'Fixture cleanup escaped its root.' }
     Remove-Item -LiteralPath $resolved -Recurse -Force -ErrorAction Stop
 }

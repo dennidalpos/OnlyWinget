@@ -153,4 +153,4 @@ flowchart LR
 
 Per impostazione predefinita, anche nell'edizione portatile, i dati sono in `%LOCALAPPDATA%\OnlyWinget`: database `onlywinget.db`, `settings.json`, `source-preferences-v1.json` e `logs`. I log ruotano a 10 MiB con un massimo di 14 file riconosciuti / 140 MiB dopo scritture riuscite.
 
-In caso di errori di caricamento o migrazione, preserva i file e segui [le istruzioni di recupero](operations.md#workspace-schema-migration-and-recovery). Per segnalare un problema, indica versione, percorso operativo ed errore come descritto nel [README](../README.md#support).
+In caso di errori di caricamento o migrazione, preserva i file e segui [le istruzioni di recupero](operations.md#workspace-schema-and-unsupported-databases). Per segnalare un problema, indica versione, percorso operativo ed errore come descritto nel [README](../README.md#support).

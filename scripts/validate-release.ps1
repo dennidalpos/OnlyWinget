@@ -9,6 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'support/OutputRoot.ps1')
 
 if ($TagName -notmatch '^v(?<version>[0-9]+\.[0-9]+\.[0-9]+)$') {
     throw 'Release requires an explicit vMAJOR.MINOR.PATCH tag; branch dispatch without a tag is unsupported.'
@@ -40,7 +41,7 @@ if ($CheckRemoteTag) {
     }
 }
 
-$distPath = Join-Path $RepositoryRoot 'artifacts/dist/OnlyWinget/Release'
+$distPath = Join-Path (Get-OutputRoot -RepositoryRoot $RepositoryRoot) 'dist/OnlyWinget/Release'
 $setupPath = Join-Path $distPath "OnlyWinget-$version-setup.exe"
 $portablePath = Join-Path $distPath "OnlyWinget-$version-portable-x64.zip"
 if ($CheckAssets) {

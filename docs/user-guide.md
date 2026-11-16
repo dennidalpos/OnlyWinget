@@ -93,4 +93,4 @@ Choose system/English/Italian language and system/light/dark theme, confirmation
 
 By default both installed and portable distributions store data in LocalAppData/OnlyWinget: onlywinget.db, settings.json, source-preferences-v1.json and logs. Logs rotate at 10 MiB with at most 14 recognized files/140 MiB after successful writes.
 
-Preserve files on load/migration failure and follow [workspace recovery](operations.md#workspace-schema-migration-and-recovery). For support provide the version, operation and sanitized error as described in the [README](../README.md#support). Offline unit tests do not qualify real application installation, WinGet privileges or Windows Update execution.
+Preserve files on load/migration failure and follow [workspace recovery](operations.md#workspace-schema-and-unsupported-databases). For support provide the version, operation and sanitized error as described in the [README](../README.md#support). Offline unit tests do not qualify real application installation, WinGet privileges or Windows Update execution.

@@ -40,7 +40,7 @@ Primary workspace persistence is stored in an embedded **SQLite** database manag
 %LOCALAPPDATA%\OnlyWinget\onlywinget.db
 ```
 
-Upon application startup, `SqliteWorkspaceStore` automatically detects and migrates legacy `%LOCALAPPDATA%\OnlyWinget\workspace-v1.json` data into SQLite transparently. Other local state files include:
+The workspace is stored in SQLite (`%LOCALAPPDATA%\OnlyWinget\onlywinget.db`). Other local state files include:
 
 ```text
 %LOCALAPPDATA%\OnlyWinget\source-preferences-v1.json
@@ -49,7 +49,7 @@ Upon application startup, `SqliteWorkspaceStore` automatically detects and migra
 
 Preset exchange supports only `onlywinget.preset.v1`.
 
-The legacy JSON writer and dormant DPAPI services have been retired. Existing legacy workspace and secure-secret files are retained; SQLite keeps its legacy import reader. `WorkspaceSchemaMigration` replaces `EnsureCreated` with native SQLite `user_version` schema initialization and migration. Empty databases receive the current EF-generated schema at version 1. Recognized unversioned databases are backed up before removing unused Description, CreatedAt, UpdatedAt and PackageName columns; native DDL and the version marker commit together. Preset/package identities, source values, active-preset metadata and unrelated tables remain intact. Unsupported versions, unknown table shapes/constraints or failed integrity checks block initialization and saving. Recovery and retained backups are documented in [operations](operations.md#workspace-schema-migration-and-recovery).
+`WorkspaceSchemaInitializer` replaces `EnsureCreated` with native SQLite `user_version` initialization. Empty databases receive the current EF-generated schema at version 1. Any other version, unknown table shape/constraint or failed integrity check blocks initialization and saving without modifying the database; no conversion, backup or import path exists. See [operations](operations.md#workspace-schema-and-unsupported-databases).
 
 ```mermaid
 flowchart TD

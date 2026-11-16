@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'support/OutputRoot.ps1')
 . (Join-Path $PSScriptRoot 'support/UiTestStateHelpers.ps1')
-$fixtureRoot = Join-Path (Split-Path $PSScriptRoot -Parent) ('artifacts/ui-state-tests/' + [Guid]::NewGuid().ToString('N'))
+$fixtureRoot = Join-Path (Initialize-OutputRoot -RepositoryRoot (Split-Path $PSScriptRoot -Parent)) ('ui-state-tests/' + [Guid]::NewGuid().ToString('N'))
 $sourcePath = Join-Path $fixtureRoot 'Fixture.cs'
 $exePath = Join-Path $fixtureRoot 'Fixture.exe'
 $process = $null

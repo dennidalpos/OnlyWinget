@@ -14,7 +14,7 @@ Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $testProjectPath = Join-Path $repoRoot 'tests/OnlyWinget.Tests/OnlyWinget.Tests.csproj'
-$testResultsPath = Join-Path $repoRoot 'artifacts/test-results'
+$testResultsPath = Join-Path (Initialize-OutputRoot -RepositoryRoot $repoRoot) 'test-results'
 Assert-Command -Name 'dotnet'
 Assert-Path -Path $testProjectPath -Description 'Test project'
 New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null

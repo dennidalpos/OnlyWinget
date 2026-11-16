@@ -11,7 +11,7 @@ $previousLocalAppData = $env:LOCALAPPDATA
 try {
     New-Item -ItemType Directory -Path "$fixtureRepo/scripts/support", "$fixtureRepo/src", "$fixtureRepo/artifacts", "$fixtureData/OnlyWinget/logs" -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'clean.ps1') -Destination "$fixtureRepo/scripts/clean.ps1"
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1') -Destination "$fixtureRepo/scripts/support/ScriptHelpers.ps1"
+    foreach ($helper in @('ScriptHelpers.ps1', 'OutputRoot.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot "support/$helper") -Destination "$fixtureRepo/scripts/support/$helper" }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'support/CloseOwnedApplication.ps1') -Destination "$fixtureRepo/scripts/support/CloseOwnedApplication.ps1"
     Set-Content -LiteralPath "$fixtureRepo/src/Fixture.csproj" -Value '<Project />' -Encoding utf8
     Set-Content -LiteralPath "$fixtureRepo/artifacts/generated.txt" -Value 'generated' -Encoding utf8

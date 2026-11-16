@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.Storage;
@@ -10,17 +9,11 @@ namespace OnlyWinget.Infrastructure.Storage.Sqlite;
 public sealed class SqliteWorkspaceStore : IWorkspaceStore
 {
     private readonly string dbPath;
-    private readonly string legacyJsonPath;
     private readonly Action<string, Exception>? logger;
     private readonly ILogger<SqliteWorkspaceStore>? storeLogger;
     private readonly SemaphoreSlim saveGate = new(1, 1);
     private bool isInitialized;
     private bool loadFailed;
-
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true
-    };
 
     private static readonly Func<WorkspaceDbContext, string, Task<WorkspaceMetadataEntity?>> CompiledGetMetadataByKeyQuery =
         EF.CompileAsyncQuery((WorkspaceDbContext ctx, string key) =>
@@ -28,22 +21,16 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
 
     public SqliteWorkspaceStore(
         string dbPath,
-        string? legacyJsonPath = null,
         Action<string, Exception>? logger = null,
         ILogger<SqliteWorkspaceStore>? storeLogger = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dbPath);
         this.dbPath = dbPath;
-        this.legacyJsonPath = legacyJsonPath ?? DefaultLegacyJsonPath;
         this.logger = logger;
         this.storeLogger = storeLogger;
     }
 
     public static string DefaultFilePath => Path.Combine(AppDataPaths.Root, "onlywinget.db");
-
-    public static string DefaultLegacyJsonPath => Path.Combine(
-        AppDataPaths.Root,
-        "workspace-v1.json");
 
     public async Task<WorkspaceState> LoadAsync(CancellationToken cancellationToken)
     {
@@ -170,83 +157,13 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
             Directory.CreateDirectory(directory);
         }
 
-        var backupPath = await WorkspaceSchemaMigration.InitializeAsync(dbPath, cancellationToken).ConfigureAwait(false);
-        if (backupPath is not null)
-        {
-            storeLogger?.LogInformation("Migrated workspace schema to version 1; previous database backup retained at '{BackupPath}'", backupPath);
-        }
+        await WorkspaceSchemaInitializer.InitializeAsync(dbPath, cancellationToken).ConfigureAwait(false);
 
         await using (var context = new WorkspaceDbContext(dbPath))
         {
             await context.InitializeWalModeAsync(cancellationToken).ConfigureAwait(false);
-
-            var hasPresets = await context.Presets.AnyAsync(cancellationToken).ConfigureAwait(false);
-            var hasMetadata = await context.WorkspaceMetadata.AnyAsync(cancellationToken).ConfigureAwait(false);
-
-            if (!hasPresets && !hasMetadata && File.Exists(legacyJsonPath))
-            {
-                await PerformTransparentMigrationAsync(context, cancellationToken).ConfigureAwait(false);
-            }
         }
 
         isInitialized = true;
-    }
-
-    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Legacy WorkspaceDocument DTO is defined statically.")]
-    [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Legacy WorkspaceDocument DTO is defined statically.")]
-    private async Task PerformTransparentMigrationAsync(WorkspaceDbContext context, CancellationToken cancellationToken)
-    {
-        try
-        {
-            WorkspaceDocument? legacyDocument;
-            await using (var stream = File.OpenRead(legacyJsonPath))
-            {
-                legacyDocument = await JsonSerializer.DeserializeAsync<WorkspaceDocument>(stream, JsonOptions, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-
-            if (legacyDocument is null || legacyDocument.Presets is null || legacyDocument.Presets.Count == 0)
-            {
-                return;
-            }
-
-            foreach (var preset in legacyDocument.Presets)
-            {
-                var presetEntity = new PresetEntity
-                {
-                    Name = preset.Name
-                };
-
-                foreach (var package in preset.Packages)
-                {
-                    presetEntity.Items.Add(new PresetItemEntity
-                    {
-                        PresetId = presetEntity.Id,
-                        PackageId = package.Id,
-                        Source = package.Source ?? string.Empty
-                    });
-                }
-
-                context.Presets.Add(presetEntity);
-            }
-
-            if (!string.IsNullOrEmpty(legacyDocument.ActivePresetName))
-            {
-                context.WorkspaceMetadata.Add(new WorkspaceMetadataEntity
-                {
-                    Key = "ActivePresetName",
-                    Value = legacyDocument.ActivePresetName
-                });
-            }
-
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            storeLogger?.LogInformation("Transparently migrated legacy workspace JSON from '{LegacyPath}' to SQLite database at '{DbPath}'", legacyJsonPath, dbPath);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            logger?.Invoke("SqliteWorkspaceStore.PerformTransparentMigrationAsync", exception);
-            storeLogger?.LogWarning(exception, "Failed transparent migration from legacy workspace JSON file '{LegacyPath}'", legacyJsonPath);
-            throw new InvalidOperationException("Unable to migrate the legacy workspace. Existing data has been preserved.", exception);
-        }
     }
 }

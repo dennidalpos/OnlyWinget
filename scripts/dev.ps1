@@ -13,7 +13,7 @@ Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $targetFramework = 'net10.0-windows10.0.17763.0'
-$exePath = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe"
+$exePath = Join-Path (Get-OutputRoot -RepositoryRoot $repoRoot) "bin/OnlyWinget/$Configuration/$targetFramework/win-x64/OnlyWinget.exe"
 
 if ($Build) {
     $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'

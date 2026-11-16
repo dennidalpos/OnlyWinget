@@ -2,6 +2,8 @@ param([switch]$DiscoveryOnly)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+# Repository-layout fixture: pin the default output root when run directly (check.ps1 pins it for nested runs).
+if ($MyInvocation.CommandOrigin -eq 'Runspace') { $env:ONLYWINGET_OUTPUT_ROOT = $null }
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 . (Join-Path $PSScriptRoot 'support/CloseOwnedApplication.ps1')
 

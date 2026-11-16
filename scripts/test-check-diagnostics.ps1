@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+# Repository-layout fixture: pin the default output root when run directly (check.ps1 pins it for nested runs).
+if ($MyInvocation.CommandOrigin -eq 'Runspace') { $env:ONLYWINGET_OUTPUT_ROOT = $null }
 
 $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('OnlyWinget-check-tests-' + [Guid]::NewGuid().ToString('N'))
 $fixtureScripts = Join-Path $fixtureRoot 'scripts'
@@ -10,7 +12,7 @@ New-Item -ItemType Directory -Path $fixtureSupport, $fixtureProject -Force | Out
 
 try {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'check.ps1') -Destination $fixtureScripts
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1') -Destination $fixtureSupport
+    foreach ($helper in @('ScriptHelpers.ps1', 'OutputRoot.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot "support/$helper") -Destination $fixtureSupport }
     [IO.File]::WriteAllText((Join-Path $fixtureRoot 'OnlyWinget.sln'), '')
     [IO.File]::WriteAllText((Join-Path $fixtureProject 'OnlyWinget.Tests.csproj'), '<Project />')
     foreach ($script in @('build', 'package', 'lint', 'typecheck', 'test')) {
@@ -77,7 +79,7 @@ throw 'intentional failure after restore'
     foreach ($script in @('check', 'build', 'package', 'lint', 'typecheck', 'test', 'format')) {
         Copy-Item -LiteralPath (Join-Path $fixtureScripts "$script.ps1") -Destination $realScripts
     }
-    Copy-Item -LiteralPath (Join-Path $fixtureSupport 'ScriptHelpers.ps1') -Destination $realSupport
+    foreach ($helper in @('ScriptHelpers.ps1', 'OutputRoot.ps1')) { Copy-Item -LiteralPath (Join-Path $fixtureSupport $helper) -Destination $realSupport }
     Copy-Item -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'global.json') -Destination $realRoot
     $realProject = Join-Path $realProjectRoot 'OnlyWinget.Tests.csproj'
     [IO.File]::WriteAllText($realProject, '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile></PropertyGroup></Project>')

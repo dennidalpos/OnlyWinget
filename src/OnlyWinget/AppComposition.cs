@@ -73,7 +73,6 @@ internal static class AppComposition
 
                 services.AddSingleton<IWorkspaceStore>(sp => new SqliteWorkspaceStore(
                     SqliteWorkspaceStore.DefaultFilePath,
-                    SqliteWorkspaceStore.DefaultLegacyJsonPath,
                     null,
                     sp.GetService<ILogger<SqliteWorkspaceStore>>()));
 
@@ -120,20 +119,6 @@ internal static class AppComposition
             });
 
         return builder.Build();
-    }
-
-    internal static void CleanupLegacyProtocol()
-    {
-        if (!OperatingSystem.IsWindows() || Environment.ProcessPath is not { } executablePath) return;
-        try
-        {
-            using var classes = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Classes", writable: true);
-            if (classes is not null) LegacyProtocolCleanup.RemoveOwnedRegistration(classes, executablePath);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
-        {
-            AppDiagnostics.WriteException("LegacyProtocolCleanup", exception);
-        }
     }
 
     public static UiServiceCollection CreateUiServices() => Host.Services.GetRequiredService<UiServiceCollection>();

@@ -19,7 +19,7 @@ $isFastMode = -not $Full
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
-$artifactsPath = Join-Path $repoRoot 'artifacts'
+$artifactsPath = Get-OutputRoot -RepositoryRoot $repoRoot
 $stagingRoot = Join-Path $artifactsPath 'installer'
 $setupOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
 
@@ -90,7 +90,7 @@ function Copy-WinUiPublishResource {
     )
 
     $targetFramework = 'net10.0-windows10.0.17763.0'
-    $buildOutputDir = Join-Path $repoRoot "artifacts/bin/OnlyWinget/$Configuration/$targetFramework/$RuntimeIdentifier"
+    $buildOutputDir = Join-Path $artifactsPath "bin/OnlyWinget/$Configuration/$targetFramework/$RuntimeIdentifier"
     Assert-Path -Path $buildOutputDir -Description "WinUI build output $RuntimeIdentifier"
 
     $resourcePaths = @(
@@ -231,7 +231,7 @@ $installerVersion = Convert-ToInstallerVersion -RawVersion $rawVersion
 $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
 Assert-Path -Path $buildScriptPath -Description 'Build script'
 
-New-Item -ItemType Directory -Path $artifactsPath -Force | Out-Null
+Initialize-OutputRoot -RepositoryRoot $repoRoot | Out-Null
 $packageLockPath = Join-Path $artifactsPath '.package.lock'
 try {
     $packageLock = [System.IO.File]::Open(

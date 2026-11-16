@@ -16,6 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>RepositoryRoot</_Parameter1>
+      <_Parameter2>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..\..'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\..\src\OnlyWinget\TextResources.cs" Link="Presentation\TextResources.cs" />
     <ProjectReference Include="..\..\src\OnlyWinget.Application\OnlyWinget.Application.csproj" />
     <ProjectReference Include="..\..\src\OnlyWinget.Domain\OnlyWinget.Domain.csproj" />
