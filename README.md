@@ -35,7 +35,7 @@ flowchart LR
     Results --> Retry["Check current state before retrying failures"]
 ```
 
-See the [Italian user guide](docs/user-guide.md) for each workflow and recovery path.
+See the [user guide](docs/user-guide.md) ([Italiano](docs/user-guide.it.md)) for each workflow and recovery path.
 
 ## Requirements
 
@@ -73,7 +73,7 @@ pwsh -File .\scripts\run.ps1 -Task Dev -Configuration Release -NoRestore -NonInt
 
 ## Data and operational limits
 
-Presets and the active-preset choice use SQLite (`onlywinget.db`); settings, source preferences and diagnostic logs are stored beside it under `%LOCALAPPDATA%\OnlyWinget`. Activity is kept in the current app session and can be exported. Legacy workspace JSON can be imported on startup. Diagnostic files rotate at 10 MiB, with retention of at most 14 recognized files / 140 MiB after successful writes.
+Presets and the active-preset choice use SQLite (`onlywinget.db`); settings, source preferences and diagnostic logs are stored beside it under `%LOCALAPPDATA%\OnlyWinget`. Activity is kept in the current app session and can be exported. An existing workspace database with an unsupported schema is rejected with an error and left untouched; it is never converted or reset. Diagnostic files rotate at 10 MiB, with retention of at most 14 recognized files / 140 MiB after successful writes.
 
 Only one workflow runs at a time. Cancellation requests a stop and preserves available results; it does not roll back installations or prove that a native update has stopped. Check installed state before retrying an unconfirmed package. A failed or cancelled apply does not trigger an automatic rescan.
 
@@ -94,7 +94,7 @@ flowchart LR
 Arrows between layers show code dependencies; `AppComposition.cs` connects the adapters at startup.
 
 - [Documentation index](docs/README.md)
-- [User guide — Italiano](docs/user-guide.md)
+- [User guide](docs/user-guide.md) · [Guida utente (Italiano)](docs/user-guide.it.md)
 - [Architecture](docs/architecture.md)
 - [Development and troubleshooting](docs/operations.md)
 - [Release and packaging](docs/release.md)

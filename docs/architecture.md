@@ -55,11 +55,8 @@ Preset exchange supports only `onlywinget.preset.v1`.
 flowchart TD
     Load["Load workspace"] --> Inspect["Inspect SQLite schema and integrity"]
     Inspect -->|"Empty database"| Create["Create schema version 1"]
-    Inspect -->|"Recognized version 0"| Backup["Create and verify native SQLite backup"]
-    Backup --> Migrate["Migrate columns and version in one transaction"]
     Inspect -->|"Supported version 1"| Read["Read workspace"]
     Create --> Read
-    Migrate --> Read
     Inspect -->|"Unsupported or invalid"| Block["Report error and block saves"]
     Read --> Preferences["Load source preferences"]
     Preferences -->|"Success"| Publish["Publish complete workspace state"]

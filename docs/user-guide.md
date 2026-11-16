@@ -6,7 +6,7 @@ OnlyWinget combines reusable application lists, WinGet search, application upgra
 
 ## Start safely
 
-Start OnlyWinget.exe after installation or extracting the entire portable ZIP. Check the [requirements](../README.md#requirements). The app loads the local workspace and detects capabilities. Resolve loading errors before saving new data; preserve the current files when investigating migration or recovery.
+Start OnlyWinget.exe after installation or extracting the entire portable ZIP. Check the [requirements](../README.md#requirements). The app loads the local workspace and detects capabilities. Resolve loading errors before saving new data; preserve the current files when investigating a load error or an unsupported workspace schema.
 
 Navigation contains Home, Pacchetti, Aggiornamenti, Sorgenti, Attività and Impostazioni. Search is a Packages mode; Open logs is also available from navigation. Home shows CPU, memory, disk, uptime, Windows version and connectivity; these metrics are not a complete PC-health diagnosis.
 
@@ -93,4 +93,4 @@ Choose system/English/Italian language and system/light/dark theme, confirmation
 
 By default both installed and portable distributions store data in LocalAppData/OnlyWinget: onlywinget.db, settings.json, source-preferences-v1.json and logs. Logs rotate at 10 MiB with at most 14 recognized files/140 MiB after successful writes.
 
-Preserve files on load/migration failure and follow [workspace recovery](operations.md#workspace-schema-and-unsupported-databases). For support provide the version, operation and sanitized error as described in the [README](../README.md#support). Offline unit tests do not qualify real application installation, WinGet privileges or Windows Update execution.
+Preserve files on a load failure or unsupported schema and follow [workspace recovery](operations.md#workspace-schema-and-unsupported-databases). For support provide the version, operation and sanitized error as described in the [README](../README.md#support). Offline unit tests do not qualify real application installation, WinGet privileges or Windows Update execution.
