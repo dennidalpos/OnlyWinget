@@ -35,7 +35,7 @@ if (-not $NoRestore) {
         dotnet restore $solutionPath --locked-mode
     }
     if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet restore fallito.'
+        throw 'dotnet restore failed.'
     }
 }
 
@@ -58,12 +58,12 @@ if ($LASTEXITCODE -ne 0) {
         Assert-ExecutableNotLocked -KillProcess:$StopRunningInstance -ActionName 'Build'
     }
 
-    throw 'dotnet build fallito.'
+    throw 'dotnet build failed.'
 }
 
 if ($isFastMode) {
     Write-Host "PASS: Build succeeded ($Configuration)." -ForegroundColor Green
 } else {
-    Write-Host "Build completata ($Configuration)." -ForegroundColor Green
+    Write-Host "Build completed ($Configuration)." -ForegroundColor Green
 }
 

@@ -30,7 +30,7 @@ function Get-ProjectVersion {
         Select-Object -ExpandProperty Version -First 1
 
     if ([string]::IsNullOrWhiteSpace($rawVersion)) {
-        throw "Versione progetto non trovata in '$projectPath'. Aggiungi l'elemento <Version> al csproj oppure passa -Version."
+        throw "Project version not found in '$projectPath'. Add a <Version> element to the csproj or pass -Version."
     }
 
     return $rawVersion.Trim()
@@ -47,7 +47,7 @@ function Convert-ToInstallerVersion {
         $parsedVersion = [Version]$sanitized
     }
     catch {
-        throw "Versione non valida: '$RawVersion'. Usa una versione numerica compatibile, ed esempio 1.0.0."
+        throw "Invalid version: '$RawVersion'. Use a compatible numeric version, for example 1.0.0."
     }
 
     $major = $parsedVersion.Major
@@ -55,11 +55,11 @@ function Convert-ToInstallerVersion {
     $build = if ($parsedVersion.Build -ge 0) { $parsedVersion.Build } else { 0 }
 
     if ($major -ne 1 -or $minor -ne 0) {
-        throw "La versione dell'applicazione deve essere bloccata a 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$RawVersion'."
+        throw "The application version must stay at 1.0 (e.g. 1.0.x) per policy. Detected version: '$RawVersion'."
     }
 
     if ($major -gt 255 -or $minor -gt 255 -or $build -gt 65535) {
-        throw "Versione fuori range: '$RawVersion'."
+        throw "Version out of range: '$RawVersion'."
     }
 
     return "$major.$minor.$build"
@@ -132,7 +132,7 @@ function Resolve-MakensisExe {
         return $cmd.Source
     }
 
-    throw "Tool NSIS non trovato (makensis.exe). Assicurati che NSIS sia installato in 'C:\Program Files (x86)\NSIS' o presente nel PATH."
+    throw "NSIS tool not found (makensis.exe). Make sure NSIS is installed in 'C:\Program Files (x86)\NSIS' or available on PATH."
 }
 
 function Invoke-PublishAndPackage {
@@ -155,7 +155,7 @@ function Invoke-PublishAndPackage {
             dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
         }
         if ($LASTEXITCODE -ne 0) {
-            throw "dotnet restore per il packaging $runtimeIdentifier fallito."
+            throw "dotnet restore for $runtimeIdentifier packaging failed."
         }
     }
 
@@ -189,7 +189,7 @@ function Invoke-PublishAndPackage {
         dotnet @publishArgs
     }
     if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet publish x64 fallito.'
+        throw 'dotnet publish x64 failed.'
     }
 
     $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
@@ -210,7 +210,7 @@ function Invoke-PublishAndPackage {
         )
         if ($isFastMode) { & $makensisExe @nsisArgs > $null }
         else { & $makensisExe @nsisArgs }
-        if ($LASTEXITCODE -ne 0) { throw 'Compilazione NSIS setup fallita.' }
+        if ($LASTEXITCODE -ne 0) { throw 'NSIS setup compilation failed.' }
         Assert-Path -Path $stagedSetupPath -Description 'Staged NSIS setup executable'
     }
 
@@ -249,7 +249,7 @@ try {
     Repair-PackagePromotion -OutputDirectory $setupOutputDir
     & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -Fast:$Fast -Full:$Full -NonInteractive:$NonInteractive
     if ($LASTEXITCODE -ne 0) {
-        throw 'Preparazione build fallita prima del packaging.'
+        throw 'Build preparation failed before packaging.'
     }
 
     Invoke-PublishAndPackage

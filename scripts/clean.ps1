@@ -85,7 +85,7 @@ function Invoke-ProjectClean {
 
         dotnet clean $projectPath -c $Configuration
         if ($LASTEXITCODE -ne 0) {
-            throw "dotnet clean fallito per il progetto '$projectPath'."
+            throw "dotnet clean failed for project '$projectPath'."
         }
     }
 }
@@ -112,7 +112,7 @@ function Invoke-NuGetCacheClean {
     }
 
     if ($failedCaches.Count -gt 0) {
-        Write-Warning "Pulizia cache NuGet/.NET parzialmente fallita per: $($failedCaches -join ', '). La clean del repository continua; chiudi Visual Studio/dotnet e riprova se vuoi svuotare anche quelle cache."
+        Write-Warning "NuGet/.NET cache cleanup partially failed for: $($failedCaches -join ', '). Repository clean continues; close Visual Studio/dotnet and retry to clear those caches too."
     }
 }
 
@@ -120,7 +120,7 @@ Assert-Command -Name 'dotnet'
 
 $projectPaths = @(Get-SupportedProjectPath)
 if ($projectPaths.Count -eq 0) {
-    throw "Nessun progetto .csproj trovato sotto '$repoRoot'."
+    throw "No .csproj project found under '$repoRoot'."
 }
 
 if (-not $DryRun) {
@@ -136,7 +136,7 @@ function Remove-GeneratedPath {
         -Path $Path `
         -RepositoryRoot $repoRoot `
         -AllowedRoots @($repoRoot) `
-        -Description 'Pulizia'
+        -Description 'Cleanup'
 
     if (-not (Test-Path -LiteralPath $fullPath)) {
         return
@@ -160,7 +160,7 @@ function Remove-GeneratedPath {
     }
 
     if (Test-Path -LiteralPath $fullPath) {
-        throw "Impossibile rimuovere il percorso generato '$fullPath'."
+        throw "Cannot remove generated path '$fullPath'."
     }
 }
 
@@ -209,4 +209,4 @@ if ($All) {
 Invoke-NuGetCacheClean
 
 $modeLabel = if ($All) { 'clean:all' } else { 'clean' }
-Write-Host "Clean completata ($Configuration, $modeLabel)." -ForegroundColor Green
+Write-Host "Clean completed ($Configuration, $modeLabel)." -ForegroundColor Green

@@ -28,7 +28,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 
 Assert-Command -Name 'winapp'
 if ($null -eq (Get-Process -Id $AppPid -ErrorAction SilentlyContinue)) {
-    throw "Processo OnlyWinget non trovato: $AppPid"
+    throw "OnlyWinget process not found: $AppPid"
 }
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
@@ -81,7 +81,7 @@ $window = @($windowsList) |
     Where-Object { $_ -and $_.PSObject.Properties['processId'] -and $_.processId -eq $AppPid -and $_.className -ne '#32770' } |
     Select-Object -First 1
 if ($null -eq $window) {
-    throw "Finestra principale OnlyWinget non trovata per PID $AppPid."
+    throw "OnlyWinget main window not found for PID $AppPid."
 }
 
 $hwnd = [IntPtr]::new([int64]$window.hwnd)
@@ -112,7 +112,7 @@ Test-Ui 'Preset table exposes a scroll surface' {
     Invoke-UiCli ui wait-for 'PresetPackageList' -a $AppPid -t 3000 -q
     $scrollElement = Get-ScrollElement -AutomationId 'PresetPackageList'
     if ($null -eq $scrollElement) {
-        throw 'Tabella preset non trovata tramite UI Automation.'
+        throw 'Preset table not found through UI Automation.'
     }
 
     $scrollElement.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern) | Out-Null
@@ -210,7 +210,7 @@ foreach ($layout in @(
 )) {
     Test-Ui "Layout $($layout.Name) exposes bounded navigation" {
         if (-not [OnlyWingetUiTestNative]::MoveWindow($hwnd, 80, 80, $layout.Width, $layout.Height, $true)) {
-            throw "MoveWindow fallito per $($layout.Name)."
+            throw "MoveWindow failed for $($layout.Name)."
         }
 
         Start-Sleep -Milliseconds 300
@@ -251,7 +251,7 @@ if ($CaptureAllRoutes) {
     $routeDirectory = Join-Path $OutputDirectory 'routes'
     New-Item -ItemType Directory -Path $routeDirectory -Force | Out-Null
     if (-not [OnlyWingetUiTestNative]::MoveWindow($hwnd, 20, 20, 1800, 950, $true)) {
-        throw 'Impossibile impostare la finestra per gli screenshot delle route.'
+        throw 'Cannot set up the window for route screenshots.'
     }
 
     function Save-RouteScreenshot {
@@ -312,7 +312,7 @@ if ($isFastMode) {
     }
 }
 else {
-    Write-Host "UI test: $pass passati, $fail falliti."
+    Write-Host "UI test: $pass passed, $fail failed."
 }
 if ($fail -gt 0) {
     exit 1

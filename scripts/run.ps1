@@ -85,7 +85,7 @@ function Invoke-OnlyWingetTask {
     }
 
     if ((Test-Path Variable:\LASTEXITCODE) -and $LASTEXITCODE -ne 0) {
-        throw "Task $SelectedTask fallito (ExitCode: $LASTEXITCODE)."
+        throw "Task $SelectedTask failed (ExitCode: $LASTEXITCODE)."
     }
 }
 

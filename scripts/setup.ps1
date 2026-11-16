@@ -20,7 +20,7 @@ if ($ForceEvaluate) {
 
 dotnet restore @restoreArgs
 if ($LASTEXITCODE -ne 0) {
-    throw 'dotnet restore fallito.'
+    throw 'dotnet restore failed.'
 }
 
-Write-Host 'Repository setup completato.' -ForegroundColor Green
+Write-Host 'Repository setup completed.' -ForegroundColor Green

@@ -41,6 +41,6 @@ if (-not $anyIssue) {
     }
 }
 if ($anyIssue) {
-    throw 'PSScriptAnalyzer lint fallito.'
+    throw 'PSScriptAnalyzer lint failed.'
 }
 

@@ -25,7 +25,7 @@ if (-not $NoRestore) {
         dotnet restore $solutionPath --locked-mode
     }
     if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet restore per il format fallito.'
+        throw 'dotnet restore for format failed.'
     }
 }
 
@@ -45,12 +45,12 @@ if ($isFastMode) {
     dotnet format @formatArgs
 }
 if ($LASTEXITCODE -ne 0) {
-    throw 'dotnet format fallito.'
+    throw 'dotnet format failed.'
 }
 
 if ($Fix) {
     Write-Host 'PASS: Formattazione applicata.' -ForegroundColor Green
 } else {
-    Write-Host 'PASS: Verifica formato completata.' -ForegroundColor Green
+    Write-Host 'PASS: Format verification completed.' -ForegroundColor Green
 }
 

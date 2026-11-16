@@ -15,6 +15,6 @@ Set-StrictMode -Version Latest
 $buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
 & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -WarnAsError -Fast:$Fast -Full:$Full -NonInteractive:$NonInteractive
 if ((Test-Path Variable:\LASTEXITCODE) -and $LASTEXITCODE -ne 0) {
-    throw 'Typecheck build fallito.'
+    throw 'Typecheck build failed.'
 }
 

@@ -21,7 +21,7 @@ function Test-OnlyWingetAutoInstallAllowed {
     )
 
     if ($env:ONLYWINGET_SKIP_AUTO_INSTALL -eq '1') {
-        throw "$Description mancante. Installazione automatica disabilitata da ONLYWINGET_SKIP_AUTO_INSTALL=1."
+        throw "$Description missing. Automatic installation disabled by ONLYWINGET_SKIP_AUTO_INSTALL=1."
     }
 
     Write-Host "Installazione automatica prerequisito: $Description" -ForegroundColor Cyan
@@ -38,7 +38,7 @@ function Invoke-OnlyWingetExternalInstall {
     Write-Host "Installazione prerequisito: $Description" -ForegroundColor Cyan
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Installazione fallita: $Description"
+        throw "Installation failed: $Description"
     }
 }
 
@@ -108,13 +108,13 @@ function Install-PowerShellModuleIfMissing {
         Sort-Object Version -Descending |
         Select-Object -First 1
     if ($null -eq $module) {
-        throw "Modulo PowerShell $Name non trovato dopo l'installazione."
+        throw "Modulo PowerShell $Name not found after installation."
     }
 
     return $module
 }
 
-# Esecuzione interattiva rimossa come da richiesta.
+# Interactive execution was removed.
 
 
 function Assert-Command {
@@ -129,7 +129,7 @@ function Assert-Command {
     }
 
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Comando richiesto non trovato: $Name"
+        throw "Required command not found: $Name"
     }
 }
 
@@ -140,7 +140,7 @@ function Assert-Path {
     )
 
     if (-not (Test-Path -LiteralPath $Path)) {
-        throw "$Description non trovato: $Path"
+        throw "$Description not found: $Path"
     }
 }
 

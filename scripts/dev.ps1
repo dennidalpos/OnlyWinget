@@ -20,11 +20,11 @@ if ($Build) {
     Assert-Path -Path $buildScriptPath -Description 'Build script'
     & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance
     if ((Test-Path Variable:\LASTEXITCODE) -and $LASTEXITCODE -ne 0) {
-        throw 'Build fallito prima dell''avvio in dev mode.'
+        throw 'Build failed before starting dev mode.'
     }
 }
 
 Assert-Path -Path $exePath -Description 'Built application executable'
 
 Start-Process -FilePath $exePath -WorkingDirectory (Split-Path $exePath -Parent) -WindowStyle Normal
-Write-Host "OnlyWinget avviato: $exePath" -ForegroundColor Green
+Write-Host "OnlyWinget started: $exePath" -ForegroundColor Green

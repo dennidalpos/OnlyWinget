@@ -26,11 +26,11 @@ if (-not [string]::IsNullOrWhiteSpace($PreviousVersion)) {
         $parsedPrevious = [Version]$sanitizedPrevious
     }
     catch {
-        throw "Versione precedente non valida: '$PreviousVersion'. Usa una versione numerica, ad esempio 1.0.0."
+        throw "Invalid previous version: '$PreviousVersion'. Use a numeric version, for example 1.0.0."
     }
 
     if ($parsedPrevious.Major -ne 1 -or $parsedPrevious.Minor -ne 0) {
-        throw "La versione precedente ($PreviousVersion) deve appartenere alla versione 1.0 (es. 1.0.x) come da policy."
+        throw "The previous version ($PreviousVersion) must belong to version 1.0 (e.g. 1.0.x) per policy."
     }
 }
 
@@ -104,7 +104,7 @@ function Get-InstalledOnlyWingetProduct {
 function Assert-CleanInstallState {
     $installed = @(Get-InstalledOnlyWingetProduct)
     if ($installed.Count -gt 0 -or (Test-Path -LiteralPath $installFolder)) {
-        throw "OnlyWinget risulta gia' installato. Usa un host pulito o disinstalla manualmente prima della validazione."
+        throw "OnlyWinget is already installed. Use a clean host or uninstall it manually before validation."
     }
 }
 
@@ -115,7 +115,7 @@ function Get-ProjectVersion {
         Select-Object -ExpandProperty Version -First 1
 
     if ([string]::IsNullOrWhiteSpace($version)) {
-        throw 'Versione progetto non trovata.'
+        throw 'Project version not found.'
     }
 
     $trimmed = $version.Trim()
@@ -124,11 +124,11 @@ function Get-ProjectVersion {
         $parsedVersion = [Version]$sanitized
     }
     catch {
-        throw "Versione progetto non valida: '$trimmed'."
+        throw "Invalid project version: '$trimmed'."
     }
 
     if ($parsedVersion.Major -ne 1 -or $parsedVersion.Minor -ne 0) {
-        throw "La versione del progetto deve rimanere alla versione 1.0 (es. 1.0.x) come da policy. Versione rilevata: '$trimmed'."
+        throw "The project version must stay at 1.0 (e.g. 1.0.x) per policy. Detected version: '$trimmed'."
     }
 
     return $trimmed
@@ -147,7 +147,7 @@ function Invoke-NsisInstall {
     }
     $process = Start-Process -FilePath $SetupPath -ArgumentList $argList -Wait -PassThru -WindowStyle Hidden
     if ($process.ExitCode -ne 0) {
-        throw "NSIS Setup fallito con exit code $($process.ExitCode)."
+        throw "NSIS Setup failed with exit code $($process.ExitCode)."
     }
 
     return "NSIS silent execution OK ($Scope)"
@@ -158,7 +158,7 @@ function Invoke-NsisUninstall {
     Assert-Path -Path $uninstallerPath -Description 'NSIS Uninstall EXE'
     $process = Start-Process -FilePath $uninstallerPath -ArgumentList '/S' -Wait -PassThru -WindowStyle Hidden
     if ($process.ExitCode -ne 0) {
-        throw "NSIS Uninstall fallito con exit code $($process.ExitCode)."
+        throw "NSIS Uninstall failed with exit code $($process.ExitCode)."
     }
 
     return "NSIS silent uninstall OK"
@@ -192,7 +192,7 @@ function Assert-SingleInstalledProduct {
 
     $installed = @(Get-InstalledOnlyWingetProduct -VisibleOnly)
     if ($installed.Count -ne 1) {
-        throw "Atteso 1 prodotto installato visibile, trovati $($installed.Count)."
+        throw "Expected 1 visible installed product, found $($installed.Count)."
     }
 
     if ($installed[0].SystemComponent -eq 1) {
@@ -200,7 +200,7 @@ function Assert-SingleInstalledProduct {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion) -and $installed[0].DisplayVersion -ne $ExpectedVersion) {
-        throw "Versione installata inattesa. Attesa $ExpectedVersion, trovata $($installed[0].DisplayVersion)."
+        throw "Unexpected installed version. Expected $ExpectedVersion, found $($installed[0].DisplayVersion)."
     }
 
     Assert-Path -Path (Join-Path $installFolder 'OnlyWinget.exe') -Description 'Installed executable'
@@ -219,7 +219,7 @@ function Assert-StartMenuShortcut {
     }
 
     if (-not ($shortcutPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1)) {
-        throw "Shortcut Start Menu non trovato. Percorsi controllati: $($shortcutPaths -join '; ')"
+        throw "Start Menu shortcut not found. Checked paths: $($shortcutPaths -join '; ')"
     }
 }
 
@@ -236,7 +236,7 @@ function Assert-DesktopShortcut {
     }
 
     if (-not ($shortcutPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1)) {
-        throw "Shortcut Desktop non trovato. Percorsi controllati: $($shortcutPaths -join '; ')"
+        throw "Desktop shortcut not found. Checked paths: $($shortcutPaths -join '; ')"
     }
 }
 
@@ -310,7 +310,7 @@ if ($installedAfterUninstall.Count -gt 0) {
 }
 
 if (Test-Path -LiteralPath $installFolder) {
-    throw "La cartella applicazione non e' stata rimossa: $installFolder"
+    throw "The application folder was not removed: $installFolder"
 }
 
 Assert-Path -Path $sentinelPath -Description 'LocalAppData sentinel'
@@ -324,4 +324,4 @@ $reportLines.Add('LocalAppDataPreserved: OK')
 $reportLines.Add("ValidationCompletedAt: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 $reportLines | Set-Content -LiteralPath $reportPath -Encoding UTF8
 
-Write-Host "Validazione installer NSIS completata: $reportPath" -ForegroundColor Green
+Write-Host "NSIS installer validation completed: $reportPath" -ForegroundColor Green

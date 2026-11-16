@@ -43,7 +43,7 @@ function Invoke-Step {
     }
     try {
         & $Action
-        Assert-LastExitCode "$Name fallito."
+        Assert-LastExitCode "$Name failed."
     }
     catch {
         $failure = $_
@@ -84,7 +84,7 @@ function Remove-CheckGeneratedPath {
         -Path $Path `
         -RepositoryRoot $repoRoot `
         -AllowedRoots @($artifactsPath, $tmpPath) `
-        -Description 'Pulizia check'
+        -Description 'Check cleanup'
 
     if (-not (Test-Path -LiteralPath $fullPath)) {
         return
@@ -180,7 +180,7 @@ Invoke-Step 'integration/e2e test' {
     if (-not $RunWingetSmoke) {
         $script:smokeTestStatus = 'not_run'
         if (-not $isFastMode) {
-            Write-Host 'Smoke test winget reali: not_run. Usa -RunWingetSmoke per abilitarli.' -ForegroundColor DarkGray
+            Write-Host 'Live winget smoke tests: not_run. Use -RunWingetSmoke to enable them.' -ForegroundColor DarkGray
         }
         return
     }
@@ -192,7 +192,7 @@ Invoke-Step 'integration/e2e test' {
         } else {
             dotnet test $testProjectPath -c $Configuration --no-build --no-restore --filter "Category=Smoke" --results-directory $testResultsPath --logger "trx;LogFileName=winget-smoke-tests.trx"
         }
-        Assert-LastExitCode 'dotnet test smoke fallito.'
+        Assert-LastExitCode 'dotnet test smoke failed.'
         $script:smokeTestStatus = 'passed'
         if ($isFastMode) { Write-Host 'PASS: Winget smoke tests passed.' -ForegroundColor Green }
     }
@@ -229,11 +229,11 @@ Invoke-Step 'artifact analysis' {
         Select-Object -First 1
 
     if ($null -eq $setup) {
-        throw 'Setup NSIS non trovato dopo il packaging.'
+        throw 'NSIS setup not found after packaging.'
     }
 
     if ($null -eq $portable) {
-        throw 'Archivio portable x64 non trovato dopo il packaging.'
+        throw 'Portable x64 archive not found after packaging.'
     }
 
     @(
