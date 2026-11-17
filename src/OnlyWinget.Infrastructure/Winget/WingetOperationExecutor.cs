@@ -105,11 +105,11 @@ public sealed class WingetOperationExecutor(
 
                     classifiedError = errorClassifier.Classify(commandResult);
                     if (classifiedError?.Kind == WingetErrorKind.NotFound
-                        && commandBuilder.BuildUpgradeByName(selection, bypassHashValidation) is { } byName)
+                        && commandBuilder.BuildByInstalledName(selection, bypassHashValidation) is { } byName)
                     {
                         logger?.LogInformation(
-                            "winget Upgrade {PackageId} not matched by id; retrying by installed name {Name}.",
-                            selection.Package.Id, selection.InstalledName);
+                            "winget {Action} {PackageId} not matched by id; retrying by installed name {Name}.",
+                            selection.Action, selection.Package.Id, selection.InstalledName);
                         try
                         {
                             commandResult = await commandRunner.RunAsync(

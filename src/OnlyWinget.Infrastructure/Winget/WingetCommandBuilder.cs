@@ -63,13 +63,13 @@ public sealed class WingetCommandBuilder(UpdateScanOptions? scanOptions = null)
     }
 
     /// <summary>
-    /// Fallback for an upgrade that winget lists but cannot match by id: installed entries correlated from Add/Remove
+    /// Fallback for an upgrade or uninstall that winget lists but cannot match by id: installed entries correlated from Add/Remove
     /// Programs only answer to their display name. Returns null when the selection has no installed name.
     /// </summary>
-    public IReadOnlyList<string>? BuildUpgradeByName(PackageSelection selection, bool bypassHashValidation = false)
+    public IReadOnlyList<string>? BuildByInstalledName(PackageSelection selection, bool bypassHashValidation = false)
     {
         ArgumentNullException.ThrowIfNull(selection);
-        if (selection.Action != PackageAction.Upgrade || !WingetInputValidator.IsValid(selection.InstalledName))
+        if (selection.Action is not (PackageAction.Upgrade or PackageAction.Uninstall) || !WingetInputValidator.IsValid(selection.InstalledName))
         {
             return null;
         }

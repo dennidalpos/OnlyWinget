@@ -52,8 +52,16 @@ public sealed partial class UpdatesPage : UserControl
 
     private async void OnCommandInvoked(object? sender, UiCommandInvokedEventArgs args)
     {
-        switch (args.Command.Id)
+        var command = args.Command;
+        if (command.ConfirmationResourceKey is { } confirmation && XamlRoot is { } root &&
+            !await App.UiServices.Confirmation.ConfirmAsync(root, command.LabelResourceKey, confirmation))
         {
+            return;
+        }
+
+        switch (command.Id)
+        {
+            case UiCommandId.ReinstallUpdates: await ViewModel.ReinstallAsync(); break;
             case UiCommandId.RefreshUpdates: await RefreshUpdatesAsync(); break;
             case UiCommandId.ApplyUpdates: await ViewModel.ApplyAsync(); break;
             case UiCommandId.CancelOperation: ViewModel.Cancel(); break;

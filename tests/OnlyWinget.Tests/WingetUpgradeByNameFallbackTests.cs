@@ -26,6 +26,20 @@ public sealed class WingetUpgradeByNameFallbackTests
     }
 
     [Fact]
+    public async Task UninstallNotMatchedByIdIsRetriedByInstalledName()
+    {
+        var runner = new ScriptedRunner(new WingetCommandResult(NotFound, "no package", string.Empty), new WingetCommandResult(0, "ok", string.Empty));
+        var executor = new WingetOperationExecutor(runner, new WingetCommandBuilder(), new WingetErrorClassifier(), TimeSpan.Zero);
+        var selection = new PackageSelection(new PackageIdentity("Synology.DriveClient", "winget"), PackageAction.Uninstall, "Synology Drive Client (remove only)");
+
+        var summary = await executor.ExecuteAsync(new OperationPlan("test", [selection]), CancellationToken.None);
+
+        Assert.True(summary.Succeeded);
+        Assert.Equal("uninstall", runner.Calls[1][0]);
+        Assert.Contains("--name", runner.Calls[1]);
+    }
+
+    [Fact]
     public async Task UpgradeWithoutInstalledNameIsNotRetried()
     {
         var runner = new ScriptedRunner(new WingetCommandResult(NotFound, "no package", string.Empty));

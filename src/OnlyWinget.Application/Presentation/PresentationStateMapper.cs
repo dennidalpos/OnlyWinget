@@ -140,6 +140,9 @@ public static class PresentationStateMapper
         var operationResultsByPackage = operationResults
             .GroupBy(result => new PackageIdentity(result.PackageId, result.Source))
             .ToDictionary(group => group.Key, group => group.Last());
+        var reinstallPackages = OnlyWingetApplication.PackagesNeedingReinstall(state);
+        var canReinstall = canUseWinget && !isLoading && !isExecuting
+            && state.SelectedUpdates.Any(reinstallPackages.Contains);
 
         return new UpdatesPresentationState(
             state.Updates
@@ -156,7 +159,9 @@ public static class PresentationStateMapper
                             ? FormatPublisher(metadata)
                             : "Value_Unknown",
                         state.SelectedUpdates.Contains(update.Package),
-                        result?.Status ?? "Update_Status_Available",
+                        reinstallPackages.Contains(update.Package)
+                            ? "Update_Status_ReinstallRequired"
+                            : result?.Status ?? "Update_Status_Available",
                         result?.ErrorDetails,
                         result?.Output);
                 })
@@ -169,6 +174,7 @@ public static class PresentationStateMapper
             [
                 new(UiCommandId.RefreshUpdates, "Command_Updates_Refresh", canUseWinget && !isLoading && !isExecuting, UiCommandKind.Primary, Icon: "Refresh"),
                 new(UiCommandId.ApplyUpdates, "Command_Updates_ApplySelected", canUseWinget && state.SelectedUpdates.Count > 0 && !isLoading && !isExecuting, Icon: "Download"),
+                new(UiCommandId.ReinstallUpdates, "Command_Updates_Reinstall", canReinstall, UiCommandKind.Destructive, IsVisible: reinstallPackages.Count > 0, Icon: "Refresh", TooltipResourceKey: "Tooltip_Updates_Reinstall", ConfirmationResourceKey: "Dialog_ReinstallUpdates_Message"),
                 new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isExecuting, UiCommandKind.Cancel, Icon: "Cancel")
             ],
             isLoading,
