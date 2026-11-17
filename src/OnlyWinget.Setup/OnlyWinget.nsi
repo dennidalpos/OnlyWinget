@@ -45,6 +45,7 @@ SetCompressor /SOLID lzma
 !include "MultiUser.nsh"
 !include "MUI2.nsh"
 !include "x64.nsh"
+!include "WinVer.nsh"
 !include "CloseOwnedApplication.nsh"
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
@@ -75,10 +76,17 @@ OutFile "${OUT_FILE}"
 !insertmacro MUI_LANGUAGE "Italian"
 !insertmacro MUI_LANGUAGE "English"
 
+LangString UnsupportedOs ${LANG_ITALIAN} "OnlyWinget richiede Windows 10 versione 1809 (build 17763) o successiva a 64 bit."
+LangString UnsupportedOs ${LANG_ENGLISH} "OnlyWinget requires 64-bit Windows 10 version 1809 (build 17763) or later."
+
 Function .onInit
-  ${If} ${RunningX64}
-    SetRegView 64
+  ; Self-contained x64 build: refuse early instead of installing an app that cannot start.
+  ${IfNot} ${RunningX64}
+  ${OrIfNot} ${AtLeastBuild} 17763
+    MessageBox MB_OK|MB_ICONSTOP "$(UnsupportedOs)" /SD IDOK
+    Abort
   ${EndIf}
+  SetRegView 64
   !insertmacro MULTIUSER_INIT
 FunctionEnd
 
@@ -101,6 +109,8 @@ Section "MainSection" SEC01
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
+  ; The file macro leaves $OUTDIR on the last localized folder; NSIS uses $OUTDIR as the shortcut "Start in" folder.
+  SetOutPath "$INSTDIR"
   CreateDirectory "$SMPROGRAMS\OnlyWinget"
   CreateShortcut "$SMPROGRAMS\OnlyWinget\OnlyWinget.lnk" "$INSTDIR\OnlyWinget.exe" "" "$INSTDIR\OnlyWinget.exe" 0
   CreateShortcut "$SMPROGRAMS\OnlyWinget\Uninstall.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0

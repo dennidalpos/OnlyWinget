@@ -52,6 +52,12 @@ public sealed class WingetPackageSearchService(
             .ConfigureAwait(false);
 
         var rawOutput = WingetOutputHelpers.JoinOutput(result);
+        if (result.ExitCode == unchecked((int)0x8A150014))
+        {
+            // APPINSTALLER_CLI_ERROR_NO_APPLICATIONS_FOUND: an empty result, not a failed source.
+            return WingetOperationOutcome<PackageSearchResult>.Success([], rawOutput);
+        }
+
         if (!result.Succeeded)
         {
             return WingetOperationOutcome<PackageSearchResult>.Failure(

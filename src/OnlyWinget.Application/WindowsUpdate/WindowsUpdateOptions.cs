@@ -4,4 +4,6 @@ public sealed record WindowsUpdateOptions(
     bool IncludeSoftware = true,
     bool IncludeDrivers = false,
     bool IncludeMicrosoftUpdates = false,
-    bool IncludeOptionalUpdates = false);
+    bool IncludeOptionalUpdates = false,
+    bool ShowHidden = false,
+    bool DownloadOnly = false);

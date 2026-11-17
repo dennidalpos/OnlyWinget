@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.Activity;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
@@ -146,6 +147,7 @@ public sealed partial class OnlyWingetApplication
                             NotifyStateChanged();
                         });
                         OperationExecutionSummary summary;
+                        var executionStartedAt = clock.GetUtcNow();
                         try
                         {
                             summary = await operationExecutor.ExecuteAsync(
@@ -159,15 +161,17 @@ public sealed partial class OnlyWingetApplication
                         catch (OperationExecutionCanceledException exception)
                         {
                             RecordOperationResults(exception.Summary.Results);
+                            await InspectIncompleteOperationsAsync(exception.Summary.Results, executionStartedAt).ConfigureAwait(false);
                             throw;
                         }
                         RecordOperationResults(summary.Results);
+                        await InspectIncompleteOperationsAsync(summary.Results, executionStartedAt).ConfigureAwait(false);
 
                         if (!summary.Succeeded || validationFailures.Count > 0)
                         {
                             var failedPackages = summary.Results
                                 .Where(r => !r.Succeeded)
-                                .Select(r => r.Selection.Package.Id)
+                                .Select(DescribeFailure)
                                 .Concat(validationFailures.Select(f => $"{f.Selection.Package.Id} (validation)"))
                                 .Distinct()
                                 .ToArray();
@@ -189,6 +193,103 @@ public sealed partial class OnlyWingetApplication
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// After a failed, killed or cancelled install/upgrade the real state is unknown (the installer may have
+    /// half-applied). Report what winget now says, and remove only the failed run's download leftovers.
+    /// Never uninstalls, purges or forces anything. Runs on its own short timeout so a cancel cannot hang it.
+    /// </summary>
+    private async Task InspectIncompleteOperationsAsync(
+        IReadOnlyList<OperationExecutionResult> results,
+        DateTimeOffset startedAt)
+    {
+        var incomplete = results
+            .Where(result => !result.Succeeded
+                && result.Selection.Action is PackageAction.Install or PackageAction.Upgrade
+                && result.AttemptCount > 0)
+            .ToArray();
+        if (incomplete.Length == 0)
+        {
+            return;
+        }
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        foreach (var result in incomplete)
+        {
+            var package = result.Selection.Package;
+            try
+            {
+                var status = await packageResolver.CheckInstalledStatusAsync(package, timeout.Token).ConfigureAwait(false);
+                var state = status.IsInstalled
+                    ? $"still installed (version {status.InstalledVersion}); the {result.Selection.Action.ToString().ToLowerInvariant()} did not complete."
+                    : "not installed.";
+                AddActivity(ActivitySeverity.Warning, package.Id, $"State after the failed operation: {state}");
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                appLogger?.LogDebug("Installed-state check after failure skipped for {PackageId}: {Message}", package.Id, exception.Message);
+            }
+        }
+
+        if (residueCleaner is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var removed = await residueCleaner
+                .CleanAsync(incomplete.Select(result => result.Selection.Package.Id).ToArray(), startedAt, timeout.Token)
+                .ConfigureAwait(false);
+            if (removed.Count > 0)
+            {
+                AddActivity(
+                    ActivitySeverity.Information,
+                    "Cleaned up leftovers",
+                    $"Removed temporary winget download folders left by the failed operation: {string.Join(", ", removed)}.");
+            }
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            appLogger?.LogDebug("Residue cleanup skipped: {Message}", exception.Message);
+        }
+    }
+
+    private static string DescribeFailure(OperationExecutionResult result)
+    {
+        var id = result.Selection.Package.Id;
+        if (result.Error is not { } error)
+        {
+            return id;
+        }
+
+        var code = error.ExitCodeHex ?? $"0x{unchecked((uint)result.CommandResult.ExitCode):X8}";
+        return error.Kind == WingetErrorKind.Cancelled ? id : $"{id} ({code} {error.Kind})";
+    }
+
+    private void LogToApplicationLog(AppLogLevel level, string message)
+    {
+        if (appLogger is null)
+        {
+            return;
+        }
+
+        var logLevel = level switch
+        {
+            AppLogLevel.Error => LogLevel.Error,
+            AppLogLevel.Warning => LogLevel.Warning,
+            AppLogLevel.Information => LogLevel.Information,
+            _ => LogLevel.Debug
+        };
+        appLogger.Log(logLevel, "{Message}", message);
+    }
+
+    private static string SingleLine(string text, int maxLength = 400)
+    {
+        var line = string.Join(' ', text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(part => part.Any(char.IsLetter)));
+        return line.Length <= maxLength ? line : line[..maxLength] + "...";
+    }
+
     private void RecordOperationResults(IReadOnlyList<OperationExecutionResult> results)
     {
         UpdateState(() =>
@@ -201,13 +302,17 @@ public sealed partial class OnlyWingetApplication
         });
         foreach (var result in results)
         {
-            var severity = result.Error?.Kind == WingetErrorKind.NoUpdates
+            var severity = result.Error?.Kind is WingetErrorKind.NoUpdates or WingetErrorKind.AlreadyInstalled
+                or WingetErrorKind.RebootRequired
                 ? ActivitySeverity.Warning
                 : result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error;
             AddActivity(severity, result.Selection.Package.Id, CreateOperationActivityMessage(result));
-            Logger?.Invoke(result.Succeeded ? AppLogLevel.Verbose : AppLogLevel.Error,
-                $"[Package Result] ID: {result.Selection.Package.Id}, Action: {result.Selection.Action}, Succeeded: {result.Succeeded}, ExitCode: {result.CommandResult.ExitCode}, StdOut: {result.CommandResult.StandardOutput.Trim()}, StdErr: {result.CommandResult.StandardError.Trim()}, AttemptCount: {result.AttemptCount}",
-                nameof(ExecutePlanAsync));
+            var packageResultLine =
+                $"[Package Result] ID: {result.Selection.Package.Id}, Action: {result.Selection.Action}, Succeeded: {result.Succeeded}, " +
+                $"ExitCode: 0x{unchecked((uint)result.CommandResult.ExitCode):X8}, Kind: {result.Error?.Kind.ToString() ?? "None"}, " +
+                $"Attempts: {result.AttemptCount}, StdErr: {SingleLine(result.CommandResult.StandardError)}, StdOut: {SingleLine(result.CommandResult.StandardOutput)}";
+            Logger?.Invoke(result.Succeeded ? AppLogLevel.Verbose : AppLogLevel.Error, packageResultLine, nameof(ExecutePlanAsync));
+            LogToApplicationLog(result.Succeeded ? AppLogLevel.Information : AppLogLevel.Error, packageResultLine);
         }
     }
 
@@ -253,5 +358,10 @@ public sealed partial class OnlyWingetApplication
             _ => AppLogLevel.Information
         };
         Logger?.Invoke(logLevel, $"[Activity] {title}: {message}", nameof(AddActivity));
+        if (logLevel != AppLogLevel.Information)
+        {
+            // Success/info activity is already visible in the UI; warnings and errors are what a log reader needs.
+            LogToApplicationLog(logLevel, $"[Activity] {title}: {SingleLine(message, 500)}");
+        }
     }
 }

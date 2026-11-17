@@ -32,4 +32,8 @@ public sealed record OnlyWingetState(
     IReadOnlyList<OperationExecutionResult> LastOperationResults,
     OperationProgress? OperationProgress,
     ApplicationBusyState BusyState,
-    string? UserVisibleError);
+    string? UserVisibleError,
+    IReadOnlyList<WindowsUpdateHistoryEntry>? WindowsUpdateHistory = null,
+    IReadOnlyList<WindowsUpdateIdentity>? SelectedHistoryUpdates = null,
+    SelectionHeaderState HistorySelectionHeader = default,
+    bool RestartPending = false);

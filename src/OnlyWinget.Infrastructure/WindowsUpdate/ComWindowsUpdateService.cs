@@ -32,7 +32,9 @@ public static class WindowsUpdateSearchCriteria
             ? string.Empty
             : " and BrowseOnly=0";
 
-        return $"IsInstalled=0 and IsHidden=0{typeCriteria}{browseCriteria}";
+        // Hidden updates are what Settings lists under "Hidden updates"; every other scan skips them.
+        var hiddenCriteria = options.ShowHidden ? "IsHidden=1" : "IsHidden=0";
+        return $"IsInstalled=0 and {hiddenCriteria}{typeCriteria}{browseCriteria}";
     }
 }
 
@@ -43,6 +45,7 @@ public sealed class ComWindowsUpdateService(
 {
     private const string ProgId = "Microsoft.Update.Session";
     private const string MicrosoftUpdateServiceId = "7971f918-a847-4430-9279-4a52d1efe18d";
+    private const int ScanAttempts = 3;
 
     public async Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(
         WindowsUpdateOptions options,
@@ -51,10 +54,10 @@ public sealed class ComWindowsUpdateService(
         cancellationToken.ThrowIfCancellationRequested();
         if (OperatingSystem.IsWindows())
         {
-            try
+            var sessionType = Type.GetTypeFromProgID(ProgId);
+            for (var attempt = 1; sessionType is not null; attempt++)
             {
-                var sessionType = Type.GetTypeFromProgID(ProgId);
-                if (sessionType is not null)
+                try
                 {
                     var outcome = await Task.Run(() => ScanNativeComAsync(options, cancellationToken), cancellationToken).ConfigureAwait(false);
                     if (outcome is not null && outcome.Succeeded)
@@ -62,19 +65,37 @@ public sealed class ComWindowsUpdateService(
                         logger?.LogInformation("Windows Update COM scan completed successfully via Microsoft.Update.Session with {Count} updates.", outcome.Rows.Count);
                         return outcome;
                     }
+
+                    break;
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex) when (ex is not OutOfMemoryException)
-            {
-                logger?.LogWarning(ex, "Windows Update COM Interop failed. Falling back to PowerShell execution.");
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (COMException ex) when (WindowsUpdateErrorCodes.IsTransient(ex.HResult) && attempt < ScanAttempts)
+                {
+                    // The service was restarting or busy (for example right after an installer ran). The PowerShell
+                    // fallback drives the same API and would hit the same condition, so wait and retry first.
+                    var delay = TimeSpan.FromSeconds(2 * attempt * attempt);
+                    logger?.LogWarning(
+                        "Windows Update COM scan hit a transient error {Description}; retrying in {Delay}s (attempt {Attempt}/{Max}).",
+                        WindowsUpdateErrorCodes.Describe(ex.HResult), delay.TotalSeconds, attempt, ScanAttempts);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    var description = ex is COMException comException ? WindowsUpdateErrorCodes.Describe(comException.HResult) : null;
+                    logger?.LogWarning(ex, "Windows Update COM Interop failed ({Description}). Falling back to PowerShell execution.", description ?? ex.Message);
+                    break;
+                }
             }
         }
 
-        return await fallbackService.ScanAsync(options, cancellationToken).ConfigureAwait(false);
+        var fallback = await fallbackService.ScanAsync(options, cancellationToken).ConfigureAwait(false);
+        logger?.LogInformation(
+            "Windows Update PowerShell fallback scan finished: succeeded {Succeeded}, {Count} updates{Error}.",
+            fallback.Succeeded, fallback.Rows.Count, fallback.Error is null ? string.Empty : $", error: {fallback.Error.Message}");
+        return fallback;
     }
 
     public async Task<WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>> InstallAsync(
@@ -112,7 +133,8 @@ public sealed class ComWindowsUpdateService(
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
                 logger?.LogError(ex, "Windows Update COM install failed; automatic retry is disabled to avoid repeating installation.");
-                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(new WindowsUpdateError(ex.Message), string.Empty);
+                var message = ex is COMException com ? WindowsUpdateErrorCodes.Describe(com.HResult) ?? ex.Message : ex.Message;
+                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Failure(new WindowsUpdateError(message), string.Empty);
             }
         }
 
@@ -190,6 +212,7 @@ public sealed class ComWindowsUpdateService(
             dynamic categoryCollection = update.Categories;
             categoriesObject = (object)categoryCollection;
             var categories = new List<string>();
+            var categoryIds = new List<string>();
             for (var index = 0; index < (int)categoryCollection.Count; index++)
             {
                 object category = categoryCollection.Item(index);
@@ -197,6 +220,15 @@ public sealed class ComWindowsUpdateService(
                 {
                     string? name = ((dynamic)category).Name;
                     if (!string.IsNullOrWhiteSpace(name)) categories.Add(name);
+                    try
+                    {
+                        string? categoryId = ((dynamic)category).CategoryID;
+                        if (!string.IsNullOrWhiteSpace(categoryId)) categoryIds.Add(categoryId);
+                    }
+                    catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+                    {
+                        // The category has no ID: classification falls back to the title.
+                    }
                 }
                 finally { TryReleaseCom(category); }
             }
@@ -211,16 +243,27 @@ public sealed class ComWindowsUpdateService(
             }
 
             string? severity = update.MsrcSeverity;
+            var title = (string)update.Title;
+            // Real WUA updates always expose these; only the hide/uninstall extras are optional.
+            var isHidden = false;
+            var isUninstallable = false;
+            try { isHidden = Convert.ToBoolean(update.IsHidden); }
+            catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { }
+            try { isUninstallable = Convert.ToBoolean(update.IsUninstallable); }
+            catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { }
             return new WindowsUpdateItem(
                 new WindowsUpdateIdentity((string)identity.UpdateID, (int)identity.RevisionNumber),
-                (string)update.Title,
+                title,
                 (string?)update.Description,
                 string.IsNullOrWhiteSpace(severity) ? null : severity,
                 categories,
                 articles,
                 Convert.ToUInt64(update.MaxDownloadSize),
                 Convert.ToBoolean(update.IsDownloaded),
-                Convert.ToBoolean(update.RebootRequired));
+                Convert.ToBoolean(update.RebootRequired),
+                WindowsUpdateClassifier.FromCategoryIds(categoryIds, title),
+                isHidden,
+                isUninstallable);
         }
         finally
         {
@@ -331,6 +374,16 @@ public sealed class ComWindowsUpdateService(
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            if (options.DownloadOnly)
+            {
+                // Same as Settings' "Download" without "Install": updates stay staged for a later install.
+                progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Completed, 100, targetUpdates.Count, targetUpdates.Count));
+                var downloaded = matchedItems
+                    .Select(item => new WindowsUpdateInstallResult(item.Identity, item.Title, true, false, "2", "Downloaded; not installed."))
+                    .ToList();
+                return WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(downloaded, "COM Native Download Completed");
+            }
+
             progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Installing, 0, 0, targetUpdates.Count));
 
             dynamic installer = session.CreateUpdateInstaller();
@@ -351,6 +404,8 @@ public sealed class ComWindowsUpdateService(
                     var (title, identity) = matchedItems[i];
                     dynamic updateResult = installResult.GetUpdateResult(i);
                     int resultCode = Convert.ToInt32(updateResult.ResultCode);
+                    int hResult = Convert.ToInt32(updateResult.HResult);
+                    // OperationResultCode: 2 succeeded, 3 succeeded with errors, 4 failed, 5 aborted.
                     bool succeeded = resultCode == 2;
                     bool itemReboot = overallRebootRequired || Convert.ToBoolean(updateResult.RebootRequired);
 
@@ -360,8 +415,9 @@ public sealed class ComWindowsUpdateService(
                         succeeded,
                         itemReboot,
                         resultCode.ToString(),
-                        succeeded ? "Installed via Direct COM" : "COM installation completed with result code " + resultCode
-                    ));
+                        succeeded
+                            ? "Installed via Direct COM"
+                            : DescribeInstallFailure(resultCode, hResult)));
                 }
 
                 progress?.Report(new OperationProgress("WindowsUpdate", WingetProgressPhase.Completed, 100, targetUpdates.Count, targetUpdates.Count));
@@ -383,9 +439,23 @@ public sealed class ComWindowsUpdateService(
         }
     }
 
+    /// <summary>Message for a per-update install result: the result-code name plus the decoded HRESULT.</summary>
+    internal static string DescribeInstallFailure(int resultCode, int hResult)
+    {
+        var state = resultCode switch
+        {
+            3 => "Installed with errors",
+            4 => "Installation failed",
+            5 => "Installation was aborted",
+            _ => $"Installation ended with result code {resultCode}"
+        };
+        var detail = WindowsUpdateErrorCodes.Describe(hResult);
+        return detail is null ? state + "." : $"{state}: {detail}";
+    }
+
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "WUA automation job methods are provided by the operating system.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "WUA automation job methods are provided by the operating system.")]
-    private static Task<object> RunComJobAsync(Func<object, object> begin, Func<dynamic, object> end, CancellationToken cancellationToken) =>
+    internal static Task<object> RunComJobAsync(Func<object, object> begin, Func<dynamic, object> end, CancellationToken cancellationToken) =>
         WindowsUpdateComJob.RunAsync(begin, job => end(job), job => ((dynamic)job).RequestAbort(), job =>
         {
             try
@@ -401,7 +471,7 @@ public sealed class ComWindowsUpdateService(
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Windows Update ProgID type instantiation.")]
     [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Windows Update COM dynamic invocation is protected by try-catch fallback.")]
-    private static void TryRegisterMicrosoftUpdateService(dynamic searcher, WindowsUpdateOptions options)
+    internal static void TryRegisterMicrosoftUpdateService(dynamic searcher, WindowsUpdateOptions options)
     {
         if (!options.IncludeMicrosoftUpdates)
         {
@@ -444,7 +514,7 @@ public sealed class ComWindowsUpdateService(
         }
     }
 
-    private static void TryReleaseCom(object? comObj)
+    internal static void TryReleaseCom(object? comObj)
     {
         if (comObj is not null && Marshal.IsComObject(comObj))
         {

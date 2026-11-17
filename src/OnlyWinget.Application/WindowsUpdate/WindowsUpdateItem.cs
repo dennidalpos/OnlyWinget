@@ -9,4 +9,7 @@ public sealed record WindowsUpdateItem(
     IReadOnlyList<string> KnowledgeBaseArticles,
     ulong MaxDownloadSize,
     bool IsDownloaded,
-    bool RebootRequired);
+    bool RebootRequired,
+    WindowsUpdateClassification Classification = WindowsUpdateClassification.Other,
+    bool IsHidden = false,
+    bool IsUninstallable = false);

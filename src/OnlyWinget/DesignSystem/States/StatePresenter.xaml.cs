@@ -50,8 +50,6 @@ public sealed partial class StatePresenter : UserControl, INotifyPropertyChanged
     public bool CanCancel { get => (bool)GetValue(CanCancelProperty); set => SetValue(CanCancelProperty, value); }
 
     public Visibility CardVisibility => IsOpen ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility ProgressRingVisibility => (IsLoading && IsIndeterminate) ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility FontIconVisibility => !(IsLoading && IsIndeterminate) ? Visibility.Visible : Visibility.Collapsed;
     public Visibility TitleVisibility => string.IsNullOrWhiteSpace(Title) ? Visibility.Collapsed : Visibility.Visible;
     public Visibility ProgressBarVisibility => IsLoading ? Visibility.Visible : Visibility.Collapsed;
     public Visibility ActionsVisibility => (CanCancel || ActionButtonVisibility == Visibility.Visible) ? Visibility.Visible : Visibility.Collapsed;

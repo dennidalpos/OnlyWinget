@@ -30,8 +30,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool bypassHashValidation;
 
+    [ObservableProperty]
+    private bool includeUnknownVersions;
+
+    [ObservableProperty]
+    private bool includePinnedPackages;
+
     internal SettingsViewModel(IAppSettingsService settingsService)
     {
+        includeUnknownVersions = settingsService.Current.IncludeUnknownVersions;
+        includePinnedPackages = settingsService.Current.IncludePinnedPackages;
         this.settingsService = settingsService;
         language = settingsService.Current.Language;
         theme = settingsService.Current.Theme;
@@ -52,7 +60,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             LogLevel,
             ContinueOperationsAfterFailure,
             BypassHashValidation,
-            settingsService.Current.SidebarWidth),
+            settingsService.Current.SidebarWidth,
+            IncludeUnknownVersions,
+            IncludePinnedPackages),
         cancellationToken);
 
     [RelayCommand]
@@ -66,5 +76,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         LogLevel = settingsService.Current.LogLevel;
         ContinueOperationsAfterFailure = settingsService.Current.ContinueOperationsAfterFailure;
         BypassHashValidation = settingsService.Current.BypassHashValidation;
+        IncludeUnknownVersions = settingsService.Current.IncludeUnknownVersions;
+        IncludePinnedPackages = settingsService.Current.IncludePinnedPackages;
     }
 }

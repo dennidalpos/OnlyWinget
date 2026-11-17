@@ -150,6 +150,15 @@ public sealed class OnlyWingetTableRow : Grid
                 Mode = BindingMode.OneWay
             };
             checkBox.SetBinding(CheckBox.IsCheckedProperty, cbBinding);
+            if (!string.IsNullOrEmpty(parentTable.SelectableBindingPath))
+            {
+                // Rows that cannot be selected keep a visible but disabled checkbox instead of looking actionable.
+                checkBox.SetBinding(Control.IsEnabledProperty, new Binding
+                {
+                    Path = new PropertyPath(parentTable.SelectableBindingPath),
+                    Mode = BindingMode.OneWay
+                });
+            }
 
             var border = new Border
             {

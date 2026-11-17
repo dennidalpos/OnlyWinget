@@ -28,16 +28,13 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Status Ring / Icon -->
-            <Grid Grid.Column="0" VerticalAlignment="Center">
-                <ProgressRing x:Name="StatusRing" Width="16" Height="16" IsActive="True" VerticalAlignment="Center" />
-                <FontIcon x:Name="StatusIcon" FontSize="16" VerticalAlignment="Center" Visibility="Collapsed" />
-            </Grid>
+            <!-- Status icon (progress is shown by the horizontal bar only) -->
+            <FontIcon x:Name="StatusIcon" Grid.Column="0" Glyph="&#xE895;" FontSize="16" VerticalAlignment="Center" />
 
             <!-- Status Header and Detail -->
             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                <TextBlock x:Name="StatusTitle" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{services:Localize Key=Tracker_OperationInProgress}" />
-                <TextBlock x:Name="StatusDetail" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="StatusTitle" Style="{StaticResource BodyStrongTextBlockStyle}" Text="{services:Localize Key=Tracker_OperationInProgress}" AutomationProperties.LiveSetting="Polite" />
+                <TextBlock x:Name="StatusDetail" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
             </StackPanel>
 
             <!-- Percentage Counter -->
@@ -45,6 +42,12 @@
 
             <!-- Buttons -->
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Button x:Name="DismissButton" Click="OnDismissClick" Visibility="Collapsed" Style="{StaticResource SecondaryButtonStyle}" Padding="8,4" AutomationProperties.AutomationId="TrackerDismissButton">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <SymbolIcon Symbol="Accept" />
+                        <TextBlock Text="{services:Localize Key=Tracker_Dismiss}" />
+                    </StackPanel>
+                </Button>
                 <Button x:Name="CancelOperationButton" Click="OnCancelOperationClick" Style="{StaticResource SecondaryButtonStyle}" Padding="8,4">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <SymbolIcon Symbol="Cancel" />
@@ -60,7 +63,7 @@
             </StackPanel>
 
             <!-- Progress Bar -->
-            <ProgressBar x:Name="OperationProgressBar" Grid.Row="1" Grid.ColumnSpan="4" Height="3" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+            <ProgressBar x:Name="OperationProgressBar" Grid.Row="1" Grid.ColumnSpan="4" Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.Name="{services:Localize Key=Tracker_OperationInProgress}" />
         </Grid>
     </Border>
 </UserControl>

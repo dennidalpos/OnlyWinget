@@ -83,6 +83,9 @@ public sealed partial class OnlyWingetTable : UserControl
     public bool IsSelectionEnabled { get => (bool)GetValue(IsSelectionEnabledProperty); set => SetValue(IsSelectionEnabledProperty, value); }
     public bool ToggleOnRowClick { get => (bool)GetValue(ToggleOnRowClickProperty); set => SetValue(ToggleOnRowClickProperty, value); }
     public string SelectionBindingPath { get; set; } = "IsSelected";
+
+    /// <summary>Optional bool property of the row; when false its checkbox is disabled.</summary>
+    public string? SelectableBindingPath { get; set; }
     public string SelectionLabel { get; set; } = "Select all";
 
     public event EventHandler<OnlyWingetTableBatchSelectionEventArgs>? BatchSelectionChanged;

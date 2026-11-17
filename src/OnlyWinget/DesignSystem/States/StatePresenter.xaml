@@ -19,11 +19,8 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Icon/Progress Ring -->
-                    <Grid Grid.Column="0" Grid.Row="0" Grid.RowSpan="4" VerticalAlignment="Top" Margin="0,4,0,0">
-                        <ProgressRing Width="24" Height="24" IsActive="{x:Bind IsLoading, Mode=OneWay}" Visibility="{x:Bind ProgressRingVisibility, Mode=OneWay}" />
-                        <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{x:Bind IconForeground, Mode=OneWay}" FontSize="24" Visibility="{x:Bind FontIconVisibility, Mode=OneWay}" />
-                    </Grid>
+                    <!-- State icon (progress is shown by the horizontal ProgressBar only) -->
+                    <FontIcon Grid.Column="0" Grid.Row="0" Grid.RowSpan="4" VerticalAlignment="Top" Margin="0,4,0,0" Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{x:Bind IconForeground, Mode=OneWay}" FontSize="24" />
 
                     <!-- Title & Message -->
                     <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4">
@@ -55,23 +52,20 @@
                 <!-- Minimal Layout (when loading/executing) -->
                 <Grid x:Name="MinimalLayout" ColumnSpacing="12" Visibility="{x:Bind MinimalLayoutVisibility, Mode=OneWay}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    
-                    <ProgressRing Grid.Column="0" Width="16" Height="16" IsActive="{x:Bind IsLoading, Mode=OneWay}" VerticalAlignment="Center" />
-                    
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind Title, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" Visibility="{x:Bind TitleVisibility, Mode=OneWay}" />
                         <TextBlock Text="·" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" Visibility="{x:Bind TitleAndMessageVisibility, Mode=OneWay}" />
-                        <TextBlock Text="{x:Bind Message, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock Text="{x:Bind Message, Mode=OneWay}" Style="{StaticResource BodyTextBlockStyle}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                     </StackPanel>
 
-                    <ProgressBar Grid.Column="2" IsIndeterminate="{x:Bind IsIndeterminate, Mode=OneWay}" Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" Width="120" VerticalAlignment="Center" Margin="12,0" />
-                    
-                    <Button Grid.Column="3" x:Name="MinimalCancelButton" Visibility="{x:Bind CancelButtonVisibility, Mode=OneWay}" Click="OnCancel" Content="{x:Bind CancelButtonText, Mode=OneWay}" VerticalAlignment="Center" />
+                    <ProgressBar Grid.Column="1" IsIndeterminate="{x:Bind IsIndeterminate, Mode=OneWay}" Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" Width="160" VerticalAlignment="Center" Margin="12,0" AutomationProperties.Name="{x:Bind Message, Mode=OneWay}" />
+
+                    <Button Grid.Column="2" x:Name="MinimalCancelButton" Visibility="{x:Bind CancelButtonVisibility, Mode=OneWay}" Click="OnCancel" Content="{x:Bind CancelButtonText, Mode=OneWay}" VerticalAlignment="Center" />
                 </Grid>
             </Grid>
         </Border>

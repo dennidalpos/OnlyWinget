@@ -41,7 +41,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        SystemBackdrop = new MicaBackdrop();
+        SystemBackdrop = CreateBackdrop();
         Activated += OnWindowActivated;
         ResizeAndCenterWindow();
         ApplyWindowIcon();
@@ -243,7 +243,7 @@ public sealed partial class MainWindow : Window
                 rootElement.InvalidateArrange();
             }
 
-            DispatcherQueue.TryEnqueue(() => SystemBackdrop = new MicaBackdrop());
+            DispatcherQueue.TryEnqueue(() => SystemBackdrop = CreateBackdrop());
         }
         catch (Exception exception)
         {
@@ -471,6 +471,19 @@ public sealed partial class MainWindow : Window
         var windowHandle = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
         AppWindow.GetFromWindowId(windowId).SetIcon(iconPath);
+    }
+
+    /// <summary>Mica where the OS supports it (Windows 11); the default solid backdrop otherwise (Windows 10).</summary>
+    private static Microsoft.UI.Xaml.Media.SystemBackdrop? CreateBackdrop() =>
+        Microsoft.UI.Composition.SystemBackdrops.MicaController.IsSupported() ? new MicaBackdrop() : null;
+
+    private void OnOpenLogsKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key is Windows.System.VirtualKey.Enter or Windows.System.VirtualKey.Space)
+        {
+            e.Handled = true;
+            OnOpenLogsTapped(sender, null!);
+        }
     }
 
     private async void OnOpenLogsTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)

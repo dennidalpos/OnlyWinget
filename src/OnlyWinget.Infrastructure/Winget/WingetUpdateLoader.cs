@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Domain.Packages;
 
@@ -6,7 +7,9 @@ namespace OnlyWinget.Infrastructure.Winget;
 public sealed class WingetUpdateLoader(
     IWingetCommandRunner commandRunner,
     WingetTableParser tableParser,
-    WingetErrorClassifier errorClassifier) : IUpdateLoader
+    WingetErrorClassifier errorClassifier,
+    UpdateScanOptions? scanOptions = null,
+    Microsoft.Extensions.Logging.ILogger<WingetUpdateLoader>? logger = null) : IUpdateLoader
 {
     private const int NoInstalledPackagesFound = unchecked((int)0x8A150014);
     private static readonly string[] RequiredColumns = ["Id", "Version", "Available"];
@@ -14,13 +17,24 @@ public sealed class WingetUpdateLoader(
     public async Task<WingetOperationOutcome<PackageUpdate>> LoadUpdatesAsync(string source, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
-        var result = await commandRunner.RunAsync(
-                "winget",
-                ["upgrade", "--source", source, "--accept-source-agreements", "--disable-interactivity"],
-                cancellationToken)
-            .ConfigureAwait(false);
+        var arguments = new List<string>
+        {
+            "upgrade", "--source", source, "--accept-source-agreements", "--disable-interactivity"
+        };
+        if (scanOptions?.IncludeUnknownVersions == true)
+        {
+            arguments.Add("--include-unknown");
+        }
+
+        if (scanOptions?.IncludePinned == true)
+        {
+            arguments.Add("--include-pinned");
+        }
+
+        var result = await commandRunner.RunAsync("winget", arguments, cancellationToken).ConfigureAwait(false);
 
         var rawOutput = WingetOutputHelpers.JoinOutput(result);
+        LogSkippedPackages(source, rawOutput);
         if (!result.Succeeded)
         {
             if (result.ExitCode == NoInstalledPackagesFound)
@@ -64,6 +78,19 @@ public sealed class WingetUpdateLoader(
         return WingetOperationOutcome<PackageUpdate>.Success(rows, rawOutput);
     }
 
+    private void LogSkippedPackages(string source, string rawOutput)
+    {
+        foreach (var line in rawOutput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (char.IsAsciiDigit(line[0]) &&
+                (line.Contains("--include-unknown", StringComparison.Ordinal) ||
+                 line.Contains("--include-pinned", StringComparison.Ordinal)))
+            {
+                logger?.LogInformation("winget upgrade ({Source}) skipped packages: {Summary}", source, line);
+            }
+        }
+    }
+
     private static WingetOperationOutcome<PackageUpdate> InvalidOutput(string message, string rawOutput) =>
         WingetOperationOutcome<PackageUpdate>.Failure(new ClassifiedWingetError(WingetErrorKind.InvalidOutput, message), rawOutput);
 
@@ -76,6 +103,8 @@ public sealed class WingetUpdateLoader(
         var isEmptyResult = line.TrimEnd('.').ToUpperInvariant() is
             "-" or "\\" or "|" or "/" or
             "NO PACKAGES NEED AN UPDATE" or "NO AVAILABLE UPGRADE FOUND" or "NO APPLICABLE UPDATE FOUND" or
+            "NO INSTALLED PACKAGE FOUND MATCHING INPUT CRITERIA" or
+            "NON È STATO TROVATO ALCUN PACCHETTO INSTALLATO CORRISPONDENTE AI CRITERI DI INPUT" or
             "NON SONO STATI TROVATI AGGIORNAMENTI DISPONIBILI" or "NON È STATO TROVATO ALCUN AGGIORNAMENTO APPLICABILE";
         var isSkippedPackageSummary = char.IsAsciiDigit(line[0]) &&
             (line.Contains("--include-unknown", StringComparison.Ordinal) ||

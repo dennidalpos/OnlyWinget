@@ -180,8 +180,8 @@ public static class PresentationStateMapper
     {
         ArgumentNullException.ThrowIfNull(state);
         var isScanning = state.BusyState == ApplicationBusyState.ScanningWindowsUpdates;
-        var isInstalling = state.BusyState == ApplicationBusyState.InstallingWindowsUpdates;
-        var isBusy = isScanning || isInstalling;
+        var isInstalling = state.BusyState is ApplicationBusyState.InstallingWindowsUpdates or ApplicationBusyState.ManagingWindowsUpdates;
+        var isBusy = isScanning || isInstalling || state.BusyState == ApplicationBusyState.LoadingWindowsUpdateHistory;
         var canUseWindowsUpdate = state.Capabilities.CanUseWindowsUpdate;
         var resultsByUpdate = state.LastWindowsUpdateResults
             .GroupBy(result => WindowsUpdateFingerprint(result.Identity), StringComparer.Ordinal)
@@ -209,7 +209,9 @@ public static class PresentationStateMapper
                         update.RebootRequired,
                         state.SelectedWindowsUpdates.Any(selected => WindowsUpdateEquals(selected, update.Identity)),
                         result is null ? null : result.Succeeded ? "Operation_Status_Succeeded" : $"Operation_Status_Failed{(string.IsNullOrWhiteSpace(result.Message) ? string.Empty : $" ({result.Message})")}",
-                        result?.Message ?? (result?.RebootRequired == true ? "Restart required." : null));
+                        result?.Message ?? (result?.RebootRequired == true ? "Restart required." : null),
+                        $"WindowsUpdate_Class_{update.Classification}",
+                        update.IsHidden);
                 })
                 .OrderBy(row => row.Title, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(row => row.UpdateId, StringComparer.OrdinalIgnoreCase)
@@ -228,10 +230,56 @@ public static class PresentationStateMapper
             [
                 new(UiCommandId.ScanWindowsUpdates, "Command_WindowsUpdates_Scan", canUseWindowsUpdate && !isBusy, UiCommandKind.Primary, Icon: "Refresh"),
                 new(UiCommandId.InstallWindowsUpdates, "Command_WindowsUpdates_InstallSelected", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy, Icon: "Download"),
-                new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isBusy, UiCommandKind.Cancel, Icon: "Cancel")
+                new(UiCommandId.RestartWindows, "Command_WindowsUpdates_Restart", canUseWindowsUpdate && !isBusy, UiCommandKind.Primary, IsVisible: state.RestartPending, Icon: "Refresh", ConfirmationResourceKey: "Dialog_RestartWindows_Message"),
+                new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isBusy, UiCommandKind.Cancel, Icon: "Cancel"),
+                new(UiCommandId.DownloadWindowsUpdates, "Command_WindowsUpdates_DownloadOnly", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy, UiCommandKind.Secondary, UiCommandPlacement.Overflow, Icon: "Download"),
+                new(UiCommandId.HideWindowsUpdates, "Command_WindowsUpdates_Hide", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy, UiCommandKind.Secondary, UiCommandPlacement.Overflow, ConfirmationResourceKey: "Dialog_HideWindowsUpdates_Message"),
+                new(UiCommandId.ShowWindowsUpdates, "Command_WindowsUpdates_Show", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy, UiCommandKind.Secondary, UiCommandPlacement.Overflow),
+                new(UiCommandId.CancelRestart, "Command_WindowsUpdates_CancelRestart", canUseWindowsUpdate && !isBusy, UiCommandKind.Secondary, UiCommandPlacement.Overflow)
             ],
             isScanning,
             isInstalling,
+            state.UserVisibleError ?? (canUseWindowsUpdate ? null : state.Capabilities.WindowsUpdateUnavailableMessage));
+    }
+
+    public static WindowsUpdateHistoryPresentationState ToWindowsUpdateHistoryState(OnlyWingetState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var isLoading = state.BusyState == ApplicationBusyState.LoadingWindowsUpdateHistory;
+        var isManaging = state.BusyState == ApplicationBusyState.ManagingWindowsUpdates;
+        var isBusy = isLoading || isManaging;
+        var canUseWindowsUpdate = state.Capabilities.CanUseWindowsUpdate;
+        var selected = state.SelectedHistoryUpdates ?? [];
+        var history = state.WindowsUpdateHistory ?? [];
+
+        return new WindowsUpdateHistoryPresentationState(
+            history
+                .Select(entry =>
+                {
+                    var canSelect = OnlyWingetApplication.CanUninstallFromHistory(entry);
+                    return new WindowsUpdateHistoryRow(
+                        entry.UpdateId ?? string.Empty,
+                        entry.Date,
+                        entry.Title,
+                        entry.KnowledgeBaseArticle ?? string.Empty,
+                        entry.Classification,
+                        $"WindowsUpdate_Class_{entry.Classification}",
+                        entry.Operation,
+                        entry.Result,
+                        entry.HResult == 0 ? null : $"0x{unchecked((uint)entry.HResult):X8}",
+                        canSelect,
+                        canSelect && selected.Any(identity => string.Equals(identity.UpdateId, entry.UpdateId, StringComparison.OrdinalIgnoreCase)));
+                })
+                .ToArray(),
+            state.HistorySelectionHeader,
+            [
+                new(UiCommandId.LoadWindowsUpdateHistory, "Command_WindowsUpdates_LoadHistory", canUseWindowsUpdate && !isBusy, UiCommandKind.Primary, Icon: "Refresh"),
+                new(UiCommandId.UninstallWindowsUpdates, "Command_WindowsUpdates_Uninstall", canUseWindowsUpdate && selected.Count > 0 && !isBusy, UiCommandKind.Destructive, ConfirmationResourceKey: "Dialog_UninstallWindowsUpdates_Message", Icon: "Delete"),
+                new(UiCommandId.RestartWindows, "Command_WindowsUpdates_Restart", canUseWindowsUpdate && !isBusy, UiCommandKind.Primary, IsVisible: state.RestartPending, Icon: "Refresh", ConfirmationResourceKey: "Dialog_RestartWindows_Message"),
+                new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isBusy, UiCommandKind.Cancel, Icon: "Cancel")
+            ],
+            isLoading,
+            isManaging,
             state.UserVisibleError ?? (canUseWindowsUpdate ? null : state.Capabilities.WindowsUpdateUnavailableMessage));
     }
 

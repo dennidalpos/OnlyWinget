@@ -42,10 +42,29 @@ public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch, Onl
     }
 
     public Task ScanAsync(WindowsUpdateOptions options) => RunAsync(token => Workflow.ScanWindowsUpdatesAsync(options, token));
+
+    /// <summary>Hides or shows the selected updates, then rescans so the list reflects the change.</summary>
+    public Task SetHiddenAsync(bool hidden, WindowsUpdateOptions options) => RunAsync(async token =>
+    {
+        var result = await Workflow.HideSelectedWindowsUpdatesAsync(hidden, options, token);
+        if (!token.IsCancellationRequested)
+        {
+            await Workflow.ScanWindowsUpdatesAsync(options, token);
+        }
+    });
+
+    public Task RestartAsync() => RunAsync(token => Workflow.ScheduleRestartAsync(TimeSpan.FromSeconds(30), token));
+    public Task CancelRestartAsync() => RunAsync(async token =>
+    {
+        await Workflow.CancelRestartAsync(token);
+        Workflow.RefreshRestartPending();
+    });
     public Task InstallAsync(WindowsUpdateOptions options) => RunAsync(async token =>
     {
         var result = await Workflow.InstallSelectedWindowsUpdatesAsync(options, token);
-        if (result.Succeeded && !token.IsCancellationRequested)
+        Workflow.RefreshRestartPending();
+        // A download-only run leaves the updates pending, so the list is already correct.
+        if (result.Succeeded && !token.IsCancellationRequested && !options.DownloadOnly)
         {
             await Workflow.ScanWindowsUpdatesAsync(options, token);
         }
@@ -120,7 +139,8 @@ public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch, Onl
             FormatBoolean(row.IsDownloaded),
             FormatBoolean(row.RebootRequired),
             row.IsSelected,
-            statusText);
+            statusText,
+            TextResources.Get(row.ClassificationKey));
     }
 
     private static string FormatBoolean(bool value) => TextResources.Get(value ? "Value_Yes" : "Value_No");

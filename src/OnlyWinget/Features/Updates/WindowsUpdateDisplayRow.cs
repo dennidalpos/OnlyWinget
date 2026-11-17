@@ -12,4 +12,5 @@ public sealed record WindowsUpdateDisplayRow(
     string IsDownloaded,
     string RebootRequired,
     bool IsSelected,
-    string Status);
+    string Status,
+    string Classification = "-");

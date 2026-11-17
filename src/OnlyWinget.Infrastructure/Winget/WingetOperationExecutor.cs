@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Logging;
 using OnlyWinget.Application.System;
 using OnlyWinget.Application.Winget;
 using OnlyWinget.Domain.Operations;
+using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Infrastructure.Winget;
 
@@ -8,7 +10,8 @@ public sealed class WingetOperationExecutor(
     IWingetCommandRunner commandRunner,
     WingetCommandBuilder commandBuilder,
     WingetErrorClassifier errorClassifier,
-    TimeSpan? retryDelay = null) : IOperationExecutor
+    TimeSpan? retryDelay = null,
+    ILogger<WingetOperationExecutor>? logger = null) : IOperationExecutor
 {
     public async Task<OperationExecutionSummary> ExecuteAsync(
         OperationPlan plan,
@@ -76,6 +79,7 @@ public sealed class WingetOperationExecutor(
                             plan.Selections.Count));
                     }
 
+                    var attemptStopwatch = global::System.Diagnostics.Stopwatch.StartNew();
                     try
                     {
                         commandResult = await commandRunner.RunAsync(
@@ -92,17 +96,26 @@ public sealed class WingetOperationExecutor(
                     }
                     catch (Exception exception) when (exception is not OutOfMemoryException)
                     {
-                        commandResult = new WingetCommandResult(-1, string.Empty, exception.Message);
+                        commandResult = new WingetCommandResult(
+                            -1,
+                            string.Empty,
+                            exception.Message,
+                            exception is TimeoutException);
                     }
 
                     classifiedError = errorClassifier.Classify(commandResult);
-                    var succeeded = commandResult.Succeeded || classifiedError?.Kind == WingetErrorKind.NoUpdates;
-                    if (succeeded || !errorClassifier.IsRetryable(commandResult, classifiedError) || attempt >= maxAttempts)
+                    var succeeded = commandResult.Succeeded || classifiedError?.Kind.IsSuccessfulOutcome() == true;
+                    var willRetry = !succeeded
+                        && attempt < maxAttempts
+                        && !commandResult.TimedOut
+                        && errorClassifier.IsRetryable(commandResult, classifiedError);
+                    LogAttempt(selection, attempt, maxAttempts, commandResult, classifiedError, succeeded, willRetry, attemptStopwatch.Elapsed);
+                    if (!willRetry)
                     {
                         break;
                     }
 
-                    var delay = retryDelay ?? TimeSpan.FromMilliseconds(1000);
+                    var delay = retryDelay ?? WingetErrorClassifier.RetryDelayFor(classifiedError);
                     if (delay > TimeSpan.Zero)
                     {
                         await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
@@ -139,5 +152,43 @@ public sealed class WingetOperationExecutor(
         }
 
         return new OperationExecutionSummary(results);
+    }
+
+    private void LogAttempt(
+        PackageSelection selection,
+        int attempt,
+        int maxAttempts,
+        WingetCommandResult result,
+        ClassifiedWingetError? error,
+        bool succeeded,
+        bool willRetry,
+        TimeSpan elapsed)
+    {
+        if (logger is null)
+        {
+            return;
+        }
+
+        var exitCode = $"0x{unchecked((uint)result.ExitCode):X8}";
+        if (succeeded)
+        {
+            logger.LogInformation(
+                "winget {Action} {PackageId} succeeded on attempt {Attempt}/{MaxAttempts} in {Elapsed:F1}s (exit {ExitCode}, kind {Kind}).",
+                selection.Action, selection.Package.Id, attempt, maxAttempts, elapsed.TotalSeconds, exitCode, error?.Kind.ToString() ?? "None");
+            return;
+        }
+
+        logger.LogWarning(
+            "winget {Action} {PackageId} failed on attempt {Attempt}/{MaxAttempts} in {Elapsed:F1}s: exit {ExitCode}, kind {Kind}, timedOut {TimedOut}, willRetry {WillRetry}. stderr: {StdErr} | stdout: {StdOut}",
+            selection.Action, selection.Package.Id, attempt, maxAttempts, elapsed.TotalSeconds, exitCode,
+            error?.Kind.ToString() ?? "Unknown", result.TimedOut, willRetry,
+            Truncate(result.StandardError), Truncate(result.StandardOutput));
+    }
+
+    private static string Truncate(string text)
+    {
+        var singleLine = string.Join(' ', text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.Any(char.IsLetter)));
+        return singleLine.Length <= 600 ? singleLine : singleLine[..600] + "...";
     }
 }

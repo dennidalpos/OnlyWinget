@@ -130,6 +130,34 @@
                             </Grid>
                         </Border>
 
+                        <!-- Include Unknown Versions Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_IncludeUnknownDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Help" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="IncludeUnknownText" Grid.Column="1" Text="{services:Localize Key=Settings_IncludeUnknown}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <ToggleSwitch x:Name="IncludeUnknownToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.IncludeUnknownVersions, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsIncludeUnknownToggle" AutomationProperties.Name="{services:Localize Key=Settings_IncludeUnknown}" AutomationProperties.HelpText="{services:Localize Key=Settings_IncludeUnknownDescription}" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Include Pinned Packages Setting Card -->
+                        <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_IncludePinnedDescription}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Pin" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <TextBlock x:Name="IncludePinnedText" Grid.Column="1" Text="{services:Localize Key=Settings_IncludePinned}" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <ToggleSwitch x:Name="IncludePinnedToggle" Grid.Column="2" IsOn="{x:Bind ViewModel.IncludePinnedPackages, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsIncludePinnedToggle" AutomationProperties.Name="{services:Localize Key=Settings_IncludePinned}" AutomationProperties.HelpText="{services:Localize Key=Settings_IncludePinnedDescription}" Header="" Margin="0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
                         <!-- Maintenance Section -->
                         <TextBlock x:Name="MaintenanceGroupHeader" Text="{services:Localize Key=Settings_Group_Maintenance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
 

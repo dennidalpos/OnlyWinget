@@ -8,4 +8,6 @@ internal sealed record AppSettings(
     string LogLevel = "Information",
     bool ContinueOperationsAfterFailure = true,
     bool BypassHashValidation = false,
-    double SidebarWidth = 260.0);
+    double SidebarWidth = 260.0,
+    bool IncludeUnknownVersions = false,
+    bool IncludePinnedPackages = false);

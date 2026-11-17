@@ -8,5 +8,8 @@ public sealed record OperationExecutionResult(
     ClassifiedWingetError? Error,
     int AttemptCount = 1)
 {
-    public bool Succeeded => CommandResult.Succeeded || Error?.Kind == WingetErrorKind.NoUpdates;
+    public bool Succeeded => CommandResult.Succeeded || Error?.Kind.IsSuccessfulOutcome() == true;
+
+    /// <summary>True when the installer finished but Windows must restart to complete it.</summary>
+    public bool RebootRequired => Error?.Kind == WingetErrorKind.RebootRequired;
 }

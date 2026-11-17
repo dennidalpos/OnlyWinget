@@ -13,4 +13,6 @@ public sealed record WindowsUpdateRow(
     bool RebootRequired,
     bool IsSelected,
     string? Status,
-    string? Message);
+    string? Message,
+    string ClassificationKey = "WindowsUpdate_Class_Other",
+    bool IsHidden = false);

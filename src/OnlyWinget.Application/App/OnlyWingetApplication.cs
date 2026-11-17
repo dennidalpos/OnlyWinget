@@ -25,7 +25,10 @@ public sealed partial class OnlyWingetApplication(
     IOperationExecutor operationExecutor,
     TimeProvider? timeProvider = null,
     ISourcePreferenceStore? sourcePreferenceStore = null,
-    Microsoft.Extensions.Logging.ILogger<OnlyWingetApplication>? appLogger = null)
+    Microsoft.Extensions.Logging.ILogger<OnlyWingetApplication>? appLogger = null,
+    IInstallResidueCleaner? residueCleaner = null,
+    IWindowsUpdateManagementService? updateManagement = null,
+    ISystemRestartService? restartService = null)
 {
     public bool ContinueOperationsAfterFailure { get; set; }
     public bool BypassHashValidation { get; set; }
@@ -102,7 +105,11 @@ public sealed partial class OnlyWingetApplication(
                 lastOperationResults.ToArray(),
                 operationProgress,
                 busyState,
-                userVisibleError);
+                userVisibleError,
+                windowsUpdateHistory.ToArray(),
+                historySelection.Selected.ToArray(),
+                historySelection.HeaderState,
+                restartPending);
 
             isStateDirty = false;
             return cachedState;
@@ -178,7 +185,9 @@ public sealed partial class OnlyWingetApplication(
         {
             MarkProgressFailed();
             Logger?.Invoke(AppLogLevel.Warning, $"Operation {state} failed with user error: {exception.Message}", "RunAsync");
-            appLogger?.LogWarning(exception, "Operation {State} failed with user error: {Message}", state, exception.Message);
+            // Expected, user-facing failures (not found, winget exit codes) carry their detail in the message;
+            // the stack trace only added noise. Unexpected exceptions are still logged in full below.
+            appLogger?.LogWarning("Operation {State} failed: {Message}", state, exception.Message);
             return Fail(exception.Message, state);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)

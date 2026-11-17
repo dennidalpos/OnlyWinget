@@ -27,7 +27,14 @@ public enum UiCommandId
     ResetSources,
     CancelOperation,
     ClearActivity,
-    ExportActivity
+    ExportActivity,
+    DownloadWindowsUpdates,
+    HideWindowsUpdates,
+    ShowWindowsUpdates,
+    RestartWindows,
+    CancelRestart,
+    LoadWindowsUpdateHistory,
+    UninstallWindowsUpdates
 }
 
 public enum UiCommandKind

@@ -21,6 +21,7 @@
                     <CheckBox x:Name="DriverUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeDrivers}" IsChecked="False" AutomationProperties.AutomationId="WindowsDriverFilter" />
                     <CheckBox x:Name="MicrosoftUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeMicrosoft}" IsChecked="False" AutomationProperties.AutomationId="WindowsMicrosoftFilter" />
                     <CheckBox x:Name="OptionalUpdatesBox" Content="{services:Localize Key=WindowsUpdates_IncludeOptional}" IsChecked="False" AutomationProperties.AutomationId="WindowsOptionalFilter" />
+                    <CheckBox x:Name="ShowHiddenBox" Content="{services:Localize Key=WindowsUpdates_ShowHidden}" IsChecked="False" AutomationProperties.AutomationId="WindowsHiddenFilter" />
                 </design:OnlyWingetWrapPanel>
                 <commands:OnlyWingetCommandBar ItemsSource="{x:Bind ViewModel.Commands.Values, Mode=OneWay}" CommandInvoked="OnCommandInvoked" VerticalAlignment="Center" />
             </design:OnlyWingetResponsivePanel>
@@ -28,14 +29,13 @@
         <states:StatePresenter x:Name="PageState" Grid.Row="1" />
         <Border Grid.Row="2" Style="{StaticResource ListCardStyle}">
             <controls:OnlyWingetTable x:Name="WindowsUpdateList" ItemsSource="{x:Bind ViewModel.Updates}" HeaderSelection="{x:Bind presentation:PresentationValues.HeaderSelection(ViewModel.HeaderState), Mode=OneWay}" SelectionLabel="{services:Localize Key=Command_Select_All}" AutomationProperties.AutomationId="WindowsUpdateList" ToggleAllRequested="OnToggleAllWindowsUpdates" BatchSelectionChanged="OnWindowsUpdateBatchSelectionChanged">
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Title}" BindingPath="Title" Width="320" IsPrimary="True" />
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_KnowledgeBase}" BindingPath="KnowledgeBaseArticles" Width="120" IsTextSelectable="True" />
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Severity}" BindingPath="Severity" Width="120" />
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Categories}" BindingPath="Categories" Width="200" />
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Size}" BindingPath="MaxDownloadSize" Width="110" />
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Downloaded}" BindingPath="IsDownloaded" Width="110" />
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Reboot}" BindingPath="RebootRequired" Width="100" />
-                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Revision}" BindingPath="Revision" Width="90" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Title}" BindingPath="Title" Width="340" IsPrimary="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Classification}" BindingPath="Classification" Width="110" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_KnowledgeBase}" BindingPath="KnowledgeBaseArticles" Width="110" IsTextSelectable="True" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Severity}" BindingPath="Severity" Width="100" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Size}" BindingPath="MaxDownloadSize" Width="90" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Downloaded}" BindingPath="IsDownloaded" Width="100" />
+                <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Reboot}" BindingPath="RebootRequired" Width="90" />
                 <controls:OnlyWingetTableColumn Header="{services:Localize Key=Header_Status}" BindingPath="Status" Width="*" />
             </controls:OnlyWingetTable>
         </Border>

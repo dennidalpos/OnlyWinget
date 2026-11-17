@@ -30,6 +30,8 @@ internal static class AppComposition
             Enum.TryParse<AppLogLevel>(settings.Current.LogLevel, out var level) ? level : AppLogLevel.Information);
 
         var builder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+            // Shortcuts and launchers can start the process from any folder; pin the content root to the app folder.
+            .UseContentRoot(AppContext.BaseDirectory)
             .UseSerilog((_, loggerConfiguration) =>
             {
                 loggerConfiguration
@@ -60,6 +62,7 @@ internal static class AppComposition
                 services.AddSingleton<IExternalProcessRunner, ProcessExternalProcessRunner>();
                 services.AddSingleton<WingetProgressParser>();
                 services.AddSingleton<WingetTableParser>();
+                services.AddSingleton<UpdateScanOptions>();
                 services.AddSingleton<WingetErrorClassifier>();
                 services.AddSingleton<WingetCommandBuilder>();
 
@@ -96,8 +99,13 @@ internal static class AppComposition
                 services.AddSingleton<IPackageResolver>(sp => sp.GetRequiredService<WingetPackageResolver>());
                 services.AddSingleton<IUpdateLoader, WingetUpdateLoader>();
                 services.AddSingleton<IWindowsUpdateService, ComWindowsUpdateService>();
+                services.AddSingleton<IWindowsUpdateManagementService, ComWindowsUpdateManagementService>();
+                services.AddSingleton<ISystemRestartService, ShutdownRestartService>();
                 services.AddSingleton<IWingetSourceService, WingetSourceService>();
                 services.AddSingleton<IOperationExecutor, WingetOperationExecutor>();
+                services.AddSingleton<IInstallResidueCleaner>(sp => new WingetTempResidueCleaner(
+                    null,
+                    sp.GetService<ILogger<WingetTempResidueCleaner>>()));
 
                 // OnlyWinget Workflow App
                 services.AddSingleton<OnlyWingetApplication>(sp =>
@@ -112,7 +120,10 @@ internal static class AppComposition
                         sp.GetRequiredService<IWingetSourceService>(),
                         sp.GetRequiredService<IOperationExecutor>(),
                         sourcePreferenceStore: sp.GetRequiredService<ISourcePreferenceStore>(),
-                        appLogger: sp.GetService<ILogger<OnlyWingetApplication>>());
+                        appLogger: sp.GetService<ILogger<OnlyWingetApplication>>(),
+                        residueCleaner: sp.GetService<IInstallResidueCleaner>(),
+                        updateManagement: sp.GetService<IWindowsUpdateManagementService>(),
+                        restartService: sp.GetService<ISystemRestartService>());
                 });
 
                 services.AddSingleton<ApplicationStartupOrchestrator>();

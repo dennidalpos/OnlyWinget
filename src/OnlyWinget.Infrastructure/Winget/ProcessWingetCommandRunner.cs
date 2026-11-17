@@ -53,7 +53,18 @@ public sealed class ProcessWingetCommandRunner(
         logger?.LogInformation("Running winget command '{Command}' with args: {Arguments}", command, string.Join(" ", arguments));
         var result = await processRunner.RunAsync(command, arguments, cancellationToken, lineProgress, timeout)
             .ConfigureAwait(false);
-        logger?.LogDebug("Command '{Command}' finished with exit code {ExitCode}", command, result.ExitCode);
+        if (result.Succeeded || result.ExitCode == unchecked((int)0x8A150014))
+        {
+            logger?.LogDebug("Command '{Command}' finished with exit code {ExitCode}", command, result.ExitCode);
+        }
+        else
+        {
+            logger?.LogInformation(
+                "Command '{Command}' {Arguments} finished with exit code 0x{ExitCode:X8}.",
+                command,
+                string.Join(" ", arguments.Take(3)),
+                unchecked((uint)result.ExitCode));
+        }
 
         var standardError = result.StandardError;
         if (!result.Succeeded && command.Equals("winget", StringComparison.OrdinalIgnoreCase) &&

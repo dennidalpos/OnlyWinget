@@ -1,7 +1,9 @@
 using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OnlyWinget.Application.App;
 using OnlyWinget.Application.System;
+using OnlyWinget.Application.Winget;
 using OnlyWinget.Services;
 
 namespace OnlyWinget;
@@ -49,6 +51,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             Enum.TryParse<AppLogLevel>(settings.LogLevel, out var level) ? level : AppLogLevel.Information);
         Workflow.ContinueOperationsAfterFailure = settings.ContinueOperationsAfterFailure;
         Workflow.BypassHashValidation = settings.BypassHashValidation;
+        var scanOptions = Host.Services.GetRequiredService<UpdateScanOptions>();
+        scanOptions.IncludeUnknownVersions = settings.IncludeUnknownVersions;
+        scanOptions.IncludePinned = settings.IncludePinnedPackages;
     }
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)

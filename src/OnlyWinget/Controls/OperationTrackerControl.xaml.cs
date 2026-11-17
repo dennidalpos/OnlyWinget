@@ -11,6 +11,7 @@ public sealed partial class OperationTrackerControl : UserControl
 {
     private readonly OnlyWingetApplication workflow;
     private DispatcherTimer? autoDismissTimer;
+    private OperationProgress? dismissedProgress;
 
     public OperationTrackerControl() : this(null) { }
 
@@ -53,9 +54,16 @@ public sealed partial class OperationTrackerControl : UserControl
             return;
         }
 
+        // A failure the user already acknowledged stays hidden until a new operation reports progress.
+        if (!isBusy && progress != null && ReferenceEquals(progress, dismissedProgress))
+        {
+            return;
+        }
+
         // Active operation or busy state -> ensure visible and cancel pending hide timers
         StopAutoDismissTimer();
         TrackerRoot.Visibility = Visibility.Visible;
+        DismissButton.Visibility = Visibility.Collapsed;
 
         if (progress != null)
         {
@@ -63,15 +71,13 @@ public sealed partial class OperationTrackerControl : UserControl
             StatusDetail.Text = string.IsNullOrWhiteSpace(formattedDetail)
                 ? FormatBusyStateText(state.BusyState)
                 : formattedDetail;
+            ToolTipService.SetToolTip(StatusDetail, StatusDetail.Text);
 
             if (progress.Phase == WingetProgressPhase.Completed)
             {
                 CancelOperationButton.Visibility = Visibility.Collapsed;
-                StatusRing.IsActive = false;
-                StatusRing.Visibility = Visibility.Collapsed;
                 StatusIcon.Glyph = "\uE73E"; // Checkmark
                 StatusIcon.Foreground = GetThemeBrush("SystemFillColorSuccessBrush");
-                StatusIcon.Visibility = Visibility.Visible;
 
                 StatusTitle.Text = TextResources.Get("Progress_Completed");
                 OperationProgressBar.IsIndeterminate = false;
@@ -85,25 +91,21 @@ public sealed partial class OperationTrackerControl : UserControl
             if (progress.Phase == WingetProgressPhase.Failed)
             {
                 CancelOperationButton.Visibility = Visibility.Collapsed;
-                StatusRing.IsActive = false;
-                StatusRing.Visibility = Visibility.Collapsed;
                 StatusIcon.Glyph = "\uE783"; // Error badge
                 StatusIcon.Foreground = GetThemeBrush("SystemFillColorCriticalBrush");
-                StatusIcon.Visibility = Visibility.Visible;
 
                 StatusTitle.Text = TextResources.Get("Progress_Failed");
                 OperationProgressBar.IsIndeterminate = false;
                 PercentageText.Text = string.Empty;
 
-                StartAutoDismissTimer(4000);
+                // A failure stays on screen until acknowledged: a 4 s timer hid the cause before it could be read.
+                DismissButton.Visibility = Visibility.Visible;
                 return;
             }
 
             // Normal active operation
             CancelOperationButton.Visibility = Visibility.Visible;
-            StatusIcon.Visibility = Visibility.Collapsed;
-            StatusRing.Visibility = Visibility.Visible;
-            StatusRing.IsActive = true;
+            ShowActiveIcon();
 
             var total = progress.TotalPackages;
             if (total > 1)
@@ -135,9 +137,7 @@ public sealed partial class OperationTrackerControl : UserControl
         {
             // Busy state without detailed progress (e.g., searching, loading updates, managing sources)
             CancelOperationButton.Visibility = Visibility.Visible;
-            StatusIcon.Visibility = Visibility.Collapsed;
-            StatusRing.Visibility = Visibility.Visible;
-            StatusRing.IsActive = true;
+            ShowActiveIcon();
 
             StatusTitle.Text = TextResources.Get("Tracker_OperationInProgress");
             StatusDetail.Text = FormatBusyStateText(state.BusyState);
@@ -146,11 +146,25 @@ public sealed partial class OperationTrackerControl : UserControl
         }
     }
 
+    private void ShowActiveIcon()
+    {
+        StatusIcon.Glyph = ""; // Sync: static glyph, the horizontal bar carries the progress.
+        StatusIcon.Foreground = GetThemeBrush("AccentTextFillColorPrimaryBrush");
+    }
+
+    private void OnDismissClick(object sender, RoutedEventArgs e)
+    {
+        dismissedProgress = workflow.State.OperationProgress;
+        TrackerRoot.Visibility = Visibility.Collapsed;
+    }
+
     private static string FormatBusyStateText(ApplicationBusyState busyState) => busyState switch
     {
         ApplicationBusyState.RefreshingUpdates => TextResources.Get("State_RefreshingUpdates"),
         ApplicationBusyState.ScanningWindowsUpdates => TextResources.Get("State_ScanningWindowsUpdates"),
         ApplicationBusyState.InstallingWindowsUpdates => TextResources.Get("State_InstallingWindowsUpdates"),
+        ApplicationBusyState.LoadingWindowsUpdateHistory => TextResources.Get("State_LoadingWindowsUpdateHistory"),
+        ApplicationBusyState.ManagingWindowsUpdates => TextResources.Get("State_ManagingWindowsUpdates"),
         ApplicationBusyState.ExecutingOperation => TextResources.Get("State_ExecutingOperation"),
         ApplicationBusyState.Searching => TextResources.Get("State_Searching"),
         ApplicationBusyState.ManagingSources => TextResources.Get("State_ManagingSources"),

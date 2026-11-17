@@ -11,12 +11,14 @@
             <SelectorBar x:Name="ModeSelector" SelectedItem="{x:Bind WingetMode}" AutomationProperties.AutomationId="UpdatesModes">
                 <SelectorBarItem x:Name="WingetMode" Text="{services:Localize Key=Updates_WingetMode}" Icon="Sync" AutomationProperties.AutomationId="UpdatesWingetTab" />
                 <SelectorBarItem x:Name="WindowsMode" Text="{services:Localize Key=Updates_WindowsMode}" Icon="Download" AutomationProperties.AutomationId="UpdatesWindowsTab" />
+                <SelectorBarItem x:Name="HistoryMode" Text="{services:Localize Key=Updates_HistoryMode}" Icon="Clock" AutomationProperties.AutomationId="UpdatesHistoryTab" />
             </SelectorBar>
         </design:PageScaffold.Commands>
         <design:PageScaffold.Body>
             <Grid VerticalAlignment="Stretch">
-                <updates:UpdatesPage x:Name="WingetWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.NotSelected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
+                <updates:UpdatesPage x:Name="WingetWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, WingetMode), Mode=OneWay}" />
                 <updates:WindowsUpdatePage x:Name="WindowsWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, WindowsMode), Mode=OneWay}" />
+                <updates:WindowsUpdateHistoryPage x:Name="HistoryWorkflow" VerticalAlignment="Stretch" Visibility="{x:Bind presentation:PresentationValues.Selected(ModeSelector.SelectedItem, HistoryMode), Mode=OneWay}" />
             </Grid>
         </design:PageScaffold.Body>
     </design:PageScaffold>

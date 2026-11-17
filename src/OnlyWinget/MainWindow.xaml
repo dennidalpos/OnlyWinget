@@ -41,7 +41,7 @@
             SelectionFollowsFocus="Disabled"
             SelectionChanged="OnSelectionChanged">
             <NavigationView.PaneFooter>
-                <NavigationViewItem x:Name="OpenLogsItem" Tapped="OnOpenLogsTapped" AutomationProperties.AutomationId="NavOpenLogs">
+                <NavigationViewItem x:Name="OpenLogsItem" Tapped="OnOpenLogsTapped" KeyDown="OnOpenLogsKeyDown" AutomationProperties.AutomationId="NavOpenLogs">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="Document" />
                     </NavigationViewItem.Icon>

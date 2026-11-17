@@ -3,7 +3,7 @@ using OnlyWinget.Domain.Packages;
 
 namespace OnlyWinget.Infrastructure.Winget;
 
-public sealed class WingetCommandBuilder
+public sealed class WingetCommandBuilder(UpdateScanOptions? scanOptions = null)
 {
     public IReadOnlyList<string> Build(PackageSelection selection, bool bypassHashValidation = false)
     {
@@ -35,6 +35,20 @@ public sealed class WingetCommandBuilder
             if (bypassHashValidation)
             {
                 arguments.Add("--ignore-security-hash");
+            }
+        }
+
+        if (selection.Action == PackageAction.Upgrade && scanOptions is not null)
+        {
+            // An explicit upgrade of a package that was listed with these switches needs them again.
+            if (scanOptions.IncludeUnknownVersions)
+            {
+                arguments.Add("--include-unknown");
+            }
+
+            if (scanOptions.IncludePinned)
+            {
+                arguments.Add("--include-pinned");
             }
         }
 

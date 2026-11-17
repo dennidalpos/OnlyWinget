@@ -25,6 +25,25 @@ public sealed class WingetErrorClassifier
         [unchecked((int)0x8A15010C)] = WingetErrorKind.Cancelled, // Installer cancelled.
         [unchecked((int)0x8A150114)] = WingetErrorKind.CannotUpgrade,
         [unchecked((int)0x8A150115)] = WingetErrorKind.Unknown, // Custom installer error.
+        // Codes below were verified with `winget error <code>`.
+        [unchecked((int)0x8A150010)] = WingetErrorKind.NoApplicableInstaller,
+        [unchecked((int)0x8A15003A)] = WingetErrorKind.PolicyBlocked,
+        [unchecked((int)0x8A150061)] = WingetErrorKind.AlreadyInstalled,
+        [unchecked((int)0x8A150068)] = WingetErrorKind.Pinned,
+        [unchecked((int)0x8A150080)] = WingetErrorKind.StoreUnavailable, // No applicable DisplayCatalog package.
+        [unchecked((int)0x8A150082)] = WingetErrorKind.StoreUnavailable, // No applicable SFS client package.
+        [unchecked((int)0x8A150101)] = WingetErrorKind.InUse,
+        [unchecked((int)0x8A150102)] = WingetErrorKind.InstallInProgress,
+        [unchecked((int)0x8A150103)] = WingetErrorKind.InUse,
+        [unchecked((int)0x8A150105)] = WingetErrorKind.DiskFull,
+        [unchecked((int)0x8A150107)] = WingetErrorKind.Network,
+        [unchecked((int)0x8A150109)] = WingetErrorKind.RebootRequired, // Installed; restart needed to finish.
+        [unchecked((int)0x8A15010A)] = WingetErrorKind.RebootRequiredFirst, // Restart needed before installing.
+        [unchecked((int)0x8A15010B)] = WingetErrorKind.RebootRequired, // Installer initiated the restart.
+        [unchecked((int)0x8A15010D)] = WingetErrorKind.AlreadyInstalled,
+        [unchecked((int)0x8A15010E)] = WingetErrorKind.Downgrade,
+        [unchecked((int)0x8A15010F)] = WingetErrorKind.PolicyBlocked,
+        [unchecked((int)0x8A150111)] = WingetErrorKind.InUse,
     };
 
     public ClassifiedWingetError? Classify(WingetCommandResult result)
@@ -122,9 +141,13 @@ public sealed class WingetErrorClassifier
 
         var cleanedText = CleanWingetOutput(text);
         var message = string.IsNullOrWhiteSpace(cleanedText) ? "winget failed." : cleanedText;
-        return new ClassifiedWingetError(kind, message);
+        return new ClassifiedWingetError(kind, message, result.ExitCode);
     }
 
+    /// <summary>
+    /// Retries are limited to transient causes. In-use, pinned, policy, reboot, disk, installer-applicability and
+    /// store-availability failures are deterministic: another attempt only repeats (and can half-apply) the install.
+    /// </summary>
     public bool IsRetryable(ClassifiedWingetError? error)
     {
         if (error is null)
@@ -134,12 +157,13 @@ public sealed class WingetErrorClassifier
 
         return error.Kind switch
         {
-            WingetErrorKind.NotFound => false,
-            WingetErrorKind.NoUpdates => false,
-            WingetErrorKind.Cancelled => false,
-            WingetErrorKind.CannotUpgrade => false,
-            WingetErrorKind.HashMismatch => false,
-            _ => true
+            WingetErrorKind.Network => true,
+            WingetErrorKind.InstallInProgress => true,
+            WingetErrorKind.SourceUnavailable => true,
+            // Generic failures (exit code 1, -1 for launch/timeout) stay retryable; an unmapped native winget code
+            // (0x8A15xxxx) is a deliberate, deterministic answer and is not.
+            WingetErrorKind.Unknown => error.ExitCode is not { } code || !IsNativeWingetCode(code),
+            _ => false
         };
     }
 
@@ -147,6 +171,12 @@ public sealed class WingetErrorClassifier
         result.ExitCode is not (unchecked((int)0x8A150002) or unchecked((int)0x8A15000F) or
             unchecked((int)0x8A150012) or unchecked((int)0x8A150015) or unchecked((int)0x8A150016) or
             unchecked((int)0x8A15005E) or unchecked((int)0x8A150115)) && IsRetryable(error);
+
+    /// <summary>Delay before the next attempt; an in-progress installation needs longer than a flaky source.</summary>
+    internal static TimeSpan RetryDelayFor(ClassifiedWingetError? error) =>
+        error?.Kind == WingetErrorKind.InstallInProgress ? TimeSpan.FromSeconds(10) : TimeSpan.FromSeconds(1);
+
+    private static bool IsNativeWingetCode(int code) => (unchecked((uint)code) & 0xFFFF0000u) == 0x8A150000u;
 
     private static string CleanWingetOutput(string text)
     {
