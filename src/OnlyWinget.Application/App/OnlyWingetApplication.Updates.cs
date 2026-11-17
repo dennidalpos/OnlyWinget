@@ -141,6 +141,14 @@ public sealed partial class OnlyWingetApplication
                 continue;
             }
 
+            // winget exits as soon as a "remove only" uninstaller has started; do not install over the old copy.
+            var removal = await WaitForRemovalAsync(target.Package, cancellationToken).ConfigureAwait(false);
+            if (!removal.Succeeded)
+            {
+                last = removal;
+                continue;
+            }
+
             last = await ExecutePlanAsync(
                 new OperationPlan($"Reinstall {target.Package.Id}: install",
                     [new PackageSelection(target.Package, PackageAction.Install)]),
@@ -154,6 +162,40 @@ public sealed partial class OnlyWingetApplication
 
         return last!;
     }
+
+    private Task<ApplicationActionResult> WaitForRemovalAsync(PackageIdentity package, CancellationToken cancellationToken) =>
+        RunAsync(
+            ApplicationBusyState.ExecutingOperation,
+            cancellationToken,
+            async token =>
+            {
+                var waited = global::System.Diagnostics.Stopwatch.StartNew();
+                var announced = false;
+                while (true)
+                {
+                    var status = await packageResolver.CheckInstalledStatusAsync(package, token).ConfigureAwait(false);
+                    if (!status.IsInstalled)
+                    {
+                        return;
+                    }
+
+                    if (!announced)
+                    {
+                        announced = true;
+                        AddActivity(ActivitySeverity.Information, package.Id,
+                            "The uninstaller is still running. Finish its window; the new version installs as soon as the old one is gone.");
+                    }
+
+                    if (waited.Elapsed > TimeSpan.FromMinutes(10))
+                    {
+                        throw new InvalidOperationException(
+                            $"{package.Id} is still installed. Finish or close its uninstaller, then try again.");
+                    }
+
+                    await Task.Delay(TimeSpan.FromSeconds(3), token).ConfigureAwait(false);
+                }
+            },
+            "Unable to confirm that the app was uninstalled.");
 
     public async Task<ApplicationActionResult> ScanWindowsUpdatesAsync(
         WindowsUpdateOptions options,
