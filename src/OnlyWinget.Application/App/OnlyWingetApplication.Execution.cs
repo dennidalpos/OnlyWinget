@@ -101,7 +101,7 @@ public sealed partial class OnlyWingetApplication
                                         {
                                             var resultRow = new WingetCommandResult(0, skipMessage, string.Empty);
                                             var executionResult = new OperationExecutionResult(
-                                                new PackageSelection(validated.Package, selection.Action),
+                                                new PackageSelection(validated.Package, selection.Action, selection.InstalledName),
                                                 resultRow,
                                                 null, AttemptCount: 0);
                                             completedValidation.Add(selection);
@@ -111,7 +111,7 @@ public sealed partial class OnlyWingetApplication
                                     }
                                 }
 
-                                validatedSelections.Add(new PackageSelection(validated.Package, selection.Action));
+                                validatedSelections.Add(new PackageSelection(validated.Package, selection.Action, selection.InstalledName));
                             }
                             catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
                             {
@@ -221,7 +221,9 @@ public sealed partial class OnlyWingetApplication
                 var status = await packageResolver.CheckInstalledStatusAsync(package, timeout.Token).ConfigureAwait(false);
                 var state = status.IsInstalled
                     ? $"still installed (version {status.InstalledVersion}); the {result.Selection.Action.ToString().ToLowerInvariant()} did not complete."
-                    : "not installed.";
+                    : result.Selection.Action == PackageAction.Upgrade
+                        ? "the installed version could not be confirmed by id, so the package was left unchanged."
+                        : "not installed.";
                 AddActivity(ActivitySeverity.Warning, package.Id, $"State after the failed operation: {state}");
             }
             catch (Exception exception) when (exception is not OutOfMemoryException)
@@ -263,7 +265,13 @@ public sealed partial class OnlyWingetApplication
         }
 
         var code = error.ExitCodeHex ?? $"0x{unchecked((uint)result.CommandResult.ExitCode):X8}";
-        return error.Kind == WingetErrorKind.Cancelled ? id : $"{id} ({code} {error.Kind})";
+        if (error.Kind == WingetErrorKind.Cancelled)
+        {
+            return id;
+        }
+
+        var guidance = WingetErrorGuidance.For(error.Kind, result.Selection.Action);
+        return guidance is null ? $"{id} ({code} {error.Kind})" : $"{id} ({code} {error.Kind}): {guidance}";
     }
 
     private void LogToApplicationLog(AppLogLevel level, string message)
@@ -331,7 +339,8 @@ public sealed partial class OnlyWingetApplication
             var baseMsg = string.IsNullOrWhiteSpace(result.CommandResult.StandardError)
                 ? result.Error.Message
                 : $"{result.Error.Message} {result.CommandResult.StandardError.Trim()}";
-            return baseMsg + exitCodeSuffix + attemptSuffix;
+            var guidance = WingetErrorGuidance.For(result.Error.Kind, result.Selection.Action);
+            return baseMsg + exitCodeSuffix + attemptSuffix + (guidance is null ? string.Empty : $" What to do: {guidance}");
         }
 
         var output = result.CommandResult.StandardOutput.Trim();

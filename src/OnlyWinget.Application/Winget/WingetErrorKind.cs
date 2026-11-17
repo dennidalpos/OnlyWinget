@@ -46,7 +46,10 @@ public enum WingetErrorKind
     InstallInProgress,
 
     /// <summary>A restart is required before this install can run (0x8A15010A).</summary>
-    RebootRequiredFirst
+    RebootRequiredFirst,
+
+    /// <summary>The newer version uses a different installer technology than the installed one (0x8A15008E).</summary>
+    InstallTechnologyMismatch
 }
 
 public static class WingetErrorKindExtensions

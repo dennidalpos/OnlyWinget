@@ -89,7 +89,10 @@ public sealed partial class OnlyWingetApplication
         IProgress<OperationProgress>? progress = null)
     {
         var selections = ReadState(() => updateSelection.Selected
-            .Select(package => new PackageSelection(package, PackageAction.Upgrade))
+            .Select(package => new PackageSelection(
+                package,
+                PackageAction.Upgrade,
+                updates.FirstOrDefault(update => update.Package.Equals(package))?.Name))
             .ToArray());
         return await ExecutePlanAsync(new OperationPlan("Selected updates", selections), cancellationToken, progress)
             .ConfigureAwait(false);

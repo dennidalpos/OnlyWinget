@@ -62,6 +62,25 @@ public sealed class WingetCommandBuilder(UpdateScanOptions? scanOptions = null)
         return arguments;
     }
 
+    /// <summary>
+    /// Fallback for an upgrade that winget lists but cannot match by id: installed entries correlated from Add/Remove
+    /// Programs only answer to their display name. Returns null when the selection has no installed name.
+    /// </summary>
+    public IReadOnlyList<string>? BuildUpgradeByName(PackageSelection selection, bool bypassHashValidation = false)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        if (selection.Action != PackageAction.Upgrade || !WingetInputValidator.IsValid(selection.InstalledName))
+        {
+            return null;
+        }
+
+        var arguments = Build(selection, bypassHashValidation).ToList();
+        var idIndex = arguments.IndexOf("--id");
+        arguments[idIndex] = "--name";
+        arguments[idIndex + 1] = selection.InstalledName!;
+        return arguments;
+    }
+
     public static void ValidateInput(string input, string paramName) =>
         WingetInputValidator.Validate(input, paramName);
 }

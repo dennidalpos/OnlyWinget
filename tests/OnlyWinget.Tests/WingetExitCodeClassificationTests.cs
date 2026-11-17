@@ -10,6 +10,7 @@ public sealed class WingetExitCodeClassificationTests
     // Codes verified with `winget error <code>`.
     [Theory]
     [InlineData(0x8A150010u, WingetErrorKind.NoApplicableInstaller)]
+    [InlineData(0x8A15008Eu, WingetErrorKind.InstallTechnologyMismatch)]
     [InlineData(0x8A15003Au, WingetErrorKind.PolicyBlocked)]
     [InlineData(0x8A150061u, WingetErrorKind.AlreadyInstalled)]
     [InlineData(0x8A150068u, WingetErrorKind.Pinned)]

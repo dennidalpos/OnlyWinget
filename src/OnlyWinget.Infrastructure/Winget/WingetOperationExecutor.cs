@@ -104,6 +104,30 @@ public sealed class WingetOperationExecutor(
                     }
 
                     classifiedError = errorClassifier.Classify(commandResult);
+                    if (classifiedError?.Kind == WingetErrorKind.NotFound
+                        && commandBuilder.BuildUpgradeByName(selection, bypassHashValidation) is { } byName)
+                    {
+                        logger?.LogInformation(
+                            "winget Upgrade {PackageId} not matched by id; retrying by installed name {Name}.",
+                            selection.Package.Id, selection.InstalledName);
+                        try
+                        {
+                            commandResult = await commandRunner.RunAsync(
+                                    "winget", byName, cancellationToken, commandProgress, global::System.TimeSpan.FromMinutes(30))
+                                .ConfigureAwait(false);
+                            classifiedError = errorClassifier.Classify(commandResult);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            throw;
+                        }
+                        catch (Exception exception) when (exception is not OutOfMemoryException)
+                        {
+                            commandResult = new WingetCommandResult(-1, string.Empty, exception.Message, exception is TimeoutException);
+                            classifiedError = errorClassifier.Classify(commandResult);
+                        }
+                    }
+
                     var succeeded = commandResult.Succeeded || classifiedError?.Kind.IsSuccessfulOutcome() == true;
                     var willRetry = !succeeded
                         && attempt < maxAttempts

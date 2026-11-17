@@ -27,6 +27,7 @@ public sealed class WingetErrorClassifier
         [unchecked((int)0x8A150115)] = WingetErrorKind.Unknown, // Custom installer error.
         // Codes below were verified with `winget error <code>`.
         [unchecked((int)0x8A150010)] = WingetErrorKind.NoApplicableInstaller,
+        [unchecked((int)0x8A15008E)] = WingetErrorKind.InstallTechnologyMismatch,
         [unchecked((int)0x8A15003A)] = WingetErrorKind.PolicyBlocked,
         [unchecked((int)0x8A150061)] = WingetErrorKind.AlreadyInstalled,
         [unchecked((int)0x8A150068)] = WingetErrorKind.Pinned,
