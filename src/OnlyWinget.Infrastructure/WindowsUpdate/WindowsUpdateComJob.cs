@@ -47,7 +47,7 @@ internal static class WindowsUpdateComJob
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                abort(job);
+                FinishStep(abort, job, "abort");
                 throw;
             }
 
@@ -56,8 +56,30 @@ internal static class WindowsUpdateComJob
         finally
         {
             // CleanUp waits until WUA has released the callbacks; never run it inside Invoke.
-            cleanup(job);
-            GC.KeepAlive(callback);
+            try
+            {
+                FinishStep(cleanup, job, "clean up");
+            }
+            finally
+            {
+                GC.KeepAlive(callback);
+            }
+        }
+    }
+
+    private static void FinishStep(Action<object> step, object job, string action)
+    {
+        try
+        {
+            step(job);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            throw new WindowsUpdateComCompletionException(
+                $"Windows Update Agent could not {action} the native job. Its state is uncertain. Check Windows Update before retrying.", exception);
         }
     }
 }
+
+internal sealed class WindowsUpdateComCompletionException(string message, Exception cause)
+    : InvalidOperationException(message, cause);

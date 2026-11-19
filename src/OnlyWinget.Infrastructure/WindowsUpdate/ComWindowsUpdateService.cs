@@ -72,6 +72,10 @@ public sealed class ComWindowsUpdateService(
                 {
                     throw;
                 }
+                catch (WindowsUpdateComCompletionException ex)
+                {
+                    return WindowsUpdateOperationOutcome<WindowsUpdateItem>.Failure(new WindowsUpdateError(ex.Message), string.Empty);
+                }
                 catch (COMException ex) when (WindowsUpdateErrorCodes.IsTransient(ex.HResult) && attempt < ScanAttempts)
                 {
                     // The service was restarting or busy (for example right after an installer ran). The PowerShell

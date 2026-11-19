@@ -10,6 +10,28 @@ namespace OnlyWinget.Tests;
 public sealed class SqliteWorkspaceStoreTests
 {
     [Fact]
+    public async Task ConcurrentWorkspaceChangeRequiresReloadBeforeSaving()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}", "onlywinget.db");
+        var first = new SqliteWorkspaceStore(path);
+        var second = new SqliteWorkspaceStore(path);
+        var original = new WorkspaceState([new Preset("Original", [])], "Original");
+        await first.SaveAsync(original, CancellationToken.None);
+        var previous = await second.LoadAsync(CancellationToken.None);
+        var updated = new WorkspaceState([new Preset("Original", [new PackageIdentity("Test.App")])], "Original");
+        await first.SaveAsync(updated, CancellationToken.None);
+
+        var error = await Assert.ThrowsAsync<WorkspaceWriteConflictException>(() =>
+            second.SaveAsync(previous, CancellationToken.None));
+        Assert.Contains("reopen OnlyWinget", error.Message);
+        var latest = await second.LoadAsync(CancellationToken.None);
+        Assert.Equal("Test.App", Assert.Single(Assert.Single(latest.Presets).Packages).Id);
+        await second.SaveAsync(latest with { Presets = [.. latest.Presets, new Preset("Second", [])] },
+            CancellationToken.None);
+        Assert.Equal(2, (await first.LoadAsync(CancellationToken.None)).Presets.Count);
+    }
+
+    [Fact]
     public async Task FailedLoadBlocksSaveAndPreservesOriginalPresetUntilSuccessfulReload()
     {
         var tempFolder = Path.Combine(Path.GetTempPath(), $"onlywinget-{Guid.NewGuid():N}");

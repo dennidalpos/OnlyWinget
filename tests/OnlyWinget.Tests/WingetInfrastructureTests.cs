@@ -650,11 +650,9 @@ public sealed class WingetInfrastructureTests
     }
 
     [Theory]
-    [InlineData(0, "")]
     [InlineData(0, " \r\n-\r\nNo packages need an update.")]
     [InlineData(0, "Non sono stati trovati aggiornamenti disponibili.")]
     [InlineData(0, "1 package(s) have version numbers that cannot be determined. Use --include-unknown to see all results.")]
-    [InlineData(0, "Name  Id       Version  Available\n----------------------------------")]
     [InlineData(unchecked((int)0x8A150014), "No installed package found matching input criteria.")]
     public async Task UpdateLoaderRecognizesEmptyResults(int exitCode, string output)
     {
@@ -680,6 +678,9 @@ public sealed class WingetInfrastructureTests
     }
 
     [Theory]
+    [InlineData("", "", "required columns")]
+    [InlineData("-\r/", "", "required columns")]
+    [InlineData("Name  Id       Version  Available\n----------------------------------", "", "readable package rows")]
     [InlineData("unrecognized command output", "", "required columns")]
     [InlineData("", "source warning", "required columns")]
     [InlineData("Name  Id       Version\n----------------------\nGit   Git.Git  2.0.0", "", "Available")]
@@ -696,6 +697,22 @@ public sealed class WingetInfrastructureTests
         Assert.Equal(WingetErrorKind.InvalidOutput, outcome.Error?.Kind);
         Assert.Contains(diagnostic, outcome.Error?.Message);
         Assert.Equal(string.IsNullOrEmpty(output) ? error : output, outcome.RawOutput);
+    }
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("Unreadable output", false)]
+    [InlineData("Name   Argument\n----------------", false)]
+    [InlineData("There are no sources configured.", true)]
+    public async Task SourceListRequiresRowsOrAnExplicitEmptyMessage(string output, bool expectedSuccess)
+    {
+        var runner = new RecordingWingetCommandRunner(new WingetCommandResult(0, output, string.Empty));
+        var service = new WingetSourceService(runner, new WingetTableParser(), new WingetErrorClassifier());
+        var result = await service.ListSourcesAsync(CancellationToken.None);
+
+        Assert.Equal(expectedSuccess, result.Succeeded);
+        Assert.Empty(result.Rows);
+        if (!expectedSuccess) Assert.Equal(WingetErrorKind.InvalidOutput, result.Error?.Kind);
     }
 
     [Fact]

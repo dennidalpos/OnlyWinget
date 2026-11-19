@@ -65,7 +65,7 @@ public sealed class WingetUpdateLoader(
             .Select(row => ToUpdate(row, source))
             .OfType<PackageUpdate>()
             .ToArray();
-        if (rows.Length == 0 && table.Rows.Count > 0)
+        if (rows.Length == 0)
         {
             return InvalidOutput("The WinGet upgrade table did not contain readable package rows.", rawOutput);
         }
@@ -94,14 +94,16 @@ public sealed class WingetUpdateLoader(
     private static WingetOperationOutcome<PackageUpdate> InvalidOutput(string message, string rawOutput) =>
         WingetOperationOutcome<PackageUpdate>.Failure(new ClassifiedWingetError(WingetErrorKind.InvalidOutput, message), rawOutput);
 
-    private static bool HasNoUpdates(string output) => output
-        .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .All(IsNoUpdateLine);
+    private static bool HasNoUpdates(string output)
+    {
+        var lines = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line is not ("-" or "\\" or "|" or "/")).ToArray();
+        return lines.Length > 0 && lines.All(IsNoUpdateLine);
+    }
 
     private static bool IsNoUpdateLine(string line)
     {
         var isEmptyResult = line.TrimEnd('.').ToUpperInvariant() is
-            "-" or "\\" or "|" or "/" or
             "NO PACKAGES NEED AN UPDATE" or "NO AVAILABLE UPGRADE FOUND" or "NO APPLICABLE UPDATE FOUND" or
             "NO INSTALLED PACKAGE FOUND MATCHING INPUT CRITERIA" or
             "NON È STATO TROVATO ALCUN PACCHETTO INSTALLATO CORRISPONDENTE AI CRITERI DI INPUT" or

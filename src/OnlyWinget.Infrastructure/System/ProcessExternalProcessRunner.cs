@@ -7,13 +7,23 @@ namespace OnlyWinget.Infrastructure.System;
 
 public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
 {
-    public async Task<ExternalProcessResult> RunAsync(
+    public Task<ExternalProcessResult> RunAsync(
         string command,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken,
         IProgress<string>? standardOutputLines = null,
         TimeSpan? timeout = null,
-        IProgress<string>? standardErrorLines = null)
+        IProgress<string>? standardErrorLines = null) =>
+        RunCoreAsync(command, arguments, cancellationToken, standardOutputLines, timeout, standardErrorLines, null);
+
+    internal Task<ExternalProcessResult> RunWithInputAsync(string command, IReadOnlyList<string> arguments,
+        string input, IProgress<string>? output, CancellationToken token) =>
+        RunCoreAsync(command, arguments, token, output, Timeout.InfiniteTimeSpan, null, input);
+
+    private static async Task<ExternalProcessResult> RunCoreAsync(
+        string command, IReadOnlyList<string> arguments, CancellationToken cancellationToken,
+        IProgress<string>? standardOutputLines, TimeSpan? timeout, IProgress<string>? standardErrorLines,
+        string? input)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(arguments);
@@ -28,10 +38,12 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
             : null;
         var effectiveToken = linkedCts?.Token ?? cancellationToken;
 
+        effectiveToken.ThrowIfCancellationRequested();
         using var process = new Process();
         process.StartInfo.FileName = command;
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.RedirectStandardInput = input is not null;
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
         process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
@@ -54,9 +66,11 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
 
             var standardOutput = ReadOutputAsync(process.StandardOutput, standardOutputLines, effectiveToken);
             var standardError = ReadOutputAsync(process.StandardError, standardErrorLines, effectiveToken);
+            var standardInput = input is null ? Task.CompletedTask :
+                WriteInputAsync(process.StandardInput.BaseStream, input, effectiveToken);
             try
             {
-                await process.WaitForExitAsync(effectiveToken).ConfigureAwait(false);
+                await Task.WhenAll(process.WaitForExitAsync(effectiveToken), standardInput).WaitAsync(effectiveToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -101,6 +115,12 @@ public sealed class ProcessExternalProcessRunner : IExternalProcessRunner
             global::System.Diagnostics.Debug.WriteLine($"ProcessExternalProcessRunner.RunAsync (general): {exception}");
             return new ExternalProcessResult(-1, string.Empty, exception.Message);
         }
+    }
+
+    private static async Task WriteInputAsync(Stream stream, string input, CancellationToken token)
+    {
+        await using var ownedStream = stream;
+        await ownedStream.WriteAsync(Encoding.UTF8.GetBytes(input), token).ConfigureAwait(false);
     }
 
     private static async Task<string> ReadOutputAsync(

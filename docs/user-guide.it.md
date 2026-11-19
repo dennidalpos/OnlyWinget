@@ -45,7 +45,7 @@ flowchart TD
 
 Le modifiche persistenti e il cambio del preset sono bloccati durante un'operazione. Se esiste una bozza, applicala oppure scartala prima di cambiare pagina, modalità o preset. Se la modifica è accettata ma il salvataggio fallisce, i campi restano bloccati e Applica riprova il salvataggio: non reinserire la stessa modifica.
 
-Il cambio del preset attivo viene salvato automaticamente quando accettato. Se il salvataggio fallisce, consulta l'errore e usa Salva workspace per riprovare.
+Il cambio del preset attivo viene salvato automaticamente quando accettato. Se un’altra istanza ha salvato modifiche, esporta i preset non salvati che vuoi conservare, poi riapri OnlyWinget per ricaricare il workspace. Per gli altri errori, consulta il messaggio e usa Salva workspace per riprovare.
 
 ## 2. Cercare e installare applicazioni
 
@@ -68,7 +68,7 @@ L'installazione diretta non richiede un preset. Un errore di una sorgente può l
 
 ## 3. Aggiornare le applicazioni WinGet
 
-In **Aggiornamenti → WinGet**, avvia una scansione e confronta la versione installata con quella disponibile. Applica le righe selezionate oppure usa **Installa tutti** per tutti i risultati rilevati. L'app chiede conferma se le conferme sono abilitate. Se il tipo di programma di installazione è cambiato, seleziona il pacchetto interessato e scegli **Disinstalla e reinstalla**. OnlyWinget attende la rimozione della copia precedente prima di installare quella nuova.
+In **Aggiornamenti → WinGet**, avvia una scansione e confronta la versione installata con quella disponibile. Applica le righe selezionate oppure usa **Installa tutti** per tutti i risultati rilevati. L'app chiede conferma se le conferme sono abilitate. Se il tipo di programma di installazione è cambiato, seleziona il pacchetto interessato e scegli **Disinstalla e reinstalla**. OnlyWinget attende la rimozione della copia precedente prima di installare quella nuova e conserva gli esiti di ogni fase. Se una sorgente non risponde durante la scansione, l’app conserva le sue righe precedenti e la selezione mentre aggiorna le altre sorgenti.
 
 ```mermaid
 flowchart TD
@@ -110,11 +110,11 @@ flowchart TD
 
 Avviando l'installazione, l'app accetta le EULA degli aggiornamenti selezionati dopo aver verificato la selezione completa. La gravità MSRC appare quando disponibile; il campo riavvio indica lo stato rilevato, non una previsione per ogni installazione futura.
 
-Il fallback PowerShell serve quando COM non è attivabile: non ripete automaticamente un'installazione COM fallita. Se l'interruzione o la pulizia nativa non sono confermate, l'app segnala uno stato incerto. La cancellazione non effettua rollback; consulta il servizio Windows Update prima di un nuovo tentativo. Per i limiti delle prove reali, vedi [Operazioni](operations.md#windows-update-metadata).
+Il fallback PowerShell serve quando COM non è attivabile: non ripete automaticamente un'installazione COM fallita. Windows Update viene eseguito in un processo separato. Annulla richiede l’interruzione nativa e concede fino a 30 secondi per la pulizia. Se l’interruzione o la pulizia nativa non sono confermate, l’app segnala uno stato incerto. La cancellazione non effettua rollback; consulta il servizio Windows Update prima di un nuovo tentativo. Per i limiti delle prove reali, vedi [Operazioni](operations.md#windows-update-metadata).
 
 ## 5. Gestire le sorgenti
 
-In **Sorgenti**, aggiorna l'elenco per vedere le sorgenti configurate in WinGet. Abilita o disabilita localmente quelle da usare nelle ricerche. Questa preferenza non rimuove la sorgente da WinGet.
+In **Sorgenti**, aggiorna l'elenco per vedere le sorgenti configurate in WinGet. Se l’elenco restituito da WinGet è illeggibile, OnlyWinget mantiene quello precedente e mostra un errore. Abilita o disabilita localmente le sorgenti da usare nelle ricerche. Questa preferenza non rimuove la sorgente da WinGet.
 
 | Azione | Privilegi e risultato |
 | --- | --- |

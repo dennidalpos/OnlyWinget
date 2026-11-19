@@ -15,9 +15,8 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
     private bool isInitialized;
     private bool loadFailed;
 
-    private static readonly Func<WorkspaceDbContext, string, Task<WorkspaceMetadataEntity?>> CompiledGetMetadataByKeyQuery =
-        EF.CompileAsyncQuery((WorkspaceDbContext ctx, string key) =>
-            ctx.WorkspaceMetadata.AsNoTracking().FirstOrDefault(m => m.Key == key));
+    private const string ActivePresetKey = "ActivePresetName";
+    private WorkspaceState baseline = WorkspaceState.Empty;
 
     public SqliteWorkspaceStore(
         string dbPath,
@@ -41,25 +40,20 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
 
             await using var context = new WorkspaceDbContext(dbPath);
 
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
             var presetEntities = await context.Presets
                 .Include(p => p.Items)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var activePresetMeta = await CompiledGetMetadataByKeyQuery(context, "ActivePresetName").ConfigureAwait(false);
-
-            var presets = presetEntities.Select(p => new Preset(
-                p.Name,
-                p.Items.Select(item => new PackageIdentity(item.PackageId, item.Source)).ToList()
-            )).ToList();
-
-            var activePresetName = string.IsNullOrWhiteSpace(activePresetMeta?.Value)
-                ? null
-                : activePresetMeta.Value;
-
+            var active = await context.WorkspaceMetadata.AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Key == ActivePresetKey, cancellationToken).ConfigureAwait(false);
+            var loaded = ReadSnapshot(presetEntities, active);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            baseline = loaded;
             loadFailed = false;
-            return new WorkspaceState(presets, activePresetName);
+            return loaded;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -90,10 +84,17 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
             await using var context = new WorkspaceDbContext(dbPath);
             await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
-            var existingItems = await context.PresetItems.ToListAsync(cancellationToken).ConfigureAwait(false);
-            context.PresetItems.RemoveRange(existingItems);
+            var existingPresets = await context.Presets.Include(preset => preset.Items)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            var activeMeta = await context.WorkspaceMetadata
+                .FirstOrDefaultAsync(item => item.Key == ActivePresetKey, cancellationToken).ConfigureAwait(false);
+            var current = ReadSnapshot(existingPresets, activeMeta);
+            if (baseline.ActivePresetName != current.ActivePresetName ||
+                !SnapshotRows(baseline).SequenceEqual(SnapshotRows(current)))
+            {
+                throw new WorkspaceWriteConflictException();
+            }
 
-            var existingPresets = await context.Presets.ToListAsync(cancellationToken).ConfigureAwait(false);
             context.Presets.RemoveRange(existingPresets);
 
             foreach (var preset in state.Presets)
@@ -116,15 +117,11 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
                 context.Presets.Add(presetEntity);
             }
 
-            var activeMeta = await context.WorkspaceMetadata
-                .FirstOrDefaultAsync(m => m.Key == "ActivePresetName", cancellationToken)
-                .ConfigureAwait(false);
-
             if (activeMeta is null)
             {
                 context.WorkspaceMetadata.Add(new WorkspaceMetadataEntity
                 {
-                    Key = "ActivePresetName",
+                    Key = ActivePresetKey,
                     Value = state.ActivePresetName ?? string.Empty
                 });
             }
@@ -135,10 +132,30 @@ public sealed class SqliteWorkspaceStore : IWorkspaceStore
 
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            baseline = new WorkspaceState(state.Presets.ToArray(),
+                string.IsNullOrWhiteSpace(state.ActivePresetName) ? null : state.ActivePresetName);
         }
         finally
         {
             saveGate.Release();
+        }
+    }
+
+    private static WorkspaceState ReadSnapshot(IEnumerable<PresetEntity> presets, WorkspaceMetadataEntity? active) =>
+        new(presets.Select(preset => new Preset(preset.Name,
+                preset.Items.Select(item => new PackageIdentity(item.PackageId, item.Source)).ToArray())).ToArray(),
+            string.IsNullOrWhiteSpace(active?.Value) ? null : active.Value);
+
+    private static IEnumerable<(string Preset, string? Id, string? Source)> SnapshotRows(WorkspaceState state)
+    {
+        foreach (var preset in state.Presets.OrderBy(item => item.Name, StringComparer.Ordinal))
+        {
+            yield return (preset.Name, null, null);
+            foreach (var package in preset.Packages.OrderBy(item => item.Id, StringComparer.Ordinal)
+                         .ThenBy(item => item.Source, StringComparer.Ordinal))
+            {
+                yield return (preset.Name, package.Id, package.Source);
+            }
         }
     }
 

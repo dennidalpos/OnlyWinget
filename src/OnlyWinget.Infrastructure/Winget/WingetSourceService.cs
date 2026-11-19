@@ -74,13 +74,25 @@ public sealed class WingetSourceService(
                 rawOutput);
         }
 
-        var rows = parseSources
-            ? tableParser.Parse(result.StandardOutput)
-                .Select(ToSource)
-                .Where(source => source is not null)
-                .Cast<WingetSource>()
-                .ToArray()
-            : [];
+        if (!parseSources)
+        {
+            return WingetOperationOutcome<WingetSource>.Success([], rawOutput);
+        }
+
+        var output = result.StandardOutput.Trim().TrimEnd('.');
+        if (output is "There are no sources configured" or "Non sono configurate origini")
+        {
+            return WingetOperationOutcome<WingetSource>.Success([], rawOutput);
+        }
+
+        var table = tableParser.ParseTable(result.StandardOutput);
+        var rows = table.Rows.Select(ToSource).OfType<WingetSource>().ToArray();
+        if (!table.Columns.Contains("Argument", StringComparer.OrdinalIgnoreCase) ||
+            rows.Length == 0 || rows.Length != table.Rows.Count)
+        {
+            return WingetOperationOutcome<WingetSource>.Failure(
+                new ClassifiedWingetError(WingetErrorKind.InvalidOutput, "WinGet did not return a readable source list."), rawOutput);
+        }
 
         return WingetOperationOutcome<WingetSource>.Success(rows, rawOutput);
     }

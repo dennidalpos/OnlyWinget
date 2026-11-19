@@ -14,8 +14,8 @@ public sealed partial class OnlyWingetApplication
                 callerCancellationToken,
                 async cancellationToken =>
                 {
-                    var loadedWorkspace = NormalizeWorkspace(await workspaceStore.LoadAsync(cancellationToken).ConfigureAwait(false));
                     var preferences = await sourcePreferences.LoadAsync(cancellationToken).ConfigureAwait(false);
+                    var loadedWorkspace = NormalizeWorkspace(await workspaceStore.LoadAsync(cancellationToken).ConfigureAwait(false));
                     UpdateState(() =>
                     {
                         workspace = loadedWorkspace;
@@ -37,7 +37,14 @@ public sealed partial class OnlyWingetApplication
                 callerCancellationToken,
                 async cancellationToken =>
                 {
-                    await workspaceStore.SaveAsync(ReadState(() => workspace), cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        await workspaceStore.SaveAsync(ReadState(() => workspace), cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (WorkspaceWriteConflictException exception)
+                    {
+                        throw new InvalidOperationException(UserText("Error_WorkspaceWriteConflict", exception.Message), exception);
+                    }
                     AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Workspace saved", "Workspace state was saved.");
                 },
                 "Unable to save workspace.", waitForTurn: true)

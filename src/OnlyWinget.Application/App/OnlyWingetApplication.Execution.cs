@@ -46,161 +46,169 @@ public sealed partial class OnlyWingetApplication
         Run(() => throw new InvalidOperationException(
             string.IsNullOrWhiteSpace(message) ? "External operation failed." : message.Trim()));
 
-    private async Task<ApplicationActionResult> ExecutePlanAsync(
+    private Task<ApplicationActionResult> ExecutePlanAsync(
         OperationPlan plan,
-        CancellationToken callerCancellationToken,
-        IProgress<OperationProgress>? progress)
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress) =>
+        RunAsync(ApplicationBusyState.ExecutingOperation, cancellationToken, async token =>
+        {
+            RequireWinget();
+            if (plan.HasWork) UpdateState(lastOperationResults.Clear);
+            await ExecutePlanCoreAsync(plan, token, progress).ConfigureAwait(false);
+        }, "Unable to complete the operation.");
+
+    private async Task ExecutePlanCoreAsync(
+        OperationPlan plan,
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress,
+        bool removeCompletedUpdates = true,
+        Func<OperationProgress, OperationProgress>? mapProgress = null)
     {
-        return await RunAsync(
-                ApplicationBusyState.ExecutingOperation,
-                callerCancellationToken,
-                async cancellationToken =>
+        if (!plan.HasWork)
+        {
+            throw new InvalidOperationException("Select at least one package before applying an operation.");
+        }
+
+        var validatedSelections = new List<PackageSelection>();
+        var validationFailures = new List<OperationExecutionResult>();
+        var completedValidation = new HashSet<PackageSelection>();
+
+        try
+        {
+            foreach (var selection in plan.Selections)
+            {
+                try
                 {
-                    RequireWinget();
-                    if (!plan.HasWork)
+                    if (selection.Action == PackageAction.Uninstall)
                     {
-                        throw new InvalidOperationException("Select at least one package before applying an operation.");
+                        // WinGet validates one installed match; remote show is unnecessary.
+                        cancellationToken.ThrowIfCancellationRequested();
+                        validatedSelections.Add(selection);
+                        continue;
                     }
 
-                    var validatedSelections = new List<PackageSelection>();
-                    var validationFailures = new List<OperationExecutionResult>();
-                    var completedValidation = new HashSet<PackageSelection>();
-                    UpdateState(lastOperationResults.Clear);
+                    var validated = await ValidatePackageAsync(selection.Package, cancellationToken).ConfigureAwait(false);
 
-                    try
+                    // Skip packages whose installed version already satisfies the action.
+                    if (selection.Action is PackageAction.Install or PackageAction.Upgrade)
                     {
-                        foreach (var selection in plan.Selections)
+                        var installedStatus = await packageResolver.CheckInstalledStatusAsync(validated.Package, cancellationToken).ConfigureAwait(false);
+                        if (installedStatus.IsInstalled)
                         {
-                            try
+                            var skipMessage = selection.Action switch
                             {
-                                if (selection.Action == PackageAction.Uninstall)
-                                {
-                                    // WinGet validates one installed match; remote show is unnecessary.
-                                    cancellationToken.ThrowIfCancellationRequested();
-                                    validatedSelections.Add(selection);
-                                    continue;
-                                }
+                                PackageAction.Install => $"Package is already present (Installed: {installedStatus.InstalledVersion}).",
+                                PackageAction.Upgrade when IsUpToDate(installedStatus.InstalledVersion, validated.Version) =>
+                                    $"Package is already updated (Installed: {installedStatus.InstalledVersion}, Available: {validated.Version}).",
+                                _ => null
+                            };
 
-                                var validated = await ValidatePackageAsync(selection.Package, cancellationToken).ConfigureAwait(false);
-
-                                // Skip packages whose installed version already satisfies the action.
-                                if (selection.Action is PackageAction.Install or PackageAction.Upgrade)
-                                {
-                                    var installedStatus = await packageResolver.CheckInstalledStatusAsync(validated.Package, cancellationToken).ConfigureAwait(false);
-                                    if (installedStatus.IsInstalled)
-                                    {
-                                        var skipMessage = selection.Action switch
-                                        {
-                                            PackageAction.Install => $"Package is already present (Installed: {installedStatus.InstalledVersion}).",
-                                            PackageAction.Upgrade when IsUpToDate(installedStatus.InstalledVersion, validated.Version) =>
-                                                $"Package is already updated (Installed: {installedStatus.InstalledVersion}, Available: {validated.Version}).",
-                                            _ => null
-                                        };
-
-                                        if (skipMessage is not null)
-                                        {
-                                            var resultRow = new WingetCommandResult(0, skipMessage, string.Empty);
-                                            var executionResult = new OperationExecutionResult(
-                                                new PackageSelection(validated.Package, selection.Action, selection.InstalledName),
-                                                resultRow,
-                                                null, AttemptCount: 0);
-                                            completedValidation.Add(selection);
-                                            RecordOperationResults([executionResult]);
-                                            continue;
-                                        }
-                                    }
-                                }
-
-                                validatedSelections.Add(new PackageSelection(validated.Package, selection.Action, selection.InstalledName));
-                            }
-                            catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+                            if (skipMessage is not null)
                             {
-                                var error = new ClassifiedWingetError(WingetErrorKind.Unknown, exception.Message);
-                                var failedResult = new OperationExecutionResult(selection,
-                                    new WingetCommandResult(-1, string.Empty, exception.Message), error, AttemptCount: 0);
-                                validationFailures.Add(failedResult);
+                                var resultRow = new WingetCommandResult(0, skipMessage, string.Empty);
+                                var executionResult = new OperationExecutionResult(
+                                    new PackageSelection(validated.Package, selection.Action, selection.InstalledName),
+                                    resultRow,
+                                    null, AttemptCount: 0);
                                 completedValidation.Add(selection);
-                                RecordOperationResults([failedResult]);
-                                if (!ContinueOperationsAfterFailure) throw;
+                                RecordOperationResults([executionResult]);
+                                continue;
                             }
                         }
                     }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        RecordOperationResults(plan.Selections.Where(selection => !completedValidation.Contains(selection))
-                            .Select(selection => new OperationExecutionResult(selection,
-                                new WingetCommandResult(-1, string.Empty, string.Empty),
-                                new ClassifiedWingetError(WingetErrorKind.Cancelled, "Operation cancelled before this package started."),
-                                AttemptCount: 0)).ToArray());
-                        throw;
-                    }
 
-                    var validatedPlan = new OperationPlan(plan.Name, validatedSelections);
-                    if (validatedSelections.Count > 0)
-                    {
-                        AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, "Operation started", plan.Name);
-                        UpdateState(() => operationProgress = new OperationProgress(string.Empty, WingetProgressPhase.Starting, 0, 0, 0, plan.Selections.Count));
-                        var forwardingProgress = new InlineProgress<OperationProgress>(update =>
-                        {
-                            UpdateState(() => operationProgress = update);
-                            progress?.Report(update);
-                            NotifyStateChanged();
-                        });
-                        OperationExecutionSummary summary;
-                        var executionStartedAt = clock.GetUtcNow();
-                        try
-                        {
-                            summary = await operationExecutor.ExecuteAsync(
-                            validatedPlan,
-                            cancellationToken,
-                            forwardingProgress,
-                            ContinueOperationsAfterFailure,
-                            MaxPackageOperationRetries,
-                                BypassHashValidation).ConfigureAwait(false);
-                        }
-                        catch (OperationExecutionCanceledException exception)
-                        {
-                            RecordOperationResults(exception.Summary.Results);
-                            await InspectIncompleteOperationsAsync(exception.Summary.Results, executionStartedAt).ConfigureAwait(false);
-                            throw;
-                        }
-                        RecordOperationResults(summary.Results);
-                        await InspectIncompleteOperationsAsync(summary.Results, executionStartedAt).ConfigureAwait(false);
+                    validatedSelections.Add(new PackageSelection(validated.Package, selection.Action, selection.InstalledName));
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+                {
+                    var error = new ClassifiedWingetError(WingetErrorKind.Unknown, exception.Message);
+                    var failedResult = new OperationExecutionResult(selection,
+                        new WingetCommandResult(-1, string.Empty, exception.Message), error, AttemptCount: 0);
+                    validationFailures.Add(failedResult);
+                    completedValidation.Add(selection);
+                    RecordOperationResults([failedResult]);
+                    if (!ContinueOperationsAfterFailure) throw;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            RecordOperationResults(plan.Selections.Where(selection => !completedValidation.Contains(selection))
+                .Select(selection => new OperationExecutionResult(selection,
+                    new WingetCommandResult(-1, string.Empty, string.Empty),
+                    new ClassifiedWingetError(WingetErrorKind.Cancelled, "Operation cancelled before this package started."),
+                    AttemptCount: 0)).ToArray());
+            throw;
+        }
 
-                        if (!summary.Succeeded || validationFailures.Count > 0)
-                        {
-                            var failedPackages = summary.Results
-                                .Where(r => !r.Succeeded)
-                                .Select(DescribeFailure)
-                                .Concat(validationFailures.Select(f => $"{f.Selection.Package.Id} (validation)"))
-                                .Distinct()
-                                .ToArray();
-                            var detail = failedPackages.Length > 0
-                                ? $"One or more winget operations failed: {string.Join(", ", failedPackages)}"
-                                : "One or more winget operations failed.";
-                            throw new InvalidOperationException(detail);
-                        }
+        var validatedPlan = new OperationPlan(plan.Name, validatedSelections);
+        if (validatedSelections.Count > 0)
+        {
+            AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, "Operation started", plan.Name);
+            var starting = new OperationProgress(string.Empty, WingetProgressPhase.Starting, 0, 0, 0, plan.Selections.Count);
+            UpdateState(() => operationProgress = mapProgress?.Invoke(starting) ?? starting);
+            var forwardingProgress = new InlineProgress<OperationProgress>(update =>
+            {
+                var reported = mapProgress?.Invoke(update) ?? update;
+                UpdateState(() => operationProgress = reported);
+                progress?.Report(reported);
+                NotifyStateChanged();
+            });
+            OperationExecutionSummary summary;
+            try
+            {
+                summary = await operationExecutor.ExecuteAsync(
+                validatedPlan,
+                cancellationToken,
+                forwardingProgress,
+                ContinueOperationsAfterFailure,
+                MaxPackageOperationRetries,
+                    BypassHashValidation).ConfigureAwait(false);
+            }
+            catch (OperationExecutionCanceledException exception)
+            {
+                RecordOperationResults(exception.Summary.Results, removeCompletedUpdates);
+                await InspectIncompleteOperationsAsync(exception.Summary.Results).ConfigureAwait(false);
+                throw;
+            }
+            RecordOperationResults(summary.Results, removeCompletedUpdates);
+            await InspectIncompleteOperationsAsync(summary.Results).ConfigureAwait(false);
 
-                        UpdateState(() => operationProgress = operationProgress! with { Phase = WingetProgressPhase.Completed, Percentage = 100, PackagePercentage = 100, CompletedPackages = plan.Selections.Count });
-                        progress?.Report(ReadState(() => operationProgress!));
-                    }
-                    else if (validationFailures.Count > 0)
-                    {
-                        throw new InvalidOperationException("One or more winget operations failed.");
-                    }
-                },
-                "Unable to complete the operation.")
-            .ConfigureAwait(false);
+            if (!summary.Succeeded || validationFailures.Count > 0)
+            {
+                var failedPackages = summary.Results
+                    .Where(r => !r.Succeeded)
+                    .Select(DescribeFailure)
+                    .Concat(validationFailures.Select(f => $"{f.Selection.Package.Id} (validation)"))
+                    .Distinct()
+                    .ToArray();
+                var detail = failedPackages.Length > 0
+                    ? $"One or more winget operations failed: {string.Join(", ", failedPackages)}"
+                    : "One or more winget operations failed.";
+                throw new InvalidOperationException(detail);
+            }
+
+            if (mapProgress is null)
+            {
+                CompletePackageProgress(plan.Selections.Count, progress);
+            }
+        }
+        else if (validationFailures.Count > 0)
+        {
+            throw new InvalidOperationException("One or more winget operations failed.");
+        }
     }
 
-    /// <summary>
-    /// After a failed, killed or cancelled install/upgrade the real state is unknown (the installer may have
-    /// half-applied). Report what winget now says, and remove only the failed run's download leftovers.
-    /// Never uninstalls, purges or forces anything. Runs on its own short timeout so a cancel cannot hang it.
-    /// </summary>
+    private void CompletePackageProgress(int total, IProgress<OperationProgress>? progress)
+    {
+        UpdateState(() => operationProgress = new OperationProgress(operationProgress?.PackageId ?? string.Empty,
+            WingetProgressPhase.Completed, 100, 100, total, total));
+        progress?.Report(ReadState(() => operationProgress!));
+    }
+
+    // A failed or cancelled installer may have changed the system. Probe it independently for the activity log.
     private async Task InspectIncompleteOperationsAsync(
-        IReadOnlyList<OperationExecutionResult> results,
-        DateTimeOffset startedAt)
+        IReadOnlyList<OperationExecutionResult> results)
     {
         var incomplete = results
             .Where(result => !result.Succeeded
@@ -230,29 +238,6 @@ public sealed partial class OnlyWingetApplication
             {
                 appLogger?.LogDebug("Installed-state check after failure skipped for {PackageId}: {Message}", package.Id, exception.Message);
             }
-        }
-
-        if (residueCleaner is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var removed = await residueCleaner
-                .CleanAsync(incomplete.Select(result => result.Selection.Package.Id).ToArray(), startedAt, timeout.Token)
-                .ConfigureAwait(false);
-            if (removed.Count > 0)
-            {
-                AddActivity(
-                    ActivityCategory.Packages, ActivitySeverity.Information,
-                    "Cleaned up leftovers",
-                    $"Removed temporary winget download folders left by the failed operation: {string.Join(", ", removed)}.");
-            }
-        }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            appLogger?.LogDebug("Residue cleanup skipped: {Message}", exception.Message);
         }
     }
 
@@ -298,11 +283,12 @@ public sealed partial class OnlyWingetApplication
         return line.Length <= maxLength ? line : line[..maxLength] + "...";
     }
 
-    private void RecordOperationResults(IReadOnlyList<OperationExecutionResult> results)
+    private void RecordOperationResults(IReadOnlyList<OperationExecutionResult> results, bool removeCompletedUpdates = true)
     {
         UpdateState(() =>
         {
             lastOperationResults.AddRange(results);
+            if (!removeCompletedUpdates) return;
             var succeededPackages = results.Where(result => result.Succeeded)
                 .Select(result => result.Selection.Package).ToHashSet();
             updates.RemoveAll(update => succeededPackages.Contains(update.Package));

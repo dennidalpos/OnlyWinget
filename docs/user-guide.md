@@ -34,7 +34,7 @@ Import/export uses onlywinget.preset.v1. Import validates the document and resol
 
 Add/edit/remove entries, export the list, then select packages for the intended install/uninstall action. Persistent editing and preset changes are blocked during an operation. Apply or discard a draft before changing page, mode or preset. If an accepted edit fails to save, fields remain locked and Apply retries that save; do not add the edit again.
 
-The active preset change is automatically saved once accepted. If persistence fails, inspect the error and use Save workspace to retry.
+The active preset change is automatically saved once accepted. If another instance has saved changes, export any unsaved preset you want to keep, then reopen OnlyWinget to reload the workspace. For other save errors, inspect the error and use Save workspace to retry.
 
 ## 2. Search and install
 
@@ -44,7 +44,7 @@ Read source warnings even when other sources return usable results. Identical se
 
 ## 3. WinGet upgrades
 
-Under **Updates → WinGet**, scan and compare the installed and available versions. Apply selected rows or use **Install all** for all discovered rows. The app asks for confirmation when confirmations are enabled. To recover from an installer-type mismatch, select the affected package and choose **Uninstall and reinstall**. OnlyWinget waits for the old copy to be removed before installing the new one.
+Under **Updates → WinGet**, scan and compare the installed and available versions. Apply selected rows or use **Install all** for all discovered rows. The app asks for confirmation when confirmations are enabled. To recover from an installer-type mismatch, select the affected package and choose **Uninstall and reinstall**. OnlyWinget waits for the old copy to be removed before installing the new one and preserves the outcome of every phase. If a source fails during a scan, its previous rows and selection are kept while the other sources refresh.
 
 ~~~mermaid
 flowchart LR
@@ -83,11 +83,11 @@ flowchart TD
 
 Installation validates IDs/revisions for the complete selection before accepting selected EULAs, downloading and installing. Required elevation and restart warnings remain meaningful. MSRC severity is displayed when available; a detected restart field is not a prediction for every future installation.
 
-The PowerShell fallback is for unavailable COM activation; it does not automatically retry a failed COM installation. Cancel requests native abort and cleanup, without rollback. If interruption/cleanup is unconfirmed, the app reports uncertainty. Inspect Windows Update's actual state before retrying. See [metadata limits](operations.md#windows-update-metadata).
+The PowerShell fallback is for unavailable COM activation; it does not automatically retry a failed COM installation. Windows Update runs in a separate process. Cancel requests native abort and allows up to 30 seconds for cleanup. Cancellation cannot roll back changes. If interruption/cleanup is unconfirmed, the app reports uncertainty. Inspect Windows Update's actual state before retrying. See [metadata limits](operations.md#windows-update-metadata).
 
 ## 5. Sources
 
-Reload the source list to inspect WinGet configuration. Local enable/disable preferences affect searches without removing the native source.
+Reload the source list to inspect WinGet configuration. If WinGet returns an unreadable source list, OnlyWinget keeps the previous list and shows an error. Local enable/disable preferences affect searches without removing the native source.
 
 | Action | Effect |
 |---|---|

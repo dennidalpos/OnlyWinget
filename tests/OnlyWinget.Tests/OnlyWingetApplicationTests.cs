@@ -2025,6 +2025,95 @@ public sealed class OnlyWingetApplicationTests
         Assert.Null(executor.LastPlan);
     }
 
+    [Fact]
+    public async Task ReinstallKeepsAllPhaseResultsAndReportsPartialFailure()
+    {
+        var first = new PackageIdentity("Audit.First", "winget");
+        var second = new PackageIdentity("Audit.Second", "winget");
+        var loader = new StubUpdateLoader(new PackageUpdate(first, "First", "1", "2"),
+            new PackageUpdate(second, "Second", "1", "2"));
+        var executor = new ReinstallTestExecutor(first);
+        var app = CreateApplication(updates: loader, executor: executor);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleAllUpdates();
+        Assert.False((await app.ApplySelectedUpdatesAsync(CancellationToken.None)).Succeeded);
+        var reachedUninstall = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        executor.OnUninstall = async (selection, token) =>
+        {
+            if (!selection.Package.Equals(first)) return;
+            reachedUninstall.TrySetResult();
+            await executor.ContinueUninstall.Task.WaitAsync(token);
+        };
+
+        var operation = app.ReinstallSelectedUpdatesAsync(CancellationToken.None);
+        await reachedUninstall.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False((await app.RefreshUpdatesAsync(CancellationToken.None)).Succeeded);
+        executor.ContinueUninstall.TrySetResult();
+        var result = await operation;
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(4, app.State.LastOperationResults.Count);
+        Assert.Contains(app.State.LastOperationResults, row => row.Selection.Package.Equals(first) &&
+            row.Selection.Action == PackageAction.Install && !row.Succeeded);
+        Assert.Contains(app.State.LastOperationResults, row => row.Selection.Package.Equals(second) &&
+            row.Selection.Action == PackageAction.Install && row.Succeeded);
+        Assert.Equal(first, Assert.Single(app.State.Updates).Package);
+    }
+
+    [Fact]
+    public async Task PartialRefreshPreservesFailedSourceRowsEvenWhenSuccessfulSourceReturnsNone()
+    {
+        var package = new PackageIdentity("Audit.Store", "msstore");
+        var sources = new StubSourceService(
+            new WingetSource("msstore", "https://store", false, WingetSourceStatus.Available),
+            new WingetSource("winget", "https://winget", false, WingetSourceStatus.Available));
+        var loader = new StubUpdateLoader(new PackageUpdate(package, "Store", "1", "2"));
+        var app = CreateApplication(updates: loader, sources: sources);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleUpdate(package);
+        loader.FailingSources.Add("msstore");
+        loader.Updates = [];
+
+        Assert.True((await app.RefreshUpdatesAsync(CancellationToken.None)).Succeeded);
+        Assert.Equal(package, Assert.Single(app.State.Updates).Package);
+        Assert.Contains(package, app.State.SelectedUpdates);
+    }
+
+    private sealed class ReinstallTestExecutor(PackageIdentity first) : IOperationExecutor
+    {
+        public Func<PackageSelection, CancellationToken, Task>? OnUninstall { get; set; }
+        public TaskCompletionSource ContinueUninstall { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<OperationExecutionSummary> ExecuteAsync(
+            OperationPlan plan, CancellationToken cancellationToken, IProgress<OperationProgress>? progress = null,
+            bool continueAfterFailure = false, int maxRetries = 0, bool bypassHashValidation = false)
+        {
+            var results = new List<OperationExecutionResult>();
+            foreach (var selection in plan.Selections)
+            {
+                if (selection.Action == PackageAction.Uninstall && OnUninstall is { } callback)
+                {
+                    await callback(selection, cancellationToken);
+                }
+
+                WingetErrorKind? kind = selection.Action switch
+                {
+                    PackageAction.Upgrade => WingetErrorKind.InstallTechnologyMismatch,
+                    PackageAction.Install when selection.Package.Equals(first) => WingetErrorKind.Unknown,
+                    _ => null
+                };
+                results.Add(new(selection, new(kind is null ? 0 : -1, "", ""),
+                    kind is null ? null : new(kind.Value, "Synthetic failure")));
+            }
+
+            return new(results);
+        }
+    }
+
     private static OnlyWingetApplication CreateApplication(
         SystemCapabilities? capabilities = null,
         IPackageSearchService? search = null,

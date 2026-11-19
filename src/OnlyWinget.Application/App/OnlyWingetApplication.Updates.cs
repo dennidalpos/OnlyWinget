@@ -37,7 +37,7 @@ public sealed partial class OnlyWingetApplication
                         .DistinctBy(update => update.Package)
                         .ToArray();
 
-                    if (distinctUpdates.Length == 0 && sourceErrors.Length > 0)
+                    if (sourceErrors.Length == outcomes.Length)
                     {
                         throw new InvalidOperationException(string.Join(Environment.NewLine, sourceErrors));
                     }
@@ -47,15 +47,15 @@ public sealed partial class OnlyWingetApplication
                             cancellationToken)
                         .ConfigureAwait(false);
 
-                    var unreadableSources = outcomes
-                        .Where(item => item.Outcome.Error?.Kind == WingetErrorKind.InvalidOutput)
+                    var failedSources = outcomes
+                        .Where(item => !item.Outcome.Succeeded && item.Outcome.Error?.Kind != WingetErrorKind.NoUpdates)
                         .Select(item => item.Source)
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
                     UpdateState(() =>
                     {
                         var refreshedUpdates = distinctUpdates
                             .Concat(updates.Where(update =>
-                                update.Package.Source is { } source && unreadableSources.Contains(source)))
+                                update.Package.Source is { } source && failedSources.Contains(source)))
                             .DistinctBy(update => update.Package)
                             .OrderBy(update => update.Name, StringComparer.OrdinalIgnoreCase)
                             .ToArray();
@@ -120,91 +120,125 @@ public sealed partial class OnlyWingetApplication
     /// Replaces selected apps that winget cannot upgrade in place: uninstall the installed copy, then install the
     /// winget version. The install only runs after a successful uninstall; the caller confirms with the user first.
     /// </summary>
-    public async Task<ApplicationActionResult> ReinstallSelectedUpdatesAsync(
+    public Task<ApplicationActionResult> ReinstallSelectedUpdatesAsync(
         CancellationToken cancellationToken,
-        IProgress<OperationProgress>? progress = null)
-    {
-        var targets = ReadState(() =>
+        IProgress<OperationProgress>? progress = null) =>
+        RunAsync(ApplicationBusyState.ExecutingOperation, cancellationToken, async token =>
         {
-            var needing = PackagesNeedingReinstall(State);
-            return updates
-                .Where(update => updateSelection.Selected.Contains(update.Package) && needing.Contains(update.Package))
-                .ToArray();
-        });
-        if (targets.Length == 0)
-        {
-            return Run(() => throw new InvalidOperationException(UserText("Error_SelectForReinstall", "Select an update that needs reinstalling first.")));
-        }
-
-        ApplicationActionResult? last = null;
-        foreach (var target in targets)
-        {
-            var uninstall = await ExecutePlanAsync(
-                new OperationPlan($"Reinstall {target.Package.Id}: uninstall",
-                    [new PackageSelection(target.Package, PackageAction.Uninstall, target.Name)]),
-                cancellationToken, progress).ConfigureAwait(false);
-            last = uninstall;
-            if (!uninstall.Succeeded)
+            RequireWinget();
+            var targets = ReadState(() =>
             {
-                AddActivity(ActivityCategory.Packages, ActivitySeverity.Warning, target.Package.Id, UserText("Activity_ReinstallUninstallFailed", "Uninstall did not complete; the app was not reinstalled."));
-                continue;
+                var needing = PackagesNeedingReinstall(State);
+                return updates.Where(update => updateSelection.Selected.Contains(update.Package) &&
+                    needing.Contains(update.Package)).ToArray();
+            });
+            if (targets.Length == 0)
+            {
+                throw new InvalidOperationException(UserText("Error_SelectForReinstall", "Select an update that needs reinstalling first."));
             }
 
-            // winget exits as soon as a "remove only" uninstaller has started; do not install over the old copy.
-            var removal = await WaitForRemovalAsync(target.Package, cancellationToken).ConfigureAwait(false);
-            if (!removal.Succeeded)
+            UpdateState(lastOperationResults.Clear);
+            var failures = new List<string>();
+            for (var index = 0; index < targets.Length; index++)
             {
-                last = removal;
-                continue;
-            }
-
-            last = await ExecutePlanAsync(
-                new OperationPlan($"Reinstall {target.Package.Id}: install",
-                    [new PackageSelection(target.Package, PackageAction.Install)]),
-                cancellationToken, progress).ConfigureAwait(false);
-            if (!last.Succeeded)
-            {
-                AddActivity(ActivityCategory.Packages, ActivitySeverity.Error, target.Package.Id,
-                    UserText("Activity_ReinstallInstallFailed", "The previous version was uninstalled but the new one failed to install. Install it again from Packages."));
-            }
-        }
-
-        return last!;
-    }
-
-    private Task<ApplicationActionResult> WaitForRemovalAsync(PackageIdentity package, CancellationToken cancellationToken) =>
-        RunAsync(
-            ApplicationBusyState.ExecutingOperation,
-            cancellationToken,
-            async token =>
-            {
-                var waited = global::System.Diagnostics.Stopwatch.StartNew();
-                var announced = false;
-                while (true)
+                token.ThrowIfCancellationRequested();
+                var target = targets[index];
+                var position = index;
+                OperationProgress MapProgress(OperationProgress update, int phase)
                 {
-                    var status = await packageResolver.CheckInstalledStatusAsync(package, token).ConfigureAwait(false);
-                    if (!status.IsInstalled)
-                    {
-                        return;
-                    }
-
-                    if (!announced)
-                    {
-                        announced = true;
-                        AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, package.Id,
-                            UserText("Activity_ReinstallWaiting", "The uninstaller is still running. Finish its window; the new version installs as soon as the old one is gone."));
-                    }
-
-                    if (waited.Elapsed > TimeSpan.FromMinutes(10))
-                    {
-                        throw new InvalidOperationException(
-                            FormatUserText("Error_ReinstallStillInstalled", "{0} is still installed. Finish or close its uninstaller, then try again.", package.Id));
-                    }
-
-                    await Task.Delay(TimeSpan.FromSeconds(3), token).ConfigureAwait(false);
+                    var packagePercent = (phase * 100 + update.Percentage) / 2;
+                    return new OperationProgress(target.Package.Id, update.Phase,
+                        (position * 100 + packagePercent) / targets.Length,
+                        packagePercent, position, targets.Length);
                 }
-            },
-            UserText("Error_ReinstallRemovalUnconfirmed", "Unable to confirm that the app was uninstalled."));
+
+                var uninstall = new PackageSelection(target.Package, PackageAction.Uninstall, target.Name);
+                try
+                {
+                    await ExecutePlanCoreAsync(new OperationPlan($"Reinstall {target.Package.Id}: uninstall", [uninstall]),
+                        token, progress, removeCompletedUpdates: false, mapProgress: update => MapProgress(update, 0)).ConfigureAwait(false);
+                }
+                catch (InvalidOperationException)
+                {
+                    failures.Add(target.Package.Id);
+                    AddActivity(ActivityCategory.Packages, ActivitySeverity.Warning, target.Package.Id,
+                        UserText("Activity_ReinstallUninstallFailed", "Uninstall did not complete; the app was not reinstalled."));
+                    continue;
+                }
+
+                try
+                {
+                    await WaitForRemovalAsync(target.Package, token).ConfigureAwait(false);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    failures.Add(target.Package.Id);
+                    var error = new ClassifiedWingetError(WingetErrorKind.Unknown, exception.Message);
+                    RecordOperationResults([new(uninstall, new(-1, string.Empty, string.Empty), error, 0)]);
+                    continue;
+                }
+
+                var install = new PackageSelection(target.Package, PackageAction.Install);
+                try
+                {
+                    await ExecutePlanCoreAsync(new OperationPlan($"Reinstall {target.Package.Id}: install", [install]),
+                        token, progress, mapProgress: update => MapProgress(update, 1)).ConfigureAwait(false);
+                }
+                catch (InvalidOperationException)
+                {
+                    failures.Add(target.Package.Id);
+                    ReportInterruptedReinstall(target.Package);
+                }
+                catch (OperationCanceledException)
+                {
+                    ReportInterruptedReinstall(target.Package);
+                    throw;
+                }
+            }
+
+            token.ThrowIfCancellationRequested();
+            if (failures.Count != 0)
+            {
+                throw new InvalidOperationException(FormatUserText("Error_ReinstallBatchFailed",
+                    "Reinstallation did not complete for: {0}. See the operation results.", string.Join(", ", failures)));
+            }
+
+            CompletePackageProgress(targets.Length, progress);
+        }, UserText("Error_ReinstallRemovalUnconfirmed", "Unable to confirm that the app was uninstalled."));
+
+    private void ReportInterruptedReinstall(PackageIdentity package) =>
+        AddActivity(ActivityCategory.Packages, ActivitySeverity.Error, package.Id,
+            UserText("Activity_ReinstallInstallFailed", "The previous version was uninstalled but the new one failed to install. Install it again from Packages."));
+
+    private async Task WaitForRemovalAsync(PackageIdentity package, CancellationToken cancellationToken)
+    {
+        var waited = global::System.Diagnostics.Stopwatch.StartNew();
+        var announced = false;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var status = await packageResolver.CheckInstalledStatusAsync(package, cancellationToken).ConfigureAwait(false);
+            if (!status.IsInstalled)
+            {
+                return;
+            }
+
+            if (!announced)
+            {
+                announced = true;
+                AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, package.Id,
+                    UserText("Activity_ReinstallWaiting", "The uninstaller is still running. Finish its window; the new version installs as soon as the old one is gone."));
+            }
+
+            if (waited.Elapsed > TimeSpan.FromMinutes(10))
+            {
+                throw new InvalidOperationException(
+                    FormatUserText("Error_ReinstallStillInstalled", "{0} is still installed. Finish or close its uninstaller, then try again.", package.Id));
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     public async Task<ApplicationActionResult> ScanWindowsUpdatesAsync(
         WindowsUpdateOptions options,

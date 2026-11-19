@@ -59,7 +59,8 @@ internal static class AppComposition
                     sp.GetRequiredService<INavigationRegistry>()));
 
                 // Infrastructure & Application Services
-                services.AddSingleton<IExternalProcessRunner, ProcessExternalProcessRunner>();
+                services.AddSingleton<ProcessExternalProcessRunner>();
+                services.AddSingleton<IExternalProcessRunner>(sp => sp.GetRequiredService<ProcessExternalProcessRunner>());
                 services.AddSingleton<WingetProgressParser>();
                 services.AddSingleton<WingetTableParser>();
                 services.AddSingleton<UpdateScanOptions>();
@@ -98,16 +99,12 @@ internal static class AppComposition
                 services.AddSingleton<IPackageSearchService>(sp => sp.GetRequiredService<WingetPackageSearchService>());
                 services.AddSingleton<IPackageResolver>(sp => sp.GetRequiredService<WingetPackageResolver>());
                 services.AddSingleton<IUpdateLoader, WingetUpdateLoader>();
-                services.AddSingleton<IWindowsUpdateService, ComWindowsUpdateService>();
-                services.AddSingleton<IWindowsUpdateManagementService, ComWindowsUpdateManagementService>();
+                services.AddSingleton<WindowsUpdateWorkerService>();
+                services.AddSingleton<IWindowsUpdateService>(sp => sp.GetRequiredService<WindowsUpdateWorkerService>());
+                services.AddSingleton<IWindowsUpdateManagementService>(sp => sp.GetRequiredService<WindowsUpdateWorkerService>());
                 services.AddSingleton<ISystemRestartService, ShutdownRestartService>();
                 services.AddSingleton<IWingetSourceService, WingetSourceService>();
                 services.AddSingleton<IOperationExecutor, WingetOperationExecutor>();
-                services.AddSingleton<IInstallResidueCleaner>(sp => new WingetTempResidueCleaner(
-                    null,
-                    sp.GetService<ILogger<WingetTempResidueCleaner>>()));
-
-                // OnlyWinget Workflow App
                 services.AddSingleton<OnlyWingetApplication>(sp =>
                 {
                     return new OnlyWingetApplication(
@@ -121,7 +118,6 @@ internal static class AppComposition
                         sp.GetRequiredService<IOperationExecutor>(),
                         sourcePreferenceStore: sp.GetRequiredService<ISourcePreferenceStore>(),
                         appLogger: sp.GetService<ILogger<OnlyWingetApplication>>(),
-                        residueCleaner: sp.GetService<IInstallResidueCleaner>(),
                         updateManagement: sp.GetService<IWindowsUpdateManagementService>(),
                         restartService: sp.GetService<ISystemRestartService>());
                 });

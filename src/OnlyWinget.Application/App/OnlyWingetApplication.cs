@@ -26,7 +26,6 @@ public sealed partial class OnlyWingetApplication(
     TimeProvider? timeProvider = null,
     ISourcePreferenceStore? sourcePreferenceStore = null,
     Microsoft.Extensions.Logging.ILogger<OnlyWingetApplication>? appLogger = null,
-    IInstallResidueCleaner? residueCleaner = null,
     IWindowsUpdateManagementService? updateManagement = null,
     ISystemRestartService? restartService = null)
 {

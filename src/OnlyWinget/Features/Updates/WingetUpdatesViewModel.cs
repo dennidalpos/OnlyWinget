@@ -73,8 +73,8 @@ public sealed partial class WingetUpdatesViewModel(Action<Action> dispatch, Only
     });
     public Task ReinstallAsync() => RunAsync(async token =>
     {
-        await Workflow.ReinstallSelectedUpdatesAsync(token);
-        if (!token.IsCancellationRequested)
+        var result = await Workflow.ReinstallSelectedUpdatesAsync(token);
+        if (result.Succeeded && !token.IsCancellationRequested)
         {
             await Workflow.RefreshUpdatesAsync(token);
         }

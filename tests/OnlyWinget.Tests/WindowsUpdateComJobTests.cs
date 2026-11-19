@@ -87,6 +87,22 @@ public sealed class WindowsUpdateComJobTests
         Assert.Equal(0, ends);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task NativeCancellationFailureReportsUncertainState(bool abortFails)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var job = WindowsUpdateComJob.RunAsync(_ => new object(), _ => new object(),
+            _ => { if (abortFails) throw new InvalidOperationException("Abort failed."); },
+            _ => { if (!abortFails) throw new InvalidOperationException("Cleanup failed."); },
+            cancellation.Token);
+        cancellation.Cancel();
+
+        var error = await Assert.ThrowsAsync<WindowsUpdateComCompletionException>(() => job);
+        Assert.Contains("uncertain", error.Message);
+    }
+
     [Fact]
     public async Task AlreadyCancelledWorkDoesNotStartAJob()
     {
