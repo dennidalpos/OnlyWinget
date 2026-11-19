@@ -17,7 +17,7 @@ public sealed partial class OnlyWingetApplication
                     await EnsureOfficialSourcesConfiguredAsync(cancellationToken).ConfigureAwait(false);
                     var outcome = await sourceService.ListSourcesAsync(cancellationToken).ConfigureAwait(false);
                     ApplySourceOutcome(outcome, updateRows: true);
-                    AddActivity(ActivitySeverity.Information, "Sources refreshed", $"{ReadState(() => sources.Count)} source(s).");
+                    AddActivity(ActivityCategory.Sources, ActivitySeverity.Information, "Sources refreshed", $"{ReadState(() => sources.Count)} source(s).");
                 },
                 "Unable to refresh winget sources.")
             .ConfigureAwait(false);
@@ -115,7 +115,7 @@ public sealed partial class OnlyWingetApplication
                         disabledSources.UnionWith(updatedDisabledSources);
                         ApplySourcePreferences();
                     });
-                    AddActivity(ActivitySeverity.Information, "Source preference changed", $"{name}: {(isEnabled ? "enabled" : "disabled")}");
+                    AddActivity(ActivityCategory.Sources, ActivitySeverity.Information, "Source preference changed", $"{name}: {(isEnabled ? "enabled" : "disabled")}");
                 },
                 "Unable to save the source preference.")
             .ConfigureAwait(false);
@@ -161,7 +161,7 @@ public sealed partial class OnlyWingetApplication
                         defaultSourcesConfigured = preferences.DefaultSourcesConfigured;
                         ApplySourcePreferences();
                     });
-                    AddActivity(ActivitySeverity.Success, title, message);
+                    AddActivity(ActivityCategory.Sources, ActivitySeverity.Success, title, message);
                 },
                 "Unable to manage winget sources.")
             .ConfigureAwait(false);
@@ -240,7 +240,7 @@ public sealed partial class OnlyWingetApplication
             string.Equals(existing.Name, source.Name, StringComparison.OrdinalIgnoreCase))).ToArray();
         if (missing.Length > 0 && currentCapabilities.IsElevated != true)
         {
-            AddActivity(ActivitySeverity.Warning, "Default source configuration requires administrator privileges",
+            AddActivity(ActivityCategory.Sources, ActivitySeverity.Warning, "Default source configuration requires administrator privileges",
                 "Restart OnlyWinget as administrator to add missing default sources. Existing sources remain available.");
             return;
         }
@@ -248,7 +248,7 @@ public sealed partial class OnlyWingetApplication
         {
             var outcome = await sourceService.AddSourceAsync(source.Name, source.Url, cancellationToken).ConfigureAwait(false);
             ApplySourceOutcome(outcome, updateRows: false);
-            AddActivity(ActivitySeverity.Information, "Source added", $"{source.Name}: {source.Url}");
+            AddActivity(ActivityCategory.Sources, ActivitySeverity.Information, "Source added", $"{source.Name}: {source.Url}");
         }
         await sourcePreferences.SaveAsync(
             ReadState(() => new SourcePreferences(disabledSources.ToArray(), DefaultSourcesConfigured: true)),

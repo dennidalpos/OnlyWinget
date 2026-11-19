@@ -63,12 +63,12 @@ public sealed partial class OnlyWingetApplication
                         updates.AddRange(refreshedUpdates);
                         updateSelection.ReplaceAvailable(refreshedUpdates.Select(update => update.Package));
                     });
-                    AddActivity(ActivitySeverity.Information, "Updates refreshed", $"{distinctUpdates.Length} update(s).");
+                    AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, "Updates refreshed", $"{distinctUpdates.Length} update(s).");
 
                     if (sourceErrors.Length > 0)
                     {
                         AddActivity(
-                            ActivitySeverity.Warning,
+                            ActivityCategory.Packages, ActivitySeverity.Warning,
                             "Some sources could not be refreshed",
                             string.Join(Environment.NewLine, sourceErrors));
                     }
@@ -84,18 +84,27 @@ public sealed partial class OnlyWingetApplication
     public ApplicationActionResult SetUpdatesSelection(IEnumerable<PackageIdentity> packages, bool isSelected) =>
         Run(() => { foreach (var p in packages) updateSelection.SetSelected(p, isSelected); });
 
-    public async Task<ApplicationActionResult> ApplySelectedUpdatesAsync(
+    public Task<ApplicationActionResult> ApplySelectedUpdatesAsync(
         CancellationToken cancellationToken,
-        IProgress<OperationProgress>? progress = null)
+        IProgress<OperationProgress>? progress = null) =>
+        ApplyUpdatesAsync(false, cancellationToken, progress);
+
+    public Task<ApplicationActionResult> ApplyAllUpdatesAsync(
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress = null) =>
+        ApplyUpdatesAsync(true, cancellationToken, progress);
+
+    private Task<ApplicationActionResult> ApplyUpdatesAsync(
+        bool all,
+        CancellationToken cancellationToken,
+        IProgress<OperationProgress>? progress)
     {
-        var selections = ReadState(() => updateSelection.Selected
-            .Select(package => new PackageSelection(
-                package,
-                PackageAction.Upgrade,
-                updates.FirstOrDefault(update => update.Package.Equals(package))?.Name))
-            .ToArray());
-        return await ExecutePlanAsync(new OperationPlan("Selected updates", selections), cancellationToken, progress)
-            .ConfigureAwait(false);
+        var selections = ReadState(() => all
+            ? updates.Select(update => new PackageSelection(update.Package, PackageAction.Upgrade, update.Name)).ToArray()
+            : updateSelection.Selected.Select(package => new PackageSelection(package, PackageAction.Upgrade,
+                updates.FirstOrDefault(update => update.Package.Equals(package))?.Name)).ToArray());
+        return ExecutePlanAsync(new OperationPlan(all ? "All updates" : "Selected updates", selections),
+            cancellationToken, progress);
     }
 
     /// <summary>Packages whose last upgrade failed because winget cannot upgrade across installer technologies.</summary>
@@ -124,7 +133,7 @@ public sealed partial class OnlyWingetApplication
         });
         if (targets.Length == 0)
         {
-            return Run(() => throw new InvalidOperationException("Select an update that needs reinstalling first."));
+            return Run(() => throw new InvalidOperationException(UserText("Error_SelectForReinstall", "Select an update that needs reinstalling first.")));
         }
 
         ApplicationActionResult? last = null;
@@ -137,7 +146,7 @@ public sealed partial class OnlyWingetApplication
             last = uninstall;
             if (!uninstall.Succeeded)
             {
-                AddActivity(ActivitySeverity.Warning, target.Package.Id, "Uninstall did not complete; the app was not reinstalled.");
+                AddActivity(ActivityCategory.Packages, ActivitySeverity.Warning, target.Package.Id, UserText("Activity_ReinstallUninstallFailed", "Uninstall did not complete; the app was not reinstalled."));
                 continue;
             }
 
@@ -155,8 +164,8 @@ public sealed partial class OnlyWingetApplication
                 cancellationToken, progress).ConfigureAwait(false);
             if (!last.Succeeded)
             {
-                AddActivity(ActivitySeverity.Error, target.Package.Id,
-                    "The previous version was uninstalled but the new one failed to install. Install it again from Packages.");
+                AddActivity(ActivityCategory.Packages, ActivitySeverity.Error, target.Package.Id,
+                    UserText("Activity_ReinstallInstallFailed", "The previous version was uninstalled but the new one failed to install. Install it again from Packages."));
             }
         }
 
@@ -182,20 +191,20 @@ public sealed partial class OnlyWingetApplication
                     if (!announced)
                     {
                         announced = true;
-                        AddActivity(ActivitySeverity.Information, package.Id,
-                            "The uninstaller is still running. Finish its window; the new version installs as soon as the old one is gone.");
+                        AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, package.Id,
+                            UserText("Activity_ReinstallWaiting", "The uninstaller is still running. Finish its window; the new version installs as soon as the old one is gone."));
                     }
 
                     if (waited.Elapsed > TimeSpan.FromMinutes(10))
                     {
                         throw new InvalidOperationException(
-                            $"{package.Id} is still installed. Finish or close its uninstaller, then try again.");
+                            FormatUserText("Error_ReinstallStillInstalled", "{0} is still installed. Finish or close its uninstaller, then try again.", package.Id));
                     }
 
                     await Task.Delay(TimeSpan.FromSeconds(3), token).ConfigureAwait(false);
                 }
             },
-            "Unable to confirm that the app was uninstalled.");
+            UserText("Error_ReinstallRemovalUnconfirmed", "Unable to confirm that the app was uninstalled."));
 
     public async Task<ApplicationActionResult> ScanWindowsUpdatesAsync(
         WindowsUpdateOptions options,
@@ -210,7 +219,7 @@ public sealed partial class OnlyWingetApplication
                     var outcome = await windowsUpdateService.ScanAsync(options, cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
-                        throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update scan failed.");
+                        throw new InvalidOperationException(outcome.Error?.Message ?? UserText("Error_WindowsScanFailed", "Windows Update scan failed."));
                     }
 
                     UpdateState(() =>
@@ -222,7 +231,7 @@ public sealed partial class OnlyWingetApplication
                         .ThenBy(update => update.Identity.UpdateId, StringComparer.OrdinalIgnoreCase));
                         windowsUpdateSelection.ReplaceAvailable(windowsUpdates.Select(update => update.Identity));
                     });
-                    AddActivity(ActivitySeverity.Information, "Windows Update scan completed", $"{ReadState(() => windowsUpdates.Count)} update(s).");
+                    AddActivity(ActivityCategory.WindowsUpdate, ActivitySeverity.Information, UserText("Activity_WindowsScanCompleted", "Windows Update scan completed"), FormatUserText("Activity_WindowsUpdateCount", "{0} update(s).", ReadState(() => windowsUpdates.Count)));
                 },
                 "Unable to scan Windows Update.")
             .ConfigureAwait(false);
@@ -236,25 +245,42 @@ public sealed partial class OnlyWingetApplication
     public ApplicationActionResult SetWindowsUpdatesSelection(IEnumerable<WindowsUpdateIdentity> updates, bool isSelected) =>
         Run(() => { foreach (var u in updates) windowsUpdateSelection.SetSelected(u, isSelected); });
 
-    public async Task<ApplicationActionResult> InstallSelectedWindowsUpdatesAsync(
+    public Task<ApplicationActionResult> InstallSelectedWindowsUpdatesAsync(
         WindowsUpdateOptions options,
         CancellationToken callerCancellationToken,
-        IProgress<OperationProgress>? progress = null)
+        IProgress<OperationProgress>? progress = null) =>
+        InstallWindowsUpdatesAsync(options, false, callerCancellationToken, progress);
+
+    public Task<ApplicationActionResult> InstallAllWindowsUpdatesAsync(
+        WindowsUpdateOptions options,
+        CancellationToken callerCancellationToken,
+        IProgress<OperationProgress>? progress = null) =>
+        InstallWindowsUpdatesAsync(options with { DownloadOnly = false, ShowHidden = false }, true, callerCancellationToken, progress);
+
+    private async Task<ApplicationActionResult> InstallWindowsUpdatesAsync(
+        WindowsUpdateOptions options,
+        bool all,
+        CancellationToken callerCancellationToken,
+        IProgress<OperationProgress>? progress)
     {
-        var selected = ReadState(() => windowsUpdateSelection.Selected.ToArray());
         return await RunAsync(
                 ApplicationBusyState.InstallingWindowsUpdates,
                 callerCancellationToken,
                 async cancellationToken =>
                 {
                     RequireWindowsUpdate();
+                    var selected = ReadState(() => all
+                        ? windowsUpdates.Where(update => !update.IsHidden).Select(update => update.Identity).ToArray()
+                        : windowsUpdateSelection.Selected.ToArray());
                     if (selected.Length == 0)
                     {
-                        throw new InvalidOperationException("Select at least one Windows update before installing.");
+                        throw new InvalidOperationException(all
+                            ? UserText("Error_NoVisibleWindowsUpdates", "Scan for available Windows updates before installing all.")
+                            : UserText("Error_SelectWindowsUpdates", "Select at least one Windows update before installing."));
                     }
 
                     UpdateState(lastWindowsUpdateResults.Clear);
-                    AddActivity(ActivitySeverity.Information, "Windows Update install started", $"{selected.Length} update(s).");
+                    AddActivity(ActivityCategory.WindowsUpdate, ActivitySeverity.Information, UserText("Activity_WindowsInstallStarted", "Windows Update install started"), FormatUserText("Activity_WindowsUpdateCount", "{0} update(s).", selected.Length));
                     UpdateState(() => operationProgress = new OperationProgress("WindowsUpdate", WingetProgressPhase.Starting, 0, 0, selected.Length));
                     var forwardingProgress = new InlineProgress<OperationProgress>(update =>
                     {
@@ -267,7 +293,7 @@ public sealed partial class OnlyWingetApplication
                     {
                         var errorMsg = !string.IsNullOrWhiteSpace(outcome.Error?.Message)
                             ? outcome.Error.Message
-                            : "Windows Update install failed.";
+                            : UserText("Error_WindowsInstallFailed", "Windows Update install failed.");
                         throw new InvalidOperationException(errorMsg);
                     }
 
@@ -278,19 +304,19 @@ public sealed partial class OnlyWingetApplication
                         resultKeys.Distinct(StringComparer.Ordinal).Count() != selectedKeys.Count ||
                         resultKeys.Any(key => !selectedKeys.Contains(key)))
                     {
-                        throw new InvalidOperationException("Windows Update did not return a result for every selected update and revision. Scan again before retrying.");
+                        throw new InvalidOperationException(UserText("Error_WindowsIncompleteResult", "Windows Update did not return a result for every selected update and revision. Scan again before retrying."));
                     }
                     foreach (var result in outcome.Rows)
                     {
                         var severity = result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error;
                         var logMessage = result.Succeeded
-                            ? "Completed."
+                            ? UserText("Activity_WindowsCompleted", "Completed.")
                             : (string.IsNullOrWhiteSpace(result.Message) ? $"Result Code: {result.ResultCode}" : $"{result.Message} (Result Code: {result.ResultCode})");
-                        AddActivity(severity, result.Title, logMessage);
+                        AddActivity(ActivityCategory.WindowsUpdate, severity, result.Title, logMessage);
                         Logger?.Invoke(
                             result.Succeeded ? AppLogLevel.Verbose : AppLogLevel.Error,
                             $"[Windows Update Result] Title: {result.Title}, Succeeded: {result.Succeeded}, ResultCode: {result.ResultCode}, Message: {result.Message}",
-                            nameof(InstallSelectedWindowsUpdatesAsync));
+                            nameof(InstallWindowsUpdatesAsync));
                     }
 
                     var failedUpdates = outcome.Rows.Where(result => !result.Succeeded).ToArray();
@@ -305,7 +331,7 @@ public sealed partial class OnlyWingetApplication
 
                     if (outcome.Rows.Any(result => result.RebootRequired))
                     {
-                        AddActivity(ActivitySeverity.Information, "Restart required", "One or more Windows updates require a restart.");
+                        AddActivity(ActivityCategory.WindowsUpdate, ActivitySeverity.Information, UserText("Activity_RestartRequired", "Restart required"), UserText("Activity_WindowsRestartAfterInstall", "One or more Windows updates require a restart."));
                     }
                 },
                 "Unable to install Windows updates.")

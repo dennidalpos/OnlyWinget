@@ -68,7 +68,7 @@ L'installazione diretta non richiede un preset. Un errore di una sorgente può l
 
 ## 3. Aggiornare le applicazioni WinGet
 
-In **Aggiornamenti → WinGet**, avvia una scansione, confronta versione installata e disponibile e seleziona le righe da applicare. La copertura dipende da ciò che WinGet riconosce e dalle sorgenti disponibili.
+In **Aggiornamenti → WinGet**, avvia una scansione, confronta versione installata e disponibile e seleziona le righe da applicare. La copertura dipende da ciò che WinGet riconosce e dalle sorgenti disponibili. **Installa tutti** richiede conferma e applica i risultati della scansione WinGet corrente. Se il tipo di programma di installazione è cambiato, seleziona il pacchetto interessato e scegli **Disinstalla e reinstalla**. OnlyWinget attende la rimozione della copia precedente prima di installare quella nuova.
 
 ```mermaid
 flowchart TD
@@ -100,6 +100,8 @@ flowchart TD
     Outcome --> Check["Se lo stato è incerto, controlla Windows Update prima di riprovare"]
 ```
 
+**Installa tutti** applica gli aggiornamenti disponibili della scansione dopo la conferma. Per gestire quelli nascosti, attiva **Aggiornamenti nascosti** e avvia un'altra scansione. Seleziona le righe e usa **Nascondi** o **Mostra** per cambiarne la visibilità. Apri **Cronologia** per consultare gli esiti per categoria e disinstallare le voci idonee. Se è richiesto un riavvio, scegli **Riavvia** e conferma. Puoi annullare un riavvio pianificato dalla pagina Windows Update.
+
 Avviando l'installazione, l'app accetta le EULA degli aggiornamenti selezionati dopo aver verificato la selezione completa. La gravità MSRC appare quando disponibile; il campo riavvio indica lo stato rilevato, non una previsione per ogni installazione futura.
 
 Il fallback PowerShell serve quando COM non è attivabile: non ripete automaticamente un'installazione COM fallita. Se l'interruzione o la pulizia nativa non sono confermate, l'app segnala uno stato incerto. La cancellazione non effettua rollback; consulta il servizio Windows Update prima di un nuovo tentativo. Per i limiti delle prove reali, vedi [Operazioni](operations.md#windows-update-metadata).
@@ -130,7 +132,7 @@ OnlyWinget valida gli input; gli esiti di accesso e registrazione provengono da 
 
 ## 6. Attività e log diagnostici
 
-In **Attività** filtra per testo, gravità e categoria, copia i dettagli o esporta la cronologia. Cancella e Annulla riguardano la cronologia delle attività.
+In **Attività** le voci sono raggruppate per giorno locale. Filtra per testo, gravità e categoria, copia i dettagli o esporta la cronologia. Cancella e Annulla riguardano la cronologia delle attività.
 
 **Apri log** mostra invece i messaggi diagnostici con filtro, copia, esportazione e svuotamento. Lo svuotamento richiede conferma all'interno del visualizzatore; annullarla lascia i log invariati. Se la scrittura, l'esportazione o la cancellazione fallisce, leggi l'errore prima di riprovare. Controlla il testo esportato prima di condividerlo: può contenere percorsi e indirizzi delle sorgenti.
 
@@ -148,6 +150,8 @@ flowchart LR
     Reset --> Confirm["Conferma il ripristino"]
     Confirm --> Save
 ```
+
+**Ritentativi WinGet** consente da zero a tre tentativi aggiuntivi per pacchetto in caso di errori transitori. Il valore iniziale è uno. I pacchetti bloccati e quelli con versione installata sconosciuta sono esclusi per impostazione predefinita. Attiva le opzioni corrispondenti e ripeti la scansione per includerli quando WinGet lo consente.
 
 ## Dati locali e assistenza
 

@@ -138,7 +138,7 @@ public sealed partial class OnlyWingetApplication
                     var validatedPlan = new OperationPlan(plan.Name, validatedSelections);
                     if (validatedSelections.Count > 0)
                     {
-                        AddActivity(ActivitySeverity.Information, "Operation started", plan.Name);
+                        AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, "Operation started", plan.Name);
                         UpdateState(() => operationProgress = new OperationProgress(string.Empty, WingetProgressPhase.Starting, 0, 0, 0, plan.Selections.Count));
                         var forwardingProgress = new InlineProgress<OperationProgress>(update =>
                         {
@@ -224,7 +224,7 @@ public sealed partial class OnlyWingetApplication
                     : result.Selection.Action == PackageAction.Upgrade
                         ? "the installed version could not be confirmed by id, so the package was left unchanged."
                         : "not installed.";
-                AddActivity(ActivitySeverity.Warning, package.Id, $"State after the failed operation: {state}");
+                AddActivity(ActivityCategory.Packages, ActivitySeverity.Warning, package.Id, $"State after the failed operation: {state}");
             }
             catch (Exception exception) when (exception is not OutOfMemoryException)
             {
@@ -245,7 +245,7 @@ public sealed partial class OnlyWingetApplication
             if (removed.Count > 0)
             {
                 AddActivity(
-                    ActivitySeverity.Information,
+                    ActivityCategory.Packages, ActivitySeverity.Information,
                     "Cleaned up leftovers",
                     $"Removed temporary winget download folders left by the failed operation: {string.Join(", ", removed)}.");
             }
@@ -256,7 +256,7 @@ public sealed partial class OnlyWingetApplication
         }
     }
 
-    private static string DescribeFailure(OperationExecutionResult result)
+    private string DescribeFailure(OperationExecutionResult result)
     {
         var id = result.Selection.Package.Id;
         if (result.Error is not { } error)
@@ -270,7 +270,7 @@ public sealed partial class OnlyWingetApplication
             return id;
         }
 
-        var guidance = WingetErrorGuidance.For(error.Kind, result.Selection.Action);
+        var guidance = WingetErrorGuidance.For(error.Kind, result.Selection.Action, LocalizeUserText);
         return guidance is null ? $"{id} ({code} {error.Kind})" : $"{id} ({code} {error.Kind}): {guidance}";
     }
 
@@ -314,7 +314,7 @@ public sealed partial class OnlyWingetApplication
                 or WingetErrorKind.RebootRequired
                 ? ActivitySeverity.Warning
                 : result.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error;
-            AddActivity(severity, result.Selection.Package.Id, CreateOperationActivityMessage(result));
+            AddActivity(ActivityCategory.Packages, severity, result.Selection.Package.Id, CreateOperationActivityMessage(result));
             var packageResultLine =
                 $"[Package Result] ID: {result.Selection.Package.Id}, Action: {result.Selection.Action}, Succeeded: {result.Succeeded}, " +
                 $"ExitCode: 0x{unchecked((uint)result.CommandResult.ExitCode):X8}, Kind: {result.Error?.Kind.ToString() ?? "None"}, " +
@@ -324,7 +324,7 @@ public sealed partial class OnlyWingetApplication
         }
     }
 
-    private static string CreateOperationActivityMessage(OperationExecutionResult result)
+    private string CreateOperationActivityMessage(OperationExecutionResult result)
     {
         var exitCode = result.CommandResult.ExitCode;
         var exitCodeSuffix = exitCode != 0
@@ -339,8 +339,8 @@ public sealed partial class OnlyWingetApplication
             var baseMsg = string.IsNullOrWhiteSpace(result.CommandResult.StandardError)
                 ? result.Error.Message
                 : $"{result.Error.Message} {result.CommandResult.StandardError.Trim()}";
-            var guidance = WingetErrorGuidance.For(result.Error.Kind, result.Selection.Action);
-            return baseMsg + exitCodeSuffix + attemptSuffix + (guidance is null ? string.Empty : $" What to do: {guidance}");
+            var guidance = WingetErrorGuidance.For(result.Error.Kind, result.Selection.Action, LocalizeUserText);
+            return baseMsg + exitCodeSuffix + attemptSuffix + (guidance is null ? string.Empty : " " + FormatUserText("WingetGuidance_NextStep", "What to do: {0}", guidance));
         }
 
         var output = result.CommandResult.StandardOutput.Trim();
@@ -354,11 +354,11 @@ public sealed partial class OnlyWingetApplication
         return finalMsg + exitCodeSuffix + attemptSuffix;
     }
 
-    private void AddActivity(ActivitySeverity severity, string title, string message)
+    private void AddActivity(ActivityCategory category, ActivitySeverity severity, string title, string message)
     {
         UpdateState(() =>
         {
-            activity.Add(new ActivityEntry(clock.GetUtcNow(), severity, title, message));
+            activity.Add(new ActivityEntry(clock.GetUtcNow(), severity, title, message, category));
         });
         var logLevel = severity switch
         {

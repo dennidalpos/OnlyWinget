@@ -51,6 +51,8 @@ public partial class App : Microsoft.UI.Xaml.Application
             Enum.TryParse<AppLogLevel>(settings.LogLevel, out var level) ? level : AppLogLevel.Information);
         Workflow.ContinueOperationsAfterFailure = settings.ContinueOperationsAfterFailure;
         Workflow.BypassHashValidation = settings.BypassHashValidation;
+        Workflow.MaxPackageOperationRetries = settings.WingetRetryCount;
+        Workflow.LocalizeUserText = TextResources.Get;
         var scanOptions = Host.Services.GetRequiredService<UpdateScanOptions>();
         scanOptions.IncludeUnknownVersions = settings.IncludeUnknownVersions;
         scanOptions.IncludePinned = settings.IncludePinnedPackages;

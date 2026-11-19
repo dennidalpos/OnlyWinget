@@ -32,8 +32,17 @@ public sealed partial class OnlyWingetApplication(
 {
     public bool ContinueOperationsAfterFailure { get; set; }
     public bool BypassHashValidation { get; set; }
-    public int MaxPackageOperationRetries { get; set; } = 1;
+    public const int DefaultPackageOperationRetries = 1;
+    public const int MaximumPackageOperationRetries = 3;
+
+    private int maxPackageOperationRetries = DefaultPackageOperationRetries;
+    public int MaxPackageOperationRetries
+    {
+        get => maxPackageOperationRetries;
+        set => maxPackageOperationRetries = Math.Clamp(value, 0, MaximumPackageOperationRetries);
+    }
     public Action<string, Exception>? ExceptionLogger { get; set; }
+    public Func<string, string>? LocalizeUserText { get; set; }
     public Action<AppLogLevel, string, string>? Logger { get; set; }
 
     private readonly PresetDocumentService presetDocuments = new();
@@ -300,9 +309,24 @@ public sealed partial class OnlyWingetApplication(
         {
             UpdateState(() => userVisibleError = error);
         }
-        AddActivity(ActivitySeverity.Error, "Action failed", error);
+        var category = state switch
+        {
+            ApplicationBusyState.LoadingWorkspace or ApplicationBusyState.SavingWorkspace => ActivityCategory.Presets,
+            ApplicationBusyState.Searching or ApplicationBusyState.RefreshingUpdates or
+                ApplicationBusyState.ValidatingPackages or ApplicationBusyState.ExecutingOperation => ActivityCategory.Packages,
+            ApplicationBusyState.ScanningWindowsUpdates or ApplicationBusyState.InstallingWindowsUpdates or
+                ApplicationBusyState.LoadingWindowsUpdateHistory or ApplicationBusyState.ManagingWindowsUpdates => ActivityCategory.WindowsUpdate,
+            ApplicationBusyState.ManagingSources => ActivityCategory.Sources,
+            _ => ActivityCategory.System
+        };
+        AddActivity(category, ActivitySeverity.Error, UserText("Activity_ActionFailed", "Action failed"), error);
         return ApplicationActionResult.Failure(error);
     }
+
+    private string UserText(string key, string fallback) => LocalizeUserText?.Invoke(key) ?? fallback;
+
+    private string FormatUserText(string key, string fallback, params object[] arguments) =>
+        string.Format(global::System.Globalization.CultureInfo.CurrentCulture, UserText(key, fallback), arguments);
 
     private static string WindowsUpdateFingerprint(WindowsUpdateIdentity update) =>
         $"{update.UpdateId.ToUpperInvariant()}|{update.RevisionNumber}";

@@ -1,3 +1,5 @@
+using OnlyWinget.Application.App;
+
 namespace OnlyWinget.Services;
 
 internal sealed record AppSettings(
@@ -10,4 +12,5 @@ internal sealed record AppSettings(
     bool BypassHashValidation = false,
     double SidebarWidth = 260.0,
     bool IncludeUnknownVersions = false,
-    bool IncludePinnedPackages = false);
+    bool IncludePinnedPackages = false,
+    int WingetRetryCount = OnlyWingetApplication.DefaultPackageOperationRetries);

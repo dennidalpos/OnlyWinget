@@ -31,7 +31,7 @@ public sealed partial class OnlyWingetApplication
                     var outcome = await management.GetHistoryAsync(maxEntries, cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
-                        throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update history could not be read.");
+                        throw new InvalidOperationException(outcome.Error?.Message ?? UserText("Error_WindowsHistoryFailed", "Windows Update history could not be read."));
                     }
 
                     UpdateState(() =>
@@ -74,16 +74,16 @@ public sealed partial class OnlyWingetApplication
                     var management = RequireManagement();
                     if (selected.Length == 0)
                     {
-                        throw new InvalidOperationException("Select at least one Windows update first.");
+                        throw new InvalidOperationException(UserText("Error_WindowsSelectForVisibility", "Select at least one Windows update first."));
                     }
 
                     var outcome = await management.SetHiddenAsync(selected, hidden, options, cancellationToken).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
-                        throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update could not change the hidden state.");
+                        throw new InvalidOperationException(outcome.Error?.Message ?? UserText("Error_WindowsHiddenChangeFailed", "Windows Update could not change the hidden state."));
                     }
 
-                    ReportManagementResults(outcome.Rows, hidden ? "Windows update hidden" : "Windows update shown");
+                    ReportManagementResults(outcome.Rows, hidden ? UserText("Activity_WindowsUpdateHidden", "Windows update hidden") : UserText("Activity_WindowsUpdateShown", "Windows update shown"));
                     ThrowIfAnyFailed(outcome.Rows);
                 },
                 hidden ? "Unable to hide the selected Windows updates." : "Unable to show the selected Windows updates.")
@@ -104,11 +104,11 @@ public sealed partial class OnlyWingetApplication
                     var management = RequireManagement();
                     if (selected.Length == 0)
                     {
-                        throw new InvalidOperationException("Select at least one installed Windows update to uninstall.");
+                        throw new InvalidOperationException(UserText("Error_WindowsSelectForUninstall", "Select at least one installed Windows update to uninstall."));
                     }
 
                     UpdateState(lastWindowsUpdateResults.Clear);
-                    AddActivity(ActivitySeverity.Information, "Windows Update uninstall started", $"{selected.Length} update(s).");
+                    AddActivity(ActivityCategory.WindowsUpdate, ActivitySeverity.Information, UserText("Activity_WindowsUninstallStarted", "Windows Update uninstall started"), FormatUserText("Activity_WindowsUpdateCount", "{0} update(s).", selected.Length));
                     var forwardingProgress = new InlineProgress<OperationProgress>(update =>
                     {
                         UpdateState(() => operationProgress = update);
@@ -118,14 +118,14 @@ public sealed partial class OnlyWingetApplication
                     var outcome = await management.UninstallAsync(selected, cancellationToken, forwardingProgress).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                     {
-                        throw new InvalidOperationException(outcome.Error?.Message ?? "Windows Update uninstall failed.");
+                        throw new InvalidOperationException(outcome.Error?.Message ?? UserText("Error_WindowsUninstallFailed", "Windows Update uninstall failed."));
                     }
 
                     UpdateState(() => lastWindowsUpdateResults.AddRange(outcome.Rows));
-                    ReportManagementResults(outcome.Rows, "Windows update uninstalled");
+                    ReportManagementResults(outcome.Rows, UserText("Activity_WindowsUpdateUninstalled", "Windows update uninstalled"));
                     if (outcome.Rows.Any(row => row.RebootRequired))
                     {
-                        AddActivity(ActivitySeverity.Information, "Restart required", "Restart Windows to finish removing the update.");
+                        AddActivity(ActivityCategory.WindowsUpdate, ActivitySeverity.Information, UserText("Activity_RestartRequired", "Restart required"), UserText("Activity_WindowsRestartAfterUninstall", "Restart Windows to finish removing the update."));
                     }
 
                     RefreshRestartPending();
@@ -149,43 +149,43 @@ public sealed partial class OnlyWingetApplication
     {
         if (restartService is null)
         {
-            return ApplicationActionResult.Failure("Restart is not available on this system.");
+            return ApplicationActionResult.Failure(UserText("Error_RestartUnavailable", "Restart is not available on this system."));
         }
 
         var scheduled = await restartService.ScheduleRestartAsync(delay, cancellationToken).ConfigureAwait(false);
         AddActivity(
-            scheduled ? ActivitySeverity.Warning : ActivitySeverity.Error,
-            scheduled ? "Restart scheduled" : "Restart failed",
+            ActivityCategory.WindowsUpdate, scheduled ? ActivitySeverity.Warning : ActivitySeverity.Error,
+            scheduled ? UserText("Activity_RestartScheduled", "Restart scheduled") : UserText("Activity_RestartFailed", "Restart failed"),
             scheduled
-                ? $"Windows will restart in {(int)delay.TotalSeconds} second(s). Cancel it from the Windows Update page."
-                : "Windows did not accept the restart request.");
-        return scheduled ? ApplicationActionResult.Success : ApplicationActionResult.Failure("Windows did not accept the restart request.");
+                ? FormatUserText("Activity_RestartCountdown", "Windows will restart in {0} second(s). Cancel it from the Windows Update page.", (int)delay.TotalSeconds)
+                : UserText("Error_RestartRejected", "Windows did not accept the restart request."));
+        return scheduled ? ApplicationActionResult.Success : ApplicationActionResult.Failure(UserText("Error_RestartRejected", "Windows did not accept the restart request."));
     }
 
     public async Task<ApplicationActionResult> CancelRestartAsync(CancellationToken cancellationToken)
     {
         if (restartService is null)
         {
-            return ApplicationActionResult.Failure("Restart is not available on this system.");
+            return ApplicationActionResult.Failure(UserText("Error_RestartUnavailable", "Restart is not available on this system."));
         }
 
         var cancelled = await restartService.CancelRestartAsync(cancellationToken).ConfigureAwait(false);
         AddActivity(
-            cancelled ? ActivitySeverity.Information : ActivitySeverity.Warning,
-            cancelled ? "Restart cancelled" : "No restart to cancel",
-            cancelled ? "The scheduled restart was cancelled." : "No restart was scheduled.");
-        return cancelled ? ApplicationActionResult.Success : ApplicationActionResult.Failure("No restart was scheduled.");
+            ActivityCategory.WindowsUpdate, cancelled ? ActivitySeverity.Information : ActivitySeverity.Warning,
+            cancelled ? UserText("Activity_RestartCancelled", "Restart cancelled") : UserText("Activity_RestartNoneToCancel", "No restart to cancel"),
+            cancelled ? UserText("Activity_RestartCancellationConfirmed", "The scheduled restart was cancelled.") : UserText("Activity_RestartNotScheduled", "No restart was scheduled."));
+        return cancelled ? ApplicationActionResult.Success : ApplicationActionResult.Failure(UserText("Activity_RestartNotScheduled", "No restart was scheduled."));
     }
 
     private IWindowsUpdateManagementService RequireManagement() =>
-        updateManagement ?? throw new InvalidOperationException("Windows Update management is not available on this system.");
+        updateManagement ?? throw new InvalidOperationException(UserText("Error_WindowsManagementUnavailable", "Windows Update management is not available on this system."));
 
     private void ReportManagementResults(IReadOnlyList<WindowsUpdateInstallResult> rows, string successTitle)
     {
         foreach (var row in rows)
         {
             AddActivity(
-                row.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error,
+                ActivityCategory.WindowsUpdate, row.Succeeded ? ActivitySeverity.Success : ActivitySeverity.Error,
                 row.Succeeded ? successTitle : row.Title,
                 row.Succeeded ? row.Title : $"{row.Message} (Result Code: {row.ResultCode})");
         }

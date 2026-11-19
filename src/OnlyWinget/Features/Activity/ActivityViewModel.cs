@@ -7,6 +7,8 @@ using System.Collections.ObjectModel;
 
 namespace OnlyWinget.Features.Activity;
 
+public sealed record ActivityDay(string Label, IReadOnlyList<ActivityRow> Entries);
+
 public sealed partial class ActivityViewModel(Action<Action> dispatch, OnlyWingetApplication? workflow = null)
     : FeatureViewModel(dispatch, workflow)
 {
@@ -22,7 +24,7 @@ public sealed partial class ActivityViewModel(Action<Action> dispatch, OnlyWinge
     [ObservableProperty]
     private FeatureState pageState = FeatureState.Ready;
 
-    public ObservableCollection<ActivityRow> Entries { get; } = [];
+    public ObservableCollection<ActivityDay> Days { get; } = [];
     public IReadOnlyList<UiCommand> Commands { get; private set; } = [];
 
     public void SetFilter(string search, string selectedSeverity, string selectedCategory)
@@ -45,30 +47,13 @@ public sealed partial class ActivityViewModel(Action<Action> dispatch, OnlyWinge
     public static string LocalizeSeverity(ActivitySeverity value) => TextResources.Get($"Activity_Severity_{value}");
     public static string CopyLabel => TextResources.Get("Command_CopyDetails");
 
-    public static string Category(ActivityRow entry)
-    {
-        var value = $"{entry.Title} {entry.Message}";
-        if (value.Contains("Windows Update", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("restart", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("riavvio", StringComparison.OrdinalIgnoreCase)) return "windows";
-        if (value.Contains("preset", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("workspace", StringComparison.OrdinalIgnoreCase)) return "presets";
-        if (value.Contains("source", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("origine", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("origini", StringComparison.OrdinalIgnoreCase)) return "sources";
-        if (value.Contains("package", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("winget", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("update", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("pacchetto", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("aggiornamento", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("action failed", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
-            value.Contains("trovato", StringComparison.OrdinalIgnoreCase)) return "packages";
-        return "system";
-    }
+    public static string LocalizeCategory(ActivityCategory value) => TextResources.Get($"Activity_Category_{value}");
 
     public static string Format(ActivityRow entry) =>
-        $"{entry.Timestamp:O}\r\n{entry.Severity} · {Category(entry)}\r\n{entry.Title}\r\n{entry.Message}";
+        $"{entry.Timestamp:O}\r\n{entry.Severity} · {ExportCategory(entry.Category)}\r\n{entry.Title}\r\n{entry.Message}";
+
+    private static string ExportCategory(ActivityCategory value) =>
+        value == ActivityCategory.WindowsUpdate ? "windows" : value.ToString().ToLowerInvariant();
 
     public string ExportText() => string.Join("\r\n\r\n", allEntries.Select(Format));
 
@@ -90,22 +75,28 @@ public sealed partial class ActivityViewModel(Action<Action> dispatch, OnlyWinge
         allEntries = state.Entries;
         Commands = state.Commands;
         OnPropertyChanged(nameof(Commands));
-        PageState = state.Entries.Count == 0
-            ? FeatureState.Empty(TextResources.Get("Empty_Activity"))
-            : FeatureState.Ready;
         ApplyFilter();
     }
 
     private void ApplyFilter()
     {
-        Entries.ReplaceWith(allEntries.Where(entry =>
+        var matchingEntries = allEntries.Where(entry =>
             (query.Length == 0 || entry.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || entry.Message.Contains(query, StringComparison.CurrentCultureIgnoreCase)) &&
             (string.Equals(severity, "all", StringComparison.OrdinalIgnoreCase) || string.Equals(entry.Severity.ToString(), severity, StringComparison.OrdinalIgnoreCase)) &&
-            (string.Equals(category, "all", StringComparison.OrdinalIgnoreCase) || string.Equals(Category(entry), category, StringComparison.OrdinalIgnoreCase)) &&
+            (string.Equals(category, "all", StringComparison.OrdinalIgnoreCase) || string.Equals(entry.Category.ToString(), category, StringComparison.OrdinalIgnoreCase)) &&
             Matches(entry.TimestampDisplay, timeFilter) &&
             Matches(LocalizeSeverity(entry.Severity), severityFilter) &&
             Matches(entry.Title, titleFilter) &&
-            Matches(entry.Message, messageFilter)));
+            Matches(entry.Message, messageFilter));
+        var days = matchingEntries
+            .GroupBy(entry => entry.Timestamp.ToLocalTime().Date)
+            .OrderByDescending(group => group.Key)
+            .Select(group => new ActivityDay(group.Key.ToString("D", TextResources.OverrideCulture ?? global::System.Globalization.CultureInfo.CurrentCulture), group.ToArray()))
+            .ToArray();
+        Days.ReplaceWith(days);
+        PageState = days.Length != 0
+            ? FeatureState.Ready
+            : FeatureState.Empty(TextResources.Get(allEntries.Count == 0 ? "Empty_Activity" : "Empty_ActivityFiltered"));
     }
 
     private static bool Matches(string value, string filter) =>

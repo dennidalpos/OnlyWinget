@@ -87,6 +87,34 @@ public sealed class OnlyWingetApplicationTests
     }
 
     [Fact]
+    public async Task InstallAllWindowsUpdatesUsesAvailableRowsAndExcludesHiddenRows()
+    {
+        var visible = new WindowsUpdateIdentity("visible", 1);
+        var hidden = new WindowsUpdateIdentity("hidden", 2);
+        var service = new StubWindowsUpdateService(
+            [
+                new(visible, "Visible update", null, null, [], [], 0, false, false),
+                new(hidden, "Hidden update", null, null, [], [], 0, false, false, IsHidden: true)
+            ],
+            [new(visible, "Visible update", true, false, "2", null)]);
+        var app = CreateApplication(windowsUpdates: service);
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.ScanWindowsUpdatesAsync(new(), CancellationToken.None);
+
+        Assert.Empty(app.State.SelectedWindowsUpdates);
+        var command = Assert.Single(PresentationStateMapper.ToWindowsUpdateState(app.State).Commands,
+            item => item.Id == UiCommandId.InstallAllWindowsUpdates);
+        Assert.True(command.IsEnabled);
+        Assert.NotNull(command.ConfirmationResourceKey);
+
+        Assert.True((await app.InstallAllWindowsUpdatesAsync(new(ShowHidden: true, DownloadOnly: true), CancellationToken.None)).Succeeded);
+        Assert.Equal(visible, Assert.Single(service.LastInstallSelection!));
+        Assert.False(service.LastInstallOptions!.ShowHidden);
+        Assert.False(service.LastInstallOptions.DownloadOnly);
+        Assert.Contains(app.State.Activity, entry => entry.Title == "Visible update" && entry.Category == ActivityCategory.WindowsUpdate);
+    }
+
+    [Fact]
     public async Task WindowsUpdateRescanPreservesInstallationResultsAndRestartWarning()
     {
         var identity = new WindowsUpdateIdentity("update-1", 1);
@@ -289,6 +317,38 @@ public sealed class OnlyWingetApplicationTests
         Assert.True(result.Succeeded);
         Assert.Equal("Default", app.State.ActivePreset?.Name);
         Assert.Equal("Git.Git", Assert.Single(app.State.ActivePreset?.Packages ?? []).Id);
+    }
+
+    [Theory]
+    [InlineData(null, 1)]
+    [InlineData(-1, 0)]
+    [InlineData(3, 3)]
+    [InlineData(8, 3)]
+    public async Task ApplyAllUpdatesUsesDiscoveredPackagesAndConfiguredRetries(int? configuredRetries, int expectedRetries)
+    {
+        var git = new PackageIdentity("Git.Git", "winget");
+        var tool = new PackageIdentity("Other.Tool", "winget");
+        var updates = new StubUpdateLoader(
+            new PackageUpdate(git, "Git", "2.0", "2.1"),
+            new PackageUpdate(tool, "Tool", "1.0", "1.1"));
+        var executor = new RecordingOperationExecutor(new OperationExecutionSummary(
+            [new(new PackageSelection(git, PackageAction.Upgrade), new WingetCommandResult(0, "upgraded", ""), null),
+             new(new PackageSelection(tool, PackageAction.Upgrade), new WingetCommandResult(0, "upgraded", ""), null)]));
+        var app = CreateApplication(updates: updates, executor: executor);
+        if (configuredRetries.HasValue)
+        {
+            app.MaxPackageOperationRetries = configuredRetries.Value;
+        }
+        await app.RefreshCapabilitiesAsync(CancellationToken.None);
+        await app.RefreshSourcesAsync(CancellationToken.None);
+        await app.RefreshUpdatesAsync(CancellationToken.None);
+        app.ToggleUpdate(git);
+
+        Assert.True((await app.ApplyAllUpdatesAsync(CancellationToken.None)).Succeeded);
+        Assert.Equal(new[] { git, tool }, executor.LastPlan!.Selections.Select(row => row.Package));
+        Assert.All(executor.LastPlan.Selections, row => Assert.Equal(PackageAction.Upgrade, row.Action));
+        Assert.Equal(expectedRetries, executor.LastMaxRetries);
+        Assert.Contains(app.State.Activity, entry => entry.Title == "Other.Tool" && entry.Category == ActivityCategory.Packages);
     }
 
     [Fact]
@@ -2149,6 +2209,7 @@ public sealed class OnlyWingetApplicationTests
         IReadOnlyList<WindowsUpdateInstallResult> results) : IWindowsUpdateService
     {
         public IReadOnlyList<WindowsUpdateIdentity>? LastInstallSelection { get; private set; }
+        public WindowsUpdateOptions? LastInstallOptions { get; private set; }
 
         public Task<WindowsUpdateOperationOutcome<WindowsUpdateItem>> ScanAsync(
             WindowsUpdateOptions options,
@@ -2162,6 +2223,7 @@ public sealed class OnlyWingetApplicationTests
             IProgress<OperationProgress>? progress = null)
         {
             LastInstallSelection = selectedUpdates.ToArray();
+            LastInstallOptions = options;
             return Task.FromResult(WindowsUpdateOperationOutcome<WindowsUpdateInstallResult>.Success(results, string.Empty));
         }
     }

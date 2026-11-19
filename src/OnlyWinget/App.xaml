@@ -16,7 +16,7 @@
                     <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#B0B0B0" />
                     <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="#A8A8A8" />
                     <SolidColorBrush x:Key="NavigationViewBorderBrush" Color="#A8A8A8" />
-                    <SolidColorBrush x:Key="ControlStrokeColorDefault" Color="#999999" />
+                    <Color x:Key="ControlStrokeColorDefault">#999999</Color>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AreaHomeBrush" Color="#60CDFF" />

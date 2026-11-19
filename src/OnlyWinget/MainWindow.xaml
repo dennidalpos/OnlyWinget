@@ -4,11 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:OnlyWinget.Controls"
     Title="OnlyWinget">
-    <Grid>
+    <Grid x:Name="WindowRoot">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+
+        <Border x:Name="SolidBackdrop" Grid.RowSpan="2" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
 
         <!-- Custom Title Bar -->
         <Grid x:Name="AppTitleBar" Height="44" Background="Transparent" VerticalAlignment="Top">

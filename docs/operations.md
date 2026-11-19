@@ -1,5 +1,11 @@
 # Operations
 
+## Theme changes and Windows 10
+
+Windows 10 uses the native system title bar; Windows 11 uses the custom title bar when supported. The native title bar follows Windows appearance settings independently of the app's selected theme. Where Mica is unavailable, a theme-aware solid background covers the window. The app applies the requested theme at the root once and queues custom caption updates after XAML theme propagation.
+
+WinUI resource overrides must preserve the original value type. In particular, `ControlStrokeColorDefault` is a `Color`, not a `SolidColorBrush`: control border gradients consume it as a color. The resource contract regression checks this override; offline tests and builds do not establish successful theme switching on Windows 10. Qualify Light → Dark → System, restart with Dark saved, and verify page actions and minimize/maximize/close on a Windows 10 host before release.
+
 ## Retired URL protocol
 
 `onlywinget://` is not supported: the app does not register or dispatch URL actions, and neither the app nor the installer touches protocol registrations.
@@ -139,7 +145,7 @@ To recover, close OnlyWinget, preserve `onlywinget.db` and its `-wal`/`-shm` sid
 
 ## Diagnostic logs
 
-For isolated UI persistence fixtures, set `ONLYWINGET_DATA_ROOT` only in the launched process's environment to a fully qualified fixture directory. The app reads the value once per process and uses that exact directory for SQLite, legacy workspace import, settings, source preferences and logs. Relative or blank explicit values fail rather than falling back to personal data. Without the variable, the normal `%LOCALAPPDATA%/OnlyWinget` location is preserved. No existing profile is moved or copied automatically. This redirects app data only; it does not isolate WinGet sources, installed packages or Windows Update. Use a controlled CLI fixture or a separate Windows environment for those operations.
+For isolated UI persistence fixtures, set `ONLYWINGET_DATA_ROOT` only in the launched process's environment to a fully qualified fixture directory. The app reads the value once per process and uses that exact directory for SQLite, settings, source preferences and logs. Relative or blank explicit values fail rather than falling back to personal data. Without the variable, the normal `%LOCALAPPDATA%/OnlyWinget` location is preserved. No existing profile is moved or copied automatically. This redirects app data only; it does not isolate WinGet sources, installed packages or Windows Update. Use a controlled CLI fixture or a separate Windows environment for those operations.
 
 The path rules follow [.NET special-folder lookup](https://learn.microsoft.com/en-us/dotnet/api/system.environment.getfolderpath?view=net-10.0) and [fully qualified path validation](https://learn.microsoft.com/en-us/dotnet/api/system.io.path.ispathfullyqualified?view=net-10.0).
 
@@ -153,6 +159,8 @@ The viewer labels, level badges, filters and action outcomes are localized in En
 
 ## Windows Update metadata
 
+**Install all** confirms the batch and uses available results from the current scan, excluding hidden updates. Use **Hidden updates** and scan to manage hidden entries with **Hide** and **Show**. In **History**, results have a category and eligible entries expose **Uninstall**. Restart is a separate confirmed operation with a cancellation command for scheduled requests.
+
 Native COM and PowerShell fallback use asynchronous search/download/install jobs. PowerShell cancellation and its operation timeout signal a dedicated cancellation event so the worker can request native abort and run cleanup before exiting. If native abort/cleanup fails, or the worker does not exit within the 30-second cancellation grace, the application reports uncertain operation state; inspect Windows Update before retrying. Cancellation is a request, not proof that an update was rolled back. Both installation paths verify the full ID/revision selection before accepting any EULA, and an unsuccessful search cannot start download/installation. See Microsoft's [asynchronous WUA guidelines](https://learn.microsoft.com/en-us/windows/win32/wua_sdk/guidelines-for-asynchronous-wua-operations) and [RequestAbort contract](https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iinstallationjob-requestabort). The [2026-10-18 continuation](tracker-review-2026-10-18.md#continuation--sequential-remaining-work-review-and-remediation) distinguishes controlled worker regressions and actual read-only rejection from unexecuted real download/install qualification. The user subsequently cancelled the test-environment qualification tasks because no Windows test environment is available; see the [recorded decision](tracker-review-2026-10-18.md#decision--windows-test-environment-tasks-cancelled).
 
 Windows Update rows show the update's MSRC severity when available and the actual current `RebootRequired` state. Potential reboot behavior during a future installation is not reported as an already required restart. KB article IDs are displayed with one KB prefix for both native COM and PowerShell results. See Microsoft's [severity](https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdate-get_msrcseverity) and [reboot-state](https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdate2-get_rebootrequired) contracts.
@@ -162,6 +170,8 @@ Windows Update rows show the update's MSRC severity when available and the actua
 Malformed or unsupported `source-preferences-v1.json` blocks loading and saving with an actionable file diagnostic. The unreadable file is preserved, including when a fresh store attempts to save without loading. Restore or repair it before retrying. A missing file still permits first-run initialization; the default-sources flag and disabled-source choices are round-tripped.
 
 ## WinGet batch results and cancellation
+
+**Install all** runs the currently discovered WinGet updates after confirmation. A package with an installer-type mismatch can be selected for **Uninstall and reinstall**. This workflow waits until the old copy is absent before starting a new install. **WinGet retries** configures zero to three extra attempts per package for transient failures, with one extra attempt by default. Including pinned packages or unknown installed versions requires opting in through Settings and scanning again.
 
 Installed-package preflight reports absence only for WinGet's native no-match result. Source, permission, process, I/O and timeout failures propagate as failed validation with diagnostics and zero package attempts. A successful but unreadable/ambiguous table is also rejected; it cannot trigger an installation based on assumed absence. The existing result contract uses `IsInstalled=false` for confirmed absence and exceptions for failed probes. See [Microsoft list](https://learn.microsoft.com/en-us/windows/package-manager/winget/list).
 

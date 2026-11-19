@@ -5,15 +5,16 @@ using OnlyWinget.Application.System;
 
 namespace OnlyWinget.Infrastructure.System;
 
-public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner) : ISystemCapabilityService
+public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner, Func<Version?>? osVersionProvider = null) : ISystemCapabilityService
 {
     private const int MinimumSupportedBuild = 17763;
 
     public async Task<SystemCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var isSupportedOs = OperatingSystem.IsWindows() &&
-            Environment.OSVersion.Version.Build >= MinimumSupportedBuild;
+        var osVersion = (osVersionProvider ?? GetWindowsVersion)();
+        var buildNumber = osVersion?.Build;
+        var isSupportedOs = buildNumber is >= MinimumSupportedBuild;
 
         var wingetVersion = (string?)null;
         var isWingetAvailable = false;
@@ -58,8 +59,7 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
             : new WindowsUpdateCapability(false, null);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var buildNumber = OperatingSystem.IsWindows() ? Environment.OSVersion.Version.Build : (int?)null;
-        var (edition, displayVersion) = ReadWindowsEditionInfo();
+        var (edition, displayVersion) = ReadWindowsEditionInfo(buildNumber);
         var systemLanguage = CultureInfo.CurrentUICulture.Name;
         var isElevated = CheckIsElevated();
 
@@ -124,7 +124,10 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
         }
     }
 
-    private static (string? edition, string? displayVersion) ReadWindowsEditionInfo()
+    private static Version? GetWindowsVersion() =>
+        OperatingSystem.IsWindows() ? Environment.OSVersion.Version : null;
+
+    private static (string? edition, string? displayVersion) ReadWindowsEditionInfo(int? buildNumber)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -140,7 +143,7 @@ public sealed class SystemCapabilityService(IExternalProcessRunner commandRunner
                 var displayVersion = key.GetValue("DisplayVersion")?.ToString() ?? key.GetValue("ReleaseId")?.ToString();
                 var editionId = key.GetValue("EditionID")?.ToString();
 
-                if (Environment.OSVersion.Version.Build >= 22000 && productName is not null && productName.StartsWith("Windows 10", StringComparison.OrdinalIgnoreCase))
+                if (buildNumber is >= 22000 && productName is not null && productName.StartsWith("Windows 10", StringComparison.OrdinalIgnoreCase))
                 {
                     productName = "Windows 11" + productName["Windows 10".Length..];
                 }

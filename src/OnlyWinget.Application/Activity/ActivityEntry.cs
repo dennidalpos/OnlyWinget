@@ -4,4 +4,5 @@ public sealed record ActivityEntry(
     DateTimeOffset Timestamp,
     ActivitySeverity Severity,
     string Title,
-    string Message);
+    string Message,
+    ActivityCategory Category = ActivityCategory.System);

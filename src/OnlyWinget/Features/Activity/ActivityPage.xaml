@@ -9,6 +9,9 @@
     xmlns:appPresentation="using:OnlyWinget.Application.Presentation"
     xmlns:activity="using:OnlyWinget.Features.Activity"
     xmlns:services="using:OnlyWinget.Services">
+    <Page.Resources>
+        <CollectionViewSource x:Name="ActivityGroups" IsSourceGrouped="True" ItemsPath="Entries" />
+    </Page.Resources>
     <design:PageScaffold x:Name="Scaffold" Title="{services:Localize Key=Activity_Title}" AreaAccentBrush="{ThemeResource AreaActivityBrush}">
         <design:PageScaffold.Commands>
             <commands:OnlyWingetCommandBar x:Name="CommandBar" CommandInvoked="OnCommandInvoked" />
@@ -30,24 +33,35 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <AutoSuggestBox x:Name="SearchBox" PlaceholderText="{services:Localize Key=Activity_Search}" AutomationProperties.AutomationId="ActivitySearchBox" AutomationProperties.Name="{services:Localize Key=Activity_Search}" QueryIcon="Find" TextChanged="OnSearchChanged" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivitySeverityFilter" AutomationProperties.Name="Severity Filter" MinWidth="140" VerticalAlignment="Center">
+                        <ComboBox x:Name="SeverityFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivitySeverityFilter" AutomationProperties.Name="{services:Localize Key=Activity_SeverityFilter}" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Content="{services:Localize Key=Activity_AllSeverities}" Tag="all" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Information}" Tag="Information" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Success}" Tag="Success" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Warning}" Tag="Warning" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Severity_Error}" Tag="Error" />
                         </ComboBox>
-                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivityCategoryFilter" AutomationProperties.Name="Category Filter" MinWidth="140" VerticalAlignment="Center">
+                        <ComboBox x:Name="CategoryFilter" Grid.Column="2" SelectedIndex="0" SelectionChanged="OnFilterChanged" AutomationProperties.AutomationId="ActivityCategoryFilter" AutomationProperties.Name="{services:Localize Key=Activity_CategoryFilter}" MinWidth="140" VerticalAlignment="Center">
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_AllCategories}" Tag="all" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_Packages}" Tag="packages" />
-                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_WindowsUpdate}" Tag="windows" />
+                            <ComboBoxItem Content="{services:Localize Key=Activity_Category_WindowsUpdate}" Tag="WindowsUpdate" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_Sources}" Tag="sources" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_Presets}" Tag="presets" />
                             <ComboBoxItem Content="{services:Localize Key=Activity_Category_System}" Tag="system" />
                         </ComboBox>
                     </Grid>
                 </Border>
-                <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None" AutomationProperties.AutomationId="ActivityList">
+                <ListView x:Name="ActivityList" Grid.Row="1" SelectionMode="None" AutomationProperties.AutomationId="ActivityList"
+                    ItemsSource="{Binding Source={StaticResource ActivityGroups}}">
+                    <ListView.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate x:DataType="activity:ActivityDay">
+                                    <TextBlock Text="{x:Bind Label}" Margin="0,12,0,8"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}" AutomationProperties.HeadingLevel="Level2" />
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListView.GroupStyle>
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem" BasedOn="{StaticResource ListRowContainerStyle}">
                             <Setter Property="Padding" Value="0,2" />
@@ -68,6 +82,9 @@
                                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                         <TextBlock Text="{x:Bind TimestampDisplay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                         <TextBlock Text="{x:Bind activity:ActivityViewModel.LocalizeSeverity(Severity), Mode=OneTime}" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{x:Bind presentation:PresentationValues.SeverityBrush(Severity), Mode=OneTime}" />
+                                        <TextBlock Text="{x:Bind activity:ActivityViewModel.LocalizeCategory(Category), Mode=OneTime}"
+                                            Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
                                         <TextBlock Text="{x:Bind Title}" Style="{StaticResource BodyStrongTextBlockStyle}" IsTextSelectionEnabled="True" />

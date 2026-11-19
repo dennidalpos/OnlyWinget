@@ -34,20 +34,33 @@ public sealed partial class MainWindow : Window
     private string currentRouteId = "home";
     private bool isRestoringNavigation;
     private bool isNavigating;
+    private bool titleBarUpdateQueued;
+    private bool isClosed;
+    private readonly bool usesCustomTitleBar = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)
+        && AppWindowTitleBar.IsCustomizationSupported();
     private DateTimeOffset lastActivatedAt = DateTimeOffset.UtcNow;
 
     public MainWindow()
     {
         InitializeComponent();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        ExtendsContentIntoTitleBar = usesCustomTitleBar;
+        if (usesCustomTitleBar)
+        {
+            SetTitleBar(AppTitleBar);
+        }
+        else
+        {
+            // Keep the system caption and its buttons independent of XAML theme changes on Windows 10.
+            AppTitleBar.Visibility = Visibility.Collapsed;
+        }
         SystemBackdrop = CreateBackdrop();
+        SolidBackdrop.Visibility = SystemBackdrop is null ? Visibility.Visible : Visibility.Collapsed;
         Activated += OnWindowActivated;
         ResizeAndCenterWindow();
         ApplyWindowIcon();
         if (Content is FrameworkElement rootElement)
         {
-            rootElement.ActualThemeChanged += (_, _) => UpdateTitleBarButtons();
+            rootElement.ActualThemeChanged += OnActualThemeChanged;
         }
         var currentSettings = App.UiServices.Settings.Current;
         lastLanguage = currentSettings.Language;
@@ -69,6 +82,8 @@ public sealed partial class MainWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        isClosed = true;
+        WindowRoot.ActualThemeChanged -= OnActualThemeChanged;
         Activated -= OnWindowActivated;
         SizeChanged -= OnWindowSizeChanged;
         AppWindow.Changed -= OnAppWindowChanged;
@@ -134,17 +149,33 @@ public sealed partial class MainWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-        RootNavigation.RequestedTheme = theme;
-        if (Content is FrameworkElement rootElement)
+        // Set the theme once at the root so the title bar, pages and popups inherit it together.
+        WindowRoot.RequestedTheme = theme;
+        QueueTitleBarUpdate();
+    }
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args) => QueueTitleBarUpdate();
+
+    private void QueueTitleBarUpdate()
+    {
+        if (isClosed || !usesCustomTitleBar || titleBarUpdateQueued) return;
+        titleBarUpdateQueued = true;
+        // Native caption changes must happen after XAML finishes its theme traversal.
+        if (!DispatcherQueue.TryEnqueue(() =>
         {
-            rootElement.RequestedTheme = theme;
+            titleBarUpdateQueued = false;
+            if (isClosed) return;
+            try { UpdateTitleBarButtons(); }
+            catch (Exception exception) { AppDiagnostics.WriteException("MainWindow.UpdateTitleBarButtons", exception); }
+        }))
+        {
+            titleBarUpdateQueued = false;
         }
-        UpdateTitleBarButtons();
     }
 
     private void UpdateTitleBarButtons()
     {
-        if (!AppWindowTitleBar.IsCustomizationSupported() || AppWindow?.TitleBar == null)
+        if (!usesCustomTitleBar || AppWindow?.TitleBar == null)
         {
             return;
         }
@@ -266,6 +297,7 @@ public sealed partial class MainWindow : Window
 
     private void UpdateTitleBarPadding()
     {
+        if (!usesCustomTitleBar) return;
         var windowHandle = WindowNative.GetWindowHandle(this);
         var dpi = GetDpiForWindow(windowHandle);
         var scale = dpi > 0 ? dpi / 96d : 1.0;

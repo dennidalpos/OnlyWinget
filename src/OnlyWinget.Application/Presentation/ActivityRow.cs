@@ -7,4 +7,5 @@ public sealed record ActivityRow(
     string TimestampDisplay,
     ActivitySeverity Severity,
     string Title,
-    string Message);
+    string Message,
+    ActivityCategory Category = ActivityCategory.System);

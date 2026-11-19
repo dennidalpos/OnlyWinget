@@ -3,11 +3,32 @@ using OnlyWinget.Application.System;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace OnlyWinget.Tests;
 
 public sealed class TextResourcesTests
 {
+    [Fact]
+    public void WinUiControlStrokeColorOverride_PreservesTheNativeColorType()
+    {
+        // WinUI consumes this key as a Color in control border gradient stops, including on theme changes.
+        // A SolidColorBrush under the same key passes compilation but violates that runtime contract.
+        var resources = XDocument.Load(Path.Combine(RepositoryRoot(), "src", "OnlyWinget", "App.xaml"));
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var overrides = resources.Descendants()
+            .Where(element => (string?)element.Attribute(xaml + "Key") == "ControlStrokeColorDefault")
+            .ToArray();
+
+        Assert.NotEmpty(overrides);
+        Assert.All(overrides, resource =>
+        {
+            Assert.Equal(presentation + "Color", resource.Name);
+            Assert.Matches("^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$", resource.Value.Trim());
+        });
+    }
+
     [Theory]
     [InlineData("en")]
     [InlineData("it")]

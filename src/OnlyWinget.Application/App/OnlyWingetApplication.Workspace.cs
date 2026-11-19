@@ -24,7 +24,7 @@ public sealed partial class OnlyWingetApplication
                         defaultSourcesConfigured = preferences.DefaultSourcesConfigured;
                         RefreshPresetSelection();
                     });
-                    AddActivity(ActivitySeverity.Success, "Workspace loaded", "Workspace state is ready.");
+                    AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Workspace loaded", "Workspace state is ready.");
                 },
                 "Unable to load workspace.")
             .ConfigureAwait(false);
@@ -38,7 +38,7 @@ public sealed partial class OnlyWingetApplication
                 async cancellationToken =>
                 {
                     await workspaceStore.SaveAsync(ReadState(() => workspace), cancellationToken).ConfigureAwait(false);
-                    AddActivity(ActivitySeverity.Success, "Workspace saved", "Workspace state was saved.");
+                    AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Workspace saved", "Workspace state was saved.");
                 },
                 "Unable to save workspace.", waitForTurn: true)
             .ConfigureAwait(false);
@@ -54,7 +54,7 @@ public sealed partial class OnlyWingetApplication
                     var current = await capabilityService.GetCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
                     UpdateState(() => capabilities = current);
                     AddActivity(
-                        current.CanUseWinget ? ActivitySeverity.Success : ActivitySeverity.Error,
+                        ActivityCategory.System, current.CanUseWinget ? ActivitySeverity.Success : ActivitySeverity.Error,
                         "System capabilities checked",
                         current.CanUseWinget ? "winget is available." : current.WingetUnavailableMessage);
                 },
@@ -73,7 +73,7 @@ public sealed partial class OnlyWingetApplication
 
             workspace = NormalizeWorkspace(new WorkspaceState([.. workspace.Presets, preset], preset.Name));
             RefreshPresetSelection();
-            AddActivity(ActivitySeverity.Success, "Preset added", preset.Name);
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Preset added", preset.Name);
         }, requiresIdle: true);
 
     public ApplicationActionResult RenameActivePreset(string name) =>
@@ -88,7 +88,7 @@ public sealed partial class OnlyWingetApplication
             }
 
             ReplacePreset(active.Name, renamed, renamed.Name);
-            AddActivity(ActivitySeverity.Success, "Preset renamed", $"{active.Name} -> {renamed.Name}");
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Preset renamed", $"{active.Name} -> {renamed.Name}");
         }, requiresIdle: true);
 
     public ApplicationActionResult RemoveActivePreset() =>
@@ -101,7 +101,7 @@ public sealed partial class OnlyWingetApplication
 
             workspace = NormalizeWorkspace(new WorkspaceState(remaining, remaining.FirstOrDefault()?.Name));
             RefreshPresetSelection();
-            AddActivity(ActivitySeverity.Success, "Preset removed", active.Name);
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Preset removed", active.Name);
         }, requiresIdle: true);
 
     public ApplicationActionResult SetActivePreset(string name) =>
@@ -126,7 +126,7 @@ public sealed partial class OnlyWingetApplication
             }
 
             ReplacePreset(active.Name, new Preset(active.Name, [.. active.Packages, validated.Package]), active.Name);
-            AddActivity(ActivitySeverity.Success, "Package added", validated.Package.Id);
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Package added", validated.Package.Id);
         }, "Unable to validate the package.").ConfigureAwait(false);
 
     public async Task<ApplicationActionResult> ReplacePackageInActivePresetAsync(
@@ -153,7 +153,7 @@ public sealed partial class OnlyWingetApplication
                 .Select(package => package == current ? validated.Package : package)
                 .ToArray();
             ReplacePreset(active.Name, new Preset(active.Name, packages), active.Name);
-            AddActivity(ActivitySeverity.Success, "Package updated", validated.Package.Id);
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Package updated", validated.Package.Id);
         }, "Unable to validate the package.").ConfigureAwait(false);
 
     public ApplicationActionResult RemoveSelectedPackagesFromActivePreset() =>
@@ -170,7 +170,7 @@ public sealed partial class OnlyWingetApplication
                 .Where(package => !selected.Contains(package))
                 .ToArray();
             ReplacePreset(active.Name, new Preset(active.Name, packages), active.Name);
-            AddActivity(ActivitySeverity.Success, "Packages removed", selected.Length.ToString(global::System.Globalization.CultureInfo.InvariantCulture));
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Packages removed", selected.Length.ToString(global::System.Globalization.CultureInfo.InvariantCulture));
         }, requiresIdle: true);
 
     public ApplicationActionResult TogglePresetPackageInclusion(PackageIdentity package) => ToggleSelection(presetInstallSelection, package);
@@ -226,7 +226,7 @@ public sealed partial class OnlyWingetApplication
             if (addedCount > 0)
             {
                 ReplacePreset(active.Name, new Preset(active.Name, updatedPackages), active.Name);
-                AddActivity(ActivitySeverity.Success, "Packages pasted", $"{addedCount} package(s) added.");
+                AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Packages pasted", $"{addedCount} package(s) added.");
             }
         }, "Unable to validate pasted packages.").ConfigureAwait(false);
 
@@ -258,7 +258,7 @@ public sealed partial class OnlyWingetApplication
                 workspace = NormalizeWorkspace(new WorkspaceState([.. workspace.Presets, validatedPreset], validatedPreset.Name));
                 RefreshPresetSelection();
             });
-            AddActivity(ActivitySeverity.Success, "Preset imported", validatedPreset.Name);
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Success, "Preset imported", validatedPreset.Name);
         }, "Unable to import and validate the preset.").ConfigureAwait(false);
 
     private Preset? ActivePreset => ReadState(() =>
@@ -281,7 +281,7 @@ public sealed partial class OnlyWingetApplication
             var preset = new Preset("Default", []);
             workspace = NormalizeWorkspace(new WorkspaceState([preset], preset.Name));
             RefreshPresetSelection();
-            AddActivity(ActivitySeverity.Information, "Preset created", preset.Name);
+            AddActivity(ActivityCategory.Presets, ActivitySeverity.Information, "Preset created", preset.Name);
             return preset;
         }
     }

@@ -26,7 +26,7 @@ flowchart LR
 
 These arrows show project dependencies. `AppComposition.cs` is the presentation layer's composition-only exception for wiring Infrastructure implementations to Application ports.
 
-The presentation layer references infrastructure strictly for composition via `AppComposition.cs` (`IHostBuilder` DI). No feature page, control, or ViewModel may reference infrastructure directly. The unused URL protocol is retired; composition performs ownership-checked legacy HKCU cleanup. Package input validation uses `WingetInputValidator`. Domain does not reference application, infrastructure, or UI code.
+The presentation layer references infrastructure strictly for composition via `AppComposition.cs` (`IHostBuilder` DI). No feature page, control, or ViewModel may reference infrastructure directly. See [operations](operations.md#retired-url-protocol) for the retired URL protocol. Package input validation uses `WingetInputValidator`. Domain does not reference application, infrastructure, or UI code.
 
 ## Bootstrapping & Composition
 

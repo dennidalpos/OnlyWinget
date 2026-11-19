@@ -40,7 +40,7 @@ public static class PresentationStateMapper
             state.Activity
                 .TakeLast(5)
                 .Reverse()
-                .Select(entry => new ActivityRow(entry.Timestamp, entry.Timestamp.ToString("g", global::System.Globalization.CultureInfo.CurrentCulture), entry.Severity, entry.Title, entry.Message))
+                .Select(entry => new ActivityRow(entry.Timestamp, entry.Timestamp.ToLocalTime().ToString("g", global::System.Globalization.CultureInfo.CurrentCulture), entry.Severity, entry.Title, entry.Message, entry.Category))
                 .ToArray());
     }
 
@@ -174,6 +174,7 @@ public static class PresentationStateMapper
             [
                 new(UiCommandId.RefreshUpdates, "Command_Updates_Refresh", canUseWinget && !isLoading && !isExecuting, UiCommandKind.Primary, Icon: "Refresh"),
                 new(UiCommandId.ApplyUpdates, "Command_Updates_ApplySelected", canUseWinget && state.SelectedUpdates.Count > 0 && !isLoading && !isExecuting, Icon: "Download"),
+                new(UiCommandId.ApplyAllUpdates, "Command_Updates_InstallAll", canUseWinget && state.Updates.Count > 0 && state.BusyState == ApplicationBusyState.Idle, Icon: "Download", ConfirmationResourceKey: "Dialog_WingetInstallAll_Message"),
                 new(UiCommandId.ReinstallUpdates, "Command_Updates_Reinstall", canReinstall, UiCommandKind.Destructive, IsVisible: reinstallPackages.Count > 0, Icon: "Refresh", TooltipResourceKey: "Tooltip_Updates_Reinstall", ConfirmationResourceKey: "Dialog_ReinstallUpdates_Message"),
                 new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isExecuting, UiCommandKind.Cancel, Icon: "Cancel")
             ],
@@ -236,6 +237,7 @@ public static class PresentationStateMapper
             [
                 new(UiCommandId.ScanWindowsUpdates, "Command_WindowsUpdates_Scan", canUseWindowsUpdate && !isBusy, UiCommandKind.Primary, Icon: "Refresh"),
                 new(UiCommandId.InstallWindowsUpdates, "Command_WindowsUpdates_InstallSelected", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy, Icon: "Download"),
+                new(UiCommandId.InstallAllWindowsUpdates, "Command_Updates_InstallAll", canUseWindowsUpdate && state.WindowsUpdates.Any(update => !update.IsHidden) && state.BusyState == ApplicationBusyState.Idle, Icon: "Download", ConfirmationResourceKey: "Dialog_WindowsInstallAll_Message"),
                 new(UiCommandId.RestartWindows, "Command_WindowsUpdates_Restart", canUseWindowsUpdate && !isBusy, UiCommandKind.Primary, IsVisible: state.RestartPending, Icon: "Refresh", ConfirmationResourceKey: "Dialog_RestartWindows_Message"),
                 new(UiCommandId.CancelOperation, "Command_Operation_Cancel", isBusy, UiCommandKind.Cancel, Icon: "Cancel"),
                 new(UiCommandId.DownloadWindowsUpdates, "Command_WindowsUpdates_DownloadOnly", canUseWindowsUpdate && state.SelectedWindowsUpdates.Count > 0 && !isBusy, UiCommandKind.Secondary, UiCommandPlacement.Overflow, Icon: "Download"),
@@ -324,7 +326,7 @@ public static class PresentationStateMapper
         ArgumentNullException.ThrowIfNull(state);
         return new ActivityPresentationState(
             state.Activity
-                .Select(entry => new ActivityRow(entry.Timestamp, entry.Timestamp.ToString("g", global::System.Globalization.CultureInfo.CurrentCulture), entry.Severity, entry.Title, entry.Message))
+                .Select(entry => new ActivityRow(entry.Timestamp, entry.Timestamp.ToLocalTime().ToString("g", global::System.Globalization.CultureInfo.CurrentCulture), entry.Severity, entry.Title, entry.Message, entry.Category))
                 .OrderByDescending(row => row.Timestamp)
                 .ThenBy(row => row.Title, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),

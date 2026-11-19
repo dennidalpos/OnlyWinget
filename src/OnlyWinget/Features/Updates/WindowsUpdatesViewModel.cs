@@ -59,9 +59,11 @@ public sealed partial class WindowsUpdatesViewModel(Action<Action> dispatch, Onl
         await Workflow.CancelRestartAsync(token);
         Workflow.RefreshRestartPending();
     });
-    public Task InstallAsync(WindowsUpdateOptions options) => RunAsync(async token =>
+    public Task InstallAsync(WindowsUpdateOptions options, bool all = false) => RunAsync(async token =>
     {
-        var result = await Workflow.InstallSelectedWindowsUpdatesAsync(options, token);
+        var result = all
+            ? await Workflow.InstallAllWindowsUpdatesAsync(options, token)
+            : await Workflow.InstallSelectedWindowsUpdatesAsync(options, token);
         Workflow.RefreshRestartPending();
         // A download-only run leaves the updates pending, so the list is already correct.
         if (result.Succeeded && !token.IsCancellationRequested && !options.DownloadOnly)

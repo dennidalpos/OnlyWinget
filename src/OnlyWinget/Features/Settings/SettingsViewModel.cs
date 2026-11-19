@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OnlyWinget.Application.App;
 using OnlyWinget.Presentation;
 using OnlyWinget.Services;
 
@@ -36,8 +37,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool includePinnedPackages;
 
+    [ObservableProperty]
+    private int wingetRetryCount;
+
     internal SettingsViewModel(IAppSettingsService settingsService)
     {
+        wingetRetryCount = Math.Clamp(settingsService.Current.WingetRetryCount, 0, OnlyWingetApplication.MaximumPackageOperationRetries);
         includeUnknownVersions = settingsService.Current.IncludeUnknownVersions;
         includePinnedPackages = settingsService.Current.IncludePinnedPackages;
         this.settingsService = settingsService;
@@ -62,7 +67,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             BypassHashValidation,
             settingsService.Current.SidebarWidth,
             IncludeUnknownVersions,
-            IncludePinnedPackages),
+            IncludePinnedPackages,
+            Math.Clamp(WingetRetryCount, 0, OnlyWingetApplication.MaximumPackageOperationRetries)),
         cancellationToken);
 
     [RelayCommand]
@@ -78,5 +84,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         BypassHashValidation = settingsService.Current.BypassHashValidation;
         IncludeUnknownVersions = settingsService.Current.IncludeUnknownVersions;
         IncludePinnedPackages = settingsService.Current.IncludePinnedPackages;
+        WingetRetryCount = settingsService.Current.WingetRetryCount;
     }
 }

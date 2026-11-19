@@ -35,7 +35,9 @@ public enum UiCommandId
     CancelRestart,
     LoadWindowsUpdateHistory,
     UninstallWindowsUpdates,
-    ReinstallUpdates
+    ReinstallUpdates,
+    ApplyAllUpdates,
+    InstallAllWindowsUpdates
 }
 
 public enum UiCommandKind

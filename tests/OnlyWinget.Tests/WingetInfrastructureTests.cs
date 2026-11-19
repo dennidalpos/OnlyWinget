@@ -154,6 +154,28 @@ public sealed class WingetInfrastructureTests
         Assert.Empty(runner.CommandCalls);
     }
 
+    [Theory]
+    [InlineData(17762, false)]
+    [InlineData(17763, true)]
+    [InlineData(22000, true)]
+    public async Task SystemCapabilityServiceUsesInjectedWindowsBuild(int build, bool supported)
+    {
+        var runner = new RecordingExternalProcessRunner(
+            new ExternalProcessResult(0, "v1.9.0", string.Empty),
+            new ExternalProcessResult(0, "7.5.0", string.Empty),
+            new ExternalProcessResult(0, "5.1.0", string.Empty),
+            new ExternalProcessResult(0, "available", string.Empty));
+        var service = new SystemCapabilityService(runner, () => new Version(10, 0, build));
+
+        var capabilities = await service.GetCapabilitiesAsync(CancellationToken.None);
+
+        Assert.Equal(build, capabilities.WindowsBuildNumber);
+        Assert.Equal(supported, capabilities.IsSupportedOs);
+        Assert.Equal(supported, capabilities.IsWindowsUpdateComAvailable);
+        Assert.Equal(supported, runner.CommandCalls.Any(call =>
+            call.Arguments.Any(argument => argument.Contains("Microsoft.Update.Session", StringComparison.Ordinal))));
+    }
+
     [Fact]
     public async Task SystemCapabilityServiceChecksRequiredCommandsAndWindowsUpdateCom()
     {

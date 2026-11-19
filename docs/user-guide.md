@@ -44,7 +44,7 @@ Read source warnings even when other sources return usable results. Identical se
 
 ## 3. WinGet upgrades
 
-Under **Aggiornamenti → WinGet**, scan, compare installed/available versions and select the rows to apply. Coverage depends on WinGet recognition and enabled sources.
+Under **Aggiornamenti → WinGet**, scan, compare installed/available versions and select the rows to apply. Coverage depends on WinGet recognition and enabled sources. **Install all** asks for confirmation and applies the current WinGet scan results. To recover from an installer-type mismatch, select the affected package and choose **Uninstall and reinstall**. OnlyWinget waits for the old copy to be removed before installing the new one.
 
 ~~~mermaid
 flowchart LR
@@ -61,6 +61,8 @@ Cancel requests interruption; it cannot guarantee an active native installer fin
 ## 4. Windows Update
 
 Under **Aggiornamenti → Windows Update**, choose software, drivers, Microsoft Update and optional-update settings separately. Initially software is selected; drivers/optional updates are excluded. Select at least software or drivers, scan and inspect KB/title/metadata before choosing updates.
+
+**Install all** applies the available results from the scan after confirmation. To manage hidden updates, enable **Hidden updates** and scan again. Select rows and use **Hide** or **Show** to change their visibility. Open **History** to review results by category. The history view offers **Uninstall** for eligible entries. If a restart is required, use **Restart** and confirm. A scheduled restart can be cancelled from the Windows Update page.
 
 Installation validates IDs/revisions for the complete selection before accepting selected EULAs, downloading and installing. Required elevation and restart warnings remain meaningful. MSRC severity is displayed when available; a detected restart field is not a prediction for every future installation.
 
@@ -81,13 +83,13 @@ Input validation does not replace WinGet's registration/access result. If a nati
 
 ## 6. Activity and logs
 
-Activity supports text/severity/category filters, detail copying and history export. Its clear/cancel actions concern activity history.
+Activity groups entries by local day and supports text, severity and category filters, detail copying and history export. Its clear/cancel actions concern activity history.
 
 Open logs instead shows diagnostic messages with filter/copy/export/clear. Clearing requires confirmation inside the viewer; cancelling leaves logs intact. Read any write/export/delete error before retrying. Exported text can contain filesystem paths and source addresses, so review it before sharing.
 
 ## 7. Settings
 
-Choose system/English/Italian language and system/light/dark theme, confirmations, diagnostics and log level. Preferences include continuing after an error and installer-hash bypass. Changes save automatically. Hash bypass changes WinGet verification and is off by default. Restore defaults asks for confirmation and saves the initial values again.
+Choose system/English/Italian language and system/light/dark theme, confirmations, diagnostics and log level. Preferences include continuing after an error and installer-hash bypass. **WinGet retries** allows zero to three extra attempts per package for transient failures and defaults to one. Packages with unknown installed versions and pinned packages are excluded by default. Enable their respective settings and scan again to include them where supported by WinGet. Changes save automatically. Hash bypass changes WinGet verification and is off by default. Restore defaults asks for confirmation and saves the initial values again.
 
 ## Local data and help
 

@@ -53,11 +53,11 @@ public sealed partial class OnlyWingetApplication
                         searchResults.AddRange(distinctResults);
                         searchSelection.ReplaceAvailable(distinctResults.Select(result => result.Package));
                     });
-                    AddActivity(ActivitySeverity.Information, "Search completed", $"{distinctResults.Length} result(s).");
+                    AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, "Search completed", $"{distinctResults.Length} result(s).");
                     if (sourceErrors.Length > 0)
                     {
                         AddActivity(
-                            ActivitySeverity.Warning,
+                            ActivityCategory.Packages, ActivitySeverity.Warning,
                             "Some sources could not be searched",
                             string.Join(Environment.NewLine, sourceErrors));
                     }
@@ -65,7 +65,7 @@ public sealed partial class OnlyWingetApplication
                     if (metadataFailureCount > 0)
                     {
                         AddActivity(
-                            ActivitySeverity.Warning,
+                            ActivityCategory.Packages, ActivitySeverity.Warning,
                             "Some package publishers could not be resolved",
                             $"{metadataFailureCount} package(s).");
                     }
@@ -108,7 +108,7 @@ public sealed partial class OnlyWingetApplication
                     }
 
                     ReplacePreset(active.Name, new Preset(active.Name, packages), active.Name);
-                    AddActivity(ActivitySeverity.Success, "Search packages added", $"{added} package(s).");
+                    AddActivity(ActivityCategory.Packages, ActivitySeverity.Success, "Search packages added", $"{added} package(s).");
                 },
                 "Unable to add selected packages.")
             .ConfigureAwait(false);
@@ -149,7 +149,7 @@ public sealed partial class OnlyWingetApplication
                     {
                         count = packageMetadata.Count;
                     }
-                    AddActivity(ActivitySeverity.Information, "Package metadata refreshed", $"{count} package(s).");
+                    AddActivity(ActivityCategory.Packages, ActivitySeverity.Information, "Package metadata refreshed", $"{count} package(s).");
                 },
                 "Unable to refresh package metadata.")
             .ConfigureAwait(false);

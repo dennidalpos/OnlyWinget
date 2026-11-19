@@ -116,6 +116,29 @@
                             </Grid>
                         </Border>
 
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <SymbolIcon Symbol="Refresh" VerticalAlignment="Center" Foreground="{ThemeResource SystemAccentColor}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{services:Localize Key=Settings_WingetRetries}" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{services:Localize Key=Settings_WingetRetriesDescription}" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ComboBox Grid.Column="2" MinWidth="96" VerticalAlignment="Center"
+                                    SelectedIndex="{x:Bind ViewModel.WingetRetryCount, Mode=TwoWay}"
+                                    AutomationProperties.AutomationId="SettingsWingetRetryCount" AutomationProperties.Name="{services:Localize Key=Settings_WingetRetries}">
+                                    <ComboBoxItem Content="0" />
+                                    <ComboBoxItem Content="1" />
+                                    <ComboBoxItem Content="2" />
+                                    <ComboBoxItem Content="3" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+
                         <!-- Bypass Hash Validation Setting Card -->
                         <Border Style="{StaticResource SettingsCardStyle}" ToolTipService.ToolTip="{services:Localize Key=Settings_BypassHashValidationDescription}">
                             <Grid ColumnSpacing="16">

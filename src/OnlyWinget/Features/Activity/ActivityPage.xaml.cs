@@ -16,7 +16,7 @@ public sealed partial class ActivityPage : Page
     {
         InitializeComponent();
         viewModel = new(Dispatch);
-        ActivityList.ItemsSource = viewModel.Entries;
+        ActivityGroups.Source = viewModel.Days;
         viewModel.PropertyChanged += OnViewModelChanged;
         PageState.ActionRequested += OnUndoClear;
         Loaded += OnLoaded;
