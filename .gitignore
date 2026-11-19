@@ -8,13 +8,17 @@ tmp/
 /packages/
 dependencies/windowsappsdk/
 
+# The landing expects this directory. Download payloads and backups are local.
+!/landing/build/
+/landing/build/*
+!/landing/build/.gitkeep
+
 .vs/
 .vscode/
 .idea/
 
 TestResults/
-**/TestResults/
-artifacts/
+/artifacts/
 
 *.user
 *.suo
@@ -33,8 +37,13 @@ Thumbs.db
 *.runtimeconfig.json
 *.deps.json
 
-!tools/
-!tools/**/*
+# Local configuration and private key material.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pfx
+*.p12
 
 coverage/
 *.coverage

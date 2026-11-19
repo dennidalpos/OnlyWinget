@@ -10,7 +10,7 @@
   <img alt="UI languages: English and Italian" src="https://img.shields.io/badge/UI-English%20%7C%20Italian-555" />
 </p>
 
-OnlyWinget is a Windows desktop app for preparing reusable lists of applications, finding packages, and reviewing WinGet and Windows updates in one WinUI 3 interface.
+OnlyWinget is a Windows desktop app for managing reusable application presets, searching WinGet, and installing WinGet and Windows updates from one WinUI 3 interface.
 
 ## What you can do
 
@@ -18,8 +18,8 @@ OnlyWinget is a Windows desktop app for preparing reusable lists of applications
 | --- | --- |
 | Create, edit, import or export a package list; install or uninstall selected entries | **Packages → Presets**. Exchange files use `onlywinget.preset.v1`; package identity includes both ID and source. |
 | Search enabled WinGet sources and install selected results directly or add them to a preset | **Packages → Search**. Results include package ID, source and version. |
-| Scan for application upgrades and apply selected rows | **Updates → WinGet**. Results and diagnostics remain available after failures or cancellation. |
-| Scan Windows Update and install selected updates | **Updates → Windows Update**. Separate options control software, drivers, Microsoft updates and optional updates. |
+| Scan for application upgrades and install selected or all discovered updates | **Updates → WinGet**. Results and diagnostics remain available after failures or cancellation. |
+| Scan Windows Update and install selected updates or all available non-hidden results | **Updates → Windows Update**. Choose which update types to scan, manage hidden updates, and review history. |
 | Refresh source metadata, enable or disable sources locally, add, remove or reset sources | **Sources**. Add, remove and reset require an elevated app. |
 | Read, filter, copy or export activity and diagnostic logs | **Activity** and **Open logs**. |
 | Choose English/Italian, system/light/dark appearance and operation preferences | **Settings**. Changes save automatically. |
@@ -39,7 +39,7 @@ See the [user guide](docs/user-guide.md) ([Italiano](docs/user-guide.it.md)) for
 
 ## Requirements
 
-- Windows 10 build 17763 or later, or Windows 11, on x64. This is the project's declared target; it is not a claim of testing on every Windows release.
+- Windows 10 build 17763 or later, or Windows 11, on x64. The current qualification covers local Release checks and isolated startup on Windows 11. See [release checks](docs/release.md) for pending host checks.
 - Microsoft App Installer providing `winget` on `PATH` for package operations.
 - Network access to the selected package sources or update service for discovery and downloads.
 - Administrator rights for source add/remove/reset and Windows Update installation. Package installers can have their own elevation requirements.
@@ -101,10 +101,10 @@ Arrows between layers show code dependencies; `AppComposition.cs` connects the a
 
 ## Support
 
-Report reproducible problems through [GitHub Issues](https://github.com/dennidalpos/OnlyWinget/issues), including the app version, Windows version, affected workflow and error code. Review exported logs before attaching them: they can contain package names, source addresses and local paths.
+Report reproducible problems through [GitHub Issues](https://github.com/dennidalpos/OnlyWinget/issues/new/choose) with the app version, Windows build, affected workflow and error code. Share only a redacted excerpt of diagnostic output. Report vulnerabilities through the [private reporting channel](SECURITY.md).
 
 ## License
 
-OnlyWinget is proprietary software. Copyright (c) 2026 Danny Perondi. All rights reserved. See [LICENSE](LICENSE).
+OnlyWinget is proprietary software. Copyright (c) 2026 Danny Perondi. All rights reserved. See [LICENSE](LICENSE) and the [third-party credits and redistribution checks](CREDITS.md).
 
-To report a vulnerability, see [SECURITY.md](SECURITY.md). The repository contains build and release workflows in `.github/workflows/`, but GitHub Actions are disabled: build and package locally with the scripts above.
+GitHub Actions is disabled for this repository. Use the local scripts for build, test and packaging.

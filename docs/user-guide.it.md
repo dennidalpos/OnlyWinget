@@ -68,13 +68,17 @@ L'installazione diretta non richiede un preset. Un errore di una sorgente può l
 
 ## 3. Aggiornare le applicazioni WinGet
 
-In **Aggiornamenti → WinGet**, avvia una scansione, confronta versione installata e disponibile e seleziona le righe da applicare. La copertura dipende da ciò che WinGet riconosce e dalle sorgenti disponibili. **Installa tutti** richiede conferma e applica i risultati della scansione WinGet corrente. Se il tipo di programma di installazione è cambiato, seleziona il pacchetto interessato e scegli **Disinstalla e reinstalla**. OnlyWinget attende la rimozione della copia precedente prima di installare quella nuova.
+In **Aggiornamenti → WinGet**, avvia una scansione e confronta la versione installata con quella disponibile. Applica le righe selezionate oppure usa **Installa tutti** per tutti i risultati rilevati. L'app chiede conferma se le conferme sono abilitate. Se il tipo di programma di installazione è cambiato, seleziona il pacchetto interessato e scegli **Disinstalla e reinstalla**. OnlyWinget attende la rimozione della copia precedente prima di installare quella nuova.
 
 ```mermaid
 flowchart TD
-    Scan["Avvia scansione WinGet"] --> Rows["Esamina aggiornamenti e seleziona righe"]
+    Scan["Scansiona le sorgenti abilitate"] --> Rows["Esamina gli aggiornamenti rilevati"]
     Rows --> Apply["Applica la selezione"]
-    Apply --> Outcome{"Esito del batch"}
+    Rows --> All["Installa tutti gli aggiornamenti rilevati"]
+    Apply --> Confirm["Conferma se richiesto"]
+    All --> Confirm
+    Confirm --> Execute["Esegui il batch"]
+    Execute --> Outcome{"Esito del batch"}
     Outcome -->|"Riuscito"| Rescan["Nuova scansione automatica"]
     Outcome -->|"Fallito o annullato"| Keep["Conserva esiti, diagnostica e righe pendenti"]
     Keep --> Check["Verifica lo stato installato prima di riprovare"]
@@ -90,17 +94,19 @@ Apri **Aggiornamenti → Windows Update**. Le opzioni software, driver, Microsof
 ```mermaid
 flowchart TD
     Options["Scegli tipi di aggiornamenti e opzioni"] --> Scan["Avvia scansione"]
-    Scan --> Select["Esamina KB, titolo e metadati; seleziona le righe"]
-    Select --> Install["Avvia installazione con privilegi richiesti"]
-    Install --> Validate["Verifica ID e revisione di tutta la selezione"]
-    Validate --> Jobs["Accetta EULA, scarica e installa"]
+    Scan --> Review["Esamina KB, titolo e metadati"]
+    Review --> Select["Seleziona le righe da scaricare o installare"]
+    Review --> All["Installa tutti gli aggiornamenti disponibili e visibili"]
+    Select --> Validate["Verifica ID e revisione degli aggiornamenti"]
+    All --> Validate
+    Validate --> Jobs["Accetta le EULA ed esegui l'azione richiesta"]
     Jobs --> Outcome["Conserva esiti e avvisi di riavvio"]
     Jobs --> Cancel["Annulla: richiedi abort e attendi pulizia nativa"]
     Cancel --> Outcome
     Outcome --> Check["Se lo stato è incerto, controlla Windows Update prima di riprovare"]
 ```
 
-**Installa tutti** applica gli aggiornamenti disponibili della scansione dopo la conferma. Per gestire quelli nascosti, attiva **Aggiornamenti nascosti** e avvia un'altra scansione. Seleziona le righe e usa **Nascondi** o **Mostra** per cambiarne la visibilità. Apri **Cronologia** per consultare gli esiti per categoria e disinstallare le voci idonee. Se è richiesto un riavvio, scegli **Riavvia** e conferma. Puoi annullare un riavvio pianificato dalla pagina Windows Update.
+**Installa tutti** esclude i risultati nascosti e installa gli aggiornamenti disponibili della scansione in corso. Per gestire quelli nascosti, attiva **Aggiornamenti nascosti** e avvia un'altra scansione. Seleziona le righe e usa **Nascondi** o **Mostra** per cambiarne la visibilità. Apri **Cronologia** per consultare gli esiti per categoria e disinstallare le voci idonee. Se Windows richiede un riavvio, scegli **Riavvia** e conferma se richiesto. Puoi annullare un riavvio pianificato dalla stessa pagina.
 
 Avviando l'installazione, l'app accetta le EULA degli aggiornamenti selezionati dopo aver verificato la selezione completa. La gravità MSRC appare quando disponibile; il campo riavvio indica lo stato rilevato, non una previsione per ogni installazione futura.
 

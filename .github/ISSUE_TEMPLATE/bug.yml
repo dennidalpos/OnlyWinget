@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Use synthetic or redacted data only: no secrets, personal data, host paths or raw logs.
-        Security vulnerabilities must not be reported here: see SECURITY.md.
+        Report vulnerabilities through [private vulnerability reporting](https://github.com/dennidalpos/OnlyWinget/security/advisories/new).
   - type: textarea
     id: summary
     attributes:
@@ -27,8 +27,12 @@ body:
     attributes:
       label: Version or commit
       description: The released version or the commit you are using.
+    validations:
+      required: true
   - type: input
     id: environment
     attributes:
-      label: Environment
-      description: Operating system and runtime versions relevant to the problem.
+      label: Windows build and distribution
+      description: Include the Windows build, setup or portable format, and WinGet version if relevant.
+    validations:
+      required: true

@@ -13,7 +13,7 @@ OnlyWinget manages reusable application presets, searches WinGet sources and rev
 | Release maintainer | [Release](release.md) | Versioning, gates, NSIS setup, portable ZIP and qualification limits |
 | Script user | [Script reference](../scripts/README.md) | Task runner, parameters, prerequisites and regressions |
 
-The primary user guide and index are maintained in English; their former Italian pages remain linked counterparts. Diagrams describe implemented flows rather than proof of a successful installation or release gate. Dated audit/tracker-review documents retain the original scenario, revision and language.
+The English and Italian guides are maintained together. Diagrams describe implemented flows. For the scope of verification and the remaining host checks, see [Release](release.md). Dated audit and tracker-review documents record their original scenario, revision and language.
 
 Source of truth: [projects](../src/), [task runner](../scripts/run.ps1), [SDK configuration](../global.json) and [workflow sources](../.github/workflows/). Shared agent instructions are in [AGENTS.md](../AGENTS.md); private development knowledge belongs in the SecondBrain dossier.
 

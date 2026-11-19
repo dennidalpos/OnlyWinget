@@ -11,9 +11,10 @@ Thank you for your interest in OnlyWinget.
 ## Making a change
 
 1. Keep the change focused on a single topic.
-2. Run the build and the checks documented in the README and make sure they pass.
+2. Run `.\scripts\run.ps1 -Task Check -Configuration Release -NonInteractive` in an isolated checkout. It clears that checkout's generated outputs. Include the results and identify any host checks still pending.
 3. Use synthetic or redacted data only: no secrets, credentials, personal data, host paths or raw logs in code, tests, screenshots or issues.
-4. Open a pull request and fill in the template.
+4. Keep both user guides in sync when behavior or labels change, and update [CREDITS.md](CREDITS.md) when dependencies change.
+5. After the maintainer approves the contribution, open a pull request and fill in the template. Maintainers follow the [repository's Git workflow](AGENTS.md#git-workflow-push-policy).
 
 ## Licensing
 

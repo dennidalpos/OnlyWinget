@@ -2,13 +2,13 @@
 
 [Italian reference](user-guide.it.md)
 
-OnlyWinget combines reusable application lists, WinGet search, application upgrades and Windows Update. The descriptions below use the Italian UI labels where they identify a control; English is available in Settings.
+OnlyWinget combines reusable application lists, WinGet search, application upgrades and Windows Update. This guide uses the English UI labels. Choose your language in **Settings**.
 
 ## Start safely
 
 Start OnlyWinget.exe after installation or extracting the entire portable ZIP. Check the [requirements](../README.md#requirements). The app loads the local workspace and detects capabilities. Resolve loading errors before saving new data; preserve the current files when investigating a load error or an unsupported workspace schema.
 
-Navigation contains Home, Pacchetti, Aggiornamenti, Sorgenti, Attività and Impostazioni. Search is a Packages mode; Open logs is also available from navigation. Home shows CPU, memory, disk, uptime, Windows version and connectivity; these metrics are not a complete PC-health diagnosis.
+Navigation contains Home, Packages, Updates, Sources, Activity and Settings. Search is a Packages mode. The navigation also offers **Open logs**. Home shows CPU, memory, disk, uptime, Windows version and connectivity.
 
 ~~~mermaid
 flowchart LR
@@ -24,7 +24,7 @@ flowchart LR
 
 ## 1. Presets
 
-In **Pacchetti → Preset**, create a named list or select an existing one. Add packages by ID/source or from Search. Both ID and source form the identity: identical IDs from different sources can be separate entries.
+In **Packages → Presets**, create a named list or select an existing one. Add packages by ID/source or from Search. The package ID and source together identify an entry. Identical IDs from different sources can be separate entries.
 
 ![The OnlyWinget Preset tab shows Demo PC and three package IDs selected for a batch action.](assets/presets-demo-pc.jpg)
 
@@ -38,19 +38,23 @@ The active preset change is automatically saved once accepted. If persistence fa
 
 ## 2. Search and install
 
-Open **Pacchetti → Cerca**, enter a name/ID and search using at least one enabled source. Results expose name, ID, source, version and publisher when available. Select rows to install directly or add to the active preset; direct installation does not require a preset.
+Open **Packages → Search**, enter a name or ID and search using at least one enabled source. Results show name, ID, source, version and publisher when available. Select rows to install directly or add them to the active preset. You can install directly without a preset.
 
 Read source warnings even when other sources return usable results. Identical searches may use a five-minute in-memory cache. Inspect per-package outcomes and Activity after a change.
 
 ## 3. WinGet upgrades
 
-Under **Aggiornamenti → WinGet**, scan, compare installed/available versions and select the rows to apply. Coverage depends on WinGet recognition and enabled sources. **Install all** asks for confirmation and applies the current WinGet scan results. To recover from an installer-type mismatch, select the affected package and choose **Uninstall and reinstall**. OnlyWinget waits for the old copy to be removed before installing the new one.
+Under **Updates → WinGet**, scan and compare the installed and available versions. Apply selected rows or use **Install all** for all discovered rows. The app asks for confirmation when confirmations are enabled. To recover from an installer-type mismatch, select the affected package and choose **Uninstall and reinstall**. OnlyWinget waits for the old copy to be removed before installing the new one.
 
 ~~~mermaid
 flowchart LR
-    Scan[Scan upgrades] --> Review[Review versions and select]
-    Review --> Apply[Apply selected batch]
-    Apply --> Outcome{Outcome}
+    Scan["Scan enabled sources"] --> Review["Review discovered upgrades"]
+    Review --> Selected["Apply selected rows"]
+    Review --> All["Install all discovered rows"]
+    Selected --> Confirm["Confirm if prompted"]
+    All --> Confirm
+    Confirm --> Execute["Run the batch"]
+    Execute --> Outcome{"Batch outcome"}
     Outcome -->|Success| Rescan[Automatic rescan]
     Outcome -->|Failed or cancelled| Retain[Retain outcomes diagnostics and pending rows]
     Retain --> Inspect[Inspect installed state before retry]
@@ -60,9 +64,22 @@ Cancel requests interruption; it cannot guarantee an active native installer fin
 
 ## 4. Windows Update
 
-Under **Aggiornamenti → Windows Update**, choose software, drivers, Microsoft Update and optional-update settings separately. Initially software is selected; drivers/optional updates are excluded. Select at least software or drivers, scan and inspect KB/title/metadata before choosing updates.
+Under **Updates → Windows Update**, choose software, drivers, Microsoft Update and optional-update settings separately. Software is selected by default. Select software, drivers or both, then scan and inspect the KB, title and metadata before choosing updates.
 
-**Install all** applies the available results from the scan after confirmation. To manage hidden updates, enable **Hidden updates** and scan again. Select rows and use **Hide** or **Show** to change their visibility. Open **History** to review results by category. The history view offers **Uninstall** for eligible entries. If a restart is required, use **Restart** and confirm. A scheduled restart can be cancelled from the Windows Update page.
+**Install all** excludes hidden results and installs the available updates from the current scan. To manage hidden updates, enable **Hidden updates** and scan again. Select rows and use **Hide** or **Show** to change their visibility. Open **History** to review results by category and uninstall eligible entries. If Windows requires a restart, use **Restart** and confirm if prompted. You can cancel a scheduled restart from this page.
+
+~~~mermaid
+flowchart TD
+    Options["Choose update types and scan"] --> Review["Review KB, title and metadata"]
+    Review --> Selected["Select rows to download or install"]
+    Review --> All["Install all available non-hidden rows"]
+    Selected --> Validate["Validate update IDs and revisions"]
+    All --> Validate
+    Validate --> Work["Accept EULAs and run the requested action"]
+    Work --> Results["Review results and restart state"]
+    Work --> Cancel["If cancelled, await native cleanup"]
+    Cancel --> Results
+~~~
 
 Installation validates IDs/revisions for the complete selection before accepting selected EULAs, downloading and installing. Required elevation and restart warnings remain meaningful. MSRC severity is displayed when available; a detected restart field is not a prediction for every future installation.
 

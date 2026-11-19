@@ -2,7 +2,7 @@
 
 ## Our standard
 
-Everyone taking part in OnlyWinget, in issues, pull requests and discussions, is expected to be respectful and constructive.
+Everyone taking part in OnlyWinget issues, pull requests and other project interactions is expected to be respectful and constructive.
 
 Expected behavior:
 
@@ -20,4 +20,4 @@ Unacceptable behavior:
 
 The maintainer may edit, hide or remove contributions that do not follow this code, and may block repeat offenders from the repository.
 
-To report a conduct problem, contact the maintainer through the GitHub profile [dennidalpos](https://github.com/dennidalpos). Reports are handled privately. Security vulnerabilities follow [SECURITY.md](SECURITY.md) instead.
+Report conduct concerns privately to the maintainer through the contact details on [dennidalpos's GitHub profile](https://github.com/dennidalpos). Use the [security policy](SECURITY.md) to report vulnerabilities.

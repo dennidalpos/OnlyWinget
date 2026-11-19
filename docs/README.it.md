@@ -5,7 +5,7 @@ OnlyWinget gestisce preset di applicazioni, ricerca nelle sorgenti WinGet, aggio
 | Destinatario | Documento | Contenuto |
 | --- | --- | --- |
 | Chi vuole iniziare | [README](../README.md) | Requisiti, distribuzioni supportate, primo avvio, dati locali e limiti. |
-| Utente finale | [Guida utente](user-guide.md) | Percorsi operativi e diagrammi Mermaid per preset, ricerca, aggiornamenti, sorgenti, attività e impostazioni. |
+| Utente finale | [Guida utente](user-guide.it.md) | Percorsi operativi per preset, ricerca, aggiornamenti, sorgenti, attività e impostazioni, con diagrammi Mermaid. |
 | Sviluppatore | [Architettura](architecture.md) | Dipendenze, composizione, persistenza, processi esterni e interfaccia. |
 | Manutentore | [Operazioni](operations.md) | Comandi, verifiche, isolamento dei dati, cancellazione e recupero. |
 | Responsabile del rilascio | [Release](release.md) | Versionamento, gate, setup NSIS, ZIP portatile e limiti della qualificazione. |
