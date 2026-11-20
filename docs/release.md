@@ -71,7 +71,7 @@ This uses isolated local clones and sentinel assets, accepts lightweight/annotat
 
 ## Artifact
 
-Review [CREDITS.md](../CREDITS.md#redistribution-check) and compare the setup and portable payloads with the required license texts, attributions and notices. The inspected 1.0.3 payload was missing third-party notice files. Add and verify them before distribution.
+Review [CREDITS.md](../CREDITS.md#redistribution-check) and compare `ThirdPartyNotices` in the exact portable ZIP and installed setup against the packaging output. The setup also supplies `ThirdPartyNotices/NSIS` with the matching LZMA license, source availability notice and source archive. Record SHA-256 for both artifacts and confirm the Microsoft redistribution and end-user terms before distribution.
 
 `landing/build/` contains a tracked directory marker. Download binaries and their backups stay local. Check the exact filenames and SHA-256 hashes against the intended build before uploading the landing files.
 

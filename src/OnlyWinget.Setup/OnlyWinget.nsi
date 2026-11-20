@@ -104,6 +104,10 @@ Section "MainSection" SEC01
   !insertmacro OnlyWingetCloseInstallation
   SetOutPath "$INSTDIR"
   !insertmacro OnlyWingetInstallFiles
+  SetOutPath "$INSTDIR\ThirdPartyNotices\NSIS"
+  File "ThirdParty\Installer\COPYING.txt"
+  File "ThirdParty\Installer\README.txt"
+  File "ThirdParty\Installer\nsis-3.13-src.tar.bz2"
 
   WriteRegStr SHCTX "${REGKEY}" "InstallDir" "$INSTDIR"
 
@@ -137,6 +141,10 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\OnlyWinget\Uninstall.lnk"
   RMDir "$SMPROGRAMS\OnlyWinget"
 
+  Delete "$INSTDIR\ThirdPartyNotices\NSIS\COPYING.txt"
+  Delete "$INSTDIR\ThirdPartyNotices\NSIS\README.txt"
+  Delete "$INSTDIR\ThirdPartyNotices\NSIS\nsis-3.13-src.tar.bz2"
+  RMDir "$INSTDIR\ThirdPartyNotices\NSIS"
   !insertmacro OnlyWingetUninstallFiles
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"

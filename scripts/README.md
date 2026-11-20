@@ -16,7 +16,7 @@ The scripts bootstrap missing prerequisites where practical:
 
 - .NET SDK major from `global.json` via `winget`; locked restore requires the exact SDK declared in that file to be installed.
 - PSScriptAnalyzer via `Install-Module`.
-- NSIS 3.x for setup executable creation.
+- NSIS 3.13 for setup executable creation with the matching LZMA source and license.
 - Windows App Runtime self-contained bundling.
 
 Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation into a hard failure.
@@ -57,6 +57,8 @@ Set `ONLYWINGET_SKIP_AUTO_INSTALL=1` to turn missing-prerequisite installation i
 Support files live under `scripts/support/` and are not standalone entrypoints.
 
 `global.json` pins an exact SDK with roll-forward disabled so implicit SDK packages remain consistent with `packages.lock.json`. When intentionally changing that SDK, regenerate lockfiles with `scripts/fix-lockfiles.ps1`, review the generated diff and verify locked restore again after packaging. Do not bypass locked mode to make CI pass. See [SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json#rollforward) and [NuGet locked restore](https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies).
+
+Build and package use a locked solution restore before compiling or packaging. The app project declares its own `win-x64` runtime. The build and publish commands reuse the resolved assets without an implicit restore. If packaging fails during restore, see `artifacts/build/restore.log`. The Release gate exercises standalone packaging and verifies that it leaves the NuGet lockfiles intact.
 
 Check retains restore stdout/stderr in `artifacts/check/restore.log`. Default/Fast output shows the last 60 lines on failure; Full also streams the output. A failed step writes `artifacts/build-report.txt` with its name, error and completed steps. The build and release workflows upload those diagnostics along with test logs/TRX, including after failures. The diagnostics regression also retains `artifacts/check/restore-failure-fixture*.log` from an expected real NuGet failure in an isolated temporary solution; those files show a successful negative test and do not describe the main solution's restore. The release workflow may fail tag validation before producing diagnostic files. Check first deletes this checkout's `artifacts/` (including its `tmp/` scratch folder); preserve existing evidence or run it in an isolated checkout.
 

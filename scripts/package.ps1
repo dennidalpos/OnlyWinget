@@ -14,6 +14,7 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
 . (Join-Path $PSScriptRoot 'support/InstallerFiles.ps1')
 . (Join-Path $PSScriptRoot 'support/PackageArtifacts.ps1')
+. (Join-Path $PSScriptRoot 'support/ThirdPartyNotices.ps1')
 
 $isFastMode = -not $Full
 
@@ -140,25 +141,18 @@ function Invoke-PublishAndPackage {
     $nsisStagingRoot = Join-Path $stagingRoot $runtimeIdentifier
     $publishDir = Join-Path $nsisStagingRoot 'publish'
     $nsisScriptPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.nsi'
+    $noticeSource = Join-Path $repoRoot 'src/OnlyWinget.Setup/ThirdParty'
     $setupFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-setup.exe"
     $portableFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-portable-x64.zip"
 
     Assert-Path -Path $nsisScriptPath -Description 'NSIS setup script'
+    $makensisExe = Resolve-MakensisExe
+    Assert-NsisNoticeSource -Compiler $makensisExe -NoticeDirectory (Join-Path $noticeSource 'Installer')
     Reset-Directory -Path $nsisStagingRoot
     New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
     New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
 
-    if (-not $NoRestore) {
-        if ($isFastMode) {
-            dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies > $null
-        } else {
-            dotnet restore $projectPath -r $runtimeIdentifier --locked-mode --no-dependencies
-        }
-        if ($LASTEXITCODE -ne 0) {
-            throw "dotnet restore for $runtimeIdentifier packaging failed."
-        }
-    }
-
+    # Build preparation restored the solution, including the app's declared win-x64 runtime.
     $publishArgs = @(
         'publish'
         $projectPath
@@ -177,11 +171,8 @@ function Invoke-PublishAndPackage {
         '/p:BuildProjectReferences=false'
         '/p:DebugSymbols=false'
         '/p:DebugType=None'
+        '--no-restore'
     )
-
-    if ($NoRestore) {
-        $publishArgs += '--no-restore'
-    }
 
     if ($isFastMode) {
         dotnet @publishArgs > $null
@@ -195,10 +186,11 @@ function Invoke-PublishAndPackage {
     $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
     Assert-Path -Path $publishedExePath -Description 'Published executable x64'
     Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
+    Copy-ThirdPartyNotice -PublishDirectory $publishDir -NoticeSource $noticeSource `
+        -AssetsPath (Join-Path $artifactsPath 'obj/OnlyWinget/project.assets.json')
     $installerFileInclude = Join-Path $nsisStagingRoot 'InstalledFiles.nsh'
     Write-InstallerFileInclude -PublishDirectory $publishDir -OutputPath $installerFileInclude
 
-    $makensisExe = Resolve-MakensisExe
     New-PackageArtifactPair -OutputDirectory $setupOutputDir -PublishDirectory $publishDir -Version $installerVersion -BuildSetup {
         param($stagedSetupPath)
         $nsisArgs = @(

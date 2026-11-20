@@ -204,7 +204,14 @@ Invoke-Step 'build' {
 }
 
 Invoke-Step 'setup package' {
-    & $packageScriptPath -Configuration $Configuration -NoRestore -StopRunningInstance:$StopRunningInstance -Full:$Full -NonInteractive:$NonInteractive
+    $lockfiles = @(Get-ChildItem -Path (Join-Path $repoRoot 'src'), (Join-Path $repoRoot 'tests') -Filter 'packages.lock.json' -File -Recurse)
+    $locksBefore = Get-FileHash -LiteralPath $lockfiles.FullName
+    & $packageScriptPath -Configuration $Configuration -StopRunningInstance:$StopRunningInstance -Full:$Full -NonInteractive:$NonInteractive
+    $locksAfter = Get-FileHash -LiteralPath $lockfiles.FullName
+    $changed = @(Compare-Object -ReferenceObject $locksBefore -DifferenceObject $locksAfter -Property Path, Hash)
+    if ($changed.Count -gt 0) {
+        throw "Packaging changed NuGet lockfiles: $($changed.Path | Sort-Object -Unique)"
+    }
 }
 
 Invoke-Step 'installer file ownership regression' {

@@ -29,20 +29,21 @@ Assert-Path -Path $projectPath -Description 'Project file'
 Assert-ExecutableNotLocked -KillProcess:$StopRunningInstance -ActionName 'Build'
 
 if (-not $NoRestore) {
+    $restoreLogPath = Join-Path (Initialize-OutputRoot -RepositoryRoot $repoRoot) 'build/restore.log'
+    New-Item -ItemType Directory -Path (Split-Path $restoreLogPath -Parent) -Force | Out-Null
     if ($isFastMode) {
-        dotnet restore $solutionPath --locked-mode > $null
+        dotnet restore $solutionPath --locked-mode 2>&1 | Out-File -LiteralPath $restoreLogPath -Encoding utf8
     } else {
-        dotnet restore $solutionPath --locked-mode
+        dotnet restore $solutionPath --locked-mode 2>&1 | Tee-Object -FilePath $restoreLogPath | Out-Host
     }
-    if ($LASTEXITCODE -ne 0) {
-        throw 'dotnet restore failed.'
+    $restoreExitCode = $LASTEXITCODE
+    if ($restoreExitCode -ne 0) {
+        if ($isFastMode) { Get-Content -LiteralPath $restoreLogPath -Tail 60 | Out-Host }
+        throw "dotnet restore failed (exit $restoreExitCode). Diagnostics: $restoreLogPath"
     }
 }
 
-$buildArgs = @($solutionPath, '-c', $Configuration)
-if ($NoRestore) {
-    $buildArgs += '--no-restore'
-}
+$buildArgs = @($solutionPath, '-c', $Configuration, '--no-restore')
 if ($WarnAsError) {
     $buildArgs += '-warnaserror'
 }

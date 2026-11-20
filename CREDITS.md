@@ -6,8 +6,9 @@ Reviewed 2026-11-19 against the repository's project references and NuGet lockfi
 
 - MIT, BSD-3-Clause and Apache-2.0 components can be used in proprietary software under their respective conditions. Redistribute the required license texts and copyright notices, preserve applicable Apache NOTICE attributions, and carry any required change notices. [Apache License 2.0, section 4](https://www.apache.org/licenses/LICENSE-2.0.html)
 - The Microsoft Windows App SDK 2.7.0 package license permits redistribution of files placed with the application by its NuGet package, including self-contained deployments, subject to its distribution requirements. Review the separate Windows ML terms and SDK redistributable-file terms for the exact Microsoft files that ship. [Windows App SDK 2.7.0 package](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.7.0)
-- The setup uses NSIS's LZMA module. Review the CPL-1.0 requirements for that module and retain its applicable license, notices and source availability information. Other NSIS components generally use zlib/libpng terms. [NSIS licenses](https://nsis.sourceforge.io/License)
-- The inspected 1.0.3 publish directory and portable ZIP contained no third-party license or notice files. The NSIS setup draws its application files from that publish directory. Before distributing a build, assemble the notices from the exact resolved packages and runtime components and verify their presence in both formats. The inventory in this file records provenance and review scope.
+- The setup uses the unmodified NSIS 3.13 LZMA module under CPL-1.0 with the NSIS linking exception. It installs the upstream COPYING and corresponding source archive with a source availability notice. [NSIS licenses](https://nsis.sourceforge.io/License) · [NSIS 3.13 source release](https://sourceforge.net/projects/nsis/files/NSIS%203/3.13/nsis-3.13-src.tar.bz2/download)
+- Both package formats carry the reviewed runtime licenses and notices in `ThirdPartyNotices`. Packaging checks the published runtime graph and the native Windows App SDK build inputs against [the notice manifest](src/OnlyWinget.Setup/ThirdParty/packages.json). The file names prefixed with `@` refer to preserved upstream texts in the manifest directory. Other files are copied byte for byte from the restored package of the declared version.
+- The Windows SDK REDIST list identifies the shipped Windows SDK projection and WinRT runtime assemblies. Windows App SDK and Windows ML package terms cover the files their packages place with the app. The distributor must also meet the applicable Microsoft terms for distributor and end-user agreement, including for a portable ZIP. [Windows SDK REDIST](https://learn.microsoft.com/en-us/legal/windows-sdk/redist) · [Windows SDK terms](https://aka.ms/WinSDKLicenseURL)
 
 ## Resolved NuGet packages
 
@@ -115,3 +116,13 @@ WinGet and Windows Update are host services. OnlyWinget calls them on the user's
 ## Maintaining this register
 
 When dependencies, runtime packs or bundled assets change, review the project references, lockfiles, package license files and the new x64 publish output. Update the versions and terms here. Record package notices and licenses for any new native files and check the exact setup and ZIP during [release verification](docs/release.md#artifact).
+
+Supplemental source texts come from the package-declared Windows SDK license URL, the .NET 10.0.15 runtime pack and the source revisions below.
+
+| Supplemental text | Source revision |
+| --- | --- |
+| EF Core and Microsoft.Data.Sqlite | [dotnet/dotnet source build](https://github.com/dotnet/dotnet/blob/8e0f8ed2312954727f8919d7d1c2f78b483b4ee7/src/efcore/LICENSE.txt) |
+| Serilog 4.4.0 | [Serilog source revision](https://github.com/serilog/serilog/blob/497f80fda4f9e8f98b9c13ba34b1f0530f8c4449/LICENSE) |
+| Serilog.Extensions.Hosting 11.0.0 | [Hosting source revision](https://github.com/serilog/serilog-extensions-hosting/blob/a72731030af7a6e0e44685253a962f0e80cdca61/LICENSE) |
+| Serilog.Extensions.Logging 11.0.0 | [Logging source revision](https://github.com/serilog/serilog-extensions-logging/blob/d7aa43f1400b9934180002035608326b5f387f84/LICENSE) |
+| SQLitePCLRaw 3.0.5 | [SQLitePCLRaw source revision](https://github.com/ericsink/SQLitePCL.raw/blob/ed046114d5a30534e13294d94d78eb73de896ad4/LICENSE.TXT) |
