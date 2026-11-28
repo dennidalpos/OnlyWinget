@@ -1,0 +1,112 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.DependencyInjection;
+using OnlyWinget.Application.App;
+using OnlyWinget.Application.Presentation;
+using OnlyWinget.Application.System;
+using OnlyWinget.Presentation;
+using System.Collections.ObjectModel;
+
+namespace OnlyWinget.Features.Home;
+
+public sealed partial class DashboardViewModel : FeatureViewModel
+{
+    private readonly IPcMetricsService metricsService;
+
+    [ObservableProperty]
+    private FeatureState pageState = FeatureState.Ready;
+
+    [ObservableProperty]
+    private string activePreset = string.Empty;
+
+    [ObservableProperty]
+    private string operationalStatus = string.Empty;
+
+    [ObservableProperty]
+    private bool hasWarning;
+
+    public DashboardViewModel(
+        Action<Action> dispatch,
+        IPcMetricsService? pcMetricsService = null,
+        OnlyWingetApplication? workflow = null)
+        : base(dispatch, workflow)
+    {
+        metricsService = pcMetricsService ?? App.Host.Services.GetRequiredService<IPcMetricsService>();
+    }
+
+    public ObservableCollection<DashboardMetric> Metrics { get; } = [new(), new(), new(), new(), new(), new()];
+    public bool IsBusy => OperationalStatus == TextResources.Get("Dashboard_Busy");
+    public string ActivePresetDisplay => $"{TextResources.Get("Dashboard_ActivePreset")}: {ActivePreset}";
+
+    private int metricsRefreshVersion;
+
+    protected override void Refresh()
+    {
+        var state = PresentationStateMapper.ToDashboardState(Workflow.State);
+
+        ActivePreset = state.ActivePresetName ?? TextResources.Get("Dashboard_NoActivePreset");
+        HasWarning = state.RebootRequired || state.IsWingetAvailable == false || state.IsWindowsUpdateAvailable == false;
+        OperationalStatus = state.RebootRequired
+            ? TextResources.Get("Dashboard_RebootWarning")
+            : state.IsBusy ? TextResources.Get("Dashboard_Busy") : TextResources.Get("Dashboard_Ready");
+
+        PageState = state.Error is not null
+            ? FeatureState.Error(state.Error)
+            : FeatureState.Ready;
+
+        OnPropertyChanged(nameof(IsBusy));
+        OnPropertyChanged(nameof(ActivePresetDisplay));
+
+        var currentVersion = Interlocked.Increment(ref metricsRefreshVersion);
+        Task.Run(() =>
+        {
+            var pcMetrics = metricsService.GetCurrentMetrics();
+            if (Volatile.Read(ref metricsRefreshVersion) != currentVersion) return;
+
+            Dispatch(() =>
+            {
+                if (Volatile.Read(ref metricsRefreshVersion) != currentVersion) return;
+                UpdateMetrics(pcMetrics);
+            });
+        });
+    }
+
+    private void UpdateMetrics(PcMetrics pcMetrics)
+    {
+        Metrics[0].AccentKey = "AreaHomeBrush";
+        Metrics[1].AccentKey = "AreaPackagesBrush";
+        Metrics[2].AccentKey = "AreaHomeBrush";
+        Metrics[3].AccentKey = "AreaUpdatesBrush";
+        Metrics[4].AccentKey = "AreaSourcesBrush";
+        Metrics[5].AccentKey = "AreaActivityBrush";
+
+        Metrics[0].Label = TextResources.Get("Dashboard_Cpu");
+        Metrics[0].Value = $"{pcMetrics.CpuUsagePercent:F1}%";
+
+        Metrics[1].Label = TextResources.Get("Dashboard_Ram");
+        Metrics[1].Value = TextResources.FormatRam(pcMetrics);
+
+        Metrics[2].Label = TextResources.Get("Dashboard_Disk");
+        Metrics[2].Value = TextResources.FormatDisk(pcMetrics);
+
+        Metrics[3].Label = TextResources.Get("Dashboard_Uptime");
+        Metrics[3].Value = TextResources.FormatUptime(pcMetrics.Uptime);
+
+        Metrics[4].Label = TextResources.Get("Dashboard_OsVersion");
+        Metrics[4].Value = pcMetrics.OsVersionText;
+
+        Metrics[5].Label = TextResources.Get("Dashboard_Network");
+        Metrics[5].Value = TextResources.FormatNetworkStatus(pcMetrics.NetworkStatus);
+    }
+}
+
+public sealed partial class DashboardMetric : ObservableObject
+{
+    [ObservableProperty]
+    private string value = string.Empty;
+
+    [ObservableProperty]
+    private string label = string.Empty;
+
+    [ObservableProperty]
+    private string accentKey = "AreaHomeBrush";
+}

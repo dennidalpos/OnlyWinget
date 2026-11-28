@@ -1,0 +1,75 @@
+<UserControl
+    x:Class="OnlyWinget.DesignSystem.Controls.PageScaffold"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid x:Name="Root" Padding="{StaticResource PageWidePadding}" RowSpacing="12">
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup>
+                    <VisualState x:Name="Wide">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="1100" />
+                        </VisualState.StateTriggers>
+                    </VisualState>
+                    <VisualState x:Name="Medium">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="800" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="Root.Padding" Value="{StaticResource PageMediumPadding}" />
+                            <Setter Target="HeaderCol1.Width" Value="0" />
+                            <Setter Target="HeaderRow1.Height" Value="Auto" />
+                            <Setter Target="CommandsPresenter.(Grid.Row)" Value="1" />
+                            <Setter Target="CommandsPresenter.(Grid.Column)" Value="0" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Compact">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="0" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="Root.Padding" Value="{StaticResource PageCompactPadding}" />
+                            <Setter Target="HeaderCol1.Width" Value="0" />
+                            <Setter Target="HeaderRow1.Height" Value="Auto" />
+                            <Setter Target="CommandsPresenter.(Grid.Row)" Value="1" />
+                            <Setter Target="CommandsPresenter.(Grid.Column)" Value="0" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MaxWidth="{StaticResource PageMaxWidth}" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid x:Name="HeaderGrid" Grid.Column="0" HorizontalAlignment="Stretch" ColumnSpacing="16" RowSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="HeaderCol0" Width="*" />
+                    <ColumnDefinition x:Name="HeaderCol1" Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="HeaderRow0" Height="Auto" />
+                    <RowDefinition x:Name="HeaderRow1" Height="0" />
+                </Grid.RowDefinitions>
+                <Grid x:Name="TitleBlockGrid" Grid.Column="0" Grid.Row="0" ColumnSpacing="12" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border x:Name="AccentBar" Grid.Column="0" Width="5" CornerRadius="2.5" VerticalAlignment="Stretch" Background="{x:Bind AreaAccentBrush, Mode=OneWay}" Visibility="Collapsed" />
+                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind Title, Mode=OneWay}" Style="{StaticResource PageTitleTextBlockStyle}" />
+                        <TextBlock Text="{x:Bind Subtitle, Mode=OneWay}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    </StackPanel>
+                </Grid>
+                <ContentPresenter x:Name="CommandsPresenter" Grid.Column="1" Grid.Row="0" Content="{x:Bind Commands, Mode=OneWay}" VerticalAlignment="Bottom" />
+            </Grid>
+            <ContentPresenter Grid.Row="1" Grid.Column="0" Content="{x:Bind State, Mode=OneWay}" HorizontalAlignment="Stretch" />
+            <ContentPresenter Grid.Row="2" Grid.Column="0" Content="{x:Bind Body, Mode=OneWay}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+            <ContentPresenter Grid.Row="3" Grid.Column="0" Content="{x:Bind Footer, Mode=OneWay}" HorizontalAlignment="Stretch" />
+        </Grid>
+</UserControl>

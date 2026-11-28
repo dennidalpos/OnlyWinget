@@ -1,0 +1,115 @@
+# User guide
+
+[Italian reference](user-guide.it.md)
+
+OnlyWinget combines reusable application lists, WinGet search, application upgrades and Windows Update. This guide uses the English UI labels. Choose your language in **Settings**.
+
+## Start safely
+
+Start OnlyWinget.exe after installation or extracting the entire portable ZIP. Check the [requirements](../README.md#requirements). The app loads the local workspace and detects capabilities. Resolve loading errors before saving new data; preserve the current files when investigating a load error or an unsupported workspace schema.
+
+Navigation contains Home, Packages, Updates, Sources, Activity and Settings. Search is a Packages mode. The navigation also offers **Open logs**. Home shows CPU, memory, disk, uptime, Windows version and connectivity.
+
+~~~mermaid
+flowchart LR
+    Start[Start and load workspace] --> State{Loaded?}
+    State -->|No| Recover[Preserve files and inspect recovery error]
+    State -->|Yes| Home[Home]
+    Home --> Packages[Packages presets or search]
+    Home --> Updates[WinGet or Windows Update]
+    Home --> Sources[Sources]
+    Home --> Activity[Activity and logs]
+    Home --> Settings[Settings]
+~~~
+
+## 1. Presets
+
+In **Packages → Presets**, create a named list or select an existing one. Add packages by ID/source or from Search. The package ID and source together identify an entry. Identical IDs from different sources can be separate entries.
+
+![The OnlyWinget Preset tab shows Demo PC and three package IDs selected for a batch action.](assets/presets-demo-pc.jpg)
+
+The example was captured in OnlyWinget 1.0.2 with sample preset data. WinGet was unavailable to this session, so package metadata is shown as Unknown and install actions are disabled.
+
+Import/export uses onlywinget.preset.v1. Import validates the document and resolves packages against enabled sources; duplicate preset names are refused. Generic JSON and native WinGet export are not equivalent formats.
+
+Add/edit/remove entries, export the list, then select packages for the intended install/uninstall action. Persistent editing and preset changes are blocked during an operation. Apply or discard a draft before changing page, mode or preset. If an accepted edit fails to save, fields remain locked and Apply retries that save; do not add the edit again.
+
+The active preset change is automatically saved once accepted. If another instance has saved changes, export any unsaved preset you want to keep, then reopen OnlyWinget to reload the workspace. For other save errors, inspect the error and use Save workspace to retry.
+
+## 2. Search and install
+
+Open **Packages → Search**, enter a name or ID and search using at least one enabled source. Results show name, ID, source, version and publisher when available. Select rows to install directly or add them to the active preset. You can install directly without a preset.
+
+Read source warnings even when other sources return usable results. Identical searches may use a five-minute in-memory cache. Inspect per-package outcomes and Activity after a change.
+
+## 3. WinGet upgrades
+
+Under **Updates → WinGet**, scan and compare the installed and available versions. Apply selected rows or use **Install all** for all discovered rows. The app asks for confirmation when confirmations are enabled. To recover from an installer-type mismatch, select the affected package and choose **Uninstall and reinstall**. OnlyWinget waits for the old copy to be removed before installing the new one and preserves the outcome of every phase. If a source fails during a scan, its previous rows and selection are kept while the other sources refresh.
+
+~~~mermaid
+flowchart LR
+    Scan["Scan enabled sources"] --> Review["Review discovered upgrades"]
+    Review --> Selected["Apply selected rows"]
+    Review --> All["Install all discovered rows"]
+    Selected --> Confirm["Confirm if prompted"]
+    All --> Confirm
+    Confirm --> Execute["Run the batch"]
+    Execute --> Outcome{"Batch outcome"}
+    Outcome -->|Success| Rescan[Automatic rescan]
+    Outcome -->|Failed or cancelled| Retain[Retain outcomes diagnostics and pending rows]
+    Retain --> Inspect[Inspect installed state before retry]
+~~~
+
+Cancel requests interruption; it cannot guarantee an active native installer finishes or rolls back. Outcomes distinguish completed packages, an unconfirmed active package and packages never started. Failure/cancellation does not trigger an automatic rescan; a manual scan preserves the batch summary.
+
+## 4. Windows Update
+
+Under **Updates → Windows Update**, choose software, drivers, Microsoft Update and optional-update settings separately. Software is selected by default. Select software, drivers or both, then scan and inspect the KB, title and metadata before choosing updates.
+
+**Install all** excludes hidden results and installs the available updates from the current scan. To manage hidden updates, enable **Hidden updates** and scan again. Select rows and use **Hide** or **Show** to change their visibility. Open **History** to review results by category and uninstall eligible entries. If Windows requires a restart, use **Restart** and confirm if prompted. You can cancel a scheduled restart from this page.
+
+~~~mermaid
+flowchart TD
+    Options["Choose update types and scan"] --> Review["Review KB, title and metadata"]
+    Review --> Selected["Select rows to download or install"]
+    Review --> All["Install all available non-hidden rows"]
+    Selected --> Validate["Validate update IDs and revisions"]
+    All --> Validate
+    Validate --> Work["Accept EULAs and run the requested action"]
+    Work --> Results["Review results and restart state"]
+    Work --> Cancel["If cancelled, await native cleanup"]
+    Cancel --> Results
+~~~
+
+Installation validates IDs/revisions for the complete selection before accepting selected EULAs, downloading and installing. Required elevation and restart warnings remain meaningful. MSRC severity is displayed when available; a detected restart field is not a prediction for every future installation.
+
+The PowerShell fallback is for unavailable COM activation; it does not automatically retry a failed COM installation. Windows Update runs in a separate process. Cancel requests native abort and allows up to 30 seconds for cleanup. Cancellation cannot roll back changes. If interruption/cleanup is unconfirmed, the app reports uncertainty. Inspect Windows Update's actual state before retrying. See [metadata limits](operations.md#windows-update-metadata).
+
+## 5. Sources
+
+Reload the source list to inspect WinGet configuration. If WinGet returns an unreadable source list, OnlyWinget keeps the previous list and shows an error. Local enable/disable preferences affect searches without removing the native source.
+
+| Action | Effect |
+|---|---|
+| Reload | Reads without elevation, preserving URLs and local preferences |
+| Update metadata | Runs the WinGet source-update operation |
+| Enable/disable | Saves a local preference without administrator rights |
+| Add/remove/reset | Requires the app running elevated and changes native WinGet configuration |
+
+Input validation does not replace WinGet's registration/access result. If a native change succeeds but local save fails, reload before retrying. Cancellation does not undo a completed change.
+
+## 6. Activity and logs
+
+Activity groups entries by local day and supports text, severity and category filters, detail copying and history export. Its clear/cancel actions concern activity history.
+
+Open logs instead shows diagnostic messages with filter/copy/export/clear. Clearing requires confirmation inside the viewer; cancelling leaves logs intact. Read any write/export/delete error before retrying. Exported text can contain filesystem paths and source addresses, so review it before sharing.
+
+## 7. Settings
+
+Choose system/English/Italian language and system/light/dark theme, confirmations, diagnostics and log level. Preferences include continuing after an error and installer-hash bypass. **WinGet retries** allows zero to three extra attempts per package for transient failures and defaults to one. Packages with unknown installed versions and pinned packages are excluded by default. Enable their respective settings and scan again to include them where supported by WinGet. Changes save automatically. Hash bypass changes WinGet verification and is off by default. Restore defaults asks for confirmation and saves the initial values again.
+
+## Local data and help
+
+By default both installed and portable distributions store data in LocalAppData/OnlyWinget: onlywinget.db, settings.json, source-preferences-v1.json and logs. Logs rotate at 10 MiB with at most 14 recognized files/140 MiB after successful writes.
+
+Preserve files on a load failure or unsupported schema and follow [workspace recovery](operations.md#workspace-schema-and-unsupported-databases). For support provide the version, operation and sanitized error as described in the [README](../README.md#support). Offline unit tests do not qualify real application installation, WinGet privileges or Windows Update execution.

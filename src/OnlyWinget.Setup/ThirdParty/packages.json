@@ -1,0 +1,248 @@
+{
+  "CommunityToolkit.Mvvm/8.4.2": [
+    "License.md",
+    "ThirdPartyNotices.txt"
+  ],
+  "Microsoft.Data.Sqlite.Core/10.0.15": [
+    "@EFCore.LICENSE.txt"
+  ],
+  "Microsoft.EntityFrameworkCore.Abstractions/10.0.15": [
+    "@EFCore.LICENSE.txt"
+  ],
+  "Microsoft.EntityFrameworkCore.Relational/10.0.15": [
+    "@EFCore.LICENSE.txt"
+  ],
+  "Microsoft.EntityFrameworkCore.Sqlite.Core/10.0.15": [
+    "@EFCore.LICENSE.txt"
+  ],
+  "Microsoft.EntityFrameworkCore.Sqlite/10.0.15": [
+    "@EFCore.LICENSE.txt"
+  ],
+  "Microsoft.EntityFrameworkCore/10.0.15": [
+    "@EFCore.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Caching.Abstractions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Caching.Memory/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration.Abstractions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration.Binder/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration.CommandLine/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration.EnvironmentVariables/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration.FileExtensions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration.Json/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration.UserSecrets/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Configuration/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.DependencyInjection.Abstractions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.DependencyInjection/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.DependencyModel/10.0.15": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Diagnostics.Abstractions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Diagnostics/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.FileProviders.Abstractions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.FileProviders.Physical/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.FileSystemGlobbing/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Hosting.Abstractions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Hosting/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Logging.Abstractions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Logging.Configuration/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Logging.Console/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Logging.Debug/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Logging.EventLog/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Logging.EventSource/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Logging/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Options.ConfigurationExtensions/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Options/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.Extensions.Primitives/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "Microsoft.NETCore.App.Runtime.win-x64/10.0.15": [
+    "LICENSE.TXT",
+    "THIRD-PARTY-NOTICES.TXT"
+  ],
+  "Microsoft.Web.WebView2/1.0.3719.77": [
+    "LICENSE.txt",
+    "NOTICE.txt"
+  ],
+  "Microsoft.Windows.AI.MachineLearning/2.5.96": [
+    "license.txt",
+    "ThirdPartyNotices.txt"
+  ],
+  "Microsoft.Windows.SDK.NET.Ref/10.0.17763.57": [
+    "@WindowsSDK.rtf"
+  ],
+  "Microsoft.WindowsAppSDK.AI/2.7.0": [
+    "license.txt"
+  ],
+  "Microsoft.WindowsAppSDK.Base/2.7.0": [
+    "license.txt",
+    "NOTICE.txt"
+  ],
+  "Microsoft.WindowsAppSDK.DWrite/2.7.0": [
+    "license.txt"
+  ],
+  "Microsoft.WindowsAppSDK.Foundation/2.7.0": [
+    "license.txt"
+  ],
+  "Microsoft.WindowsAppSDK.InteractiveExperiences/2.7.0": [
+    "license.txt"
+  ],
+  "Microsoft.WindowsAppSDK.ML/2.7.0": [
+    "license.txt"
+  ],
+  "Microsoft.WindowsAppSDK.Runtime/2.7.0": [
+    "license.txt",
+    "NOTICE.txt"
+  ],
+  "Microsoft.WindowsAppSDK.Search/2.7.0": [
+    "license.txt"
+  ],
+  "Microsoft.WindowsAppSDK.Widgets/2.7.0": [
+    "license.txt"
+  ],
+  "Microsoft.WindowsAppSDK.WinUI/2.7.0": [
+    "license.txt",
+    "NOTICE.txt"
+  ],
+  "Microsoft.WindowsAppSDK/2.7.0": [
+    "license.txt",
+    "NOTICE.txt"
+  ],
+  "Serilog.Extensions.Hosting/11.0.0": [
+    "@Serilog.Extensions.Hosting.LICENSE"
+  ],
+  "Serilog.Extensions.Logging/11.0.0": [
+    "@Serilog.Extensions.Logging.LICENSE"
+  ],
+  "Serilog/4.4.0": [
+    "@Serilog.LICENSE"
+  ],
+  "SQLite/3.53.4": [
+    "LICENSE.txt"
+  ],
+  "SQLitePCLRaw.bundle_e_sqlite3/3.0.5": [
+    "@SQLitePCLRaw.LICENSE.TXT",
+    "@SQLitePCLRaw.NOTICE.TXT"
+  ],
+  "SQLitePCLRaw.config.e_sqlite3/3.0.5": [
+    "@SQLitePCLRaw.LICENSE.TXT",
+    "@SQLitePCLRaw.NOTICE.TXT"
+  ],
+  "SQLitePCLRaw.core/3.0.5": [
+    "@SQLitePCLRaw.LICENSE.TXT",
+    "@SQLitePCLRaw.NOTICE.TXT"
+  ],
+  "SQLitePCLRaw.provider.e_sqlite3/3.0.5": [
+    "@SQLitePCLRaw.LICENSE.TXT",
+    "@SQLitePCLRaw.NOTICE.TXT"
+  ],
+  "System.Diagnostics.DiagnosticSource/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "System.Diagnostics.EventLog/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "System.IO.Pipelines/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "System.Numerics.Tensors/9.0.0": [
+    "LICENSE.TXT",
+    "THIRD-PARTY-NOTICES.TXT"
+  ],
+  "System.Text.Encodings.Web/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ],
+  "System.Text.Json/11.0.0": [
+    "THIRD-PARTY-NOTICES.TXT",
+    "@DotNet.LICENSE.txt"
+  ]
+}

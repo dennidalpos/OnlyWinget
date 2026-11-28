@@ -1,0 +1,252 @@
+param(
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Release',
+    [string]$Version,
+    [switch]$NoRestore,
+    [switch]$StopRunningInstance,
+    [switch]$NonInteractive,
+    [switch]$Fast,
+    [switch]$Full
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'support/ScriptHelpers.ps1')
+. (Join-Path $PSScriptRoot 'support/InstallerFiles.ps1')
+. (Join-Path $PSScriptRoot 'support/PackageArtifacts.ps1')
+. (Join-Path $PSScriptRoot 'support/ThirdPartyNotices.ps1')
+
+$isFastMode = -not $Full
+
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$projectPath = Join-Path $repoRoot 'src/OnlyWinget/OnlyWinget.csproj'
+$artifactsPath = Get-OutputRoot -RepositoryRoot $repoRoot
+$stagingRoot = Join-Path $artifactsPath 'installer'
+$setupOutputDir = Join-Path $artifactsPath "dist/OnlyWinget/$Configuration"
+
+function Get-ProjectVersion {
+    [xml]$projectXml = Get-Content -Path $projectPath
+    $rawVersion = $projectXml.Project.PropertyGroup |
+        Where-Object { $_.Version } |
+        Select-Object -ExpandProperty Version -First 1
+
+    if ([string]::IsNullOrWhiteSpace($rawVersion)) {
+        throw "Project version not found in '$projectPath'. Add a <Version> element to the csproj or pass -Version."
+    }
+
+    return $rawVersion.Trim()
+}
+
+function Convert-ToInstallerVersion {
+    param(
+        [string]$RawVersion
+    )
+
+    $sanitized = $RawVersion.Split('-', 2)[0]
+
+    try {
+        $parsedVersion = [Version]$sanitized
+    }
+    catch {
+        throw "Invalid version: '$RawVersion'. Use a compatible numeric version, for example 1.0.0."
+    }
+
+    $major = $parsedVersion.Major
+    $minor = if ($parsedVersion.Minor -ge 0) { $parsedVersion.Minor } else { 0 }
+    $build = if ($parsedVersion.Build -ge 0) { $parsedVersion.Build } else { 0 }
+
+    if ($major -ne 1 -or $minor -ne 0) {
+        throw "The application version must stay at 1.0 (e.g. 1.0.x) per policy. Detected version: '$RawVersion'."
+    }
+
+    if ($major -gt 255 -or $minor -gt 255 -or $build -gt 65535) {
+        throw "Version out of range: '$RawVersion'."
+    }
+
+    return "$major.$minor.$build"
+}
+
+function Reset-Directory {
+    param(
+        [string]$Path
+    )
+
+    $fullPath = Assert-RepositoryPathInAllowedRoot `
+        -Path $Path `
+        -RepositoryRoot $repoRoot `
+        -AllowedRoots @($stagingRoot) `
+        -Description 'Reset directory installer'
+
+    if (Test-Path -LiteralPath $fullPath) {
+        Remove-Item -LiteralPath $fullPath -Recurse -Force -ErrorAction Stop
+    }
+
+    New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
+}
+
+function Copy-WinUiPublishResource {
+    param(
+        [string]$RuntimeIdentifier,
+        [string]$PublishDir
+    )
+
+    $targetFramework = 'net10.0-windows10.0.17763.0'
+    $buildOutputDir = Join-Path $artifactsPath "bin/OnlyWinget/$Configuration/$targetFramework/$RuntimeIdentifier"
+    Assert-Path -Path $buildOutputDir -Description "WinUI build output $RuntimeIdentifier"
+
+    $resourcePaths = @(
+        'App.xbf',
+        'MainWindow.xbf',
+        'OnlyWinget.pri',
+        'Assets',
+        'Controls',
+        'DesignSystem',
+        'Features'
+    )
+
+    foreach ($resourcePath in $resourcePaths) {
+        $sourcePath = Join-Path $buildOutputDir $resourcePath
+        Assert-Path -Path $sourcePath -Description "WinUI publish resource $resourcePath"
+
+        $destinationPath = Join-Path $PublishDir $resourcePath
+        if (Test-Path -LiteralPath $destinationPath) {
+            Remove-Item -LiteralPath $destinationPath -Recurse -Force -ErrorAction Stop
+        }
+
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Recurse -Force -ErrorAction Stop
+    }
+}
+
+function Resolve-MakensisExe {
+    $candidates = @(
+        'C:\Program Files (x86)\NSIS\makensis.exe',
+        'C:\Program Files\NSIS\makensis.exe'
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+
+    $cmd = Get-Command 'makensis' -ErrorAction SilentlyContinue
+    if ($null -ne $cmd) {
+        return $cmd.Source
+    }
+
+    throw "NSIS tool not found (makensis.exe). Make sure NSIS is installed in 'C:\Program Files (x86)\NSIS' or available on PATH."
+}
+
+function Invoke-PublishAndPackage {
+    $runtimeIdentifier = 'win-x64'
+    $nsisStagingRoot = Join-Path $stagingRoot $runtimeIdentifier
+    $publishDir = Join-Path $nsisStagingRoot 'publish'
+    $nsisScriptPath = Join-Path $repoRoot 'src/OnlyWinget.Setup/OnlyWinget.nsi'
+    $noticeSource = Join-Path $repoRoot 'src/OnlyWinget.Setup/ThirdParty'
+    $setupFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-setup.exe"
+    $portableFilePath = Join-Path $setupOutputDir "OnlyWinget-$installerVersion-portable-x64.zip"
+
+    Assert-Path -Path $nsisScriptPath -Description 'NSIS setup script'
+    $makensisExe = Resolve-MakensisExe
+    Assert-NsisNoticeSource -Compiler $makensisExe -NoticeDirectory (Join-Path $noticeSource 'Installer')
+    Reset-Directory -Path $nsisStagingRoot
+    New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
+
+    # Build preparation restored the solution, including the app's declared win-x64 runtime.
+    $publishArgs = @(
+        'publish'
+        $projectPath
+        '-c'
+        $Configuration
+        '-f'
+        'net10.0-windows10.0.17763.0'
+        '-r'
+        $runtimeIdentifier
+        '--self-contained'
+        'true'
+        '--output'
+        $publishDir
+        '/p:UseAppHost=true'
+        '/p:WindowsAppSDKSelfContained=true'
+        '/p:BuildProjectReferences=false'
+        '/p:DebugSymbols=false'
+        '/p:DebugType=None'
+        '--no-restore'
+    )
+
+    if ($isFastMode) {
+        dotnet @publishArgs > $null
+    } else {
+        dotnet @publishArgs
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw 'dotnet publish x64 failed.'
+    }
+
+    $publishedExePath = Join-Path $publishDir 'OnlyWinget.exe'
+    Assert-Path -Path $publishedExePath -Description 'Published executable x64'
+    Copy-WinUiPublishResource -RuntimeIdentifier $runtimeIdentifier -PublishDir $publishDir
+    Copy-ThirdPartyNotice -PublishDirectory $publishDir -NoticeSource $noticeSource `
+        -AssetsPath (Join-Path $artifactsPath 'obj/OnlyWinget/project.assets.json')
+    $installerFileInclude = Join-Path $nsisStagingRoot 'InstalledFiles.nsh'
+    Write-InstallerFileInclude -PublishDirectory $publishDir -OutputPath $installerFileInclude
+
+    New-PackageArtifactPair -OutputDirectory $setupOutputDir -PublishDirectory $publishDir -Version $installerVersion -BuildSetup {
+        param($stagedSetupPath)
+        $nsisArgs = @(
+            "-DPRODUCT_VERSION=$installerVersion",
+            "-DPUBLISH_DIR=$publishDir",
+            "-DINSTALLER_FILE_INCLUDE=$installerFileInclude",
+            "-DOUT_FILE=$stagedSetupPath",
+            $nsisScriptPath
+        )
+        if ($isFastMode) { & $makensisExe @nsisArgs > $null }
+        else { & $makensisExe @nsisArgs }
+        if ($LASTEXITCODE -ne 0) { throw 'NSIS setup compilation failed.' }
+        Assert-Path -Path $stagedSetupPath -Description 'Staged NSIS setup executable'
+    }
+
+    if ($isFastMode) {
+        Write-Host "PASS: Setup NSIS and Portable ZIP generated ($Configuration)." -ForegroundColor Green
+    } else {
+        Write-Host "Setup NSIS generato: $setupFilePath" -ForegroundColor Green
+        Write-Host "Portable x64 generata: $portableFilePath" -ForegroundColor Green
+    }
+}
+
+Assert-Command -Name 'dotnet'
+Assert-Path -Path $projectPath -Description 'Project file'
+
+$rawVersion = if ([string]::IsNullOrWhiteSpace($Version)) { Get-ProjectVersion } else { $Version }
+$installerVersion = Convert-ToInstallerVersion -RawVersion $rawVersion
+
+$buildScriptPath = Join-Path $PSScriptRoot 'build.ps1'
+Assert-Path -Path $buildScriptPath -Description 'Build script'
+
+Initialize-OutputRoot -RepositoryRoot $repoRoot | Out-Null
+$packageLockPath = Join-Path $artifactsPath '.package.lock'
+try {
+    $packageLock = [System.IO.File]::Open(
+        $packageLockPath,
+        [System.IO.FileMode]::OpenOrCreate,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None)
+}
+catch [System.IO.IOException] {
+    throw "Packaging gia' in esecuzione per questo repository. Attendi il completamento dell'altro processo e riprova. Lock: $packageLockPath"
+}
+
+try {
+    New-Item -ItemType Directory -Path $setupOutputDir -Force | Out-Null
+    Repair-PackagePromotion -OutputDirectory $setupOutputDir
+    & $buildScriptPath -Configuration $Configuration -NoRestore:$NoRestore -StopRunningInstance:$StopRunningInstance -Fast:$Fast -Full:$Full -NonInteractive:$NonInteractive
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Build preparation failed before packaging.'
+    }
+
+    Invoke-PublishAndPackage
+}
+finally {
+    $packageLock.Dispose()
+    Remove-Item -LiteralPath $packageLockPath -Force -ErrorAction SilentlyContinue
+}

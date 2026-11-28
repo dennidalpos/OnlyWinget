@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnlyWinget — Privacy & Policy</title>
+    <meta name="description" content="OnlyWinget desktop app storage and website connections.">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .privacy-body {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+        .privacy-title-wrap {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .privacy-title-wrap h1 {
+            font-family: var(--font-heading);
+            font-size: 44px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .privacy-content-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 48px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            margin-bottom: 40px;
+        }
+        .privacy-section {
+            margin-bottom: 32px;
+        }
+        .privacy-section:last-child {
+            margin-bottom: 0;
+        }
+        .privacy-section h2 {
+            font-family: var(--font-heading);
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+        .privacy-section h2 i {
+            color: var(--accent-cyan);
+            font-size: 18px;
+        }
+        .privacy-section p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .privacy-section ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 16px;
+        }
+        .privacy-section li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .privacy-section li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent-cyan);
+            font-weight: bold;
+        }
+        .back-btn-wrap {
+            text-align: center;
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.07);
+            border-color: var(--accent-purple);
+            box-shadow: 0 6px 20px rgba(155, 81, 224, 0.15);
+        }
+        
+        @media (max-width: 600px) {
+            .privacy-content-card {
+                padding: 24px;
+            }
+            .privacy-title-wrap h1 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <header>
+        <div class="container nav-wrapper">
+            <div class="logo-container" onclick="window.location.href='index.html'" style="cursor: pointer;">
+                <img class="logo-img" src="assets/logo.png" alt="OnlyWinget Logo">
+                <span class="logo-text">OnlyWinget</span>
+            </div>
+            <div class="nav-controls">
+                <button class="lang-switch" id="langBtn" onclick="toggleLanguage()">
+                    <i class="fa-solid fa-globe"></i> <span id="langLabel">Italiano</span>
+                </button>
+                <a href="index.html" class="privacy-link" style="font-weight: 600;">
+                    <i class="fa-solid fa-arrow-left" style="margin-right: 6px;"></i> <span data-i18n="nav-home">Home</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Privacy Content Section -->
+    <div class="container privacy-body">
+        <div class="privacy-title-wrap">
+            <h1 data-i18n="p-title">Privacy Policy</h1>
+            <p style="color: var(--text-secondary);" data-i18n="p-subtitle">Local storage and network connections</p>
+        </div>
+
+        <div class="privacy-content-card">
+            <!-- Section 1 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-shield-halved"></i> <span data-i18n="s1-title">About this notice</span></h2>
+                <p data-i18n="s1-desc">This page describes what the OnlyWinget desktop app stores on your PC and which external services the app and this website use.</p>
+            </div>
+
+            <!-- Section 2 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-user-shield"></i> <span data-i18n="s2-title">Data stored on your PC</span></h2>
+                <p data-i18n="s2-desc">By default, OnlyWinget stores its application data in <code>%LOCALAPPDATA%\OnlyWinget</code>.</p>
+                <ul>
+                    <li data-i18n="r1"><strong>Workspace:</strong> Presets, their package lists and your active preset are stored in the <code>onlywinget.db</code> SQLite database.</li>
+                    <li data-i18n="r2"><strong>Settings and diagnostics:</strong> Settings and source preferences are stored in JSON files. Diagnostic logs are stored in the <code>logs</code> folder.</li>
+                    <li data-i18n="r3"><strong>Uninstall:</strong> The OnlyWinget uninstaller preserves the application data folder, including the database, settings and logs.</li>
+                    <li data-i18n="r4"><strong>Export:</strong> You can export individual presets as JSON files.</li>
+                </ul>
+            </div>
+
+            <!-- Section 3 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-network-wired"></i> <span data-i18n="s3-title">Desktop app connections</span></h2>
+                <p data-i18n="s3-desc">OnlyWinget delegates package and operating system operations to WinGet and Windows Update.</p>
+                <ul>
+                    <li data-i18n="c1"><strong>WinGet:</strong> WinGet contacts the selected, enabled sources, which may include custom sources you configure. Package downloads may come from addresses specified by those sources.</li>
+                    <li data-i18n="c2"><strong>Windows Update:</strong> Windows handles scans and downloads through its configured update service.</li>
+                </ul>
+            </div>
+
+            <!-- Section 4 -->
+            <div class="privacy-section">
+                <h2><i class="fa-solid fa-globe"></i> <span data-i18n="s4-title">Website connections</span></h2>
+                <p data-i18n="s4-desc">The home and privacy pages load fonts from Google Fonts and icons from Cloudflare’s cdnjs. Your browser connects to those providers and shares network information such as your IP address in the course of those requests.</p>
+            </div>
+        </div>
+
+        <div class="back-btn-wrap">
+            <a href="index.html" class="btn btn-secondary" data-i18n="back-btn">
+                <i class="fa-solid fa-house" style="margin-right: 8px;"></i> Return to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2026 OnlyWinget. All rights reserved.</p>
+            <p data-i18n="footer-local">OnlyWinget desktop app and website</p>
+        </div>
+    </footer>
+
+    <!-- Translation script -->
+    <script>
+        let currentLang = 'en';
+
+        const translations = {
+            en: {
+                titleTag: "OnlyWinget — Privacy & Policy",
+                "nav-home": "Home",
+                "p-title": "Privacy Policy",
+                "p-subtitle": "Local storage and network connections",
+                "s1-title": "About this notice",
+                "s1-desc": "This page describes what the OnlyWinget desktop app stores on your PC and which external services the app and this website use.",
+                "s2-title": "Data stored on your PC",
+                "s2-desc": "By default, OnlyWinget stores its application data in <code>%LOCALAPPDATA%\\OnlyWinget</code>.",
+                "r1": "<strong>Workspace:</strong> Presets, their package lists and your active preset are stored in the <code>onlywinget.db</code> SQLite database.",
+                "r2": "<strong>Settings and diagnostics:</strong> Settings and source preferences are stored in JSON files. Diagnostic logs are stored in the <code>logs</code> folder.",
+                "r3": "<strong>Uninstall:</strong> The OnlyWinget uninstaller preserves the application data folder, including the database, settings and logs.",
+                "r4": "<strong>Export:</strong> You can export individual presets as JSON files.",
+                "s3-title": "Desktop app connections",
+                "s3-desc": "OnlyWinget delegates package and operating system operations to WinGet and Windows Update.",
+                "c1": "<strong>WinGet:</strong> WinGet contacts the selected, enabled sources, which may include custom sources you configure. Package downloads may come from addresses specified by those sources.",
+                "c2": "<strong>Windows Update:</strong> Windows handles scans and downloads through its configured update service.",
+                "s4-title": "Website connections",
+                "s4-desc": "The home and privacy pages load fonts from Google Fonts and icons from Cloudflare’s cdnjs. Your browser connects to those providers and shares network information such as your IP address in the course of those requests.",
+                "back-btn": "<i class='fa-solid fa-house' style='margin-right: 8px;'></i> Return to Home",
+                "footer-local": "OnlyWinget desktop app and website"
+            },
+            it: {
+                titleTag: "OnlyWinget — Informativa Privacy",
+                "nav-home": "Home",
+                "p-title": "Informativa sulla Privacy",
+                "p-subtitle": "Archiviazione locale e connessioni di rete",
+                "s1-title": "Informazioni su questa pagina",
+                "s1-desc": "Questa pagina descrive cosa salva sul PC l’app desktop OnlyWinget e quali servizi esterni usano l’app e il sito.",
+                "s2-title": "Dati salvati sul PC",
+                "s2-desc": "Per impostazione predefinita, OnlyWinget salva i dati dell’app in <code>%LOCALAPPDATA%\\OnlyWinget</code>.",
+                "r1": "<strong>Area di lavoro:</strong> I preset, gli elenchi dei pacchetti e il preset attivo sono salvati nel database SQLite <code>onlywinget.db</code>.",
+                "r2": "<strong>Impostazioni e diagnostica:</strong> Le impostazioni e le preferenze delle sorgenti sono salvate in file JSON. I log diagnostici si trovano nella cartella <code>logs</code>.",
+                "r3": "<strong>Disinstallazione:</strong> Il programma di disinstallazione conserva la cartella dei dati dell’app, compresi il database, le impostazioni e i log.",
+                "r4": "<strong>Esportazione:</strong> Puoi esportare i singoli preset come file JSON.",
+                "s3-title": "Connessioni dell’app desktop",
+                "s3-desc": "OnlyWinget affida la gestione dei pacchetti e degli aggiornamenti di sistema a WinGet e Windows Update.",
+                "c1": "<strong>WinGet:</strong> WinGet contatta le sorgenti abilitate e selezionate, incluse eventuali sorgenti personalizzate. I pacchetti possono essere scaricati dagli indirizzi indicati da queste sorgenti.",
+                "c2": "<strong>Windows Update:</strong> Windows gestisce le ricerche e i download tramite il servizio di aggiornamento configurato.",
+                "s4-title": "Connessioni del sito",
+                "s4-desc": "La pagina iniziale e quella sulla privacy caricano caratteri da Google Fonts e icone da cdnjs di Cloudflare. Durante queste richieste il browser contatta i fornitori e comunica informazioni di rete come l’indirizzo IP.",
+                "back-btn": "<i class='fa-solid fa-house' style='margin-right: 8px;'></i> Torna alla Home",
+                "footer-local": "App desktop e sito OnlyWinget"
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'it' : 'en';
+            document.getElementById('langLabel').textContent = currentLang === 'en' ? 'Italiano' : 'English';
+            document.title = translations[currentLang].titleTag;
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerHTML = translations[currentLang][key];
+                }
+            });
+        }
+    </script>
+</body>
+</html>

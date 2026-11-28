@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a defect in OnlyWinget
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic or redacted data only: no secrets, personal data, host paths or raw logs.
+        Report vulnerabilities through [private vulnerability reporting](https://github.com/dennidalpos/OnlyWinget/security/advisories/new).
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened
+      description: The observed behavior and the expected one.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The steps that reproduce the problem, in order.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The released version or the commit you are using.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Windows build and distribution
+      description: Include the Windows build, setup or portable format, and WinGet version if relevant.
+    validations:
+      required: true
